@@ -1,7 +1,7 @@
 // Espelha getEquipeComFotos() do Code.gs original — usado pro grid de cards da home.
-// fotoUrl fica null por enquanto: a migração das fotos (Monday users.photo_url) pro Postgres
-// ainda é uma pendência (ver claude/migracao_vercel_supabase.md). O front-end já trata fotoUrl
-// null caindo pro fallback de iniciais coloridas, então isso não quebra nada.
+// fotoUrl vem de FOTOS_CS (lib/constants.ts), arquivos estáticos em public/fotos-cs/. Quando um
+// CS ainda não tem foto cadastrada ali, fica null e o front-end cai no fallback de iniciais
+// coloridas normalmente.
 import { NextResponse } from 'next/server';
 import { getCSListCompleto } from '@/lib/reports';
 
@@ -15,7 +15,7 @@ export async function GET() {
       nomeCompleto: c.nomeCompleto,
       userId: c.userId,
       apelidoConselho: c.apelidoConselho,
-      fotoUrl: null as string | null,
+      fotoUrl: c.fotoUrl,
     }));
     return NextResponse.json(data);
   } catch (e: any) {

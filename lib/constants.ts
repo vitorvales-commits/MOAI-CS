@@ -1,6 +1,20 @@
 // Constantes portadas do Code.gs original (Apps Script) — mesma fonte de verdade usada pela
 // Edge Function sync-monday. Ver Code.Gs no projeto MOAI para o arquivo original completo.
 
+// Fotos do time de CS: arquivos estáticos em public/fotos-cs/, servidos direto pelo Next.js
+// (nunca em base64 dentro do bundle — mantém o app leve e evita o risco de corrupção que já
+// aconteceu antes com base64 grande colado à mão neste projeto). A chave precisa bater
+// exatamente com o campo `nome` de cs_config no Supabase.
+export const FOTOS_CS: Record<string, string> = {
+  'Vilker': '/fotos-cs/vilker.jpg',
+  'George': '/fotos-cs/george.jpg',
+  'Rodrigo': '/fotos-cs/rodrigo.jpg',
+  'Marcos': '/fotos-cs/marcos.jpg',
+  'Vitor': '/fotos-cs/vitor.jpg',
+  'Mateus': '/fotos-cs/mateus.jpg',
+  'Luana': '/fotos-cs/luana.jpg',
+};
+
 export const MESES_ORDEM = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',

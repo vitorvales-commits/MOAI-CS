@@ -11,7 +11,7 @@ import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
-  PESOS_SCORE_CS,
+  PESOS_SCORE_CS, FOTOS_CS,
 } from './constants';
 
 // ============ util ============
@@ -88,7 +88,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ============ CS list ============
 
-export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number };
+export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null };
 
 export async function getCSListCompleto(): Promise<CSConfig[]> {
   const { data, error } = await supabase.from('cs_config').select('*').eq('ativo', true).order('nome');
@@ -96,6 +96,7 @@ export async function getCSListCompleto(): Promise<CSConfig[]> {
   return (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
+    fotoUrl: FOTOS_CS[r.nome] || null,
   }));
 }
 
@@ -105,8 +106,10 @@ export async function getCSListParaAgregados(): Promise<CSConfig[]> {
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
+    fotoUrl: FOTOS_CS[r.nome] || null,
   }));
-  return ativos.concat(EX_MEMBROS_SEM_CONTA as CSConfig[]);
+  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl'>[]).map((m) => ({ ...m, fotoUrl: FOTOS_CS[m.nome] || null }));
+  return ativos.concat(exMembros);
 }
 
 export async function getVezesDestaque(nome: string): Promise<number> {
@@ -489,7 +492,7 @@ export async function generateCSReport(nomeCS: string, seletorMes: string, ano: 
   const indicacoesR = valorRealizado(metas['Indicações']?.alcancadoSoma, indicacoesCalc);
 
   return {
-    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: null as string | null, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0 },
+    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0 },
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     indicadores: {
       churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd' },
