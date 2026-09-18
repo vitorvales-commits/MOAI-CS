@@ -451,7 +451,7 @@ function corConfirmacao(qtd){
   if (qtd <= 7) return '#3D8B5F';
   return '#3B82F6';
 }
-function iniciais(nome){ var p=nome.trim().split(/\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
+function iniciais(nome){ nome=String(nome||'').trim(); if(!nome) return '?'; var p=nome.split(/\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 
 var MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function parseDataIsoLocal_(iso){
@@ -880,6 +880,7 @@ function abrirCaseModal(i){
 }
 function fecharCaseModal(){ document.getElementById('caseModalOverlay').classList.remove('ativo'); }
 function parseConselhoNome(nome){
+  nome = String(nome||'');
   var m = nome.match(/^(.*?)\s*\|\s*(.*?)\s*\((.*?)\)\s*$/);
   if (!m) return { tipo:'', contato:nome, apelido:'' };
   return { tipo:m[1].trim(), contato:m[2].trim(), apelido:m[3].trim() };
@@ -1179,36 +1180,57 @@ function renderChurnOrfao(churnOrfao){
     '<div class="attention-desc">'+churnOrfao.qtd+' churn(s) neste período com um nome no campo "Quem é o seu CS?" que não existe mais na configuração atual' +
     (detalheTxt ? ' — ' + detalheTxt : '') + '. Não entram na nota de nenhum CS, mas também não desaparecem do total. Vale corrigir o dropdown no board de Churn.</div></div>';
 }
+function renderEquipeSecao_(id, fn){
+  // Isola cada seção da tela de equipe: se uma seção tiver um dado inesperado e o render dela
+  // falhar, só ELA mostra o erro (com a mensagem real do JavaScript, pra facilitar o diagnóstico)
+  // e as outras continuam normais — antes, uma falha em qualquer seção apagava as cinco de uma vez
+  // com o mesmo texto genérico "Erro ao consultar", escondendo qual seção era a culpada de fato.
+  try {
+    fn();
+  } catch (e) {
+    console.error('Erro ao renderizar seção ' + id + ':', e);
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="empty-state">Erro ao exibir esta seção: ' + (e && e.message ? e.message : e) + '</div>';
+  }
+}
 function renderEquipe(data){
   modoGeralAtual = !!data.periodo.geral;
-  renderProximosConselhosEquipe(data.proximosConselhos);
-  var ind = data.indicadores;
-  document.getElementById('equipeIndicadores').innerHTML =
-    '<div class="grid3">'+kpiCard('Churn', ind.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$')+kpiCard('Cases de Sucesso', ind.casesSucesso)+'</div>' +
-    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings)+kpiCard('Rounds', ind.rounds)+kpiCard('Health da Base (média)', ind.healthDaBase)+'</div>' +
-    renderChurnOrfao(data.churnOrfao);
-  animarMFills(document.getElementById('equipeIndicadores'));
+  renderEquipeSecao_('equipeProximosConselhos', function(){
+    renderProximosConselhosEquipe(data.proximosConselhos);
+  });
+  renderEquipeSecao_('equipeIndicadores', function(){
+    var ind = data.indicadores;
+    document.getElementById('equipeIndicadores').innerHTML =
+      '<div class="grid3">'+kpiCard('Churn', ind.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$')+kpiCard('Cases de Sucesso', ind.casesSucesso)+'</div>' +
+      '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings)+kpiCard('Rounds', ind.rounds)+kpiCard('Health da Base (média)', ind.healthDaBase)+'</div>' +
+      renderChurnOrfao(data.churnOrfao);
+    animarMFills(document.getElementById('equipeIndicadores'));
+  });
 
-  if (data.casesPorCS && data.casesPorCS.length > 0) {
-    var pontosCases = data.casesPorCS.map(function(c){ return { v: c.qtd, lbl: c.nome }; });
-    document.getElementById('equipeSemanal').innerHTML = '<div class="chart-card"><div class="chart-title">'+ICONS.calendar+'Cases de sucesso registrados por CS ('+data.membrosIncluidos.length+' incluídos)</div>' + barChart(pontosCases, '#fbbf24') + '</div>';
-  } else {
-    document.getElementById('equipeSemanal').innerHTML = '<div class="empty-state">Nenhum case de sucesso registrado neste período.</div>';
-  }
+  renderEquipeSecao_('equipeSemanal', function(){
+    if (data.casesPorCS && data.casesPorCS.length > 0) {
+      var pontosCases = data.casesPorCS.map(function(c){ return { v: c.qtd, lbl: c.nome }; });
+      document.getElementById('equipeSemanal').innerHTML = '<div class="chart-card"><div class="chart-title">'+ICONS.calendar+'Cases de sucesso registrados por CS ('+data.membrosIncluidos.length+' incluídos)</div>' + barChart(pontosCases, '#fbbf24') + '</div>';
+    } else {
+      document.getElementById('equipeSemanal').innerHTML = '<div class="empty-state">Nenhum case de sucesso registrado neste período.</div>';
+    }
+  });
 
-  var a = agregarConselhos(data.conselhos);
-  var mediaGeral = a.totalRegistros ? Math.round(a.totalPresente/a.totalRegistros*100) : 0;
-  document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid">' +
-    '<div class="dark-card" style="display:flex;align-items:center;gap:20px;">' + donutChart(a.totalPresente, a.totalAusente, a.totalReposicao, 130) +
-      '<div><div class="dark-label">Presença média — toda a operação</div><div class="dark-value num '+(mediaGeral>=60?'c-g':'c-r')+'">'+mediaGeral+'%</div><div class="dark-sub">'+a.total+' conselhos · '+a.totalMembros+' membros</div></div></div>' +
-    '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Conselhos abaixo de 60%</div><div class="dark-value num c-r">'+a.atencao.length+'</div></div>' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Congelados</div><div class="dark-value num c-y">'+a.congelados+'</div></div>' +
-    '</div></div>';
+  renderEquipeSecao_('equipeConselhos', function(){
+    var a = agregarConselhos(data.conselhos);
+    var mediaGeral = a.totalRegistros ? Math.round(a.totalPresente/a.totalRegistros*100) : 0;
+    document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid">' +
+      '<div class="dark-card" style="display:flex;align-items:center;gap:20px;">' + donutChart(a.totalPresente, a.totalAusente, a.totalReposicao, 130) +
+        '<div><div class="dark-label">Presença média — toda a operação</div><div class="dark-value num '+(mediaGeral>=60?'c-g':'c-r')+'">'+mediaGeral+'%</div><div class="dark-sub">'+a.total+' conselhos · '+a.totalMembros+' membros</div></div></div>' +
+      '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
+        '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Conselhos abaixo de 60%</div><div class="dark-value num c-r">'+a.atencao.length+'</div></div>' +
+        '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Congelados</div><div class="dark-value num c-y">'+a.congelados+'</div></div>' +
+      '</div></div>';
+  });
 
-  renderImpactoConselhosEquipe(data.impactoConselhos);
-  renderCSTop(data.csTop);
-  renderRankingEquipe(data.ranking);
+  renderEquipeSecao_('equipeImpactoConselhos', function(){ renderImpactoConselhosEquipe(data.impactoConselhos); });
+  renderEquipeSecao_('csTop', function(){ renderCSTop(data.csTop); });
+  renderEquipeSecao_('equipeRanking', function(){ renderRankingEquipe(data.ranking); });
 }
 
 function renderImpactoConselhosEquipe(imp){
