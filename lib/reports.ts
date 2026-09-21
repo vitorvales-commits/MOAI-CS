@@ -6,7 +6,7 @@
 // Este arquivo não usa cache (CacheService/planilha do Apps Script não existem aqui) porque
 // ler do Postgres já é rápido o bastante — era o Monday que exigia cache agressivo.
 
-import { supabase } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
@@ -90,8 +90,8 @@ function shuffle<T>(arr: T[]): T[] {
 
 export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null };
 
-export async function getCSListCompleto(): Promise<CSConfig[]> {
-  const { data, error } = await supabase.from('cs_config').select('*').eq('ativo', true).order('nome');
+export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]> {
+  const { data, error } = await sb.from('cs_config').select('*').eq('ativo', true).order('nome');
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
   return (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
@@ -100,8 +100,8 @@ export async function getCSListCompleto(): Promise<CSConfig[]> {
   }));
 }
 
-export async function getCSListParaAgregados(): Promise<CSConfig[]> {
-  const { data, error } = await supabase.from('cs_config').select('*').order('nome');
+export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConfig[]> {
+  const { data, error } = await sb.from('cs_config').select('*').order('nome');
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
@@ -112,15 +112,18 @@ export async function getCSListParaAgregados(): Promise<CSConfig[]> {
   return ativos.concat(exMembros);
 }
 
-export async function getVezesDestaque(nome: string): Promise<number> {
-  const { data } = await supabase.from('cs_config').select('vezes_destaque').eq('nome', nome).maybeSingle();
+export async function getVezesDestaque(sb: SupabaseClient, nome: string): Promise<number> {
+  const { data } = await sb.from('cs_config').select('vezes_destaque').eq('nome', nome).maybeSingle();
   return data ? (data.vezes_destaque || 0) : 0;
 }
-export async function setVezesDestaque(nome: string, vezes: number): Promise<number> {
-  const valor = Math.max(0, Math.round(Number(vezes) || 0));
-  const { error } = await supabase.from('cs_config').update({ vezes_destaque: valor, updated_at: new Date().toISOString() }).eq('nome', nome);
+// Única escrita do app: passa pela função set_destaque (SECURITY DEFINER), que faz uma segunda
+// checagem de autorização dentro do banco (is_moai_user()), garante o intervalo permitido e grava
+// no log de auditoria — cs_config não tem policy de UPDATE direto, só SELECT (ver migração
+// secure_set_destaque_rpc), então um .update() direto aqui não escreveria nada.
+export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: number): Promise<number> {
+  const { data, error } = await sb.rpc('set_destaque', { p_nome: nome, p_valor: Math.round(Number(vezes) || 0) });
   if (error) throw new Error('Erro ao salvar vezes_destaque: ' + error.message);
-  return valor;
+  return data as number;
 }
 
 // ============ busca única de dados brutos (equivalente a getDadosBrutos_) ============
@@ -128,21 +131,21 @@ export async function setVezesDestaque(nome: string, vezes: number): Promise<num
 // memória, com .range() explícito pra nunca esbarrar no limite default de 1000 linhas do
 // PostgREST (mesma lição da correção de paginação feita na Edge Function).
 
-async function fetchAll(table: string) {
-  const { data, error } = await supabase.from(table).select('*').range(0, 9999);
+async function fetchAll(sb: SupabaseClient, table: string) {
+  const { data, error } = await sb.from(table).select('*').range(0, 9999);
   if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
   return data || [];
 }
 
-export async function getDadosBrutos() {
+export async function getDadosBrutos(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico,
   ] = await Promise.all([
-    fetchAll('churn_items'), fetchAll('upsell_downsell_items'), fetchAll('reports_semanais_items'),
-    fetchAll('metas_subitens'), fetchAll('rounds_items'), fetchAll('feedback_items'), fetchAll('cases_items'),
-    fetchAll('matchmakings_items'), fetchAll('conselhos_grupos'), fetchAll('conselhos_membros'),
-    fetchAll('conselhos_status_mensal'), fetchAll('agenda_conselhos_items'), fetchAll('historico_conselhos_items'),
+    fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
+    fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
+    fetchAll(sb, 'matchmakings_items'), fetchAll(sb, 'conselhos_grupos'), fetchAll(sb, 'conselhos_membros'),
+    fetchAll(sb, 'conselhos_status_mensal'), fetchAll(sb, 'agenda_conselhos_items'), fetchAll(sb, 'historico_conselhos_items'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
@@ -419,11 +422,11 @@ function calcularScoreCS(indicadores: any, numConselhos: number, maxConselhosTim
 
 // ============ relatório individual ============
 
-export async function generateCSReport(nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+export async function generateCSReport(sb: SupabaseClient, nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
   const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
-  const dados = dadosParam || (await getDadosBrutos());
+  const dados = dadosParam || (await getDadosBrutos(sb));
 
-  const listaCS = await getCSListParaAgregados();
+  const listaCS = await getCSListParaAgregados(sb);
   const cfg = listaCS.find((c) => c.nome === nomeCS);
   if (!cfg) throw new Error(`CS "${nomeCS}" não encontrado`);
 
@@ -512,13 +515,13 @@ export async function generateCSReport(nomeCS: string, seletorMes: string, ano: 
 
 // ============ relatório da equipe ============
 
-export async function generateEquipeReport(seletorMes: string, ano: number) {
+export async function generateEquipeReport(sb: SupabaseClient, seletorMes: string, ano: number) {
   const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
-  const dados = await getDadosBrutos();
-  const membros = await getCSListParaAgregados();
+  const dados = await getDadosBrutos(sb);
+  const membros = await getCSListParaAgregados(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
-    try { return await generateCSReport(m.nome, seletorMes, ano, dados); }
+    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados); }
     catch (e) { return null; }
   }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
 

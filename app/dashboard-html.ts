@@ -44,6 +44,8 @@ svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-w
 .progress-bar-fill { height:100%; width:40%; background:linear-gradient(90deg,#008F72,#00A58D); animation: progresso 1.1s ease-in-out infinite; }
 @keyframes progresso { 0%{ transform:translateX(-100%); } 100%{ transform:translateX(350%); } }
 .live-label { font-size: 10.5px; color:#807E7E; font-weight:600; }
+.logout-link { font-size: 11px; font-weight:700; color:#9F9F9F; text-decoration:none; padding:6px 10px; border-radius:8px; transition: color .15s, background .15s; }
+.logout-link:hover { color:#1A1A1A; background:#E9E9E9; }
 select.pickmes { background:#fff; color:#1A1A1A; border: 0.75pt solid #D8D5D5; border-radius: 10px; padding: 7px 12px; font-family:'Inter',sans-serif; font-size: 12px; font-weight: 700; cursor:pointer; transition: border-color .2s; }
 select.pickmes:hover { border-color:#1A1A1A; }
 .back-link { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#5D5D5D; cursor:pointer; transition: color .15s; }
@@ -480,7 +482,8 @@ function renderTopbar(){
   var html = (isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
     '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
     '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
-    '<span class="live-label"><span class="live-dot"></span>ao vivo</span>';
+    '<span class="live-label"><span class="live-dot"></span>ao vivo</span>' +
+    '<a class="logout-link" href="/auth/signout">Sair</a>';
   document.getElementById('topbarRight').innerHTML = html;
   var selMes = document.getElementById('selMes');
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);

@@ -3,14 +3,17 @@
 // payload pesado de getEquipeComFotos.
 import { NextResponse } from 'next/server';
 import { getCSListCompleto } from '@/lib/reports';
+import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const lista = await getCSListCompleto();
+    const { supabase } = await requireMoaiUser();
+    const lista = await getCSListCompleto(supabase);
     return NextResponse.json(lista.map((c) => c.nome));
   } catch (e: any) {
+    if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
   }
 }

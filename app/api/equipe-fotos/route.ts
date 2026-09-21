@@ -4,12 +4,14 @@
 // coloridas normalmente.
 import { NextResponse } from 'next/server';
 import { getCSListCompleto } from '@/lib/reports';
+import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const lista = await getCSListCompleto();
+    const { supabase } = await requireMoaiUser();
+    const lista = await getCSListCompleto(supabase);
     const data = lista.map((c) => ({
       nome: c.nome,
       nomeCompleto: c.nomeCompleto,
@@ -19,6 +21,7 @@ export async function GET() {
     }));
     return NextResponse.json(data);
   } catch (e: any) {
+    if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
   }
 }

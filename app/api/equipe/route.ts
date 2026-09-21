@@ -2,6 +2,7 @@
 // GET /api/equipe?mes=Setembro&ano=2026  (mes pode ser "Visão Geral")
 import { NextRequest, NextResponse } from 'next/server';
 import { generateEquipeReport } from '@/lib/reports';
+import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +14,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
   }
   try {
-    const data = await generateEquipeReport(mes, ano);
+    const { supabase } = await requireMoaiUser();
+    const data = await generateEquipeReport(supabase, mes, ano);
     return NextResponse.json(data);
   } catch (e: any) {
+    if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
   }
 }
