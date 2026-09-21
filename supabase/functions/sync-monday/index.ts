@@ -1,0 +1,677 @@
+// ============================================================================
+// MOAI CS Dashboard — sync-monday (Supabase Edge Function)
+//
+// Espelha os boards do Monday.com usados pelo dashboard de CS pra dentro do
+// Postgres (Supabase), substituindo o CacheService + Cache_Historico do
+// Code.gs original. Roda agendada via pg_cron (ver migração
+// `agendar_sync_monday`) e pode ser chamada manualmente também.
+//
+// Ponto 1 do pedido do Vitor (dashboard lento, migrar pra Vercel/Supabase):
+// esta função é o "motor" que mantém os dados frescos no Postgres — o app em
+// Next.js (Vercel) nunca fala com o Monday na hora do acesso, só lê daqui,
+// que é ordens de magnitude mais rápido que Apps Script + Monday API.
+//
+// Mesmos board IDs e column IDs do Code.gs (Code.Gs no projeto MOAI) —
+// qualquer mudança de coluna no Monday precisa ser replicada aqui também.
+//
+// v2 (17/09/2026): corrige três queries GraphQL (metas, rounds, cases) que
+// tinham uma chave de fechamento "}" sobrando no final — a Monday tolerava
+// isso na maioria das vezes mas quebrou de forma intermitente no board de
+// Rounds ("Unexpected }"). Corrige também o upsert de conselhos_grupos, que
+// podia falhar quando um grupo aparecia ao mesmo tempo como "ativo" e como
+// destino de reposição na mesma leva (ON CONFLICT não pode afetar a mesma
+// linha duas vezes no mesmo comando).
+//
+// v6 (21/09/2026 — auditoria de segurança/hardening de produção): a função
+// era pública e sem nenhuma verificação (verify_jwt=false, sem checagem
+// própria) — qualquer pessoa com a URL podia disparar sincronizações à
+// vontade (abuso/DoS contra a API do Monday, além de expor o corpo da
+// resposta com status/erro de cada board pra qualquer chamador anônimo).
+// Duas camadas agora: (1) verify_jwt=true na configuração da função exige um
+// JWT Supabase válido no header Authorization; (2) um segredo compartilhado
+// (X-Sync-Secret) é checado explicitamente aqui dentro, então mesmo alguém
+// com a chave anon (que não é secreta por natureza no modelo Supabase) não
+// consegue chamar a função sem também ter esse segredo. O pg_cron já foi
+// atualizado pra mandar os dois.
+//
+// v7 (21/09/2026): este arquivo passa a existir também no repositório git
+// (supabase/functions/sync-monday/index.ts) — antes só existia como deploy
+// direto no Supabase, sem histórico/diff revisável. SYNC_FUNCTION_SECRET
+// continua hardcoded abaixo (não migrei pra Deno.env desta vez: fazer isso
+// exigiria também rodar `supabase secrets set` pra configurar o valor no
+// projeto, e esta sessão não tem acesso à CLI/Management API do Supabase
+// pra isso — só à API REST/SQL via MCP. Migrar sem conseguir setar o
+// secret quebraria a autenticação da função pro pg_cron, que hoje manda o
+// mesmo valor fixo no header X-Sync-Secret. Fica documentado aqui como
+// pendência pro Vitor rodar localmente quando puder: mesma recomendação já
+// anotada na nota v6 abaixo).
+//
+// v7 (21/09/2026 — pedido do Vitor): ACTIVE_TO_REPO_MAP é uma tabela fixa
+// portada do Code.gs que liga grupo ativo -> grupo de reposição; ela não se
+// atualiza sozinha quando um conselho novo é criado no Monday (foi assim que
+// "Fast Track | Livia", group_mm331w1n, ficou sem repo_group_id — e nesse
+// caso específico nem existe grupo de reposição pra ela ainda no board, quem
+// tem que criar é o time, não dá pra inventar um id). Como reforço da tabela
+// fixa (que continua tendo prioridade), syncConselhos agora tenta resolver
+// por casamento de nome — mesmo espírito do casamento já usado em
+// APELIDOS_AGENDA no app Next.js — qualquer grupo ativo sem entrada válida
+// no mapa, registrando um aviso no log quando cai nesse caminho (ou quando
+// nem por nome encontra nada). Ver resolverRepoGroupIdPorNome.
+// ============================================================================
+
+const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+// Segredo compartilhado só entre o pg_cron (que roda dentro do próprio projeto Supabase) e esta
+// função — nunca exposto ao Next.js/Vercel nem a nenhum código client-side. Continua hardcoded
+// aqui (ver nota v7 no topo do arquivo pro porquê de não ter migrado pra Deno.env desta vez) —
+// mesmo valor que o pg_cron manda no header X-Sync-Secret (migração `harden_sync_monday_cron_headers`).
+const SYNC_FUNCTION_SECRET = 'UwUdNblkJeUkhscpzguyVxIW-BzUJnDoGGYlos618Dc';
+
+const BOARDS = {
+  METAS: '18408969048',
+  CHURN: '10008640053',
+  REPORTS_SEMANAIS: '18394181332',
+  CASES: '9820032997',
+  MATCHMAKINGS: '18409198202',
+  ROUNDS: '18415251314',
+  UPSELL_DOWNSELL: '9974267506',
+  CONSELHOS: '18393363935',
+  FEEDBACK: '18412032453',
+  AGENDA_CONSELHOS: '18395814635',
+  HISTORICO_CONSELHOS: '18430666375',
+};
+
+const METAS_COLS = { meta: 'numeric_mm2fmyy8', alcancado: 'numeric_mm2fcwfg' };
+const CASES_COLS_LEVE = { cs: 'person', empresa: 'short_textjsf26bus', produto: 'status' };
+const CASES_COLS_DETALHE = {
+  segmento: 'short_text20lz1za1', desafio: 'long_text36vg2ash', sugestao: 'long_textbgozc3el',
+  decisao: 'long_texthukofl8i', resultado: 'long_textqu1an24s', impacto: 'ratingqc3dcemw', ondeAconteceu: 'color_mm2na1nq',
+};
+const CHURN_COLS = { quemEhSeuCs: 'single_select7xxqn59', produto: 'single_selectnwxipe5', data: 'date_mm3p6naz' };
+const ROUNDS_COLS = { status: 'color_mm3sxe13', csResponsavel: 'multiple_person_mm3sb795' };
+const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
+const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
+const CONSELHOS_COL_POR_MES: Record<string, string> = {
+  Janeiro: 'color_mkz343x2', Fevereiro: 'color_mkzt3sk3', Março: 'color_mkzt7139',
+  Abril: 'color_mkztzmry', Maio: 'color_mkztc9tw', Junho: 'color_mkzt6p3k',
+  Julho: 'color_mkztq52s', Agosto: 'color_mkztgds', Setembro: 'color_mkztqs38',
+  Outubro: 'color_mkztf5q5', Novembro: 'color_mkztc1km', Dezembro: 'color_mkztxpq3',
+};
+const AGENDA_COLS = { data: 'data', status: 'color_mm06t5d9' };
+const HISTORICO_COLS = {
+  csResponsavel: 'text_mm73f6ve', membro: 'text_mm73d1kg',
+  dataConselho: 'date_mm733nqy', dataSnapshot: 'date_mm73mz9m',
+  taxaCumprimento: 'numeric_mm73s5k1', idItemConselho: 'text_mm78r52q',
+  etapasAtrasadas: 'long_text_mm785fcx',
+};
+const HISTORICO_ETAPAS = [
+  { id: 'boolean_mm73sheb', label: 'D+9 Confirmação Individual e Anúncio da Data' },
+  { id: 'boolean_mm73927r', label: 'D+5 Confirmação no grupo' },
+  { id: 'boolean_mm73r4fk', label: 'D-1 Verificar a jornada' },
+  { id: 'boolean_mm737baj', label: 'D+2 Encaminhamentos' },
+  { id: 'boolean_mm73e41r', label: 'D+2 Cuidei dos membros que não foram' },
+  { id: 'boolean_mm73cdjz', label: 'D+4 Gestão de Conhecimento' },
+  { id: 'boolean_mm735wad', label: 'D+7 Fiz e registrei meus matchmakings' },
+  { id: 'boolean_mm73ggr', label: 'D+8 Mapeei oportunidades de upsells' },
+  { id: 'boolean_mm73q8h1', label: 'D+9 Follow do Encaminhamento' },
+];
+const FEEDBACK_COLS = {
+  positivo: 'long_text8zat95mr',
+  construtivo: 'long_textgbetn4bw',
+  votos: [
+    { id: 'multi_selectsw393dtf', categoria: 'Proatividade em ajudar colegas' },
+    { id: 'multi_selectcl1r4fbc', categoria: 'Contribui para ambiente positivo e motivador' },
+    { id: 'multi_selectw8rprepj', categoria: 'Colabora ativamente com a equipe' },
+    { id: 'multi_selecttylvbs4z', categoria: 'Colabora ativamente com os membros da MOAI' },
+    { id: 'multi_select2i0l1l28', categoria: 'Abertura a feedbacks' },
+  ],
+};
+// mesma tabela do Code.gs — grupo ativo do board de Conselhos -> grupo de reposição correspondente.
+// Prioridade sempre dela quando tiver entrada válida; resolverRepoGroupIdPorNome só entra em ação
+// pros grupos ativos que faltarem aqui (ver nota v7 no topo do arquivo).
+const ACTIVE_TO_REPO_MAP: Record<string, string> = {
+  duplicate_of_bruno_capanema___: 'group_mkwycjaz', group_mktkqd1: 'group_mkx0gfmt', topics: 'group_mkyppy12',
+  group_title: 'group_mkwzpywy', novo_grupo84680: 'group_mkypw7rc', novo_grupo: 'group_mkx7s52z',
+  novo_grupo18849: 'group_mkyp7jdf', novo_grupo50247: 'group_mkx094vx', group_mktkwg6v: 'group_mkx4y5e4',
+  group_mkw5757m: 'group_mkx46ens', group_mktkzr1y: 'group_mkx4e5gc', group_mkvegqts: 'group_mkz537he',
+  novo_grupo8268: 'group_mkz5kgfb', novo_grupo58809: 'group_mkx4efkq', novo_grupo74947: 'group_mkx1hgaf',
+  novo_grupo33254: 'group_mm44mzvn', novo_grupo91575: 'group_mkx0qzmh', novo_grupo36799: 'group_mkx1c9qp',
+  group_mkvcqfd8: 'group_mkz5sar4', novo_grupo64326: 'group_mkx051vk', group_mm33rstr: 'group_mm3sw05w',
+  novo_grupo65945: 'group_mkz5tsgn', novo_grupo21990: 'group_mkz54bkh', novo_grupo70162: 'group_mkx4v5qn',
+  group_mkvvwbpj: 'group_mkz5309h', novo_grupo17438: 'group_mkx147g5', group_mkv9wd3q: 'group_mkx04bn6',
+  novo_grupo76506: 'group_mkz7rm9p', novo_grupo46057: 'group_mkx4ky2w', novo_grupo47062: 'group_mkxcdr94',
+  new_group: 'group_mkx0vtwa', novo_grupo__1: 'group_mm1660ty', group_mkz7tfgw: 'group_mkz7v4nh',
+};
+
+// ============ cliente Monday (GraphQL) ============
+
+async function mondayFetch(query: string, variables: Record<string, unknown> = {}) {
+  const res = await fetch('https://api.monday.com/v2', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: MONDAY_API_TOKEN! },
+    body: JSON.stringify({ query, variables }),
+  });
+  const body = await res.json();
+  if (body.errors) throw new Error('Monday API error: ' + JSON.stringify(body.errors));
+  return body.data;
+}
+
+function colText(columnValues: { id: string; text: string | null }[], colId: string): string | null {
+  const c = columnValues.find((cv) => cv.id === colId);
+  return c ? c.text : null;
+}
+function numOrNull(txt: string | null): number | null {
+  return txt === '' || txt === null || txt === undefined ? null : Number(txt);
+}
+function dateOrNull(txt: string | null): string | null {
+  return txt || null;
+}
+
+const GROUPS_QUERY = `query($boardId: [ID!]) { boards(ids: $boardId) { groups { id title } } }`;
+
+async function fetchGroups(boardId: string): Promise<{ id: string; title: string }[]> {
+  const data = await mondayFetch(GROUPS_QUERY, { boardId: [boardId] });
+  return data.boards[0].groups;
+}
+
+// pagina um board "achatado" (sem groups) inteiro via next_items_page
+async function fetchAllItemsFlat(boardId: string, colIds: string[], extraFields = ''): Promise<any[]> {
+  const fields = `id creator_id ${extraFields} column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}`;
+  let query = `query($boardId:[ID!]){boards(ids:$boardId){items_page(limit:200){cursor items{${fields}}}}}`;
+  let data = await mondayFetch(query, { boardId: [boardId] });
+  let page = data.boards[0].items_page;
+  let items = page.items;
+  let cursor = page.cursor;
+  while (cursor) {
+    const q2 = `query($cursor:String!){next_items_page(limit:200,cursor:$cursor){cursor items{${fields}}}}`;
+    const d2 = await mondayFetch(q2, { cursor });
+    items = items.concat(d2.next_items_page.items);
+    cursor = d2.next_items_page.cursor;
+  }
+  return items;
+}
+
+// ============ supabase (REST, service role) ============
+
+async function upsert(table: string, rows: any[], onConflict = 'id') {
+  if (rows.length === 0) return;
+  const chunkSize = 500;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(chunk),
+    });
+    if (!res.ok) throw new Error(`Supabase upsert falhou (${table}): ${res.status} ${await res.text()}`);
+  }
+}
+
+// remove linhas duplicadas (mesma chave de conflito) antes de mandar num único
+// comando de upsert — Postgres rejeita ON CONFLICT DO UPDATE afetando a mesma
+// linha duas vezes no mesmo comando. Mantém a última ocorrência de cada chave.
+function dedupePorChave<T extends Record<string, any>>(rows: T[], chaveFn: (r: T) => string): T[] {
+  const porChave = new Map<string, T>();
+  for (const r of rows) porChave.set(chaveFn(r), r);
+  return [...porChave.values()];
+}
+
+async function logSync(board: string, status: 'sucesso' | 'erro', itens?: number, erro?: string) {
+  await fetch(`${SUPABASE_URL}/rest/v1/sync_log`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify([{ board, status, itens_sincronizados: itens ?? null, erro: erro ?? null, finished_at: new Date().toISOString() }]),
+  });
+}
+
+// ============ casamento de grupo ativo <-> grupo de reposição por nome ============
+// Reforço da ACTIVE_TO_REPO_MAP (que continua tendo prioridade) — mesmo espírito do casamento de
+// nome já usado em APELIDOS_AGENDA no app Next.js (lib/constants.ts), pra não depender de
+// atualização manual do mapa toda vez que um conselho novo for criado no Monday.
+
+function normalizarTexto(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Único ponto de checagem "esse título é de grupo de reposição?" — cobre "Reposições no..."
+// (plural, forma mais comum no board) e "Reposição | ..." (singular, ex: "Reposição | Rodrigo
+// Félix") de uma vez só, via normalizarTexto (que já tira acento/maiúscula), em vez de tentar
+// cobrir as duas formas num regex só (ção -> ções muda mais que só o acento, não é só trocar
+// a/ã por o/õ — foi exatamente esse erro que fez o v10 marcar os próprios grupos de reposição
+// como "ativos sem par" no log).
+function ehGrupoDeReposicao(titulo: string): boolean {
+  return normalizarTexto(titulo).startsWith('reposi');
+}
+
+// Extrai { produto, nome } de um título de grupo ATIVO no padrão "Produto | Nome (Apelido)" —
+// tolera texto extra depois, ex: "C-Level | Gallo (Vitor) | Mapear Executivos bons, upsell.".
+function parseGrupoAtivo(titulo: string): { produto: string; nome: string } | null {
+  const partes = titulo.replace(/\[?congelado\]?/i, '').split('|');
+  if (partes.length < 2) return null;
+  const produto = partes[0].trim();
+  const nome = partes[1].trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!nome) return null;
+  return { produto, nome };
+}
+
+// Extrai o nome do membro de um título de grupo de REPOSIÇÃO — sempre o texto depois do último
+// "|", em qualquer um dos dois padrões vistos no board: "Reposições no <Produto> | <Nome>" e o
+// mais raro "Reposição | <Nome>" (sem produto, ex: "Reposição | Rodrigo Félix").
+function parseGrupoRepo(titulo: string): { nome: string } | null {
+  if (!ehGrupoDeReposicao(titulo)) return null;
+  const partes = titulo.split('|');
+  if (partes.length < 2) return null;
+  const nome = partes[partes.length - 1].trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!nome) return null;
+  return { nome };
+}
+
+// Tenta achar o grupo de reposição de um grupo ativo casando nome (e, em caso de empate,
+// produto) — ignorando acento, maiúscula e variação de espaçamento. Retorna null se não achar
+// nenhum candidato ou se achar mais de um e não conseguir desempatar.
+function resolverRepoGroupIdPorNome(
+  grupoAtivo: { id: string; title: string },
+  todosGrupos: { id: string; title: string }[],
+): { id: string; titulo: string } | null {
+  const alvo = parseGrupoAtivo(grupoAtivo.title);
+  if (!alvo) return null;
+  const nomeAlvoNorm = normalizarTexto(alvo.nome);
+  const produtoAlvoNorm = normalizarTexto(alvo.produto);
+
+  const candidatos = todosGrupos
+    .filter((g) => g.id !== grupoAtivo.id)
+    .map((g) => ({ g, repo: parseGrupoRepo(g.title) }))
+    .filter((x) => x.repo && normalizarTexto(x.repo.nome) === nomeAlvoNorm) as { g: { id: string; title: string }; repo: { nome: string } }[];
+
+  if (candidatos.length === 0) return null;
+  if (candidatos.length === 1) return { id: candidatos[0].g.id, titulo: candidatos[0].g.title };
+
+  const comProduto = candidatos.filter((c) => normalizarTexto(c.g.title).includes(produtoAlvoNorm));
+  if (comProduto.length === 1) return { id: comProduto[0].g.id, titulo: comProduto[0].g.title };
+
+  return null; // ambíguo demais pra decidir sozinho — fica sem repo_group_id, como se não tivesse achado
+}
+
+// ============ sync por board ============
+
+async function syncChurn() {
+  const items = await fetchAllItemsFlat(BOARDS.CHURN, [CHURN_COLS.quemEhSeuCs, CHURN_COLS.produto, CHURN_COLS.data]);
+  const rows = items.map((it) => ({
+    id: Number(it.id),
+    quem_e_seu_cs: colText(it.column_values, CHURN_COLS.quemEhSeuCs),
+    produto: colText(it.column_values, CHURN_COLS.produto),
+    data: dateOrNull(colText(it.column_values, CHURN_COLS.data)),
+  }));
+  await upsert('churn_items', rows);
+  return rows.length;
+}
+
+async function syncUpsellDownsell() {
+  const items = await fetchAllItemsFlat(BOARDS.UPSELL_DOWNSELL, [UD_COLS.cs, UD_COLS.status, UD_COLS.tipoTroca, UD_COLS.data]);
+  const rows = items.map((it) => ({
+    id: Number(it.id),
+    cs_raw: colText(it.column_values, UD_COLS.cs),
+    status: colText(it.column_values, UD_COLS.status),
+    tipo_troca: colText(it.column_values, UD_COLS.tipoTroca),
+    data: dateOrNull(colText(it.column_values, UD_COLS.data)),
+  }));
+  await upsert('upsell_downsell_items', rows);
+  return rows.length;
+}
+
+// v15 (fix ponto 3 — indicações desatualizadas): guarda created_at do item no Monday além da
+// Data manual, pra servir de fallback quando o CS esquece de preencher a Data no report semanal.
+async function syncReportsSemanais() {
+  const items = await fetchAllItemsFlat(
+    BOARDS.REPORTS_SEMANAIS,
+    [REPORTS_COLS.data, REPORTS_COLS.nota, REPORTS_COLS.mm, REPORTS_COLS.indicacoes],
+    'created_at'
+  );
+  const rows = items.map((it) => ({
+    id: Number(it.id),
+    creator_id: it.creator_id ? Number(it.creator_id) : null,
+    data: dateOrNull(colText(it.column_values, REPORTS_COLS.data)),
+    created_at_monday: it.created_at || null,
+    nota: numOrNull(colText(it.column_values, REPORTS_COLS.nota)),
+    matchmakings: Number(colText(it.column_values, REPORTS_COLS.mm)) || 0,
+    indicacoes: Number(colText(it.column_values, REPORTS_COLS.indicacoes)) || 0,
+  }));
+  await upsert('reports_semanais_items', rows);
+  return rows.length;
+}
+
+async function syncMetas() {
+  const groups = await fetchGroups(BOARDS.METAS);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:100){items{name subitems{id name column_values(ids:["${METAS_COLS.meta}","${METAS_COLS.alcancado}"]){id text}}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.METAS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      (item.subitems || []).forEach((sub: any) => {
+        rows.push({
+          id: Number(sub.id),
+          board_group_id: g.id,
+          mes_grupo_titulo: g.title,
+          item_metrica: item.name,
+          cs_nome: sub.name,
+          meta: numOrNull(colText(sub.column_values, METAS_COLS.meta)),
+          alcancado: numOrNull(colText(sub.column_values, METAS_COLS.alcancado)),
+        });
+      });
+    });
+  });
+  await upsert('metas_subitens', rows);
+  return rows.length;
+}
+
+async function syncRounds() {
+  const groups = await fetchGroups(BOARDS.ROUNDS);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id column_values(ids:["${ROUNDS_COLS.status}","${ROUNDS_COLS.csResponsavel}"]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.ROUNDS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      rows.push({
+        id: Number(item.id),
+        board_group_id: g.id,
+        mes_grupo_titulo: g.title,
+        status: colText(item.column_values, ROUNDS_COLS.status),
+        cs_responsavel_raw: colText(item.column_values, ROUNDS_COLS.csResponsavel),
+      });
+    });
+  });
+  await upsert('rounds_items', rows);
+  return rows.length;
+}
+
+async function syncFeedback() {
+  const groups = await fetchGroups(BOARDS.FEEDBACK);
+  const colsIds = [FEEDBACK_COLS.positivo, FEEDBACK_COLS.construtivo, ...FEEDBACK_COLS.votos.map((v) => v.id)];
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:50){items{id name column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.FEEDBACK], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      const votos: Record<string, string[]> = {};
+      FEEDBACK_COLS.votos.forEach((v) => {
+        const texto = colText(item.column_values, v.id) || '';
+        votos[v.categoria] = texto ? texto.split(',').map((s: string) => s.trim()) : [];
+      });
+      rows.push({
+        id: Number(item.id),
+        board_group_id: g.id,
+        mes_grupo_titulo: g.title,
+        avaliador_nome: item.name,
+        positivo_texto: colText(item.column_values, FEEDBACK_COLS.positivo),
+        construtivo_texto: colText(item.column_values, FEEDBACK_COLS.construtivo),
+        votos,
+      });
+    });
+  });
+  await upsert('feedback_items', rows);
+  return rows.length;
+}
+
+async function syncCases() {
+  const groups = await fetchGroups(BOARDS.CASES);
+  const colsIds = [...Object.values(CASES_COLS_LEVE), ...Object.values(CASES_COLS_DETALHE)];
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.CASES], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      rows.push({
+        id: Number(item.id),
+        board_group_id: g.id,
+        mes_grupo_titulo: g.title,
+        nome: item.name,
+        cs_raw: colText(item.column_values, CASES_COLS_LEVE.cs),
+        empresa: colText(item.column_values, CASES_COLS_LEVE.empresa),
+        produto: colText(item.column_values, CASES_COLS_LEVE.produto),
+        segmento: colText(item.column_values, CASES_COLS_DETALHE.segmento),
+        desafio: colText(item.column_values, CASES_COLS_DETALHE.desafio),
+        sugestao: colText(item.column_values, CASES_COLS_DETALHE.sugestao),
+        decisao: colText(item.column_values, CASES_COLS_DETALHE.decisao),
+        resultado: colText(item.column_values, CASES_COLS_DETALHE.resultado),
+        impacto: numOrNull(colText(item.column_values, CASES_COLS_DETALHE.impacto)),
+        onde_aconteceu: colText(item.column_values, CASES_COLS_DETALHE.ondeAconteceu),
+      });
+    });
+  });
+  await upsert('cases_items', rows);
+  return rows.length;
+}
+
+async function syncMatchmakings() {
+  const groups = await fetchGroups(BOARDS.MATCHMAKINGS);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){items_page(limit:250){items{id name creator_id}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      rows.push({
+        id: Number(item.id),
+        board_group_id: g.id,
+        mes_grupo_titulo: g.title,
+        nome: item.name,
+        creator_id: item.creator_id ? Number(item.creator_id) : null,
+      });
+    });
+  });
+  await upsert('matchmakings_items', rows);
+  return rows.length;
+}
+
+// board de Conselhos: grupos ativos + seus grupos de reposição (ACTIVE_TO_REPO_MAP, reforçada por
+// resolverRepoGroupIdPorNome — ver nota v7 no topo do arquivo), 12 colunas de status por mês de
+// uma vez -> "explode" em 1 linha por membro+mês em conselhos_status_mensal.
+async function syncConselhos() {
+  const gruposTodos = await fetchGroups(BOARDS.CONSELHOS);
+  // Exclui qualquer título de reposição (ver ehGrupoDeReposicao) — pra não deixar um grupo de
+  // reposição entrar em `ativos` e cair (sem necessidade) na resolução por nome logo abaixo.
+  const ativos = gruposTodos.filter(
+    (g) => !ehGrupoDeReposicao(g.title) && g.title.toLowerCase().indexOf('em designa') === -1
+  );
+
+  // Candidatos a grupo de reposição: os já referenciados na tabela fixa + qualquer grupo do board
+  // cujo título seja de reposição — isso garante que um grupo de reposição achado só por nome
+  // (ainda não presente em ACTIVE_TO_REPO_MAP) também entre como is_repo=true no upsert abaixo, e
+  // não fique de fora por não estar nos values() do mapa fixo.
+  const repoIds = new Set<string>([
+    ...Object.values(ACTIVE_TO_REPO_MAP),
+    ...gruposTodos.filter((g) => ehGrupoDeReposicao(g.title)).map((g) => g.id),
+  ]);
+  const repoRows = gruposTodos
+    .filter((g) => repoIds.has(g.id))
+    .map((g) => ({ group_id: g.id, titulo: g.title, congelado: false, is_repo: true, repo_group_id: null }));
+  // ACTIVE_TO_REPO_MAP é uma tabela fixa herdada do Code.gs — alguns grupos de reposição que ela
+  // referencia já não existem mais no board (foram apagados/renomeados no Monday). repo_group_id
+  // é FK pra própria tabela, então só aponta pra um grupo de reposição que realmente veio do board
+  // agora; senão vira null em vez de quebrar o upsert inteiro.
+  const repoGroupIdsExistentes = new Set(repoRows.map((r) => r.group_id));
+  const grupoRow = ativos.map((g) => {
+    const repoDoMapa = ACTIVE_TO_REPO_MAP[g.id] || null;
+    if (repoDoMapa && repoGroupIdsExistentes.has(repoDoMapa)) {
+      return { group_id: g.id, titulo: g.title, congelado: /congelado/i.test(g.title), is_repo: false, repo_group_id: repoDoMapa };
+    }
+    const porNome = resolverRepoGroupIdPorNome(g, gruposTodos);
+    if (porNome) {
+      console.warn(`[sync-monday] repo_group_id resolvido por nome (sem entrada válida em ACTIVE_TO_REPO_MAP): grupo ativo "${g.title}" (${g.id}) -> "${porNome.titulo}" (${porNome.id})`);
+    } else {
+      console.warn(`[sync-monday] grupo ativo sem grupo de reposição encontrado, nem na tabela fixa nem por nome: "${g.title}" (${g.id})`);
+    }
+    return { group_id: g.id, titulo: g.title, congelado: /congelado/i.test(g.title), is_repo: false, repo_group_id: porNome ? porNome.id : null };
+  });
+  // repoRows por último: se um grupo aparecer nos dois (título não bateu no filtro de "ativos"
+  // mas também é destino de reposição no mapa), a classificação como reposição prevalece.
+  await upsert('conselhos_grupos', dedupePorChave([...grupoRow, ...repoRows], (r) => r.group_id), 'group_id');
+
+  const repoGroupIdsResolvidos = grupoRow.map((g) => g.repo_group_id).filter((id): id is string => !!id);
+  const todosGroupIds = [...ativos.map((g) => g.id), ...repoGroupIdsResolvidos];
+  const colsTodos = Object.values(CONSELHOS_COL_POR_MES);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id items_page(limit:30){items{id name column_values(ids:[${colsTodos.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.CONSELHOS], groupIds: todosGroupIds });
+
+  const membros: any[] = [];
+  const statusRows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      if (item.name === 'ATAS') return;
+      membros.push({ id: Number(item.id), group_id: g.id, nome: item.name });
+      Object.keys(CONSELHOS_COL_POR_MES).forEach((mes) => {
+        const status = colText(item.column_values, CONSELHOS_COL_POR_MES[mes]);
+        if (status) statusRows.push({ membro_id: Number(item.id), mes, status });
+      });
+    });
+  });
+  await upsert('conselhos_membros', dedupePorChave(membros, (r) => String(r.id)));
+  await upsert('conselhos_status_mensal', dedupePorChave(statusRows, (r) => `${r.membro_id}|${r.mes}`), 'membro_id,mes');
+  return membros.length;
+}
+
+async function syncAgenda() {
+  const groups = await fetchGroups(BOARDS.AGENDA_CONSELHOS);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){items_page(limit:100){items{id name column_values(ids:["${AGENDA_COLS.data}","${AGENDA_COLS.status}"]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.AGENDA_CONSELHOS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      const dataTxt = colText(item.column_values, AGENDA_COLS.data);
+      if (!dataTxt) return;
+      rows.push({
+        id: Number(item.id),
+        conselheiro_nome: item.name,
+        data_iso: dataTxt.replace(' ', 'T') + ':00',
+        status: colText(item.column_values, AGENDA_COLS.status),
+      });
+    });
+  });
+  await upsert('agenda_conselhos_items', rows);
+  return rows.length;
+}
+
+function checkboxMarcado(columnValues: any[], colId: string) {
+  return colText(columnValues, colId) === 'v';
+}
+
+async function syncHistoricoGtd() {
+  const groups = await fetchGroups(BOARDS.HISTORICO_CONSELHOS);
+  const colsIds = [
+    HISTORICO_COLS.csResponsavel, HISTORICO_COLS.membro, HISTORICO_COLS.dataConselho,
+    HISTORICO_COLS.dataSnapshot, HISTORICO_COLS.taxaCumprimento, HISTORICO_COLS.idItemConselho,
+    HISTORICO_COLS.etapasAtrasadas, ...HISTORICO_ETAPAS.map((e) => e.id),
+  ];
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){items_page(limit:100){items{id column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.HISTORICO_CONSELHOS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      const cv = item.column_values;
+      rows.push({
+        id: Number(item.id),
+        cs_responsavel: colText(cv, HISTORICO_COLS.csResponsavel),
+        membro: colText(cv, HISTORICO_COLS.membro),
+        data_conselho: dateOrNull(colText(cv, HISTORICO_COLS.dataConselho)),
+        data_snapshot: dateOrNull(colText(cv, HISTORICO_COLS.dataSnapshot)),
+        taxa_cumprimento: numOrNull(colText(cv, HISTORICO_COLS.taxaCumprimento)),
+        id_item_conselho: colText(cv, HISTORICO_COLS.idItemConselho),
+        etapas_atrasadas: (colText(cv, HISTORICO_COLS.etapasAtrasadas) || '').split(';').map((s) => s.trim()).filter(Boolean),
+        etapas: HISTORICO_ETAPAS.map((e) => ({ label: e.label, feito: checkboxMarcado(cv, e.id) })),
+      });
+    });
+  });
+  await upsert('historico_conselhos_items', rows);
+  return rows.length;
+}
+
+// atualiza o status de conta ativa (enabled) dos CS já cadastrados em cs_config
+async function syncStatusUsuarios() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,monday_user_id&monday_user_id=not.is.null`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  const csConfig = await res.json();
+  const ids = csConfig.map((c: any) => c.monday_user_id);
+  if (ids.length === 0) return 0;
+  const data = await mondayFetch(`query($ids:[ID!]){users(ids:$ids){id enabled}}`, { ids });
+  const porId: Record<string, boolean> = {};
+  data.users.forEach((u: any) => (porId[u.id] = u.enabled));
+  for (const c of csConfig) {
+    const ativo = porId[c.monday_user_id];
+    if (ativo === undefined) continue;
+    await fetch(`${SUPABASE_URL}/rest/v1/cs_config?id=eq.${c.id}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ ativo, updated_at: new Date().toISOString() }),
+    });
+  }
+  return csConfig.length;
+}
+
+// ============ orquestração ============
+
+const SYNC_TASKS: Record<string, () => Promise<number>> = {
+  churn: syncChurn,
+  upsell_downsell: syncUpsellDownsell,
+  reports_semanais: syncReportsSemanais,
+  metas: syncMetas,
+  rounds: syncRounds,
+  feedback: syncFeedback,
+  cases: syncCases,
+  matchmakings: syncMatchmakings,
+  conselhos: syncConselhos,
+  agenda: syncAgenda,
+  historico_gtd: syncHistoricoGtd,
+  status_usuarios: syncStatusUsuarios,
+};
+
+Deno.serve(async (req) => {
+  // v6 (21/09/2026): segundo portão de autorização, independente do verify_jwt da plataforma —
+  // ver nota de topo do arquivo.
+  const providedSecret = req.headers.get('x-sync-secret');
+  if (providedSecret !== SYNC_FUNCTION_SECRET) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!MONDAY_API_TOKEN) {
+    return new Response(JSON.stringify({ error: 'MONDAY_API_TOKEN não configurado nos secrets da função.' }), { status: 500 });
+  }
+  const url = new URL(req.url);
+  const somenteBoard = url.searchParams.get('board');
+  const tarefas = somenteBoard ? { [somenteBoard]: SYNC_TASKS[somenteBoard] } : SYNC_TASKS;
+
+  const resultados: Record<string, any> = {};
+  for (const [nome, fn] of Object.entries(tarefas)) {
+    if (!fn) { resultados[nome] = { erro: 'board desconhecido' }; continue; }
+    try {
+      const itens = await fn();
+      resultados[nome] = { status: 'sucesso', itens };
+      await logSync(nome, 'sucesso', itens);
+    } catch (e) {
+      resultados[nome] = { status: 'erro', erro: String(e?.message || e) };
+      await logSync(nome, 'erro', undefined, String(e?.message || e));
+    }
+  }
+  return new Response(JSON.stringify(resultados, null, 2), { headers: { 'Content-Type': 'application/json' } });
+});
