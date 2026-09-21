@@ -383,13 +383,18 @@ function parseConselhoItems(
 
 // ============ realizado: manual x calculado ============
 
+// Além do valor "vencedor" (valor/fonte, usado por toda a UI existente sem mudar nada), devolve
+// os dois valores brutos — manual e calculado — pra quem precisar enxergar a divergência entre
+// o que o CS reportou manualmente e o que o sistema encontrou sozinho (visão do gestor).
 function valorRealizado(valorManual: number | null | undefined, valorCalculado: number | null | undefined) {
   const m = valorManual === null || valorManual === undefined ? null : valorManual;
   const c = valorCalculado === null || valorCalculado === undefined ? null : valorCalculado;
-  if (m === null && c === null) return { valor: null as number | null, fonte: null as string | null };
-  if (m === null) return { valor: c, fonte: 'calculado' };
-  if (c === null) return { valor: m, fonte: 'manual' };
-  return c > m ? { valor: c, fonte: 'calculado' } : { valor: m, fonte: 'manual' };
+  if (m === null && c === null) return { valor: null as number | null, fonte: null as string | null, manual: null as number | null, calculado: null as number | null };
+  if (m === null) return { valor: c, fonte: 'calculado', manual: null as number | null, calculado: c };
+  if (c === null) return { valor: m, fonte: 'manual', manual: m, calculado: null as number | null };
+  return c > m
+    ? { valor: c, fonte: 'calculado', manual: m, calculado: c }
+    : { valor: m, fonte: 'manual', manual: m, calculado: c };
 }
 
 function achievementIndicador(ind: any): number | null {
@@ -498,14 +503,14 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
     cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0 },
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     indicadores: {
-      churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd' },
+      churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd', manual: churnR.manual, calculado: churnR.calculado },
       revenueChurn: { meta: null, alcancado: churn.revenueChurn, unidade: 'R$', detalheProdutos: churn.detalheProdutos },
-      casesSucesso: { meta: metas['Cases de Sucesso']?.meta ?? null, tipoMeta: 'min', alcancado: casesR.valor, fonte: casesR.fonte, unidade: 'qtd' },
-      matchmakings: { meta: metas['Matchmakings']?.meta ?? null, tipoMeta: 'min', alcancado: mmR.valor, fonte: mmR.fonte, unidade: 'qtd' },
-      rounds: { meta: metas['Rounds']?.meta ?? null, tipoMeta: 'min', alcancado: roundsR.valor, fonte: roundsR.fonte, unidade: 'qtd' },
-      upsell: { meta: metas['Upsell']?.meta ?? null, tipoMeta: 'min', alcancado: upsellR.valor, fonte: upsellR.fonte, unidade: 'qtd' },
-      downsell: { meta: metas['Downsell']?.meta ?? null, tipoMeta: 'max', alcancado: downsellR.valor, fonte: downsellR.fonte, unidade: 'qtd' },
-      indicacoes: { meta: metas['Indicações']?.meta ?? null, tipoMeta: 'min', alcancado: indicacoesR.valor, fonte: indicacoesR.fonte, unidade: 'qtd' },
+      casesSucesso: { meta: metas['Cases de Sucesso']?.meta ?? null, tipoMeta: 'min', alcancado: casesR.valor, fonte: casesR.fonte, unidade: 'qtd', manual: casesR.manual, calculado: casesR.calculado },
+      matchmakings: { meta: metas['Matchmakings']?.meta ?? null, tipoMeta: 'min', alcancado: mmR.valor, fonte: mmR.fonte, unidade: 'qtd', manual: mmR.manual, calculado: mmR.calculado },
+      rounds: { meta: metas['Rounds']?.meta ?? null, tipoMeta: 'min', alcancado: roundsR.valor, fonte: roundsR.fonte, unidade: 'qtd', manual: roundsR.manual, calculado: roundsR.calculado },
+      upsell: { meta: metas['Upsell']?.meta ?? null, tipoMeta: 'min', alcancado: upsellR.valor, fonte: upsellR.fonte, unidade: 'qtd', manual: upsellR.manual, calculado: upsellR.calculado },
+      downsell: { meta: metas['Downsell']?.meta ?? null, tipoMeta: 'max', alcancado: downsellR.valor, fonte: downsellR.fonte, unidade: 'qtd', manual: downsellR.manual, calculado: downsellR.calculado },
+      indicacoes: { meta: metas['Indicações']?.meta ?? null, tipoMeta: 'min', alcancado: indicacoesR.valor, fonte: indicacoesR.fonte, unidade: 'qtd', manual: indicacoesR.manual, calculado: indicacoesR.calculado },
       healthDaBase: { meta: health?.metaMedia ?? null, tipoMeta: 'max', alcancado: health?.alcancadoMedia ?? null, unidade: '%' },
       cumprimentoGtd: { meta: 100, tipoMeta: 'min', alcancado: cumprimentoGtdMedia, unidade: '%' },
     },
@@ -620,4 +625,159 @@ function calcularImpactoConselhos(dados: DadosBrutos) {
   });
   const topConselhos = porConselho.sort((a, b) => b.total - a.total).slice(0, 8);
   return { totalCases, totalMatchmakings, matchmakingsSemResultado, topConselhos };
+}
+
+// ============ visão do gestor (dados não mascarados) ============
+// Diferente de generateEquipeReport (que só expõe "alcancado", o maior entre manual e
+// calculado), esta visão é só pra quem tem is_gestor()=true: mostra o valor calculado puro, o
+// manual quando existe, e a divergência entre os dois — pra gestão enxergar quando um CS está
+// reportando manualmente um número mais otimista do que o sistema encontra sozinho.
+
+const INDICADORES_GESTOR = ['churn', 'casesSucesso', 'matchmakings', 'rounds', 'upsell', 'downsell', 'indicacoes'] as const;
+
+const LABELS_INDICADOR: Record<string, string> = {
+  churn: 'Churn', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
+  upsell: 'Upsell', downsell: 'Downsell', indicacoes: 'Indicações', cumprimentoGtd: 'Cumprimento do GTD',
+  numConselhos: 'Carteira de conselhos',
+};
+
+// Eixos do radar comparativo do gestor, na ordem em que devem aparecer no gráfico — combinados
+// aqui uma única vez pra back-end e front-end nunca divergirem na ordem/rótulo dos eixos.
+const RADAR_EIXOS: { chave: string; label: string; tipoMeta: 'min' | 'max' }[] = [
+  { chave: 'churn', label: 'Churn', tipoMeta: 'max' },
+  { chave: 'casesSucesso', label: 'Cases', tipoMeta: 'min' },
+  { chave: 'matchmakings', label: 'Matchmakings', tipoMeta: 'min' },
+  { chave: 'rounds', label: 'Rounds', tipoMeta: 'min' },
+  { chave: 'upsell', label: 'Upsell', tipoMeta: 'min' },
+  { chave: 'cumprimentoGtd', label: 'GTD', tipoMeta: 'min' },
+];
+
+// Limite de alerta de divergência: indiceDivergencia (soma das divergências positivas — CS
+// reportou manualmente mais do que o sistema calculou sozinho) acima de 20% da soma dos valores
+// calculados do próprio CS no período. Limite arbitrário (não existe ainda um SLA formal da área
+// pra isso), documentado aqui pra ficar fácil de revisar/ajustar num único lugar.
+const LIMITE_DIVERGENCIA_PCT = 0.2;
+
+// Normaliza calculado/meta pra escala 0-100 (100 = bateu a meta em cheio), capado em 150 pra um
+// outlier não esticar o eixo do radar pros demais CS. Pra tipoMeta='max' (churn: menos é melhor)
+// inverte em torno da meta — 2x a meta vira 0, a própria meta vira 100, 0 vira 200 (capado em
+// 150) — assim os dois tipos de indicador ficam na mesma unidade "% de bom desempenho", com 100
+// sempre significando "bateu a meta em cheio" nos dois sentidos.
+function radarPct(calculado: number | null | undefined, meta: number | null | undefined, tipoMeta: 'min' | 'max'): number {
+  if (calculado === null || calculado === undefined) return 0;
+  if (meta === null || meta === undefined || meta === 0) {
+    if (calculado <= 0) return tipoMeta === 'max' ? 100 : 0;
+    return tipoMeta === 'max' ? 0 : 100;
+  }
+  const pct = tipoMeta === 'max' ? ((2 * meta - calculado) / meta) * 100 : (calculado / meta) * 100;
+  return Math.max(0, Math.min(150, Math.round(pct)));
+}
+
+// Três faixas de risco pro painel do gestor. 80% do alvo como fronteira "no limite" é uma escolha
+// documentada aqui (não existe ainda um valor "oficial" da área pra isso) — fácil de ajustar num
+// único lugar se a área definir outro corte no futuro.
+type StatusRisco = 'sem_dado' | 'dentro_da_meta' | 'no_limite' | 'abaixo_da_meta';
+function statusRisco(ach: number | null): StatusRisco {
+  if (ach === null || ach === undefined) return 'sem_dado';
+  if (ach >= 1) return 'dentro_da_meta';
+  if (ach >= 0.8) return 'no_limite';
+  return 'abaixo_da_meta';
+}
+
+export type VisaoGestorCS = ReturnType<typeof montarVisaoGestorCS>;
+
+function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number) {
+  const ind = r.indicadores as any;
+  const indicadores: Record<string, { meta: number | null; calculado: number | null; manual: number | null; unidade: string; status: StatusRisco; divergencia: number | null }> = {};
+
+  INDICADORES_GESTOR.forEach((chave) => {
+    const i = ind[chave];
+    const ach = achievementIndicador({ meta: i.meta, tipoMeta: i.tipoMeta, alcancado: i.calculado });
+    const temOsDois = i.manual !== null && i.manual !== undefined && i.calculado !== null && i.calculado !== undefined;
+    const divergencia = temOsDois && i.manual !== i.calculado ? i.manual - i.calculado : null;
+    indicadores[chave] = { meta: i.meta, calculado: i.calculado, manual: i.manual, unidade: i.unidade, status: statusRisco(ach), divergencia };
+  });
+
+  // cumprimentoGtd e numConselhos (carteira) não têm par manual/calculado — já são 100% apurados
+  // pelo sistema (GTD vem do histórico, carteira é a contagem de conselhos do CS), então
+  // "calculado" é o único valor que existe pra eles.
+  const achGtd = achievementIndicador({ meta: ind.cumprimentoGtd.meta, tipoMeta: ind.cumprimentoGtd.tipoMeta, alcancado: ind.cumprimentoGtd.alcancado });
+  indicadores.cumprimentoGtd = { meta: ind.cumprimentoGtd.meta, calculado: ind.cumprimentoGtd.alcancado, manual: null, unidade: '%', status: statusRisco(achGtd), divergencia: null };
+
+  const achCarteira = achievementIndicador({ meta: maxConselhosTime || null, tipoMeta: 'min', alcancado: r.conselhos.length });
+  indicadores.numConselhos = { meta: maxConselhosTime || null, calculado: r.conselhos.length, manual: null, unidade: 'qtd', status: statusRisco(achCarteira), divergencia: null };
+
+  const indiceDivergencia = INDICADORES_GESTOR.reduce((soma, chave) => {
+    const d = indicadores[chave].divergencia;
+    return soma + (d !== null && d > 0 ? d : 0);
+  }, 0);
+  const somaCalculado = INDICADORES_GESTOR.reduce((soma, chave) => soma + (indicadores[chave].calculado || 0), 0);
+
+  const alertas: string[] = [];
+  Object.keys(indicadores).forEach((chave) => {
+    if (indicadores[chave].status === 'abaixo_da_meta') {
+      const i = indicadores[chave];
+      alertas.push(`${LABELS_INDICADOR[chave] || chave} abaixo da meta (${i.calculado ?? '—'} de ${i.meta ?? '—'}).`);
+    }
+  });
+  if (somaCalculado > 0 && indiceDivergencia > somaCalculado * LIMITE_DIVERGENCIA_PCT) {
+    alertas.push(`Divergência entre o valor reportado manualmente e o calculado pelo sistema passa de ${Math.round(LIMITE_DIVERGENCIA_PCT * 100)}% (${indiceDivergencia} acima do que o sistema encontrou).`);
+  }
+
+  // scoreReal: mesmo calcularScoreCS, só que os indicadores passados têm "alcancado" = calculado
+  // em vez do alcancado mascarado — reaproveita a função inteira (mesmos pesos, mesma lógica de
+  // achievement) em vez de duplicar a ponderação.
+  const indicadoresParaScoreReal: any = {};
+  Object.keys(PESOS_SCORE_CS).forEach((chave) => {
+    if (chave === 'carteira') return;
+    const i = ind[chave];
+    indicadoresParaScoreReal[chave] = { ...i, alcancado: i.calculado };
+  });
+  const scoreReal = calcularScoreCS(indicadoresParaScoreReal, r.conselhos.length, maxConselhosTime);
+
+  const radar = RADAR_EIXOS.map((eixo) => {
+    const i = eixo.chave === 'cumprimentoGtd' ? indicadores.cumprimentoGtd : (indicadores as any)[eixo.chave];
+    return radarPct(i.calculado, i.meta, eixo.tipoMeta);
+  });
+
+  const temIndicadorAbaixoDaMeta = Object.values(indicadores).some((i) => i.status === 'abaixo_da_meta');
+
+  return {
+    nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
+    indicadores, indiceDivergencia, scoreReal, alertas, radar, temIndicadorAbaixoDaMeta,
+  };
+}
+
+export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number) {
+  const dados = await getDadosBrutos(sb);
+  const membros = await getCSListParaAgregados(sb);
+
+  const relatorios = (await Promise.all(membros.map(async (m) => {
+    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados); }
+    catch (e) { return null; }
+  }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
+
+  const maxConselhosTime = relatorios.reduce((max, r) => Math.max(max, r.conselhos.length), 0);
+  const porCS = relatorios.map((r) => montarVisaoGestorCS(r, maxConselhosTime));
+
+  const radarEquipe = RADAR_EIXOS.map((_, idx) => {
+    const vals = porCS.map((c) => c.radar[idx]).filter((v) => v !== null && v !== undefined) as number[];
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+  });
+
+  const ranking = [...porCS]
+    .filter((c) => c.scoreReal !== null)
+    .sort((a, b) => (b.scoreReal as number) - (a.scoreReal as number))
+    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal }));
+
+  return {
+    periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
+    indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos'],
+    labelsIndicador: LABELS_INDICADOR,
+    radarEixos: RADAR_EIXOS.map((e) => e.label),
+    radarEquipe,
+    csAbaixoDaMeta: porCS.filter((c) => c.temIndicadorAbaixoDaMeta).length,
+    porCS,
+    ranking,
+  };
 }

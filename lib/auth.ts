@@ -17,7 +17,7 @@ export class AuthError extends Error {
   }
 }
 
-export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; email: string }> {
+export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; email: string; isGestor: boolean }> {
   const supabase = getSupabaseServer();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || !user.email) {
@@ -26,7 +26,12 @@ export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; ema
   if (!user.email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN)) {
     throw new AuthError(403, 'Domínio de e-mail não autorizado.');
   }
-  return { supabase, email: user.email };
+  // is_gestor() é a fonte de verdade (tabela gestores no banco) — nunca decida isGestor só pelo
+  // formato do e-mail aqui no código; camada adicional sobre a checagem de domínio acima, não
+  // substitui ela.
+  const { data: isGestor, error: gestorError } = await supabase.rpc('is_gestor');
+  if (gestorError) throw new Error('Erro ao checar papel de gestor: ' + gestorError.message);
+  return { supabase, email: user.email, isGestor: !!isGestor };
 }
 
 export function authErrorResponse(e: unknown) {

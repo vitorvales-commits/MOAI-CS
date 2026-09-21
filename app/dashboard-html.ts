@@ -50,6 +50,8 @@ svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-w
 .live-label { font-size: 10.5px; color:#807E7E; font-weight:600; }
 .logout-link { font-size: 11px; font-weight:700; color:#9F9F9F; text-decoration:none; padding:6px 10px; border-radius:8px; transition: color .15s, background .15s; }
 .logout-link:hover { color:#1A1A1A; background:#E9E9E9; }
+.gestor-topbar-link { font-size: 11px; font-weight:800; color:#C89A2E; text-decoration:none; padding:6px 10px; border-radius:8px; transition: color .15s, background .15s; }
+.gestor-topbar-link:hover { color:#1A1A1A; background:#F0E4C8; }
 select.pickmes { background:#fff; color:#1A1A1A; border: 0.75pt solid #D8D5D5; border-radius: 10px; padding: 7px 12px; font-family:'Inter',sans-serif; font-size: 12px; font-weight: 700; cursor:pointer; transition: border-color .2s; }
 select.pickmes:hover { border-color:#1A1A1A; }
 .back-link { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#5D5D5D; cursor:pointer; transition: color .15s; }
@@ -481,12 +483,23 @@ function chaveE(mes, ano){ return mes + '|' + ano; }
 function pendingInc(){ pendingCount++; document.getElementById('progressBar').classList.add('ativo'); }
 function pendingDec(){ pendingCount = Math.max(0, pendingCount-1); if (pendingCount===0) document.getElementById('progressBar').classList.remove('ativo'); }
 
+// Preenchido de forma assíncrona por verificarGestor() — o link abaixo é só conveniência visual;
+// quem decide de verdade se a rota abre é o servidor em app/gestor/page.tsx e em
+// /api/gestor/visao-geral, que checam isGestor de novo e nunca confiam em nada vindo do client.
+var souGestor = false;
+function verificarGestor(){
+  fetch('/api/gestor/check', { cache: 'no-store' }).then(function(r){ return r.json(); })
+    .then(function(d){ souGestor = !!d.isGestor; renderTopbar(); })
+    .catch(function(){});
+}
+
 function renderTopbar(){
   var isPessoa = currentCS !== null;
   var html = (isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
     '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
     '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
     '<span class="live-label"><span class="live-dot"></span>ao vivo</span>' +
+    (souGestor ? '<a class="gestor-topbar-link" href="/gestor">Visão da área</a>' : '') +
     '<a class="logout-link" href="/auth/signout">Sair</a>';
   document.getElementById('topbarRight').innerHTML = html;
   var selMes = document.getElementById('selMes');
@@ -510,6 +523,19 @@ function onFiltroChange(){
 }
 
 renderTopbar();
+verificarGestor();
+
+// Mensagem de quem tentou abrir /gestor sem ser gestor e foi redirecionado de volta pra cá pelo
+// servidor (ver app/gestor/page.tsx) — só um aviso, o bloqueio de verdade já aconteceu antes de
+// qualquer HTML da área de gestor ser servido.
+(function avisarAcessoRestrito(){
+  var params = new URLSearchParams(location.search);
+  if (params.get('erro') === 'acesso_restrito') {
+    alert('Esta área é restrita a gestores.');
+    history.replaceState(null, '', location.pathname);
+  }
+})();
+
 function carregarFotosTime(){
   var grid = document.getElementById('teamGrid');
   if (cacheFotos) { pintarTeamGrid(cacheFotos); return; }
