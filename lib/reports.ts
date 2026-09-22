@@ -421,6 +421,9 @@ function parseConselhoItems(
   });
   const confirmadosDeduplicados = [...confirmadosPorNome.values()];
 
+  // TEMP DEBUG (investigação bug "confirmados" divergindo do Monday — remover depois de achar a causa)
+  console.log(`[CONSELHO_DEBUG] ${new Date().toISOString()} grupo="${nomeGrupo}" meses=[${mesesRelevantes.join(',')}] brutos=${confirmados.length} dedup=${confirmadosDeduplicados.length} nomes=[${confirmadosDeduplicados.map((c) => c.nome + '/' + c.mes).join('; ')}]`);
+
   return {
     nome: nomeGrupo, congelado, membros: membrosBase,
     presente: temDado ? presentes : null,
