@@ -698,14 +698,20 @@ const LABELS_INDICADOR: Record<string, string> = {
 };
 
 // Eixos do radar comparativo do gestor, na ordem em que devem aparecer no gráfico — combinados
-// aqui uma única vez pra back-end e front-end nunca divergirem na ordem/rótulo dos eixos.
+// aqui uma única vez pra back-end e front-end nunca divergirem na ordem/rótulo dos eixos. Nove
+// eixos (mesma ordem de INDICADORES_GESTOR + cumprimentoGtd + numConselhos, ou seja, os mesmos
+// nove indicadores já expostos em indicadoresOrdem) — cobre todo indicador que a área acompanha,
+// não só os seis originais.
 const RADAR_EIXOS: { chave: string; label: string; tipoMeta: 'min' | 'max' }[] = [
   { chave: 'churn', label: 'Churn', tipoMeta: 'max' },
   { chave: 'casesSucesso', label: 'Cases', tipoMeta: 'min' },
   { chave: 'matchmakings', label: 'Matchmakings', tipoMeta: 'min' },
   { chave: 'rounds', label: 'Rounds', tipoMeta: 'min' },
   { chave: 'upsell', label: 'Upsell', tipoMeta: 'min' },
+  { chave: 'downsell', label: 'Downsell', tipoMeta: 'max' },
+  { chave: 'indicacoes', label: 'Indicações', tipoMeta: 'min' },
   { chave: 'cumprimentoGtd', label: 'GTD', tipoMeta: 'min' },
+  { chave: 'numConselhos', label: 'Carteira', tipoMeta: 'min' },
 ];
 
 // Limite de alerta de divergência: indiceDivergencia (soma das divergências positivas — CS

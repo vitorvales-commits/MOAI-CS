@@ -4,145 +4,255 @@
 // servidor por app/gestor/page.tsx (requireMoaiUser + isGestor) antes deste HTML ser servido;
 // tudo aqui dentro é só apresentação — os dados vêm de /api/gestor/visao-geral, que faz a mesma
 // checagem de novo.
+//
+// Camada visual = protótipo aprovado (visao_area_gestor_prototipo.html), substituída por inteiro
+// (não é um ajuste da tela antiga com pílulas vermelhas/verdes e ranking em barra amarela — essa
+// versão foi descartada). Nenhuma lógica de dados mudou: os valores, o score (scoreReal), os
+// alertas e a divergência continuam vindo prontos de generateVisaoGestor() em lib/reports.ts; este
+// arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
 
 export const GESTOR_STYLE = `
-.gestor-page { font-family:'Inter', system-ui, sans-serif; background:#F5F5F5; color:#5D5D5D; font-size:13px; -webkit-font-smoothing:antialiased; }
-.gestor-hero { background:linear-gradient(135deg,#1A1A1A,#141414); color:#fff; padding:40px 28px 34px; }
-.gestor-hero-inner { max-width:1040px; margin:0 auto; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:20px; }
-.gestor-back { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:#B7B5B5; text-decoration:none; margin-bottom:14px; }
-.gestor-back:hover { color:#fff; }
-.gestor-title { font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:32px; letter-spacing:-0.5px; color:#fff; }
-.gestor-sub { font-size:12.5px; color:#B7B5B5; margin-top:6px; }
-.gestor-filtros { margin-top:14px; display:flex; gap:8px; }
-select.gestor-pickmes { background:rgba(255,255,255,0.08); color:#fff; border:0.75pt solid rgba(255,255,255,0.2); border-radius:10px; padding:7px 12px; font-family:'Inter',sans-serif; font-size:12px; font-weight:700; cursor:pointer; }
-.gestor-destaque { text-align:right; }
-.gestor-destaque-num { font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size:46px; color:#C89A2E; line-height:1; }
-.gestor-destaque-label { font-size:10px; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.6px; margin-top:4px; max-width:180px; }
-.gestor-body { max-width:1040px; margin:0 auto; padding:32px 28px 80px; }
-.gestor-section-title { font-size:11px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.8px; margin:36px 0 14px; display:flex; align-items:center; gap:8px; }
-.gestor-section-title:first-child { margin-top:0; }
-.gestor-section-title .line { flex:1; height:0.75pt; background:#C6C4C4; }
-.gestor-card { background:#fff; border:0.75pt solid #D8D5D5; border-radius:20px; padding:20px; overflow-x:auto; }
-table.gestor-table { width:100%; border-collapse:collapse; font-size:12px; }
-table.gestor-table th { text-align:center; font-size:9.5px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.4px; padding:8px 6px; border-bottom:0.75pt solid #D8D5D5; white-space:nowrap; }
-table.gestor-table th:first-child { text-align:left; }
-table.gestor-table td { padding:8px 6px; border-bottom:0.75pt solid #EEECEC; text-align:center; }
-table.gestor-table tr.gestor-row { cursor:pointer; transition:background .15s; }
-table.gestor-table tr.gestor-row:hover { background:#F9F9F9; }
-.gestor-cel { border-radius:8px; padding:6px 4px; color:#fff; min-width:52px; }
-.gestor-cel-manual { font-size:9px; opacity:0.85; font-weight:600; display:block; line-height:1.3; }
-.gestor-cel-calc { font-size:13px; font-weight:800; display:block; line-height:1.3; }
-.gestor-toggle-btn { background:#1A1A1A; color:#fff; border:none; border-radius:10px; padding:9px 16px; font-size:12px; font-weight:700; cursor:pointer; margin-bottom:16px; }
-.gestor-toggle-btn.ativo { background:#C89A2E; color:#1A1A1A; }
-.gestor-ranking-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:0.75pt solid #EEECEC; }
-.gestor-ranking-row:last-child { border-bottom:none; }
-.gestor-ranking-pos { width:22px; font-weight:800; color:#9F9F9F; font-size:12px; }
-.gestor-ranking-nome { flex:1; font-weight:700; color:#1A1A1A; }
-.gestor-ranking-bar-bg { flex:2; height:8px; background:#E9E9E9; border-radius:99px; overflow:hidden; }
-.gestor-ranking-bar-fill { height:100%; background:linear-gradient(90deg,#C89A2E,#e8c574); border-radius:99px; transition:width .8s cubic-bezier(.16,1,.3,1); }
-.gestor-ranking-score { width:36px; text-align:right; font-weight:800; color:#1A1A1A; }
-.gestor-alertas-cs { margin-bottom:18px; }
-.gestor-alertas-cs:last-child { margin-bottom:0; }
-.gestor-alertas-nome { font-weight:800; color:#1A1A1A; margin-bottom:6px; font-size:12.5px; }
-.gestor-alerta-linha { font-size:12px; color:#5D5D5D; padding:3px 0 3px 14px; position:relative; }
-.gestor-alerta-linha::before { content:'—'; position:absolute; left:0; color:#C0433D; }
-.gestor-empty { text-align:center; padding:40px; color:#9F9F9F; font-size:12.5px; }
-.gestor-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:100; align-items:center; justify-content:center; padding:24px; }
-.gestor-modal-overlay.ativo { display:flex; }
-.gestor-modal { background:#fff; border-radius:26px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; padding:32px; position:relative; }
-.gestor-modal-close { position:absolute; top:20px; right:20px; width:32px; height:32px; border-radius:50%; background:#F5F5F5; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; color:#5D5D5D; }
-.gestor-modal-close:hover { background:#E9E9E9; }
-.gestor-tabs { max-width:1040px; margin:0 auto; padding:0 28px; display:flex; gap:6px; border-bottom:0.75pt solid #D8D5D5; }
-.gestor-tab { background:none; border:none; padding:14px 4px; margin-right:22px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; color:#9F9F9F; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-0.75pt; }
-.gestor-tab.ativa { color:#1A1A1A; border-bottom-color:#C89A2E; }
-.gestor-perfil-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:0.75pt solid #EEECEC; }
-.gestor-perfil-row:last-child { border-bottom:none; }
-.gestor-perfil-info { flex:1; min-width:0; }
-.gestor-perfil-nome { font-weight:800; color:#1A1A1A; font-size:12.5px; }
-.gestor-perfil-sub { font-size:11px; color:#9F9F9F; margin-top:1px; }
-.gestor-perfil-remover { background:none; border:0.75pt solid #E3BDBB; color:#C0433D; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; }
-.gestor-perfil-remover:hover { background:#FBEEED; }
-.gestor-form-add { display:flex; gap:8px; margin-bottom:18px; }
-.gestor-form-add input { flex:1; border:0.75pt solid #D8D5D5; border-radius:10px; padding:9px 12px; font-size:12.5px; font-family:'Inter',sans-serif; }
-.gestor-form-add input:focus { outline:none; border-color:#C89A2E; }
-.gestor-form-add button { background:#1A1A1A; color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
-.gestor-form-erro { color:#C0433D; font-size:11.5px; margin:-10px 0 14px; }
-.gestor-switch { position:relative; width:38px; height:22px; border-radius:99px; background:#D8D5D5; border:none; cursor:pointer; flex-shrink:0; }
-.gestor-switch::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; }
-.gestor-switch.ativo { background:#3D8B5F; }
-.gestor-switch.ativo::after { left:18px; }
+:root{
+  --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
+  --branco:#FFFFFF; --cinza-texto:#5D5D5D; --cinza-apoio:#9F9F9F;
+  --cinza-linha:#C6C4C4; --cinza-borda:#D8D5D5; --cinza-superficie:#E9E9E9;
+  --vermelho:#C0433D; --dourado:#C89A2E; --verde:#3D8B5F;
+}
+.gestor-page *{box-sizing:border-box;}
+.gestor-page{margin:0;background:var(--cinza-fundo);color:var(--preto-tinta);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+.gestor-page h1,.gestor-page h2,.gestor-page h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;}
+.page{max-width:1180px;margin:0 auto;padding:0 28px 80px;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0;flex-wrap:wrap;gap:12px;}
+.topbar-left{display:flex;align-items:center;gap:14px;}
+.voltar-btn{
+  display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--cinza-texto);
+  text-decoration:none;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid var(--cinza-borda);
+  background:var(--branco);
+}
+.voltar-btn:hover{background:var(--cinza-superficie);}
+.logo-mark{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;letter-spacing:0.02em;}
+.topbar-divider{width:1px;height:18px;background:var(--cinza-linha);}
+.topbar-title{font-size:14px;color:var(--cinza-texto);font-weight:500;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pill{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:500;}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--cinza-linha);margin-bottom:32px;}
+.tab-btn{
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--cinza-apoio);
+  background:none;border:none;padding:12px 4px;margin-right:24px;cursor:pointer;
+  border-bottom:2px solid transparent;
+}
+.tab-btn.active{color:var(--preto-tinta);border-bottom-color:var(--dourado);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+.hero{position:relative;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#141414 0%,#1A1A1A 48%,#272727 100%);padding:52px 44px 44px;color:var(--branco);}
+.hero::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 14% -10%, rgba(200,154,46,0.38), transparent 55%),
+             radial-gradient(circle at 100% 110%, rgba(61,139,95,0.28), transparent 55%);
+  pointer-events:none;}
+.hero-content{position:relative;z-index:1;max-width:640px;}
+.hero-eyebrow{display:inline-block;font-size:11px;letter-spacing:0.14em;font-weight:600;color:var(--dourado);margin-bottom:14px;}
+.hero h1{font-size:34px;font-weight:700;margin:0 0 12px;line-height:1.15;}
+.hero-sub{font-size:14px;line-height:1.6;color:#C6C4C4;margin:0 0 32px;max-width:520px;}
+.hero-stats{position:relative;z-index:1;display:flex;gap:40px;flex-wrap:wrap;margin-top:8px;}
+.hero-stat-value{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:40px;display:block;line-height:1;}
+.hero-stat-label{font-size:12px;color:#9F9F9F;margin-top:8px;display:block;}
+.hero-stat:nth-child(1) .hero-stat-value{color:var(--dourado);}
+.hero-stat:nth-child(2) .hero-stat-value{color:var(--vermelho);}
+.hero-stat:nth-child(3) .hero-stat-value{color:var(--branco);}
+
+.block{margin-top:56px;}
+.block-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+.block-head h2{font-size:22px;font-weight:700;margin:0 0 6px;}
+.block-head p{font-size:13px;color:var(--cinza-texto);margin:0;max-width:520px;line-height:1.55;}
+
+.ranking-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;overflow:hidden;}
+.rank-row{display:grid;grid-template-columns:32px 1fr 200px 64px;align-items:center;gap:18px;padding:16px 22px;border-bottom:1px solid var(--cinza-linha);}
+.rank-row:last-child{border-bottom:none;}
+.rank-pos{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;color:var(--cinza-apoio);}
+.rank-name-wrap{display:flex;align-items:center;gap:10px;}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.rank-name{font-size:14px;font-weight:600;}
+.rank-bar-bg{height:8px;border-radius:99px;background:var(--cinza-superficie);overflow:hidden;}
+.rank-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--dourado),var(--verde));}
+.rank-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;text-align:right;}
+
+.radar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+.radar-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:18px 18px 8px;display:flex;flex-direction:column;align-items:center;}
+.radar-card-head{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.radar-card-name{font-size:14px;font-weight:600;}
+.radar-card-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;}
+
+.table-wrap{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;overflow:hidden;}
+.table-scroll{overflow-x:auto;}
+.toggle-group{display:flex;background:var(--cinza-superficie);border-radius:999px;padding:3px;gap:2px;}
+.toggle-btn{border:none;background:transparent;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;color:var(--cinza-texto);}
+.toggle-btn.active{background:var(--preto-tinta);color:var(--branco);}
+.gestor-page table{width:100%;border-collapse:collapse;font-size:13px;}
+.gestor-page thead th{text-align:left;font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--cinza-apoio);font-weight:600;padding:14px 16px;border-bottom:1px solid var(--cinza-linha);white-space:nowrap;}
+.gestor-page thead th.num, .gestor-page td.num{text-align:right;}
+.gestor-page tbody td{padding:14px 16px;border-bottom:1px solid var(--cinza-linha);white-space:nowrap;}
+.gestor-page tbody tr:last-child td{border-bottom:none;}
+.gestor-page td.name{font-weight:600;}
+.diverg-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px;}
+.diverg-alta{background:rgba(192,67,61,0.12);color:var(--vermelho);}
+.diverg-media{background:rgba(200,154,46,0.15);color:var(--dourado);}
+.diverg-baixa{background:rgba(61,139,95,0.12);color:var(--verde);}
+
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
+.risk-card{border-radius:20px;padding:20px;border:1px solid var(--cinza-borda);background:var(--branco);}
+.risk-card.nivel-risco{border-color:rgba(192,67,61,0.4);background:rgba(192,67,61,0.05);}
+.risk-card.nivel-atencao{border-color:rgba(200,154,46,0.4);background:rgba(200,154,46,0.05);}
+.risk-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.risk-name{font-weight:700;font-size:15px;}
+.risk-badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:0.03em;text-transform:uppercase;}
+.risk-badge.risco{background:var(--vermelho);color:var(--branco);}
+.risk-badge.atencao{background:var(--dourado);color:var(--branco);}
+.risk-list{margin:0;padding:0;list-style:none;font-size:12.5px;color:var(--cinza-texto);line-height:1.9;}
+.risk-list li::before{content:"— ";color:var(--cinza-apoio);}
+
+/* controle de perfis */
+.perfis-grid{display:grid;grid-template-columns:1fr;gap:24px;}
+.perfis-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:24px;}
+.perfis-card h3{font-size:15px;margin:0 0 16px;}
+.form-inline{display:flex;gap:10px;margin-bottom:8px;}
+.form-inline input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--cinza-borda);font-size:13px;font-family:'Inter',sans-serif;}
+.form-inline input.erro{border-color:var(--vermelho);}
+.form-inline button{padding:11px 20px;border-radius:12px;border:none;background:var(--preto-tinta);color:var(--branco);font-weight:600;font-size:13px;cursor:pointer;}
+.form-inline button:disabled{opacity:0.5;cursor:not-allowed;}
+.erro-msg{color:var(--vermelho);font-size:12px;margin:0 0 16px;min-height:14px;}
+.lista-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--cinza-linha);}
+.lista-item:last-child{border-bottom:none;}
+.lista-item-nome{font-size:13px;font-weight:600;}
+.lista-item-sub{font-size:11px;color:var(--cinza-apoio);}
+.btn-remover{background:none;border:1px solid var(--cinza-borda);color:var(--vermelho);font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;}
+.btn-remover:hover{background:rgba(192,67,61,0.08);}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch-track{position:absolute;inset:0;background:var(--cinza-superficie);border-radius:999px;cursor:pointer;transition:background .15s;}
+.switch-track::before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--branco);border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,0.2);}
+.switch input:checked + .switch-track{background:var(--verde);}
+.switch input:checked + .switch-track::before{transform:translateX(16px);}
+
+.gestor-empty{padding:24px;color:var(--cinza-apoio);font-size:13px;}
+.gestor-erro{padding:24px;color:var(--vermelho);font-size:13px;}
+
+footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinza-linha);font-size:11.5px;color:var(--cinza-apoio);}
+
+@media (max-width:640px){
+  .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
+  .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
+  .form-inline{flex-direction:column;}
+}
 `;
 
 export const GESTOR_HTML = `
 <div class="gestor-page">
-  <div class="gestor-hero">
-    <div class="gestor-hero-inner">
-      <div>
-        <a class="gestor-back" href="/">← Time</a>
-        <div class="gestor-title">Visão geral da área</div>
-        <div class="gestor-sub">Valores calculados pelo sistema, sem a máscara do manual — visão restrita a gestores.</div>
-        <div class="gestor-filtros">
-          <select class="gestor-pickmes" id="selMesGestor"></select>
-          <select class="gestor-pickmes" id="selAnoGestor"><option>2026</option><option>2027</option></select>
+<div class="page">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="/" class="voltar-btn">&larr; Voltar</a>
+      <span class="topbar-divider"></span>
+      <span class="logo-mark">MOAI</span>
+      <span class="topbar-divider"></span>
+      <span class="topbar-title">Visão da área · perfil gestor</span>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" id="pillMes"></span>
+      <span class="pill">Acesso restrito a gestores</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="visaoGeral">Visão geral</button>
+    <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-visaoGeral">
+    <section class="hero">
+      <div class="hero-content">
+        <span class="hero-eyebrow">DESEMPENHO REAL · SEM MÁSCARA</span>
+        <h1>Como a área de CS está de verdade</h1>
+        <p class="hero-sub">Todo indicador abaixo usa só o valor calculado a partir do Monday. O autodeclarado aparece à parte, nunca substituindo o real.</p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="hero-stat-value" id="statScore">—</span><span class="hero-stat-label">Score médio da área</span></div>
+        <div class="hero-stat"><span class="hero-stat-value" id="statRisco">—</span><span class="hero-stat-label" id="statRiscoLabel">CS em risco</span></div>
+        <div class="hero-stat"><span class="hero-stat-value" id="statDiverg">—</span><span class="hero-stat-label">Divergência média real × autodeclarado</span></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Ranking ponderado</h2>
+        <p>Pontuação única por CS (score real, já calculado no servidor), só com valor calculado.</p>
+      </div>
+      <div class="ranking-list" id="rankingList"><div class="gestor-empty">Carregando…</div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Radar por CS</h2>
+        <p>Os nove indicadores acompanhados pela área, normalizados a 100% = meta batida.</p>
+      </div>
+      <div class="radar-grid" id="radarGrid"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Tabela comparativa</h2>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-mode="calculado">Só valor real</button>
+          <button class="toggle-btn" data-mode="divergencia">Real × autodeclarado</button>
         </div>
       </div>
-      <div class="gestor-destaque">
-        <div class="gestor-destaque-num" id="gestorDestaqueNum">—</div>
-        <div class="gestor-destaque-label">CS com pelo menos um indicador abaixo da meta</div>
+      <div class="table-wrap"><div class="table-scroll">
+        <table>
+          <thead><tr id="tabelaHead"></tr></thead>
+          <tbody id="tabelaBody"></tbody>
+        </table>
+      </div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Sinalizadores de risco</h2><p>Alertas já calculados no servidor (indicador abaixo da meta ou divergência alta entre o real e o autodeclarado).</p></div>
+      <div class="risk-grid" id="riskGrid"></div>
+    </section>
+  </div>
+
+  <div class="tab-panel" id="tab-controlePerfis">
+    <div class="perfis-grid">
+      <div class="perfis-card">
+        <h3>Gestores</h3>
+        <div class="form-inline">
+          <input type="email" id="inputNovoGestor" placeholder="email@moaiclubedelideres.com">
+          <button id="btnAddGestor">Adicionar</button>
+        </div>
+        <p class="erro-msg" id="erroGestor"></p>
+        <div id="listaGestores"></div>
+      </div>
+      <div class="perfis-card">
+        <h3>CS ativos</h3>
+        <div id="listaCS"></div>
       </div>
     </div>
   </div>
 
-  <div class="gestor-tabs">
-    <button class="gestor-tab ativa" id="tabVisaoGeral" onclick="mudarAba('visaoGeral')">Visão geral</button>
-    <button class="gestor-tab" id="tabControlePerfis" onclick="mudarAba('controlePerfis')">Controle de perfis</button>
-  </div>
-
-  <div class="gestor-body" id="abaVisaoGeral">
-    <div id="gestorConteudo">
-      <div class="gestor-section-title">Indicadores por CS (valor calculado)<div class="line"></div></div>
-      <button class="gestor-toggle-btn" id="btnDivergencia">Ver divergência</button>
-      <div class="gestor-card"><div id="gestorTabelaWrap"><div class="gestor-empty">Carregando...</div></div></div>
-
-      <div class="gestor-section-title">Ranking (score real)<div class="line"></div></div>
-      <div class="gestor-card"><div id="gestorRanking"><div class="gestor-empty">Carregando...</div></div></div>
-
-      <div class="gestor-section-title">Alertas<div class="line"></div></div>
-      <div class="gestor-card"><div id="gestorAlertas"><div class="gestor-empty">Carregando...</div></div></div>
-    </div>
-  </div>
-
-  <div class="gestor-body" id="abaControlePerfis" style="display:none;">
-    <div class="gestor-section-title">Gestores<div class="line"></div></div>
-    <div class="gestor-card">
-      <div class="gestor-form-add">
-        <input type="email" id="inputNovoGestorEmail" placeholder="nome@moaiclubedelideres.com" />
-        <button onclick="adicionarGestorUI()">Adicionar</button>
-      </div>
-      <div id="gestorFormErro" class="gestor-form-erro" style="display:none;"></div>
-      <div id="listaGestores"><div class="gestor-empty">Carregando...</div></div>
-    </div>
-
-    <div class="gestor-section-title">CS ativos<div class="line"></div></div>
-    <div class="gestor-card">
-      <div id="listaCSRoster"><div class="gestor-empty">Carregando...</div></div>
-    </div>
-  </div>
+  <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
 </div>
-
-<div class="gestor-modal-overlay" id="gestorModalOverlay" onclick="if(event.target===this) fecharRadarModal()">
-  <div class="gestor-modal">
-    <div class="gestor-modal-close" onclick="fecharRadarModal()">✕</div>
-    <div id="gestorModalBody"></div>
-  </div>
 </div>
 `;
 
 export const GESTOR_SCRIPT = `
-function fetchJSON_(url) {
-  return fetch(url, { cache: 'no-store' }).then(function (res) {
-    // Mesmo comportamento do dashboard: sessão expirada ou acesso negado (401/403) manda de
-    // volta pro /login em vez de tentar renderizar um erro genérico na tela do gestor.
+function fetchJSON_(url, opts) {
+  opts = opts || {};
+  opts.cache = 'no-store';
+  return fetch(url, opts).then(function (res) {
+    // Sessão expirada ou domínio não autorizado (401/403 de requireMoaiUser() em qualquer rota):
+    // manda de volta pro /login em vez de deixar a tela tentar renderizar um erro genérico.
     if (res.status === 401 || res.status === 403) {
       window.location.href = '/login';
       return new Promise(function () {});
@@ -154,241 +264,256 @@ function fetchJSON_(url) {
   });
 }
 
-var STATUS_COR = { dentro_da_meta: '#3D8B5F', no_limite: '#C89A2E', abaixo_da_meta: '#C0433D', sem_dado: '#9F9F9F' };
-function statusCor(s) { return STATUS_COR[s] || '#9F9F9F'; }
+var ENDPOINT_VISAO_GERAL = '/api/gestor/visao-geral';
+var ENDPOINT_GESTORES = '/api/gestor/gestores';
+var ENDPOINT_CS_ROSTER = '/api/gestor/cs-roster';
 
-var dadosAtuais = null;
-var modoDivergencia = false;
+// ============ tabs ============
 
-function renderHeader() {
-  document.getElementById('gestorDestaqueNum').textContent = dadosAtuais.csAbaixoDaMeta;
+document.querySelectorAll('.tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); }
+  });
+});
+
+// ============ radar SVG (feito à mão, sem lib externa) ============
+// Eixos e valores (escala 0-150, 100 = bateu a meta, capado em 150) vêm prontos do back-end em
+// data.radarEixos / cs.radar — este código só desenha, nunca recalcula.
+
+function polarPonto(cx, cy, r, i, total) {
+  var a = (Math.PI * 2 * i / total) - Math.PI / 2;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+function radarSVG(labels, valores, gradId) {
+  var size = 240, cx = size / 2, cy = size / 2 - 6, rMax = 84, total = labels.length;
+  var svg = '<svg width="' + size + '" height="' + (size + 18) + '" viewBox="0 0 ' + size + ' ' + (size + 18) + '">';
+  [{ f: 50 / 150, dash: '3,3' }, { f: 100 / 150, dash: '0' }, { f: 1, dash: '3,3' }].forEach(function (anel) {
+    var pts = '';
+    for (var i = 0; i < total; i++) { var p = polarPonto(cx, cy, rMax * anel.f, i, total); pts += p.x + ',' + p.y + ' '; }
+    svg += '<polygon points="' + pts + '" fill="none" stroke="#D8D5D5" stroke-width="1" stroke-dasharray="' + anel.dash + '"/>';
+  });
+  for (var i = 0; i < total; i++) {
+    var p = polarPonto(cx, cy, rMax, i, total);
+    svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '" stroke="#D8D5D5" stroke-width="1"/>';
+    var lp = polarPonto(cx, cy, rMax + 16, i, total);
+    var anchor = 'middle'; if (lp.x > cx + 4) anchor = 'start'; else if (lp.x < cx - 4) anchor = 'end';
+    svg += '<text x="' + lp.x + '" y="' + lp.y + '" font-size="8" fill="#9F9F9F" font-family="Inter,sans-serif" text-anchor="' + anchor + '" dominant-baseline="middle">' + labels[i] + '</text>';
+  }
+  var pts = '';
+  for (var i = 0; i < total; i++) { var v = Math.max(0, Math.min(150, valores[i] || 0)) / 150; var p = polarPonto(cx, cy, rMax * v, i, total); pts += p.x + ',' + p.y + ' '; }
+  svg += '<polygon points="' + pts + '" fill="url(#' + gradId + ')" stroke="#C89A2E" stroke-width="1.6" fill-opacity="0.55"/>';
+  for (var i = 0; i < total; i++) { var v = Math.max(0, Math.min(150, valores[i] || 0)) / 150; var p = polarPonto(cx, cy, rMax * v, i, total); svg += '<circle cx="' + p.x + '" cy="' + p.y + '" r="2.3" fill="#141414"/>'; }
+  svg += '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C89A2E"/><stop offset="100%" stop-color="#3D8B5F"/></linearGradient></defs></svg>';
+  return svg;
 }
 
-function renderTabela() {
-  var ordem = dadosAtuais.indicadoresOrdem;
-  var labels = dadosAtuais.labelsIndicador;
-  var thead = '<tr><th>CS</th>' + ordem.map(function (k) { return '<th>' + (labels[k] || k) + '</th>'; }).join('') + '</tr>';
-  var rows = dadosAtuais.porCS.map(function (cs, idx) {
-    var cells = ordem.map(function (k) {
-      var i = cs.indicadores[k];
-      var cor = statusCor(i.status);
-      var temDivergencia = modoDivergencia && i.manual !== null && i.manual !== undefined && i.manual !== i.calculado;
-      if (temDivergencia) {
-        return '<td><div class="gestor-cel" style="background:' + cor + ';"><span class="gestor-cel-manual">' + i.manual + ' informado</span><span class="gestor-cel-calc">' + i.calculado + ' real</span></div></td>';
-      }
-      var valor = (i.calculado === null || i.calculado === undefined) ? '—' : i.calculado;
-      return '<td><div class="gestor-cel" style="background:' + cor + ';"><span class="gestor-cel-calc">' + valor + '</span></div></td>';
-    }).join('');
-    return '<tr class="gestor-row" onclick="abrirRadarModal(' + idx + ')"><td style="text-align:left;font-weight:800;color:#1A1A1A;">' + cs.nome + '</td>' + cells + '</tr>';
-  }).join('');
-  document.getElementById('gestorTabelaWrap').innerHTML = '<table class="gestor-table"><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table>';
+// ============ visão geral ============
+// classificarScore() é só um agrupamento visual (3 faixas) do scoreReal que já vem pronto do
+// back-end (calcularScoreCS, reaproveitado em montarVisaoGestorCS) — não recalcula o score, só
+// decide a cor/rótulo do badge a partir do número que a API já mandou.
+function classificarScore(scoreReal) {
+  if (scoreReal === null || scoreReal === undefined) return { nivel: 'sem_dado', cor: 'var(--cinza-apoio)', label: 'Sem dado' };
+  if (scoreReal >= 75) return { nivel: 'ok', cor: 'var(--verde)', label: 'Saudável' };
+  if (scoreReal >= 55) return { nivel: 'atencao', cor: 'var(--dourado)', label: 'Atenção' };
+  return { nivel: 'risco', cor: 'var(--vermelho)', label: 'Risco' };
 }
 
-function alternarDivergencia() {
-  modoDivergencia = !modoDivergencia;
-  var btn = document.getElementById('btnDivergencia');
-  btn.classList.toggle('ativo', modoDivergencia);
-  btn.textContent = modoDivergencia ? 'Ver valores' : 'Ver divergência';
-  renderTabela();
+var DADOS = null;
+
+function renderHero() {
+  document.getElementById('pillMes').textContent = DADOS.periodo.geral ? ('Visão Geral · ' + DADOS.periodo.ano) : (DADOS.periodo.mes + '/' + DADOS.periodo.ano);
+  var scores = DADOS.porCS.map(function (c) { return c.scoreReal; }).filter(function (v) { return v !== null && v !== undefined; });
+  var scoreMedio = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
+  document.getElementById('statScore').textContent = scoreMedio === null ? '—' : scoreMedio;
+  document.getElementById('statRisco').textContent = DADOS.csAbaixoDaMeta;
+  document.getElementById('statRiscoLabel').textContent = DADOS.csAbaixoDaMeta + ' CS com pelo menos um indicador abaixo da meta';
+  var divergs = DADOS.porCS.map(function (c) { return c.indiceDivergencia || 0; });
+  var divergMedia = divergs.length ? Math.round(divergs.reduce(function (a, b) { return a + b; }, 0) / divergs.length) : 0;
+  document.getElementById('statDiverg').textContent = divergMedia;
 }
 
 function renderRanking() {
-  if (!dadosAtuais.ranking.length) { document.getElementById('gestorRanking').innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
-  var maxScore = Math.max.apply(null, dadosAtuais.ranking.map(function (r) { return r.scoreReal || 0; }).concat([1]));
-  var html = dadosAtuais.ranking.map(function (r, i) {
+  var el = document.getElementById('rankingList');
+  if (!DADOS.ranking.length) { el.innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
+  var maxScore = Math.max.apply(null, DADOS.ranking.map(function (r) { return r.scoreReal || 0; }).concat([1]));
+  el.innerHTML = DADOS.ranking.map(function (r, i) {
+    var status = classificarScore(r.scoreReal);
     var pct = maxScore > 0 ? (r.scoreReal / maxScore * 100) : 0;
-    return '<div class="gestor-ranking-row"><span class="gestor-ranking-pos">' + (i + 1) + 'º</span>' +
-      '<span class="gestor-ranking-nome">' + r.nome + '</span>' +
-      '<div class="gestor-ranking-bar-bg"><div class="gestor-ranking-bar-fill" style="width:' + pct + '%;"></div></div>' +
-      '<span class="gestor-ranking-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '</span></div>';
+    return '<div class="rank-row"><span class="rank-pos">' + (i + 1) + '</span>'
+      + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><span class="rank-name">' + r.nome + '</span></div>'
+      + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div></div>'
+      + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '</span></div>';
   }).join('');
-  document.getElementById('gestorRanking').innerHTML = html;
 }
 
-function renderAlertas() {
-  var comAlertas = dadosAtuais.porCS.filter(function (c) { return c.alertas.length > 0; });
-  if (comAlertas.length === 0) { document.getElementById('gestorAlertas').innerHTML = '<div class="gestor-empty">Nenhum alerta neste período.</div>'; return; }
-  var html = comAlertas.map(function (c) {
-    return '<div class="gestor-alertas-cs"><div class="gestor-alertas-nome">' + c.nome + '</div>' +
-      c.alertas.map(function (a) { return '<div class="gestor-alerta-linha">' + a + '</div>'; }).join('') +
-      '</div>';
-  }).join('');
-  document.getElementById('gestorAlertas').innerHTML = html;
-}
-
-// Radar SVG feito à mão, sem lib externa — duas séries só (CS clicado x média da equipe), eixos
-// vindos prontos do back-end (radarPct em lib/reports.ts), escala 0-150 com 100 = bateu a meta.
-function radarSVG(labels, serieA, serieB) {
-  var n = labels.length;
-  var cx = 150, cy = 150, r = 108;
-  var angleStep = (2 * Math.PI) / n;
-  function ponto(i, valor) {
-    var frac = Math.max(0, Math.min(150, valor)) / 150;
-    var ang = -Math.PI / 2 + i * angleStep;
-    return [cx + r * frac * Math.cos(ang), cy + r * frac * Math.sin(ang)];
-  }
-  var aneis = [50, 100, 150].map(function (val) {
-    var pts = [];
-    for (var i = 0; i < n; i++) pts.push(ponto(i, val).join(','));
-    return '<polygon points="' + pts.join(' ') + '" fill="none" stroke="#E9E9E9" stroke-width="1" stroke-dasharray="' + (val === 100 ? '0' : '3,3') + '"/>';
-  }).join('');
-  var eixos = labels.map(function (_, i) {
-    var p = ponto(i, 150);
-    return '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0] + '" y2="' + p[1] + '" stroke="#E9E9E9" stroke-width="1"/>';
-  }).join('');
-  var rotulos = labels.map(function (lbl, i) {
-    var p = ponto(i, 172);
-    return '<text x="' + p[0] + '" y="' + p[1] + '" font-size="11" fill="#5D5D5D" text-anchor="middle" font-family="Inter">' + lbl + '</text>';
-  }).join('');
-  function poligono(serie, cor, opacidade, somenteContorno) {
-    var pts = serie.map(function (v, i) { return ponto(i, v).join(','); }).join(' ');
-    return '<polygon points="' + pts + '" fill="' + (somenteContorno ? 'none' : cor) + '" fill-opacity="' + (somenteContorno ? 0 : opacidade) + '" stroke="' + cor + '" stroke-width="2.5"/>';
-  }
-  return '<svg viewBox="0 0 300 320" style="width:100%;max-width:340px;height:auto;display:block;margin:0 auto;">' +
-    aneis + eixos +
-    poligono(serieB, '#9F9F9F', 0, true) +
-    poligono(serieA, '#C89A2E', 0.32, false) +
-    rotulos +
-    '</svg>';
-}
-
-function abrirRadarModal(idx) {
-  var cs = dadosAtuais.porCS[idx];
-  var svg = radarSVG(dadosAtuais.radarEixos, cs.radar, dadosAtuais.radarEquipe);
-  document.getElementById('gestorModalBody').innerHTML =
-    '<div style="text-align:center;">' +
-    '<div style="font-family:\\'Bricolage Grotesque\\',sans-serif;font-weight:800;font-size:20px;color:#1A1A1A;margin-bottom:4px;">' + cs.nome + '</div>' +
-    '<div style="font-size:11.5px;color:#9F9F9F;margin-bottom:14px;">Score real: <strong style="color:#1A1A1A;">' + (cs.scoreReal === null ? '—' : cs.scoreReal) + '</strong></div>' +
-    svg +
-    '<div style="font-size:11px;color:#9F9F9F;margin-top:10px;"><span style="color:#C89A2E;">●</span> ' + cs.nome + ' &nbsp; <span style="color:#9F9F9F;">○</span> média da equipe</div>' +
-    '</div>';
-  document.getElementById('gestorModalOverlay').classList.add('ativo');
-}
-function fecharRadarModal() { document.getElementById('gestorModalOverlay').classList.remove('ativo'); }
-
-function carregarVisaoGestor(mes, ano) {
-  document.getElementById('gestorConteudo').style.opacity = '0.5';
-  fetchJSON_('/api/gestor/visao-geral?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function (data) {
-    dadosAtuais = data;
-    document.getElementById('gestorConteudo').style.opacity = '1';
-    renderHeader();
-    renderTabela();
-    renderRanking();
-    renderAlertas();
-  }).catch(function (err) {
-    document.getElementById('gestorConteudo').style.opacity = '1';
-    document.getElementById('gestorTabelaWrap').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>';
+function renderRadares() {
+  var el = document.getElementById('radarGrid');
+  el.innerHTML = '';
+  DADOS.porCS.forEach(function (cs, idx) {
+    var status = classificarScore(cs.scoreReal);
+    var card = document.createElement('div'); card.className = 'radar-card';
+    card.innerHTML = '<div class="radar-card-head"><span class="radar-card-name">' + cs.nome + '</span><span class="radar-card-score" style="color:' + status.cor + '">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '</span></div>'
+      + radarSVG(DADOS.radarEixos, cs.radar, 'gradFill_' + idx);
+    el.appendChild(card);
   });
 }
 
-function mudarAba(aba) {
-  var ehVisaoGeral = aba === 'visaoGeral';
-  document.getElementById('abaVisaoGeral').style.display = ehVisaoGeral ? '' : 'none';
-  document.getElementById('abaControlePerfis').style.display = ehVisaoGeral ? 'none' : '';
-  document.getElementById('tabVisaoGeral').classList.toggle('ativa', ehVisaoGeral);
-  document.getElementById('tabControlePerfis').classList.toggle('ativa', !ehVisaoGeral);
-  if (!ehVisaoGeral) { carregarGestores(); carregarCSRoster(); }
+function divergTag(manual, calc) {
+  if (manual === null || manual === undefined) return '';
+  if (calc === manual) return '<span class="diverg-tag diverg-baixa">sem divergência</span>';
+  var base = Math.max(calc, 1);
+  var diff = Math.abs(manual - calc) / base;
+  if (diff < 0.3) return '<span class="diverg-tag diverg-baixa">+' + Math.round(diff * 100) + '%</span>';
+  if (diff < 0.6) return '<span class="diverg-tag diverg-media">+' + Math.round(diff * 100) + '%</span>';
+  return '<span class="diverg-tag diverg-alta">+' + Math.round(diff * 100) + '%</span>';
 }
+
+function renderTabelaHead() {
+  var thead = document.getElementById('tabelaHead');
+  thead.innerHTML = '<th>CS</th>' + DADOS.indicadoresOrdem.map(function (k) {
+    return '<th class="num">' + (DADOS.labelsIndicador[k] || k) + '</th>';
+  }).join('') + '<th class="num">Score</th>';
+}
+function renderTabela(modo) {
+  var body = document.getElementById('tabelaBody'); body.innerHTML = '';
+  var ordenado = [...DADOS.porCS].sort(function (a, b) { return (b.scoreReal || 0) - (a.scoreReal || 0); });
+  ordenado.forEach(function (cs) {
+    var status = classificarScore(cs.scoreReal);
+    var celulas = DADOS.indicadoresOrdem.map(function (k) {
+      var i = cs.indicadores[k];
+      var unidade = i.unidade === '%' ? '%' : '';
+      var valor = (i.calculado === null || i.calculado === undefined) ? '—' : (i.calculado + unidade);
+      if (modo === 'divergencia' && i.manual !== null && i.manual !== undefined) {
+        return '<td class="num">' + valor + ' <span style="color:var(--cinza-apoio)">(decl. ' + i.manual + unidade + ')</span>' + divergTag(i.manual, i.calculado) + '</td>';
+      }
+      return '<td class="num">' + valor + '</td>';
+    }).join('');
+    body.innerHTML += '<tr><td class="name">' + cs.nome + '</td>' + celulas + '<td class="num" style="color:' + status.cor + ';font-weight:700;">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '</td></tr>';
+  });
+}
+document.querySelectorAll('.toggle-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.toggle-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderTabela(btn.dataset.mode);
+  });
+});
+
+function renderRiscos() {
+  var el = document.getElementById('riskGrid');
+  el.innerHTML = '';
+  DADOS.porCS.filter(function (cs) { return cs.alertas && cs.alertas.length > 0; }).forEach(function (cs) {
+    var status = classificarScore(cs.scoreReal);
+    var nivel = (status.nivel === 'risco' || status.nivel === 'atencao') ? status.nivel : 'atencao';
+    var card = document.createElement('div'); card.className = 'risk-card nivel-' + nivel;
+    card.innerHTML = '<div class="risk-head"><span class="risk-name">' + cs.nome + '</span><span class="risk-badge ' + nivel + '">' + status.label + '</span></div>'
+      + '<ul class="risk-list">' + cs.alertas.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul>';
+    el.appendChild(card);
+  });
+  if (!el.children.length) el.innerHTML = '<div class="gestor-empty">Nenhum alerta neste período.</div>';
+}
+
+function carregarVisaoGeral() {
+  fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
+    DADOS = data;
+    renderHero();
+    renderRanking();
+    renderRadares();
+    renderTabelaHead();
+    renderTabela('calculado');
+    renderRiscos();
+  }).catch(function (err) {
+    document.getElementById('rankingList').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
+  });
+}
+
+var MESES_GESTOR = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+var agoraGestor = new Date();
+var mesAtual = MESES_GESTOR[agoraGestor.getMonth()];
+var anoAtual = agoraGestor.getFullYear();
 
 // ============ controle de perfis: gestores ============
 
 function renderGestores(lista) {
-  if (!lista.length) { document.getElementById('listaGestores').innerHTML = '<div class="gestor-empty">Nenhum gestor cadastrado.</div>'; return; }
-  var html = lista.map(function (g) {
-    return '<div class="gestor-perfil-row"><div class="gestor-perfil-info">' +
-      '<div class="gestor-perfil-nome">' + (g.nome || g.email) + '</div>' +
-      '<div class="gestor-perfil-sub">' + g.email + '</div></div>' +
-      '<button class="gestor-perfil-remover" data-email="' + g.email + '" onclick="removerGestorUI(this.dataset.email)">Remover</button></div>';
+  var el = document.getElementById('listaGestores');
+  if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum gestor cadastrado.</div>'; return; }
+  el.innerHTML = lista.map(function (g) {
+    return '<div class="lista-item"><div><div class="lista-item-nome">' + (g.nome || g.email) + '</div><div class="lista-item-sub">' + g.email + '</div></div>'
+      + '<button class="btn-remover" data-email="' + g.email + '">Remover</button></div>';
   }).join('');
-  document.getElementById('listaGestores').innerHTML = html;
+  el.querySelectorAll('.btn-remover').forEach(function (b) { b.addEventListener('click', function () { removerGestorUI(b.dataset.email); }); });
 }
 
 function carregarGestores() {
-  fetchJSON_('/api/gestor/gestores').then(function (data) { renderGestores(data.gestores || []); })
-    .catch(function (err) { document.getElementById('listaGestores').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>'; });
-}
-
-function mostrarErroForm(msg) {
-  var el = document.getElementById('gestorFormErro');
-  el.textContent = msg;
-  el.style.display = msg ? 'block' : 'none';
-}
-
-function adicionarGestorUI() {
-  var input = document.getElementById('inputNovoGestorEmail');
-  var email = (input.value || '').trim().toLowerCase();
-  // Validação no front é só conveniência (feedback rápido) — a função adicionar_gestor no banco
-  // valida o domínio de novo antes de gravar, então nunca é a única barreira.
-  if (!/^[^@\\s]+@moaiclubedelideres\\.com$/.test(email)) {
-    mostrarErroForm('E-mail precisa terminar em @moaiclubedelideres.com');
-    return;
-  }
-  mostrarErroForm('');
-  fetch('/api/gestor/gestores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
-    .then(function (res) {
-      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
-      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
-    })
-    .then(function (data) { input.value = ''; renderGestores(data.gestores || []); })
-    .catch(function (err) { mostrarErroForm(err.message); });
+  fetchJSON_(ENDPOINT_GESTORES).then(function (data) { renderGestores(data.gestores || []); })
+    .catch(function (err) { document.getElementById('listaGestores').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>'; });
 }
 
 function removerGestorUI(email) {
   if (!window.confirm('Remover o gestor ' + email + '? Ele perde acesso à visão da área imediatamente.')) return;
-  fetch('/api/gestor/gestores?email=' + encodeURIComponent(email), { method: 'DELETE' })
-    .then(function (res) {
-      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
-      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
-    })
+  fetchJSON_(ENDPOINT_GESTORES + '?email=' + encodeURIComponent(email), { method: 'DELETE' })
     .then(function (data) { renderGestores(data.gestores || []); })
     .catch(function (err) { window.alert('Não foi possível remover: ' + err.message); });
 }
 
+var DOMINIO_GESTOR = '@moaiclubedelideres.com';
+function emailDominioValido(email) {
+  // Checagem por sufixo puro, sem regex — evita qualquer risco de escape de barra se disto
+  // (\\s, \\.) sumir num processamento de string por engano, como já aconteceu uma vez aqui.
+  return email.indexOf('@') > 0
+    && email.indexOf(' ') === -1
+    && email.length > DOMINIO_GESTOR.length
+    && email.slice(-DOMINIO_GESTOR.length) === DOMINIO_GESTOR;
+}
+
+document.getElementById('btnAddGestor').addEventListener('click', function () {
+  var input = document.getElementById('inputNovoGestor');
+  var erroEl = document.getElementById('erroGestor');
+  var email = input.value.trim().toLowerCase();
+  erroEl.textContent = '';
+  input.classList.remove('erro');
+
+  if (!emailDominioValido(email)) {
+    erroEl.textContent = 'E-mail precisa terminar em ' + DOMINIO_GESTOR;
+    input.classList.add('erro');
+    return;
+  }
+  var btn = document.getElementById('btnAddGestor');
+  btn.disabled = true;
+  fetchJSON_(ENDPOINT_GESTORES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+    .then(function (data) { input.value = ''; renderGestores(data.gestores || []); })
+    .catch(function (err) { erroEl.textContent = err.message; input.classList.add('erro'); })
+    .then(function () { btn.disabled = false; });
+});
+
 // ============ controle de perfis: roster de CS ============
 
 function renderCSRoster(lista) {
-  if (!lista.length) { document.getElementById('listaCSRoster').innerHTML = '<div class="gestor-empty">Nenhum CS cadastrado.</div>'; return; }
-  var html = lista.map(function (c) {
-    return '<div class="gestor-perfil-row"><div class="gestor-perfil-info">' +
-      '<div class="gestor-perfil-nome">' + c.nome + '</div>' +
-      '<div class="gestor-perfil-sub">' + c.nomeCompleto + ' · ' + (c.ativo ? 'ativo' : 'inativo') + '</div></div>' +
-      '<button class="gestor-switch' + (c.ativo ? ' ativo' : '') + '" data-nome="' + c.nome + '" data-ativo="' + c.ativo + '" onclick="toggleCSAtivoUI(this.dataset.nome, this.dataset.ativo !== &quot;true&quot;)" title="' + (c.ativo ? 'Inativar' : 'Reativar') + '"></button></div>';
+  var el = document.getElementById('listaCS');
+  if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS cadastrado.</div>'; return; }
+  el.innerHTML = lista.map(function (c) {
+    var checked = c.ativo ? 'checked' : '';
+    return '<div class="lista-item"><div><div class="lista-item-nome">' + c.nome + '</div><div class="lista-item-sub">' + c.nomeCompleto + '</div></div>'
+      + '<label class="switch"><input type="checkbox" ' + checked + ' data-nome="' + c.nome + '"><span class="switch-track"></span></label></div>';
   }).join('');
-  document.getElementById('listaCSRoster').innerHTML = html;
+  el.querySelectorAll('input[type=checkbox]').forEach(function (chk) {
+    chk.addEventListener('change', function () {
+      var nome = chk.dataset.nome, novoAtivo = chk.checked;
+      fetchJSON_(ENDPOINT_CS_ROSTER, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, ativo: novoAtivo }) })
+        .then(function (data) { renderCSRoster(data.roster || []); })
+        .catch(function (err) { chk.checked = !novoAtivo; window.alert('Não foi possível alterar: ' + err.message); });
+    });
+  });
 }
 
 function carregarCSRoster() {
-  fetchJSON_('/api/gestor/cs-roster').then(function (data) { renderCSRoster(data.roster || []); })
-    .catch(function (err) { document.getElementById('listaCSRoster').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>'; });
+  fetchJSON_(ENDPOINT_CS_ROSTER).then(function (data) { renderCSRoster(data.roster || []); })
+    .catch(function (err) { document.getElementById('listaCS').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>'; });
 }
 
-function toggleCSAtivoUI(nome, novoAtivo) {
-  var acao = novoAtivo ? 'reativar' : 'inativar';
-  if (!window.confirm('Confirma ' + acao + ' ' + nome + '?')) return;
-  fetch('/api/gestor/cs-roster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, ativo: novoAtivo }) })
-    .then(function (res) {
-      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
-      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
-    })
-    .then(function (data) { renderCSRoster(data.roster || []); })
-    .catch(function (err) { window.alert('Não foi possível alterar: ' + err.message); });
-}
-
-(function initGestor() {
-  var MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-  var selMes = document.getElementById('selMesGestor');
-  MESES.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
-  var agora = new Date();
-  selMes.value = MESES[agora.getMonth()];
-  document.getElementById('selAnoGestor').value = String(agora.getFullYear());
-
-  function aoMudarFiltro() {
-    carregarVisaoGestor(selMes.value, Number(document.getElementById('selAnoGestor').value));
-  }
-  selMes.onchange = aoMudarFiltro;
-  document.getElementById('selAnoGestor').onchange = aoMudarFiltro;
-  document.getElementById('btnDivergencia').onclick = alternarDivergencia;
-
-  aoMudarFiltro();
-})();
+carregarVisaoGeral();
 `;
