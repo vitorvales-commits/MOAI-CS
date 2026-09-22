@@ -170,10 +170,24 @@ export async function removerGestor(sb: SupabaseClient, email: string): Promise<
 // memória, com .range() explícito pra nunca esbarrar no limite default de 1000 linhas do
 // PostgREST (mesma lição da correção de paginação feita na Edge Function).
 
+// BUG FIX (confirmados sumindo em silêncio): o "Max Rows" da Data API do Supabase (padrão 1000)
+// corta a resposta do PostgREST no servidor mesmo pedindo um range maior — sem erro, sem aviso.
+// conselhos_status_mensal já passou de 1000 linhas, então um único range(0, 9999) só trazia as
+// primeiras ~1000, deixando o restante fora do Map em getDadosBrutos (daí membros aparecerem como
+// se não tivessem status algum). Pagina de verdade, blocos de 1000, até vir uma página incompleta.
 async function fetchAll(sb: SupabaseClient, table: string) {
-  const { data, error } = await sb.from(table).select('*').range(0, 9999);
-  if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
-  return data || [];
+  const PAGE_SIZE = 1000;
+  let allRows: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await sb.from(table).select('*').range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
+    if (!data || data.length === 0) break;
+    allRows = allRows.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return allRows;
 }
 
 export async function getDadosBrutos(sb: SupabaseClient) {
