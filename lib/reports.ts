@@ -425,6 +425,12 @@ function parseConselhoItems(
 
   // TEMP DEBUG (investigação bug "confirmados" divergindo do Monday — remover depois de achar a causa)
   console.log(`[CONSELHO_DEBUG] ${new Date().toISOString()} grupo="${nomeGrupo}" meses=[${mesesRelevantes.join(',')}] brutos=${confirmados.length} dedup=${confirmadosDeduplicados.length} nomes=[${confirmadosDeduplicados.map((c) => c.nome + '/' + c.mes).join('; ')}]`);
+  const _debugMembros = itemsPrincipais.map((m) => ({
+    id: m.id,
+    idTipo: typeof m.id,
+    nome: m.nome,
+    statusSetembro: statusPorMembro.get(m.id)?.get('Setembro') ?? 'SEM_MATCH',
+  }));
 
   return {
     nome: nomeGrupo, congelado, membros: membrosBase,
@@ -435,6 +441,7 @@ function parseConselhoItems(
     status: temDado ? 'realizado' : 'aguardando_confirmacao',
     membrosDetalhe: membrosDetalhe.map((m) => ({ nome: m.nome, reposicao: m.reposicao, taxa: m.registros > 0 ? Math.round((m.presente / m.registros) * 100) : null })),
     confirmadosFuturos: confirmadosDeduplicados,
+    _debugMembros,
     proximaData: proximoConselho ? proximoConselho.dataIso : null,
     proximaDataEhFutura: proximoConselho ? proximoConselho.futuro : null,
     proximaDataStatus: proximoConselho ? proximoConselho.status : null,
