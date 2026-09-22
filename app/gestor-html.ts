@@ -319,7 +319,7 @@ function adicionarGestorUI() {
   var email = (input.value || '').trim().toLowerCase();
   // Validação no front é só conveniência (feedback rápido) — a função adicionar_gestor no banco
   // valida o domínio de novo antes de gravar, então nunca é a única barreira.
-  if (!/^[^@\s]+@moaiclubedelideres\.com$/.test(email)) {
+  if (!/^[^@\\s]+@moaiclubedelideres\\.com$/.test(email)) {
     mostrarErroForm('E-mail precisa terminar em @moaiclubedelideres.com');
     return;
   }
