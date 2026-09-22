@@ -7,6 +7,7 @@
 // ler do Postgres já é rápido o bastante — era o Monday que exigia cache agressivo.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { unstable_noStore as noStore } from 'next/cache';
 import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
@@ -176,6 +177,7 @@ async function fetchAll(sb: SupabaseClient, table: string) {
 }
 
 export async function getDadosBrutos(sb: SupabaseClient) {
+  noStore();
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico,
