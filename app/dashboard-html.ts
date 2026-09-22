@@ -396,6 +396,12 @@ function fetchJSON_(url, opts) {
   opts = opts || {};
   opts.cache = 'no-store';
   return fetch(url, opts).then(function (res) {
+    // Sessão expirada ou domínio não autorizado (401/403 de requireMoaiUser() em qualquer rota):
+    // manda de volta pro /login em vez de deixar a tela tentar renderizar um erro genérico.
+    if (res.status === 401 || res.status === 403) {
+      window.location.href = '/login';
+      return new Promise(function () {});
+    }
     return res.json().then(function (data) {
       if (!res.ok) throw new Error((data && data.error) || ('Erro ' + res.status));
       return data;

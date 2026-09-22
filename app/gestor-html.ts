@@ -52,6 +52,25 @@ table.gestor-table tr.gestor-row:hover { background:#F9F9F9; }
 .gestor-modal { background:#fff; border-radius:26px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; padding:32px; position:relative; }
 .gestor-modal-close { position:absolute; top:20px; right:20px; width:32px; height:32px; border-radius:50%; background:#F5F5F5; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; color:#5D5D5D; }
 .gestor-modal-close:hover { background:#E9E9E9; }
+.gestor-tabs { max-width:1040px; margin:0 auto; padding:0 28px; display:flex; gap:6px; border-bottom:0.75pt solid #D8D5D5; }
+.gestor-tab { background:none; border:none; padding:14px 4px; margin-right:22px; font-family:'Inter',sans-serif; font-size:12.5px; font-weight:700; color:#9F9F9F; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-0.75pt; }
+.gestor-tab.ativa { color:#1A1A1A; border-bottom-color:#C89A2E; }
+.gestor-perfil-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:0.75pt solid #EEECEC; }
+.gestor-perfil-row:last-child { border-bottom:none; }
+.gestor-perfil-info { flex:1; min-width:0; }
+.gestor-perfil-nome { font-weight:800; color:#1A1A1A; font-size:12.5px; }
+.gestor-perfil-sub { font-size:11px; color:#9F9F9F; margin-top:1px; }
+.gestor-perfil-remover { background:none; border:0.75pt solid #E3BDBB; color:#C0433D; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; }
+.gestor-perfil-remover:hover { background:#FBEEED; }
+.gestor-form-add { display:flex; gap:8px; margin-bottom:18px; }
+.gestor-form-add input { flex:1; border:0.75pt solid #D8D5D5; border-radius:10px; padding:9px 12px; font-size:12.5px; font-family:'Inter',sans-serif; }
+.gestor-form-add input:focus { outline:none; border-color:#C89A2E; }
+.gestor-form-add button { background:#1A1A1A; color:#fff; border:none; border-radius:10px; padding:9px 18px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.gestor-form-erro { color:#C0433D; font-size:11.5px; margin:-10px 0 14px; }
+.gestor-switch { position:relative; width:38px; height:22px; border-radius:99px; background:#D8D5D5; border:none; cursor:pointer; flex-shrink:0; }
+.gestor-switch::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .15s; }
+.gestor-switch.ativo { background:#3D8B5F; }
+.gestor-switch.ativo::after { left:18px; }
 `;
 
 export const GESTOR_HTML = `
@@ -74,16 +93,40 @@ export const GESTOR_HTML = `
     </div>
   </div>
 
-  <div class="gestor-body" id="gestorConteudo">
-    <div class="gestor-section-title">Indicadores por CS (valor calculado)<div class="line"></div></div>
-    <button class="gestor-toggle-btn" id="btnDivergencia">Ver divergência</button>
-    <div class="gestor-card"><div id="gestorTabelaWrap"><div class="gestor-empty">Carregando...</div></div></div>
+  <div class="gestor-tabs">
+    <button class="gestor-tab ativa" id="tabVisaoGeral" onclick="mudarAba('visaoGeral')">Visão geral</button>
+    <button class="gestor-tab" id="tabControlePerfis" onclick="mudarAba('controlePerfis')">Controle de perfis</button>
+  </div>
 
-    <div class="gestor-section-title">Ranking (score real)<div class="line"></div></div>
-    <div class="gestor-card"><div id="gestorRanking"><div class="gestor-empty">Carregando...</div></div></div>
+  <div class="gestor-body" id="abaVisaoGeral">
+    <div id="gestorConteudo">
+      <div class="gestor-section-title">Indicadores por CS (valor calculado)<div class="line"></div></div>
+      <button class="gestor-toggle-btn" id="btnDivergencia">Ver divergência</button>
+      <div class="gestor-card"><div id="gestorTabelaWrap"><div class="gestor-empty">Carregando...</div></div></div>
 
-    <div class="gestor-section-title">Alertas<div class="line"></div></div>
-    <div class="gestor-card"><div id="gestorAlertas"><div class="gestor-empty">Carregando...</div></div></div>
+      <div class="gestor-section-title">Ranking (score real)<div class="line"></div></div>
+      <div class="gestor-card"><div id="gestorRanking"><div class="gestor-empty">Carregando...</div></div></div>
+
+      <div class="gestor-section-title">Alertas<div class="line"></div></div>
+      <div class="gestor-card"><div id="gestorAlertas"><div class="gestor-empty">Carregando...</div></div></div>
+    </div>
+  </div>
+
+  <div class="gestor-body" id="abaControlePerfis" style="display:none;">
+    <div class="gestor-section-title">Gestores<div class="line"></div></div>
+    <div class="gestor-card">
+      <div class="gestor-form-add">
+        <input type="email" id="inputNovoGestorEmail" placeholder="nome@moaiclubedelideres.com" />
+        <button onclick="adicionarGestorUI()">Adicionar</button>
+      </div>
+      <div id="gestorFormErro" class="gestor-form-erro" style="display:none;"></div>
+      <div id="listaGestores"><div class="gestor-empty">Carregando...</div></div>
+    </div>
+
+    <div class="gestor-section-title">CS ativos<div class="line"></div></div>
+    <div class="gestor-card">
+      <div id="listaCSRoster"><div class="gestor-empty">Carregando...</div></div>
+    </div>
   </div>
 </div>
 
@@ -98,6 +141,12 @@ export const GESTOR_HTML = `
 export const GESTOR_SCRIPT = `
 function fetchJSON_(url) {
   return fetch(url, { cache: 'no-store' }).then(function (res) {
+    // Mesmo comportamento do dashboard: sessão expirada ou acesso negado (401/403) manda de
+    // volta pro /login em vez de tentar renderizar um erro genérico na tela do gestor.
+    if (res.status === 401 || res.status === 403) {
+      window.location.href = '/login';
+      return new Promise(function () {});
+    }
     return res.json().then(function (data) {
       if (!res.ok) throw new Error((data && data.error) || ('Erro ' + res.status));
       return data;
@@ -230,6 +279,99 @@ function carregarVisaoGestor(mes, ano) {
     document.getElementById('gestorConteudo').style.opacity = '1';
     document.getElementById('gestorTabelaWrap').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>';
   });
+}
+
+function mudarAba(aba) {
+  var ehVisaoGeral = aba === 'visaoGeral';
+  document.getElementById('abaVisaoGeral').style.display = ehVisaoGeral ? '' : 'none';
+  document.getElementById('abaControlePerfis').style.display = ehVisaoGeral ? 'none' : '';
+  document.getElementById('tabVisaoGeral').classList.toggle('ativa', ehVisaoGeral);
+  document.getElementById('tabControlePerfis').classList.toggle('ativa', !ehVisaoGeral);
+  if (!ehVisaoGeral) { carregarGestores(); carregarCSRoster(); }
+}
+
+// ============ controle de perfis: gestores ============
+
+function renderGestores(lista) {
+  if (!lista.length) { document.getElementById('listaGestores').innerHTML = '<div class="gestor-empty">Nenhum gestor cadastrado.</div>'; return; }
+  var html = lista.map(function (g) {
+    return '<div class="gestor-perfil-row"><div class="gestor-perfil-info">' +
+      '<div class="gestor-perfil-nome">' + (g.nome || g.email) + '</div>' +
+      '<div class="gestor-perfil-sub">' + g.email + '</div></div>' +
+      '<button class="gestor-perfil-remover" data-email="' + g.email + '" onclick="removerGestorUI(this.dataset.email)">Remover</button></div>';
+  }).join('');
+  document.getElementById('listaGestores').innerHTML = html;
+}
+
+function carregarGestores() {
+  fetchJSON_('/api/gestor/gestores').then(function (data) { renderGestores(data.gestores || []); })
+    .catch(function (err) { document.getElementById('listaGestores').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>'; });
+}
+
+function mostrarErroForm(msg) {
+  var el = document.getElementById('gestorFormErro');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function adicionarGestorUI() {
+  var input = document.getElementById('inputNovoGestorEmail');
+  var email = (input.value || '').trim().toLowerCase();
+  // Validação no front é só conveniência (feedback rápido) — a função adicionar_gestor no banco
+  // valida o domínio de novo antes de gravar, então nunca é a única barreira.
+  if (!/^[^@\s]+@moaiclubedelideres\.com$/.test(email)) {
+    mostrarErroForm('E-mail precisa terminar em @moaiclubedelideres.com');
+    return;
+  }
+  mostrarErroForm('');
+  fetch('/api/gestor/gestores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+    .then(function (res) {
+      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
+      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
+    })
+    .then(function (data) { input.value = ''; renderGestores(data.gestores || []); })
+    .catch(function (err) { mostrarErroForm(err.message); });
+}
+
+function removerGestorUI(email) {
+  if (!window.confirm('Remover o gestor ' + email + '? Ele perde acesso à visão da área imediatamente.')) return;
+  fetch('/api/gestor/gestores?email=' + encodeURIComponent(email), { method: 'DELETE' })
+    .then(function (res) {
+      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
+      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
+    })
+    .then(function (data) { renderGestores(data.gestores || []); })
+    .catch(function (err) { window.alert('Não foi possível remover: ' + err.message); });
+}
+
+// ============ controle de perfis: roster de CS ============
+
+function renderCSRoster(lista) {
+  if (!lista.length) { document.getElementById('listaCSRoster').innerHTML = '<div class="gestor-empty">Nenhum CS cadastrado.</div>'; return; }
+  var html = lista.map(function (c) {
+    return '<div class="gestor-perfil-row"><div class="gestor-perfil-info">' +
+      '<div class="gestor-perfil-nome">' + c.nome + '</div>' +
+      '<div class="gestor-perfil-sub">' + c.nomeCompleto + ' · ' + (c.ativo ? 'ativo' : 'inativo') + '</div></div>' +
+      '<button class="gestor-switch' + (c.ativo ? ' ativo' : '') + '" data-nome="' + c.nome + '" data-ativo="' + c.ativo + '" onclick="toggleCSAtivoUI(this.dataset.nome, this.dataset.ativo !== &quot;true&quot;)" title="' + (c.ativo ? 'Inativar' : 'Reativar') + '"></button></div>';
+  }).join('');
+  document.getElementById('listaCSRoster').innerHTML = html;
+}
+
+function carregarCSRoster() {
+  fetchJSON_('/api/gestor/cs-roster').then(function (data) { renderCSRoster(data.roster || []); })
+    .catch(function (err) { document.getElementById('listaCSRoster').innerHTML = '<div class="gestor-empty">Erro ao carregar: ' + err.message + '</div>'; });
+}
+
+function toggleCSAtivoUI(nome, novoAtivo) {
+  var acao = novoAtivo ? 'reativar' : 'inativar';
+  if (!window.confirm('Confirma ' + acao + ' ' + nome + '?')) return;
+  fetch('/api/gestor/cs-roster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, ativo: novoAtivo }) })
+    .then(function (res) {
+      if (res.status === 401 || res.status === 403) { window.location.href = '/login'; return new Promise(function () {}); }
+      return res.json().then(function (data) { if (!res.ok) throw new Error(data.error || ('Erro ' + res.status)); return data; });
+    })
+    .then(function (data) { renderCSRoster(data.roster || []); })
+    .catch(function (err) { window.alert('Não foi possível alterar: ' + err.message); });
 }
 
 (function initGestor() {

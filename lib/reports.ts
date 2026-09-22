@@ -126,6 +126,44 @@ export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: 
   return data as number;
 }
 
+// ============ controle de perfis (aba do gestor) ============
+// Roster ADMIN (ativos e inativos juntos, pra tela de toggle) — diferente de getCSListCompleto
+// (só ativo=true, usado pelo resto do app). cs_config já tem policy de SELECT liberada pra
+// qualquer authenticated, então um select direto funciona; a restrição de quem pode VER essa
+// lista com inativos e quem pode TOGGLAR fica a cargo da rota de API (checa isGestor antes).
+export type CSRosterAdminItem = { nome: string; nomeCompleto: string; ativo: boolean };
+export async function getCSRosterAdmin(sb: SupabaseClient): Promise<CSRosterAdminItem[]> {
+  const { data, error } = await sb.from('cs_config').select('nome, nome_completo, ativo').order('nome');
+  if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
+  return (data || []).map((r: any) => ({ nome: r.nome, nomeCompleto: r.nome_completo, ativo: !!r.ativo }));
+}
+// set_cs_ativo (SECURITY DEFINER) checa is_gestor() de novo dentro do banco e grava auditoria —
+// mesmo padrão de setVezesDestaque/set_destaque, só que restrito a gestor (não a qualquer moai
+// user), já que inativar um CS tira ele do roster corrente da equipe inteira.
+export async function setCSAtivo(sb: SupabaseClient, nome: string, ativo: boolean): Promise<boolean> {
+  const { data, error } = await sb.rpc('set_cs_ativo', { p_nome: nome, p_ativo: ativo });
+  if (error) throw new Error('Erro ao alterar status do CS: ' + error.message);
+  return data as boolean;
+}
+
+// gestores: tabela sem NENHUMA policy (RLS deny-all) — só dá pra ler/escrever via essas três
+// funções SECURITY DEFINER (listar_gestores/adicionar_gestor/remover_gestor), que checam
+// is_gestor() dentro do banco antes de qualquer coisa.
+export type GestorItem = { email: string; nome: string | null; criadoEm: string };
+export async function listarGestores(sb: SupabaseClient): Promise<GestorItem[]> {
+  const { data, error } = await sb.rpc('listar_gestores');
+  if (error) throw new Error('Erro ao listar gestores: ' + error.message);
+  return (data || []).map((r: any) => ({ email: r.email, nome: r.nome, criadoEm: r.criado_em }));
+}
+export async function adicionarGestor(sb: SupabaseClient, email: string): Promise<void> {
+  const { error } = await sb.rpc('adicionar_gestor', { p_email: email });
+  if (error) throw new Error(error.message);
+}
+export async function removerGestor(sb: SupabaseClient, email: string): Promise<void> {
+  const { error } = await sb.rpc('remover_gestor', { p_email: email });
+  if (error) throw new Error(error.message);
+}
+
 // ============ busca única de dados brutos (equivalente a getDadosBrutos_) ============
 // Tabelas são pequenas o bastante (centenas de linhas) pra buscar por inteiro e filtrar em
 // memória, com .range() explícito pra nunca esbarrar no limite default de 1000 linhas do
@@ -365,6 +403,24 @@ function parseConselhoItems(
   const nomeGrupo = groupTitle.replace(/\[?congelado\]?/i, '').trim();
   const membrosBase = itemsPrincipais.length;
   const proximoConselho = proximaDataConselho(groupTitle, agendaMap);
+
+  // BUG FIX (confirmados inflados em "Visão Geral"): no board do Monday, a coluna de status de um
+  // mês já resolvido às vezes fica esquecida em "Confirmado" em vez de ser atualizada pra
+  // Presente/Ausente depois da reunião (achado real, verificado direto no board: ex. membro
+  // 10866669928 tinha "Confirmado" tanto em Fevereiro quanto em Abril). Como mesesRelevantes
+  // percorre os 12 meses em "Visão Geral", isso fazia a MESMA pessoa entrar duas ou mais vezes em
+  // confirmadosFuturos — inflando o card "N confirmado(s)". "Confirmado" só faz sentido pra
+  // próxima reunião pendente da pessoa, então aqui deduplicamos por nome, mantendo a ocorrência
+  // do mês cronologicamente mais recente (a mais provável de ainda ser válida, não esquecida).
+  const confirmadosPorNome = new Map<string, { nome: string; mes: string }>();
+  confirmados.forEach((c) => {
+    const atual = confirmadosPorNome.get(c.nome);
+    if (!atual || MESES_ORDEM.indexOf(c.mes) > MESES_ORDEM.indexOf(atual.mes)) {
+      confirmadosPorNome.set(c.nome, c);
+    }
+  });
+  const confirmadosDeduplicados = [...confirmadosPorNome.values()];
+
   return {
     nome: nomeGrupo, congelado, membros: membrosBase,
     presente: temDado ? presentes : null,
@@ -373,7 +429,7 @@ function parseConselhoItems(
     registros: temDado ? agendados : null,
     status: temDado ? 'realizado' : 'aguardando_confirmacao',
     membrosDetalhe: membrosDetalhe.map((m) => ({ nome: m.nome, reposicao: m.reposicao, taxa: m.registros > 0 ? Math.round((m.presente / m.registros) * 100) : null })),
-    confirmadosFuturos: confirmados,
+    confirmadosFuturos: confirmadosDeduplicados,
     proximaData: proximoConselho ? proximoConselho.dataIso : null,
     proximaDataEhFutura: proximoConselho ? proximoConselho.futuro : null,
     proximaDataStatus: proximoConselho ? proximoConselho.status : null,
