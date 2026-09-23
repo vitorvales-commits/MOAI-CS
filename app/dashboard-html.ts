@@ -169,6 +169,12 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .hero-grid .dark-card { display:flex; flex-direction:column; justify-content:center; }
 .mini-stats { display:grid; grid-template-columns:1fr 1fr; gap: 14px; }
 .mini-stat { background:#242424; border-radius:16px; padding:14px 16px; }
+.presenca-modal-flex { display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin:10px 0 18px; }
+.legenda-modal { display:flex; flex-direction:column; gap:6px; font-size:12.5px; color:#5D5D5D; }
+.legenda-modal-item { display:flex; align-items:center; gap:7px; }
+.legenda-modal-dot { width:9px; height:9px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.legenda-modal-item b { color:#1A1A1A; }
+.legenda-modal-obs { font-size:10.5px; color:#9F9F9F; max-width:240px; margin-top:2px; }
 
 .diag { background:#fff; border:0.75pt solid #D8D5D5; border-radius:20px; padding:18px 20px; }
 .diag-title { font-size: 10.5px; font-weight: 800; color: #9F9F9F; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
@@ -1119,6 +1125,41 @@ function fecharConselhoModal(){ document.getElementById('conselhoModalOverlay').
 // busca um MÊS específico (nunca "Visão Geral") — se o filtro geral do dashboard estiver em
 // "Visão Geral", usa o mês corrente de verdade (hoje), já que um resumo rápido de card não faz
 // sentido como agregado do ano inteiro; a "Visão Geral" de verdade fica na página completa.
+// mesma técnica de app/conselho-html.ts (pizzaPresencaSVG/legendaPresenca) — duplicada aqui de
+// propósito: cada página deste dashboard é um script vanilla autossuficiente, sem módulo
+// compartilhado entre dashboard-html.ts e conselho-html.ts.
+function pizzaPresencaModalSVG(p){
+  var r = 40, c = 2 * Math.PI * r;
+  var fatias = [
+    { valor: p.presente, cor: '#3D8B5F' },
+    { valor: p.noShow, cor: '#C0433D' },
+    { valor: p.faltouSemConfirmacaoRegistrada, cor: '#C89A2E' },
+  ].filter(function(f){ return f.valor > 0; });
+  var offset = 0;
+  var circulos = fatias.map(function(f){
+    var comprimento = (f.valor / p.totalAgendados) * c;
+    var svg = '<circle cx="52" cy="52" r="'+r+'" fill="none" stroke="'+f.cor+'" stroke-width="14" ' +
+      'stroke-dasharray="'+comprimento+' '+(c-comprimento)+'" stroke-dashoffset="'+(-offset)+'" transform="rotate(-90 52 52)"></circle>';
+    offset += comprimento;
+    return svg;
+  }).join('');
+  var label = p.taxaPresenca === null ? '—' : (p.taxaPresenca + '%');
+  return '<svg width="104" height="104" viewBox="0 0 104 104">' + circulos +
+    '<text x="52" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="17" font-weight="700" fill="#1A1A1A">' + label + '</text></svg>';
+}
+function legendaPresencaModal(p){
+  var itens = [
+    { label: 'Presente', valor: p.presente, cor: '#3D8B5F' },
+    { label: 'No-show', valor: p.noShow, cor: '#C0433D' },
+    { label: 'Faltou', valor: p.faltouSemConfirmacaoRegistrada, cor: '#C89A2E' },
+  ];
+  var html = itens.map(function(i){
+    return '<div class="legenda-modal-item"><span class="legenda-modal-dot" style="background:'+i.cor+'"></span>'+i.label+' <b>'+i.valor+'</b></div>';
+  }).join('');
+  html += '<div class="legenda-modal-obs">No-show só a partir de 23/set/2026.</div>';
+  return html;
+}
+
 function carregarImpactoPeriodoModal(groupId){
   var mesResumo = (currentMes === 'Visão Geral') ? MESES[new Date().getMonth()] : currentMes;
   fetchJSON_('/api/conselho/' + encodeURIComponent(groupId) + '?mes=' + encodeURIComponent(mesResumo) + '&ano=' + encodeURIComponent(currentAno)).then(function(d){
@@ -1132,6 +1173,11 @@ function carregarImpactoPeriodoModal(groupId){
       '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Cases de sucesso</div><div class="dark-value num">'+m.totalCases+'</div></div>' +
       '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Presença</div><div class="dark-value num">'+presencaTxt+'</div></div>' +
       '</div>';
+
+    if (d.presencaMes && d.presencaMes.totalAgendados) {
+      html += '<div class="case-modal-label">Taxa de presença geral em ' + d.presencaMes.mes + '</div>' +
+        '<div class="presenca-modal-flex">' + pizzaPresencaModalSVG(d.presencaMes) + '<div class="legenda-modal">' + legendaPresencaModal(d.presencaMes) + '</div></div>';
+    }
 
     html += '<div class="case-modal-label" style="margin-bottom:8px;">Desafio e compromisso do mês, por membro</div>';
     if (!d.membros.length) {

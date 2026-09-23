@@ -47,6 +47,14 @@ select.pick{background:var(--branco);border:1px solid var(--cinza-borda);border-
 .block{margin-top:44px;}
 .block h2{font-size:19px;font-weight:700;margin:0 0 16px;}
 
+.presenca-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:20px;}
+.presenca-flex{display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
+.legenda{display:flex;flex-direction:column;gap:8px;font-size:13px;}
+.legenda-item{display:flex;align-items:center;gap:8px;color:var(--cinza-texto);}
+.legenda-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.legenda-item b{color:var(--preto-tinta);}
+.legenda-obs{font-size:11.5px;color:var(--cinza-apoio);margin-top:4px;max-width:280px;}
+
 .encontros-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;overflow:hidden;}
 .encontro-row{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--cinza-linha);font-size:13px;}
 .encontro-row:last-child{border-bottom:none;}
@@ -95,6 +103,11 @@ export const CONSELHO_HTML = `
       <select class="pick" id="selAnoConselho"><option>2025</option><option>2026</option><option>2027</option></select>
     </div>
     <div class="metric-grid" id="metricGrid"></div>
+  </section>
+
+  <section class="block">
+    <h2>Presença geral em <span id="presencaMesLabel"></span></h2>
+    <div class="presenca-card" id="presencaCard"><div class="empty">Carregando…</div></div>
   </section>
 
   <section class="block">
@@ -168,6 +181,52 @@ function renderMetricas(d) {
   }).join('');
 }
 
+// pizza de presença via SVG puro (sem lib de gráfico — CSP só libera script-src 'self'): um
+// círculo por fatia, cada um com stroke-dasharray/stroke-dashoffset cobrindo só o trecho da fatia.
+function pizzaPresencaSVG(p) {
+  var r = 46, c = 2 * Math.PI * r;
+  var fatias = [
+    { valor: p.presente, cor: '#3D8B5F' },
+    { valor: p.noShow, cor: '#C0433D' },
+    { valor: p.faltouSemConfirmacaoRegistrada, cor: '#C89A2E' },
+  ].filter(function (f) { return f.valor > 0; });
+  var offset = 0;
+  var circulos = fatias.map(function (f) {
+    var comprimento = (f.valor / p.totalAgendados) * c;
+    var svg = '<circle cx="60" cy="60" r="' + r + '" fill="none" stroke="' + f.cor + '" stroke-width="16" ' +
+      'stroke-dasharray="' + comprimento + ' ' + (c - comprimento) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 60 60)"></circle>';
+    offset += comprimento;
+    return svg;
+  }).join('');
+  var label = p.taxaPresenca === null ? '—' : (p.taxaPresenca + '%');
+  return '<svg width="120" height="120" viewBox="0 0 120 120">' + circulos +
+    '<text x="60" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="700" fill="#1A1A1A">' + label + '</text></svg>';
+}
+
+function legendaPresenca(p) {
+  var itens = [
+    { label: 'Presente', valor: p.presente, cor: '#3D8B5F' },
+    { label: 'No-show (confirmou e faltou)', valor: p.noShow, cor: '#C0433D' },
+    { label: 'Faltou', valor: p.faltouSemConfirmacaoRegistrada, cor: '#C89A2E' },
+  ];
+  var html = itens.map(function (i) {
+    return '<div class="legenda-item"><span class="legenda-dot" style="background:' + i.cor + '"></span>' + i.label + ' <b>' + i.valor + '</b></div>';
+  }).join('');
+  html += '<div class="legenda-obs">No-show só é detectado a partir de 23/set/2026 (início do log de transição de status) — faltas anteriores a essa data caem em "Faltou".</div>';
+  return html;
+}
+
+function renderPresenca(d) {
+  var p = d.presencaMes;
+  document.getElementById('presencaMesLabel').textContent = p.mes;
+  var el = document.getElementById('presencaCard');
+  if (!p.totalAgendados) {
+    el.innerHTML = '<div class="empty">Nenhum dado de presença registrado para ' + p.mes + '.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="presenca-flex">' + pizzaPresencaSVG(p) + '<div class="legenda">' + legendaPresenca(p) + '</div></div>';
+}
+
 function renderEncontros(d) {
   var el = document.getElementById('encontrosList');
   if (!d.encontros.length) { el.innerHTML = '<div class="empty">Nenhum encontro registrado neste período.</div>'; return; }
@@ -223,10 +282,12 @@ function carregarConselho(mes, ano) {
   fetchJSON_('/api/conselho/' + encodeURIComponent(GROUP_ID) + '?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function (d) {
     renderHero(d);
     renderMetricas(d);
+    renderPresenca(d);
     renderEncontros(d);
     renderMembros(d);
   }).catch(function (err) {
     document.getElementById('metricGrid').innerHTML = '';
+    document.getElementById('presencaCard').innerHTML = '';
     document.getElementById('encontrosList').innerHTML = '<div class="erro">Erro ao carregar: ' + err.message + '</div>';
     document.getElementById('membrosList').innerHTML = '';
     document.getElementById('heroTitulo').textContent = 'Não foi possível carregar este conselho';

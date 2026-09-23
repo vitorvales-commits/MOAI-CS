@@ -195,16 +195,19 @@ export async function getDadosBrutos(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
+    statusHistorico, conselheirosFotos,
   ] = await Promise.all([
     fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
     fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
     fetchAll(sb, 'matchmakings_items'), fetchAll(sb, 'conselhos_grupos'), fetchAll(sb, 'conselhos_membros'),
     fetchAll(sb, 'conselhos_status_mensal'), fetchAll(sb, 'agenda_conselhos_items'), fetchAll(sb, 'historico_conselhos_items'),
     fetchAll(sb, 'atas_conselho_extraido'),
+    fetchAll(sb, 'conselhos_status_historico'), fetchAll(sb, 'conselheiros_fotos'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
+    statusHistorico, conselheirosFotos,
   };
 }
 export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
@@ -462,6 +465,52 @@ function parseConselhoItems(
     proximaDataEhFutura: proximoConselho ? proximoConselho.futuro : null,
     proximaDataStatus: proximoConselho ? proximoConselho.status : null,
     gtd: null as null | { taxaCumprimento: number | null; dataConselho: string | null; etapas: any[]; etapasAtrasadas: string[] },
+  };
+}
+
+// ============ presença/no-show de um mês específico ============
+// Pizza de "taxa de presença geral" pedida pelo Vitor — sempre um mês concreto (nunca o período
+// inteiro somado, que não faz sentido numa pizza). "Visão Geral" resolve pro mês real atual (ver
+// mesAtualReal), nunca soma os 12 meses.
+//
+// No-show = confirmou presença (status "Confirmado" em algum momento) e o status final do
+// mês virou falta (Ausente/Não vai) — só é detectável a partir de conselhos_status_historico, um
+// log que só existe a partir de 23/09/2026 (ver nota v12 na Edge Function sync-monday). Setembro
+// de 2026 é o "mês zero": meses anteriores a essa data não têm histórico de transição, então toda
+// falta anterior cai em "faltouSemConfirmacaoRegistrada" — não porque a pessoa não confirmou, mas
+// porque o pipeline não tinha como saber. O card assim explicita "comece com o que você tiver"
+// (pedido do Vitor) sem fingir um dado que a gente não tem.
+export function mesAtualReal(): string {
+  return MESES_ORDEM[new Date().getMonth()];
+}
+
+export type PresencaMes = {
+  mes: string; totalAgendados: number; presente: number; noShow: number; faltouSemConfirmacaoRegistrada: number;
+  taxaPresenca: number | null;
+};
+
+function calcularPresencaMes(
+  itemsPrincipais: any[], itemsRepo: any[], mes: string,
+  statusPorMembro: Map<number, Map<string, string>>,
+  historicoPorMembroMes: Map<string, { statusAnterior: string | null }[]>,
+): PresencaMes {
+  let presente = 0, noShow = 0, faltou = 0;
+  const confirmouAntes = (membroId: number) => {
+    const transicoes = historicoPorMembroMes.get(`${membroId}|${mes}`) || [];
+    return transicoes.some((t) => t.statusAnterior === STATUS_CONFIRMADO);
+  };
+  [...itemsPrincipais, ...itemsRepo].forEach((m) => {
+    const s = statusPorMembro.get(m.id)?.get(mes) || null;
+    if (s === STATUS_PRESENTE) presente++;
+    else if (s && STATUS_AUSENTE_SET.includes(s)) {
+      if (confirmouAntes(m.id)) noShow++;
+      else faltou++;
+    }
+  });
+  const total = presente + noShow + faltou;
+  return {
+    mes, totalAgendados: total, presente, noShow, faltouSemConfirmacaoRegistrada: faltou,
+    taxaPresenca: total > 0 ? Math.round((presente / total) * 100) : null,
   };
 }
 
@@ -1099,6 +1148,17 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
 
   const resumo = parseConselhoItems(itemsPrincipais, itemsRepo, grupo.titulo, grupo.congelado, mesesRelevantes, statusPorMembro, agendaMap, grupo.group_id);
 
+  // pizza de presença: sempre um mês concreto — "Visão Geral" resolve pro mês real atual (ver
+  // comentário em calcularPresencaMes/mesAtualReal).
+  const historicoPorMembroMes = new Map<string, { statusAnterior: string | null }[]>();
+  dados.statusHistorico.forEach((h: any) => {
+    const chave = `${h.membro_id}|${h.mes}`;
+    if (!historicoPorMembroMes.has(chave)) historicoPorMembroMes.set(chave, []);
+    historicoPorMembroMes.get(chave)!.push({ statusAnterior: h.status_anterior });
+  });
+  const mesPresenca = geral ? mesAtualReal() : seletorMes;
+  const presencaMes = calcularPresencaMes(itemsPrincipais, itemsRepo, mesPresenca, statusPorMembro, historicoPorMembroMes);
+
   // nível / conselheiro / CS responsável a partir do título, ex. "Fast Track | Julio Faccioli (Vitor)"
   const contato = extrairContatoDoTitulo(grupo.titulo);
   const nivelMatch = grupo.titulo.match(/^(.*?)\s*\|/);
@@ -1166,14 +1226,15 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     return { mes, presentes: presentesNoMes, agendados: agendadosNoMes };
   }).filter((e) => e.agendados > 0);
 
+  const fotoConselheiro = contato
+    ? dados.conselheirosFotos.find((f: any) => normalizeNome(f.conselheiro_nome) === normalizeNome(contato))
+    : null;
+
   return {
     grupo: {
       groupId: grupo.group_id, titulo: resumo.nome, nivel, conselheiro: contato, csResponsavel,
       congelado: grupo.congelado,
-      // TODO(fotos dos conselheiros): preencher a partir de conselheiros_fotos quando essa
-      // tabela/pipeline existir (sync-monday baixando do board "Conselheiros 2026"). Até lá, a
-      // página mostra o nome do conselheiro sem foto, sem quebrar nada.
-      fotoConselheiroUrl: null as string | null,
+      fotoConselheiroUrl: fotoConselheiro?.foto_base64 || null,
     },
     periodo: { mes: seletorMes, ano, geral },
     metricas: {
@@ -1183,6 +1244,7 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
       totalOportunidadesMapeadas,
       healthscore,
     },
+    presencaMes,
     encontros,
     membros,
   };

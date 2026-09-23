@@ -57,6 +57,24 @@
 // APELIDOS_AGENDA no app Next.js — qualquer grupo ativo sem entrada válida
 // no mapa, registrando um aviso no log quando cai nesse caminho (ou quando
 // nem por nome encontra nada). Ver resolverRepoGroupIdPorNome.
+//
+// v12 (23/09/2026 — pedido do Vitor): duas coisas novas, ambas alimentando o
+// drill down do conselho (lib/reports.ts no Next.js):
+// (1) syncConselheirosFotos baixa a foto de cada conselheiro do board
+//     "Conselheiros 2026" (coluna file_mm519xd1, tipo file) e guarda como
+//     data URI base64 em conselheiros_fotos — a URL que o Monday devolve pro
+//     asset (S3 assinado, "protected_static") expira em 1h, não dá pra só
+//     guardar a URL. Throttle: só baixa de novo quando o assetId mudou (foto
+//     trocada de verdade), comparando com monday_asset_id já salvo — o board
+//     tem só ~35 itens e a foto quase nunca muda, então isso normalmente é
+//     zero downloads por execução.
+// (2) syncConselhos agora compara, antes de sobrescrever, o status
+//     anterior x novo de cada membro+mês em conselhos_status_mensal (que é
+//     só um snapshot — nunca guardou o valor anterior) e loga toda mudança
+//     em conselhos_status_historico (append-only). É a base pro cálculo de
+//     no-show (confirmou presença e depois o status virou falta) — setembro
+//     de 2026 é o "mês zero" desse log: não dá pra reconstruir transições
+//     anteriores a esta versão existir, começa a valer a partir de agora.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -81,7 +99,10 @@ const BOARDS = {
   FEEDBACK: '18412032453',
   AGENDA_CONSELHOS: '18395814635',
   HISTORICO_CONSELHOS: '18430666375',
+  CONSELHEIROS: '18393359980',
 };
+
+const CONSELHEIROS_FOTO_COL = 'file_mm519xd1';
 
 const METAS_COLS = { meta: 'numeric_mm2fmyy8', alcancado: 'numeric_mm2fcwfg' };
 const CASES_COLS_LEVE = { cs: 'person', empresa: 'short_textjsf26bus', produto: 'status' };
@@ -211,6 +232,48 @@ async function upsert(table: string, rows: any[], onConflict = 'id') {
       body: JSON.stringify(chunk),
     });
     if (!res.ok) throw new Error(`Supabase upsert falhou (${table}): ${res.status} ${await res.text()}`);
+  }
+}
+
+// GET paginado de verdade (mesma lição da correção de paginação feita no Next.js — ver
+// lib/reports.ts): o Max Rows padrão do PostgREST (1000) corta silenciosamente uma resposta
+// maior mesmo pedindo limit/offset além disso, então pagina até vir uma página incompleta.
+async function fetchAllFromSupabase(table: string, select: string): Promise<any[]> {
+  const PAGE_SIZE = 1000;
+  let allRows: any[] = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${PAGE_SIZE}&offset=${offset}`, {
+      headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    });
+    if (!res.ok) throw new Error(`Supabase select falhou (${table}): ${res.status} ${await res.text()}`);
+    const data = await res.json();
+    if (!data || data.length === 0) break;
+    allRows = allRows.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return allRows;
+}
+
+// insert puro (sem on_conflict) — pra log append-only (conselhos_status_historico), onde cada
+// linha é um evento novo, nunca uma atualização de uma linha existente.
+async function insertRows(table: string, rows: any[]) {
+  if (rows.length === 0) return;
+  const chunkSize = 500;
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(chunk),
+    });
+    if (!res.ok) throw new Error(`Supabase insert falhou (${table}): ${res.status} ${await res.text()}`);
   }
 }
 
@@ -541,8 +604,88 @@ async function syncConselhos() {
     });
   });
   await upsert('conselhos_membros', dedupePorChave(membros, (r) => String(r.id)));
-  await upsert('conselhos_status_mensal', dedupePorChave(statusRows, (r) => `${r.membro_id}|${r.mes}`), 'membro_id,mes');
+
+  // log de transição de status (v12) — compara com o snapshot atual ANTES de sobrescrever, e só
+  // grava em conselhos_status_historico quando o status de fato mudou (não na primeira vez que um
+  // membro+mês aparece, isso não é uma "transição").
+  const statusRowsDedup = dedupePorChave(statusRows, (r) => `${r.membro_id}|${r.mes}`);
+  const statusExistentes = await fetchAllFromSupabase('conselhos_status_mensal', 'membro_id,mes,status');
+  const statusExistenteMap = new Map<string, string | null>();
+  statusExistentes.forEach((r: any) => statusExistenteMap.set(`${r.membro_id}|${r.mes}`, r.status));
+  const historicoRows = statusRowsDedup
+    .filter((r) => {
+      const anterior = statusExistenteMap.get(`${r.membro_id}|${r.mes}`);
+      return anterior !== undefined && anterior !== null && anterior !== r.status;
+    })
+    .map((r) => ({
+      membro_id: r.membro_id,
+      mes: r.mes,
+      status_anterior: statusExistenteMap.get(`${r.membro_id}|${r.mes}`),
+      status_novo: r.status,
+    }));
+  await insertRows('conselhos_status_historico', historicoRows);
+
+  await upsert('conselhos_status_mensal', statusRowsDedup, 'membro_id,mes');
   return membros.length;
+}
+
+// converte um ArrayBuffer pra base64 em blocos (evita "Maximum call stack size exceeded" do
+// spread operator em String.fromCharCode(...bytes) pra imagens de algumas centenas de KB).
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+// board "Conselheiros 2026": baixa a foto (coluna file_mm519xd1) de cada conselheiro e guarda
+// como data URI base64 — ver nota v12 no topo do arquivo pro porquê (URL do Monday expira em 1h).
+// Throttle por monday_asset_id: só baixa de novo quando o arquivo realmente mudou.
+async function syncConselheirosFotos() {
+  const query = `query($boardId:[ID!]){boards(ids:$boardId){items_page(limit:100){items{id name column_values(ids:["${CONSELHEIROS_FOTO_COL}"]){id value} assets{id public_url}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.CONSELHEIROS] });
+  const items = data.boards[0].items_page.items;
+
+  const existentes = await fetchAllFromSupabase('conselheiros_fotos', 'conselheiro_nome,monday_asset_id');
+  const assetIdExistente = new Map<string, number | null>();
+  existentes.forEach((r: any) => assetIdExistente.set(r.conselheiro_nome, r.monday_asset_id));
+
+  const rows: any[] = [];
+  for (const item of items) {
+    const colVal = item.column_values.find((cv: any) => cv.id === CONSELHEIROS_FOTO_COL)?.value;
+    if (!colVal) continue;
+    let assetId: number | null = null;
+    try {
+      assetId = JSON.parse(colVal)?.files?.[0]?.assetId ?? null;
+    } catch {
+      continue;
+    }
+    if (!assetId) continue;
+    if (assetIdExistente.get(item.name) === assetId) continue; // já temos essa foto — não baixa de novo
+
+    const asset = (item.assets || []).find((a: any) => Number(a.id) === assetId);
+    if (!asset?.public_url) continue;
+
+    const imgRes = await fetch(asset.public_url);
+    if (!imgRes.ok) {
+      console.warn(`[sync-monday] falha ao baixar foto de "${item.name}": ${imgRes.status}`);
+      continue;
+    }
+    const contentType = imgRes.headers.get('content-type') || 'image/png';
+    const base64 = arrayBufferToBase64(await imgRes.arrayBuffer());
+    rows.push({
+      conselheiro_nome: item.name,
+      monday_item_id: Number(item.id),
+      monday_asset_id: assetId,
+      foto_base64: `data:${contentType};base64,${base64}`,
+      atualizado_em: new Date().toISOString(),
+    });
+  }
+  await upsert('conselheiros_fotos', rows, 'conselheiro_nome');
+  return rows.length;
 }
 
 async function syncAgenda() {
@@ -641,6 +784,7 @@ const SYNC_TASKS: Record<string, () => Promise<number>> = {
   agenda: syncAgenda,
   historico_gtd: syncHistoricoGtd,
   status_usuarios: syncStatusUsuarios,
+  conselheiros_fotos: syncConselheirosFotos,
 };
 
 Deno.serve(async (req) => {
