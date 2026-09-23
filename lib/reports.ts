@@ -707,8 +707,19 @@ function calcularImpactoConselhos(dados: DadosBrutos) {
     membrosPorGrupo.get(m.group_id)!.push(m);
   });
 
+  // BUG FIX (produção derrubada): nomes no formato "Fulano + 1" (convenção de "mais um
+  // convidado" no Monday) faziam o primeiro token virar só "+" — um metacaractere de regex
+  // sozinho, sem nada pra repetir, o que lançava "Invalid regular expression: /\b+\b/: Nothing
+  // to repeat" dentro de generateEquipeReport, sem try/catch, derrubando a resposta inteira da
+  // API de equipe (todas as seções da home, não só a de impacto). Corrigido filtrando tokens sem
+  // nenhuma letra/número (\w) antes de virarem termo de busca, e escapando qualquer caractere
+  // especial de regex que sobrar, como proteção extra.
+  function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   function primeirosDoisTokens(nome: string): string[] {
-    return normalizeNome(nome).split(/\s+/).filter(Boolean).slice(0, 2);
+    return normalizeNome(nome).split(/\s+/).filter((t) => /\w/.test(t)).slice(0, 2);
   }
 
   function itemPertenceRoster(itemNome: string, roster: any[]): boolean {
@@ -716,7 +727,7 @@ function calcularImpactoConselhos(dados: DadosBrutos) {
     return roster.some((m: any) => {
       const tokens = primeirosDoisTokens(m.nome);
       if (tokens.length === 0) return false;
-      return tokens.every((t) => new RegExp(`\\b${t}\\b`).test(itemNorm));
+      return tokens.every((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(itemNorm));
     });
   }
 
