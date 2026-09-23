@@ -686,25 +686,62 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
 }
 
 // impacto dos conselhos: soma, por conselho (grupo ativo), todos os cases/matchmakings de todos
-// os meses que mencionam esse conselheiro (casamento por nome, já que o Monday não guarda um
-// vínculo direto item -> conselho) — histórico completo, não filtrado por mês/ano selecionado.
+// os meses que mencionam algum MEMBRO desse conselho (casamento por nome, já que o Monday não
+// guarda um vínculo direto item -> conselho) — histórico completo, não filtrado por mês/ano
+// selecionado.
+//
+// BUG FIX (23/09/2026): a versão anterior comparava contra extrairContatoDoTitulo(g.titulo), que
+// extrai o CONSELHEIRO (advisor) do título (ex. "Fast Track | Julio Faccioli (Vitor)" -> "Julio
+// Faccioli") — mas cases_items/matchmakings_items são sobre o negócio de cada MEMBRO cliente do
+// conselho, não sobre o conselheiro. O nome do conselheiro quase nunca aparece nesses registros
+// (confirmado: "Julio Faccioli" tinha 0 cases e só 3 matchmakings, enquanto os 9 membros reais
+// desse conselho, como Daniel de Castro e Thamires Botelho, tinham cases/matchmakings próprios
+// nunca contados), o que zerava o impacto de quase todo conselho. Corrigido comparando contra o
+// roster inteiro do conselho (titulares + substitutos do grupo de reposição), casando pelos dois
+// primeiros tokens do nome do membro aparecendo como palavra inteira no nome do item.
 function calcularImpactoConselhos(dados: DadosBrutos) {
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo);
+  const membrosPorGrupo = new Map<string, any[]>();
+  dados.conselhosMembros.forEach((m: any) => {
+    if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
+    membrosPorGrupo.get(m.group_id)!.push(m);
+  });
+
+  function primeirosDoisTokens(nome: string): string[] {
+    return normalizeNome(nome).split(/\s+/).filter(Boolean).slice(0, 2);
+  }
+
+  function itemPertenceRoster(itemNome: string, roster: any[]): boolean {
+    const itemNorm = normalizeNome(itemNome);
+    return roster.some((m: any) => {
+      const tokens = primeirosDoisTokens(m.nome);
+      if (tokens.length === 0) return false;
+      return tokens.every((t) => new RegExp(`\\b${t}\\b`).test(itemNorm));
+    });
+  }
+
   let totalCases = 0, totalMatchmakings = 0, matchmakingsSemResultado = 0;
   const porConselho: { nome: string; cs: string; total: number }[] = [];
+
   gruposAtivos.forEach((g: any) => {
-    const contato = extrairContatoDoTitulo(g.titulo);
-    if (!contato) return;
-    const casesDoConselho = dados.cases.filter((c: any) => c.empresa && normalizeNome(c.nome).includes(normalizeNome(contato)));
-    const mmDoConselho = dados.matchmakings.filter((m: any) => normalizeNome(m.nome).includes(normalizeNome(contato)));
+    const roster = [...(membrosPorGrupo.get(g.group_id) || [])];
+    if (g.repo_group_id) roster.push(...(membrosPorGrupo.get(g.repo_group_id) || []));
+    if (roster.length === 0) return;
+
+    const casesDoConselho = dados.cases.filter((c: any) => itemPertenceRoster(c.nome, roster));
+    const mmDoConselho = dados.matchmakings.filter((m: any) => itemPertenceRoster(m.nome, roster));
+
     totalCases += casesDoConselho.length;
     totalMatchmakings += mmDoConselho.length;
+    matchmakingsSemResultado += mmDoConselho.filter((m: any) => !m.resultado || !m.resultado.trim()).length;
+
     const total = casesDoConselho.length + mmDoConselho.length;
     if (total > 0) {
       const cfgMatch = g.titulo.match(/\((.*?)\)\s*$/);
       porConselho.push({ nome: g.titulo, cs: cfgMatch ? cfgMatch[1] : '', total });
     }
   });
+
   const topConselhos = porConselho.sort((a, b) => b.total - a.total).slice(0, 8);
   return { totalCases, totalMatchmakings, matchmakingsSemResultado, topConselhos };
 }
