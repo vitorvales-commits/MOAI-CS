@@ -194,16 +194,17 @@ export async function getDadosBrutos(sb: SupabaseClient) {
   noStore();
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
-    conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico,
+    conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
   ] = await Promise.all([
     fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
     fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
     fetchAll(sb, 'matchmakings_items'), fetchAll(sb, 'conselhos_grupos'), fetchAll(sb, 'conselhos_membros'),
     fetchAll(sb, 'conselhos_status_mensal'), fetchAll(sb, 'agenda_conselhos_items'), fetchAll(sb, 'historico_conselhos_items'),
+    fetchAll(sb, 'atas_conselho_extraido'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
-    conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico,
+    conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
   };
 }
 export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
@@ -393,6 +394,7 @@ function parseConselhoItems(
   itemsPrincipais: any[], itemsRepo: any[], groupTitle: string, congelado: boolean,
   mesesRelevantes: string[], statusPorMembro: Map<number, Map<string, string>>,
   agendaMap: Map<string, { dataIso: string; status: string | null }[]>,
+  groupId: string,
 ) {
   let presentes = 0, agendados = 0, reposPresentes = 0, temDado = false;
   const confirmados: { nome: string; mes: string }[] = [];
@@ -447,7 +449,7 @@ function parseConselhoItems(
   }));
 
   return {
-    nome: nomeGrupo, congelado, membros: membrosBase,
+    nome: nomeGrupo, groupId, congelado, membros: membrosBase,
     presente: temDado ? presentes : null,
     ausente: temDado ? (agendados - presentes) : null,
     reposicao: temDado ? reposPresentes : null,
@@ -549,7 +551,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const conselhos = gruposDoCS.map((g: any) => {
     const itemsPrincipais = membrosPorGrupo.get(g.group_id) || [];
     const itemsRepo = g.repo_group_id ? (membrosPorGrupo.get(g.repo_group_id) || []) : [];
-    return parseConselhoItems(itemsPrincipais, itemsRepo, g.titulo, g.congelado, mesesRelevantes, statusPorMembro, agendaMap);
+    return parseConselhoItems(itemsPrincipais, itemsRepo, g.titulo, g.congelado, mesesRelevantes, statusPorMembro, agendaMap, g.group_id);
   });
 
   // GTD (histórico de desempenho dos conselhos)
@@ -663,9 +665,10 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
 
-  // impacto dos conselhos (histórico completo, independente do período selecionado): cases e
-  // matchmakings atribuídos a cada conselho, casando pelo nome do conselheiro extraído do título.
-  const impactoConselhos = calcularImpactoConselhos(dados);
+  // impacto dos conselhos: as duas visões lado a lado (decisão confirmada com o Vitor — manter
+  // as duas, nunca substituir uma pela outra). O front-end decide qual mostrar via toggle.
+  const impactoConselhosHistorico = calcularImpactoConselhos(dados);
+  const impactoConselhosPeriodo = calcularImpactoConselhos(dados, seletorMes, ano);
 
   return {
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
@@ -681,14 +684,75 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     csTop,
     conselhos: todosConselhos,
     proximosConselhos,
-    impactoConselhos,
+    // impactoConselhos: alias pro histórico, mantido pra não quebrar nada que já lê esse campo
+    // (dashboard-html.ts atual) — o front-end novo passa a ler impactoConselhosHistorico/
+    // impactoConselhosPeriodo diretamente.
+    impactoConselhos: impactoConselhosHistorico,
+    impactoConselhosHistorico,
+    impactoConselhosPeriodo,
   };
 }
 
-// impacto dos conselhos: soma, por conselho (grupo ativo), todos os cases/matchmakings de todos
-// os meses que mencionam algum MEMBRO desse conselho (casamento por nome, já que o Monday não
-// guarda um vínculo direto item -> conselho) — histórico completo, não filtrado por mês/ano
-// selecionado.
+// Casamento de nome por token — usado tanto pra atribuir cases/matchmakings ao roster de um
+// conselho (calcularImpactoConselhos) quanto pra casar membro_nome_ata (texto livre da ata) com
+// o roster oficial (buscarAtasPorConselho). Um único lugar pra essa lógica, pra nunca divergir
+// entre os dois usos.
+//
+// BUG FIX (produção derrubada em 23/09/2026): nomes no formato "Fulano + 1" (convenção de "mais
+// um convidado" no Monday) faziam o primeiro token virar só "+" — um metacaractere de regex
+// sozinho, sem nada pra repetir, o que lançava "Invalid regular expression: /\b+\b/: Nothing to
+// repeat" dentro de generateEquipeReport, sem try/catch, derrubando a resposta inteira da API de
+// equipe. Corrigido filtrando tokens sem nenhuma letra/número (\w) antes de virarem termo de
+// busca, e escapando qualquer caractere especial de regex que sobrar, como proteção extra.
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function primeirosDoisTokens(nome: string): string[] {
+  return normalizeNome(nome).split(/\s+/).filter((t) => /\w/.test(t)).slice(0, 2);
+}
+
+// itemNome "pertence" a algum membro do roster quando os dois primeiros tokens do nome DO MEMBRO
+// aparecem, cada um como palavra inteira, dentro do nome do item — funciona tanto pra "Daniel de
+// Castro | JCastro Consultoria" (item) casando com membro "Daniel de Castro | JCastro
+// Consultoria" (roster) quanto pra variações de grafia entre os dois textos.
+function itemPertenceRoster(itemNome: string, roster: any[]): boolean {
+  const itemNorm = normalizeNome(itemNome);
+  return roster.some((m: any) => {
+    const tokens = primeirosDoisTokens(m.nome);
+    if (tokens.length === 0) return false;
+    return tokens.every((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(itemNorm));
+  });
+}
+// Mesmo critério, mas casando contra um nome de membro digitado à mão numa ata (não vindo do
+// roster do Monday) — mesma direção de comparação (tokens do NOME MAIS CURTO/confiável dentro do
+// texto do outro), então reaproveita a função inteira: quem chama decide qual dos dois lados
+// entra como "item" (texto livre) e qual como "roster" (lista de candidatos oficiais).
+function nomeCasaComRoster(nomeLivre: string, roster: any[]): any | null {
+  const nomeNorm = normalizeNome(nomeLivre);
+  return roster.find((m: any) => {
+    const tokens = primeirosDoisTokens(m.nome);
+    if (tokens.length === 0) return false;
+    return tokens.every((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(nomeNorm));
+  }) || null;
+}
+
+function montarRosterConselho(g: any, membrosPorGrupo: Map<string, any[]>): any[] {
+  const roster = [...(membrosPorGrupo.get(g.group_id) || [])];
+  if (g.repo_group_id) roster.push(...(membrosPorGrupo.get(g.repo_group_id) || []));
+  return roster;
+}
+
+// impacto dos conselhos: soma, por conselho (grupo ativo), os cases/matchmakings que mencionam
+// algum MEMBRO desse conselho (casamento por nome, já que o Monday não guarda um vínculo direto
+// item -> conselho).
+//
+// Duas visões, nunca uma substituindo a outra (decisão confirmada com o Vitor): sem
+// seletorMes/ano, olha o HISTÓRICO INTEIRO (todos os mes_grupo_titulo, comportamento original);
+// com seletorMes/ano, filtra cases_items/matchmakings_items pro período antes de agregar —
+// mesmo parâmetro/formato de periodoDatas() já usado no resto do dashboard. A lógica de
+// casamento por nome (itemPertenceRoster) é a mesma nos dois casos, só muda o conjunto de itens
+// de entrada.
 //
 // BUG FIX (23/09/2026): a versão anterior comparava contra extrairContatoDoTitulo(g.titulo), que
 // extrai o CONSELHEIRO (advisor) do título (ex. "Fast Track | Julio Faccioli (Vitor)" -> "Julio
@@ -697,9 +761,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
 // (confirmado: "Julio Faccioli" tinha 0 cases e só 3 matchmakings, enquanto os 9 membros reais
 // desse conselho, como Daniel de Castro e Thamires Botelho, tinham cases/matchmakings próprios
 // nunca contados), o que zerava o impacto de quase todo conselho. Corrigido comparando contra o
-// roster inteiro do conselho (titulares + substitutos do grupo de reposição), casando pelos dois
-// primeiros tokens do nome do membro aparecendo como palavra inteira no nome do item.
-function calcularImpactoConselhos(dados: DadosBrutos) {
+// roster inteiro do conselho (titulares + substitutos do grupo de reposição).
+function calcularImpactoConselhos(dados: DadosBrutos, seletorMes?: string, ano?: number) {
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo);
   const membrosPorGrupo = new Map<string, any[]>();
   dados.conselhosMembros.forEach((m: any) => {
@@ -707,40 +770,24 @@ function calcularImpactoConselhos(dados: DadosBrutos) {
     membrosPorGrupo.get(m.group_id)!.push(m);
   });
 
-  // BUG FIX (produção derrubada): nomes no formato "Fulano + 1" (convenção de "mais um
-  // convidado" no Monday) faziam o primeiro token virar só "+" — um metacaractere de regex
-  // sozinho, sem nada pra repetir, o que lançava "Invalid regular expression: /\b+\b/: Nothing
-  // to repeat" dentro de generateEquipeReport, sem try/catch, derrubando a resposta inteira da
-  // API de equipe (todas as seções da home, não só a de impacto). Corrigido filtrando tokens sem
-  // nenhuma letra/número (\w) antes de virarem termo de busca, e escapando qualquer caractere
-  // especial de regex que sobrar, como proteção extra.
-  function escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  function primeirosDoisTokens(nome: string): string[] {
-    return normalizeNome(nome).split(/\s+/).filter((t) => /\w/.test(t)).slice(0, 2);
-  }
-
-  function itemPertenceRoster(itemNome: string, roster: any[]): boolean {
-    const itemNorm = normalizeNome(itemNome);
-    return roster.some((m: any) => {
-      const tokens = primeirosDoisTokens(m.nome);
-      if (tokens.length === 0) return false;
-      return tokens.every((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(itemNorm));
-    });
-  }
+  const temPeriodo = !!seletorMes && ano !== undefined;
+  const geral = temPeriodo && seletorMes === 'Visão Geral';
+  const casesEntrada = temPeriodo
+    ? (geral ? filtrarAnoFlexivel(dados.cases, ano!) : filtrarPorMesAnoFlexivel(dados.cases, seletorMes!, ano!))
+    : dados.cases;
+  const mmEntrada = temPeriodo
+    ? (geral ? filtrarAnoFlexivel(dados.matchmakings, ano!) : filtrarPorMesAnoFlexivel(dados.matchmakings, seletorMes!, ano!))
+    : dados.matchmakings;
 
   let totalCases = 0, totalMatchmakings = 0, matchmakingsSemResultado = 0;
-  const porConselho: { nome: string; cs: string; total: number }[] = [];
+  const porConselho: { nome: string; groupId: string; cs: string; total: number }[] = [];
 
   gruposAtivos.forEach((g: any) => {
-    const roster = [...(membrosPorGrupo.get(g.group_id) || [])];
-    if (g.repo_group_id) roster.push(...(membrosPorGrupo.get(g.repo_group_id) || []));
+    const roster = montarRosterConselho(g, membrosPorGrupo);
     if (roster.length === 0) return;
 
-    const casesDoConselho = dados.cases.filter((c: any) => itemPertenceRoster(c.nome, roster));
-    const mmDoConselho = dados.matchmakings.filter((m: any) => itemPertenceRoster(m.nome, roster));
+    const casesDoConselho = casesEntrada.filter((c: any) => itemPertenceRoster(c.nome, roster));
+    const mmDoConselho = mmEntrada.filter((m: any) => itemPertenceRoster(m.nome, roster));
 
     totalCases += casesDoConselho.length;
     totalMatchmakings += mmDoConselho.length;
@@ -749,7 +796,7 @@ function calcularImpactoConselhos(dados: DadosBrutos) {
     const total = casesDoConselho.length + mmDoConselho.length;
     if (total > 0) {
       const cfgMatch = g.titulo.match(/\((.*?)\)\s*$/);
-      porConselho.push({ nome: g.titulo, cs: cfgMatch ? cfgMatch[1] : '', total });
+      porConselho.push({ nome: g.titulo, groupId: g.group_id, cs: cfgMatch ? cfgMatch[1] : '', total });
     }
   });
 
@@ -917,3 +964,227 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
     ranking,
   };
 }
+
+// ============ ata do conselho (desafio/compromisso/ganhos/anotações/sugestões por membro/mês) ============
+// Fonte: atas_conselho_extraido, tabela populada por um processo de extração separado (fora
+// deste app) a partir do documento bruto da ata no Drive/Google Docs. Cobertura parcial por
+// design — hoje só o conselho piloto (group_id='new_group') tem linhas; os demais mostram
+// "ata ainda não processada" até serem processados, um conselho de cada vez. Este arquivo NUNCA
+// fala com o Drive em tempo real, só lê essa tabela (igual lê todo o resto).
+
+function normalizarMesSemAcento(mes: string): string {
+  return String(mes || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+const MESES_SEM_ACENTO = MESES_ORDEM.map(normalizarMesSemAcento);
+function indiceMesAta(mesAta: string): number {
+  return MESES_SEM_ACENTO.indexOf(normalizarMesSemAcento(mesAta));
+}
+
+// mes_ata não carrega ano (ex. "Marco", nunca "Março 2026"). Pra decidir o ano, cruza com a
+// agenda real do conselho (mesma fonte que já resolve a próxima data em proximaDataConselho):
+// entre os encontros já agendados pro conselheiro desse conselho, pega o ano mais recente cujo
+// mês bate com mes_ata. V1: sem nenhum encontro de agenda com esse mês, assume o ano informado
+// como fallback — pode errar em conselhos com histórico de mais de 12 meses sem cobertura de
+// agenda pro período.
+function anoDaAta(mesAta: string, contatoConselho: string | null, agendaMap: Map<string, { dataIso: string; status: string | null }[]>, anoFallback: number): number {
+  const mesIdx = indiceMesAta(mesAta);
+  if (mesIdx === -1 || !contatoConselho) return anoFallback;
+  const chave = normalizeNome(contatoConselho);
+  const chaveAlias = APELIDOS_AGENDA_NORM[chave];
+  const registros = agendaMap.get(chave) || (chaveAlias ? agendaMap.get(chaveAlias) : null);
+  if (!registros || registros.length === 0) return anoFallback;
+  const candidatos = registros.map((r) => new Date(r.dataIso)).filter((d) => d.getMonth() === mesIdx).map((d) => d.getFullYear());
+  if (candidatos.length === 0) return anoFallback;
+  return Math.max(...candidatos);
+}
+
+export type AtaMembroMes = {
+  membroNome: string; mesAta: string; ano: number;
+  desafio: string | null; compromisso: string | null; ganhos: string | null;
+  anotacoes: string | null; sugestoes: string | null;
+  oportunidadesMapeadas: string[]; fonteDocUrl: string | null;
+};
+
+// Organiza as atas de UM conselho por membro do roster oficial, casando membro_nome_ata (texto
+// livre da ata, pode ter empresa junto ou pontuação residual) contra o roster via
+// nomeCasaComRoster — nunca por igualdade exata de string. Membro do roster sem nenhuma ata
+// casada simplesmente não aparece no Map; quem consome decide como mostrar "ata ainda não
+// processada" (nunca omite a linha do membro silenciosamente).
+function organizarAtasDoConselho(
+  atasRows: any[], groupId: string, roster: any[], contatoConselho: string | null,
+  agendaMap: Map<string, { dataIso: string; status: string | null }[]>, anoFallback: number,
+): Map<string, AtaMembroMes[]> {
+  const porMembro = new Map<string, AtaMembroMes[]>();
+  atasRows.filter((a: any) => a.group_id === groupId).forEach((a: any) => {
+    const membro = nomeCasaComRoster(a.membro_nome_ata, roster);
+    if (!membro) return;
+    const item: AtaMembroMes = {
+      membroNome: membro.nome, mesAta: a.mes_ata, ano: anoDaAta(a.mes_ata, contatoConselho, agendaMap, anoFallback),
+      desafio: a.desafio, compromisso: a.compromisso, ganhos: a.ganhos, anotacoes: a.anotacoes, sugestoes: a.sugestoes,
+      oportunidadesMapeadas: a.oportunidades_mapeadas || [], fonteDocUrl: a.fonte_doc_url,
+    };
+    if (!porMembro.has(membro.nome)) porMembro.set(membro.nome, []);
+    porMembro.get(membro.nome)!.push(item);
+  });
+  return porMembro;
+}
+
+// ============ healthscore v1 ============
+// Primeira versão, sujeita a ajuste com feedback do Vitor — documentado aqui, nunca apresentado
+// como definitivo. Média ponderada simples (0-100) de três sinais, todos já calculados a partir
+// de dado que o app já lê, sem depender de nenhuma fonte nova:
+//   - taxa de presença no período (peso maior — o sinal mais direto de saúde do conselho),
+//     mesma lógica de parseConselhoItems já existente;
+//   - cumprimento de GTD no período (etapas já rastreadas pela automação existente, via
+//     historico_conselhos_items);
+//   - volume de cases + matchmakings gerados no período, normalizado pelo número de membros do
+//     conselho (evita que um conselho grande pareça sempre "mais saudável" só por ter mais
+//     gente).
+// NÃO inclui Big Deal nem nenhum dado de ata na fórmula v1 (cobertura de ata ainda parcial) —
+// plugar aqui quando a extração cobrir todos os conselhos. Só o número final (selo) é exposto
+// pro usuário final, nunca a fórmula.
+const PESOS_HEALTHSCORE = { presenca: 0.5, gtd: 0.3, volume: 0.2 };
+
+function calcularHealthscore(params: {
+  presente: number | null; registros: number | null;
+  taxaCumprimentoGtd: number | null;
+  totalCasesMatchmakings: number; numMembros: number;
+}): number | null {
+  const sinais: { valor: number; peso: number }[] = [];
+  if (params.registros !== null && params.registros > 0) {
+    sinais.push({ valor: Math.max(0, Math.min(1, (params.presente || 0) / params.registros)), peso: PESOS_HEALTHSCORE.presenca });
+  }
+  if (params.taxaCumprimentoGtd !== null && params.taxaCumprimentoGtd !== undefined) {
+    sinais.push({ valor: Math.max(0, Math.min(1, params.taxaCumprimentoGtd / 100)), peso: PESOS_HEALTHSCORE.gtd });
+  }
+  if (params.numMembros > 0) {
+    // volume por membro numa escala arbitrária v1 (3 cases+matchmakings por membro no período =
+    // 100%) — ajustável; capado em 1 pra um outlier não estourar o score.
+    const porMembro = params.totalCasesMatchmakings / params.numMembros;
+    sinais.push({ valor: Math.max(0, Math.min(1, porMembro / 3)), peso: PESOS_HEALTHSCORE.volume });
+  }
+  if (sinais.length === 0) return null;
+  const somaPeso = sinais.reduce((s, x) => s + x.peso, 0);
+  const somaPonderada = sinais.reduce((s, x) => s + x.valor * x.peso, 0);
+  return Math.round((somaPonderada / somaPeso) * 100);
+}
+
+// ============ página/modal completo do conselho ============
+// Uma função só alimenta os dois níveis de drill-down (modal rápido e página completa /
+// conselho/[grupo]) — o front-end de cada um decide qual subconjunto do retorno mostrar, sem
+// duplicar nenhuma busca ou lógica de casamento por nome.
+export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  const { geral } = periodoDatas(seletorMes, ano);
+
+  const grupo = dados.conselhosGrupos.find((g: any) => g.group_id === groupId && !g.is_repo);
+  if (!grupo) throw new Error(`Conselho "${groupId}" não encontrado`);
+
+  const membrosPorGrupo = new Map<string, any[]>();
+  dados.conselhosMembros.forEach((m: any) => {
+    if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
+    membrosPorGrupo.get(m.group_id)!.push(m);
+  });
+  const roster = montarRosterConselho(grupo, membrosPorGrupo);
+  const itemsPrincipais = membrosPorGrupo.get(grupo.group_id) || [];
+  const itemsRepo = grupo.repo_group_id ? (membrosPorGrupo.get(grupo.repo_group_id) || []) : [];
+
+  const statusPorMembro = new Map<number, Map<string, string>>();
+  dados.conselhosStatusMensal.forEach((s: any) => {
+    if (!statusPorMembro.has(s.membro_id)) statusPorMembro.set(s.membro_id, new Map());
+    statusPorMembro.get(s.membro_id)!.set(s.mes, s.status);
+  });
+  const agendaMap = buildAgendaMap(dados.agenda);
+  const mesesRelevantes = geral ? MESES_ORDEM : [seletorMes];
+
+  const resumo = parseConselhoItems(itemsPrincipais, itemsRepo, grupo.titulo, grupo.congelado, mesesRelevantes, statusPorMembro, agendaMap, grupo.group_id);
+
+  // nível / conselheiro / CS responsável a partir do título, ex. "Fast Track | Julio Faccioli (Vitor)"
+  const contato = extrairContatoDoTitulo(grupo.titulo);
+  const nivelMatch = grupo.titulo.match(/^(.*?)\s*\|/);
+  const nivel = nivelMatch ? nivelMatch[1].trim() : null;
+  const csMatch = grupo.titulo.match(/\((.*?)\)\s*$/);
+  const csResponsavel = csMatch ? csMatch[1].trim() : null;
+
+  // cases/matchmakings do período, só deste conselho — mesmo critério de casamento por nome de
+  // calcularImpactoConselhos, aplicado a um roster só em vez de todos os grupos de uma vez.
+  const casesPeriodo = (geral ? filtrarAnoFlexivel(dados.cases, ano) : filtrarPorMesAnoFlexivel(dados.cases, seletorMes, ano))
+    .filter((c: any) => itemPertenceRoster(c.nome, roster));
+  const mmPeriodo = (geral ? filtrarAnoFlexivel(dados.matchmakings, ano) : filtrarPorMesAnoFlexivel(dados.matchmakings, seletorMes, ano))
+    .filter((m: any) => itemPertenceRoster(m.nome, roster));
+
+  // ata do período selecionado (por nome de mês sem acento + ano resolvido via anoDaAta)
+  const atasDoConselho = organizarAtasDoConselho(dados.atas, groupId, roster, contato, agendaMap, ano);
+  const atasNoPeriodo = new Map<string, AtaMembroMes[]>();
+  atasDoConselho.forEach((lista, nomeMembro) => {
+    const filtradas = lista.filter((a) => geral
+      ? a.ano === ano
+      : (a.ano === ano && normalizarMesSemAcento(a.mesAta) === normalizarMesSemAcento(seletorMes)));
+    if (filtradas.length > 0) atasNoPeriodo.set(nomeMembro, filtradas);
+  });
+  const totalOportunidadesMapeadas = [...atasNoPeriodo.values()]
+    .reduce((soma, lista) => soma + lista.reduce((s, a) => s + (a.oportunidadesMapeadas?.length || 0), 0), 0);
+
+  // GTD do período — mesma fonte que já alimenta o card do CS (historico_conselhos_items),
+  // casado pelo conselheiro extraído do título.
+  const cicloAtual = cicloAtualPorConselho(dados.historico);
+  const histDoConselho = contato ? cicloAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato)) : null;
+  const taxaCumprimentoGtd = histDoConselho ? histDoConselho.taxa_cumprimento : null;
+
+  const healthscore = calcularHealthscore({
+    presente: resumo.presente, registros: resumo.registros,
+    taxaCumprimentoGtd,
+    totalCasesMatchmakings: casesPeriodo.length + mmPeriodo.length,
+    numMembros: roster.length,
+  });
+
+  // membros expansíveis: cada membro do roster oficial (titulares), com a presença e a ata (se
+  // existir) de cada mês do período — membro/mês sem ata fica de fora do array `atas` daquele
+  // membro; quem renderiza mostra o estado vazio explícito, nunca omite a linha do membro.
+  const membros = itemsPrincipais.map((m: any) => {
+    const presencaPorMes = mesesRelevantes.map((mes) => ({ mes, status: statusPorMembro.get(m.id)?.get(mes) || null }));
+    const atas = (atasNoPeriodo.get(m.nome) || []).sort((a, b) => a.ano - b.ano || indiceMesAta(a.mesAta) - indiceMesAta(b.mesAta));
+    return { nome: m.nome, presencaPorMes, atas };
+  });
+
+  // lista de encontros dentro do período: um encontro por mês (cada mês tem no máximo uma
+  // reunião do conselho), com a presença agregada daquele mês — inclui titulares E substitutos
+  // do grupo de reposição (mesmo critério de resumo.presente/registros em parseConselhoItems,
+  // pra "totalEncontros" nas métricas e a soma aqui nunca divergirem). Só entra na lista o mês
+  // que realmente teve algum dado de presença/ausência (agendados > 0).
+  const encontros = mesesRelevantes.map((mes) => {
+    let presentesNoMes = 0, agendadosNoMes = 0;
+    itemsPrincipais.forEach((m: any) => {
+      const s = statusPorMembro.get(m.id)?.get(mes);
+      if (s === STATUS_PRESENTE) { presentesNoMes++; agendadosNoMes++; }
+      else if (s && STATUS_AUSENTE_SET.includes(s)) agendadosNoMes++;
+    });
+    itemsRepo.forEach((r: any) => {
+      const s = statusPorMembro.get(r.id)?.get(mes);
+      if (s === STATUS_PRESENTE) { presentesNoMes++; agendadosNoMes++; }
+    });
+    return { mes, presentes: presentesNoMes, agendados: agendadosNoMes };
+  }).filter((e) => e.agendados > 0);
+
+  return {
+    grupo: {
+      groupId: grupo.group_id, titulo: resumo.nome, nivel, conselheiro: contato, csResponsavel,
+      congelado: grupo.congelado,
+      // TODO(fotos dos conselheiros): preencher a partir de conselheiros_fotos quando essa
+      // tabela/pipeline existir (sync-monday baixando do board "Conselheiros 2026"). Até lá, a
+      // página mostra o nome do conselheiro sem foto, sem quebrar nada.
+      fotoConselheiroUrl: null as string | null,
+    },
+    periodo: { mes: seletorMes, ano, geral },
+    metricas: {
+      totalEncontros: resumo.registros || 0,
+      totalMatchmakings: mmPeriodo.length,
+      totalCases: casesPeriodo.length,
+      totalOportunidadesMapeadas,
+      healthscore,
+    },
+    encontros,
+    membros,
+  };
+}
+export type ConselhoDetalhe = Awaited<ReturnType<typeof generateConselhoDetalhe>>;

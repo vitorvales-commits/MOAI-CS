@@ -1088,6 +1088,14 @@ function abrirConselhoModal(i){
 
   html += impactoConselhoHtml_(c);
 
+  // Números do período selecionado + resumo rápido por membro (desafio/compromisso do mês) +
+  // link pra página completa — carregados à parte (assíncrono) porque vêm de uma rota nova
+  // (/api/conselho/[grupo]), diferente do relatório que já preencheu o resto do modal.
+  if (c.groupId) {
+    html += '<div class="case-modal-campo" id="conselhoPeriodoWrap"><div class="case-modal-label">Impacto no período selecionado</div>' +
+      '<div class="empty-state" style="padding:12px 0;">Carregando…</div></div>';
+  }
+
   if (c.gtd) {
     var pctGtd = (c.gtd.taxaCumprimento !== null && c.gtd.taxaCumprimento !== undefined) ? Math.round(c.gtd.taxaCumprimento) : null;
     html += '<div class="case-modal-campo"><div class="case-modal-label">GTD do conselho'+(pctGtd!==null?' · '+pctGtd+'% cumprido':'')+'</div>';
@@ -1102,8 +1110,54 @@ function abrirConselhoModal(i){
 
   document.getElementById('conselhoModalBody').innerHTML = html;
   document.getElementById('conselhoModalOverlay').classList.add('ativo');
+  if (c.groupId) carregarImpactoPeriodoModal(c.groupId);
 }
 function fecharConselhoModal(){ document.getElementById('conselhoModalOverlay').classList.remove('ativo'); }
+
+// Resumo rápido do modal: números do período + desafio/compromisso do mês corrente por membro
+// (só os dois campos "de relance", os outros três só na página completa) + link pra lá. Sempre
+// busca um MÊS específico (nunca "Visão Geral") — se o filtro geral do dashboard estiver em
+// "Visão Geral", usa o mês corrente de verdade (hoje), já que um resumo rápido de card não faz
+// sentido como agregado do ano inteiro; a "Visão Geral" de verdade fica na página completa.
+function carregarImpactoPeriodoModal(groupId){
+  var mesResumo = (currentMes === 'Visão Geral') ? MESES[new Date().getMonth()] : currentMes;
+  fetchJSON_('/api/conselho/' + encodeURIComponent(groupId) + '?mes=' + encodeURIComponent(mesResumo) + '&ano=' + encodeURIComponent(currentAno)).then(function(d){
+    var el = document.getElementById('conselhoPeriodoWrap');
+    if (!el) return; // modal já foi fechado/trocado enquanto carregava
+    var m = d.metricas;
+    var presencaTxt = d.encontros.length ? (d.encontros[0].presentes + ' de ' + d.encontros[0].agendados) : '—';
+    var html = '<div class="case-modal-label">Impacto em ' + mesResumo + '/' + currentAno + '</div>' +
+      '<div class="mini-stats" style="display:flex;gap:14px;margin:10px 0 18px;">' +
+      '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings</div><div class="dark-value num">'+m.totalMatchmakings+'</div></div>' +
+      '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Cases de sucesso</div><div class="dark-value num">'+m.totalCases+'</div></div>' +
+      '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Presença</div><div class="dark-value num">'+presencaTxt+'</div></div>' +
+      '</div>';
+
+    html += '<div class="case-modal-label" style="margin-bottom:8px;">Desafio e compromisso do mês, por membro</div>';
+    if (!d.membros.length) {
+      html += '<div class="empty-state" style="padding:8px 0;">Nenhum membro neste conselho.</div>';
+    } else {
+      d.membros.forEach(function(mb){
+        var ata = (mb.atas || []).find(function(a){ return a.mesAta === mesResumo; });
+        html += '<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;color:#1A1A1A;margin-bottom:3px;">'+mb.nome+'</div>';
+        if (!ata) {
+          html += '<div style="font-size:12px;color:#9F9F9F;font-style:italic;">ata ainda não processada</div>';
+        } else {
+          if (ata.desafio) html += '<div style="font-size:12.5px;color:#3a3a3a;"><b>Desafio:</b> '+ata.desafio+'</div>';
+          if (ata.compromisso) html += '<div style="font-size:12.5px;color:#3a3a3a;"><b>Compromisso:</b> '+ata.compromisso+'</div>';
+          if (!ata.desafio && !ata.compromisso) html += '<div style="font-size:12px;color:#9F9F9F;font-style:italic;">sem desafio/compromisso registrado</div>';
+        }
+        html += '</div>';
+      });
+    }
+
+    html += '<a href="/conselho/'+encodeURIComponent(groupId)+'" class="destaque-form-btn" style="display:inline-block;text-decoration:none;margin-top:4px;">Ver histórico completo do conselho</a>';
+    el.innerHTML = html;
+  }).catch(function(err){
+    var el = document.getElementById('conselhoPeriodoWrap');
+    if (el) el.innerHTML = '<div class="case-modal-label">Impacto no período selecionado</div><div class="empty-state" style="padding:8px 0;">Erro ao carregar: '+err.message+'</div>';
+  });
+}
 
 var MAX_QUOTES_VISIVEIS = 4;
 function renderFeedback(data){
@@ -1268,26 +1322,56 @@ function renderEquipe(data){
   renderEquipeSecao_('equipeRanking', function(){ renderRankingEquipe(data.ranking); });
 }
 
-function renderImpactoConselhosEquipe(imp){
+// Duas visões, nunca uma substituindo a outra (decisão confirmada com o Vitor): histórico
+// completo (todos os meses, sempre) e período selecionado no dashboard — guardadas as duas de
+// uma vez quando o relatório da equipe chega, o toggle só troca qual delas está em tela, sem
+// pedir nada de novo pro servidor.
+var impactoConselhosDados_ = null;
+var impactoConselhosModo_ = 'historico';
+function renderImpactoConselhosEquipe(dataEquipe){
+  impactoConselhosDados_ = { historico: dataEquipe.impactoConselhosHistorico, periodo: dataEquipe.impactoConselhosPeriodo };
+  impactoConselhosModo_ = 'historico';
+  desenharImpactoConselhosEquipe_();
+}
+function mudarImpactoConselhosHistorico(){ impactoConselhosModo_ = 'historico'; desenharImpactoConselhosEquipe_(); }
+function mudarImpactoConselhosPeriodo(){ impactoConselhosModo_ = 'periodo'; desenharImpactoConselhosEquipe_(); }
+
+function desenharImpactoConselhosEquipe_(){
   var el = document.getElementById('equipeImpactoConselhos');
-  if (!imp) { el.innerHTML = '<div class="empty-state">Sem dados de impacto disponíveis.</div>'; return; }
-  var html = '<div class="mini-stats" style="display:flex;gap:14px;">' +
-    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Cases de sucesso (histórico)</div><div class="dark-value num">'+imp.totalCases+'</div></div>' +
-    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings (histórico)</div><div class="dark-value num">'+imp.totalMatchmakings+'</div></div>' +
+  var imp = impactoConselhosDados_ ? impactoConselhosDados_[impactoConselhosModo_] : null;
+  var estiloAtivo = 'background:#C89A2E;color:#1A1A1A;border:none;';
+  var estiloInativo = 'background:#1A1A1A;color:#9F9F9F;border:0.75pt solid #2A2A2A;';
+  var toggleHtml = '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
+    '<button class="destaque-form-btn" style="'+(impactoConselhosModo_==='historico'?estiloAtivo:estiloInativo)+'" onclick="mudarImpactoConselhosHistorico()">Histórico completo</button>' +
+    '<button class="destaque-form-btn" style="'+(impactoConselhosModo_==='periodo'?estiloAtivo:estiloInativo)+'" onclick="mudarImpactoConselhosPeriodo()">Período selecionado</button>' +
+  '</div>';
+
+  if (!imp) { el.innerHTML = toggleHtml + '<div class="empty-state">Sem dados de impacto disponíveis.</div>'; return; }
+
+  var html = toggleHtml + '<div class="mini-stats" style="display:flex;gap:14px;">' +
+    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Cases de sucesso</div><div class="dark-value num">'+imp.totalCases+'</div></div>' +
+    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings</div><div class="dark-value num">'+imp.totalMatchmakings+'</div></div>' +
     '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings sem resultado</div><div class="dark-value num '+(imp.matchmakingsSemResultado>0?'c-r':'')+'">'+imp.matchmakingsSemResultado+'</div></div>' +
   '</div>';
 
   if (imp.topConselhos && imp.topConselhos.length > 0) {
-    html += '<div class="chart-card" style="margin-top:14px;"><div class="chart-title">'+ICONS.trophy+'Conselhos com mais impacto (cases + matchmakings)</div>';
+    var maxTotal = Math.max.apply(null, imp.topConselhos.map(function(t){ return t.total; }).concat([1]));
+    html += '<div class="chart-card ranking-card" style="margin-top:14px;"><div class="ranking-title" style="display:flex;align-items:center;gap:6px;">'+ICONS.trophy+'Conselhos com mais impacto (cases + matchmakings)</div>';
     imp.topConselhos.forEach(function(t, i){
       var contato = parseConselhoNome(t.nome).contato;
-      html += '<div class="ranking-row"><span class="ranking-pos">'+(i+1)+'º</span>' +
-        '<span class="ranking-nome">'+contato+' <span style="color:#9F9F9F;font-weight:500;">· '+t.cs+'</span></span>' +
+      var pct = Math.round(t.total / maxTotal * 100);
+      var linkAbre = t.groupId ? (' onclick="window.location.href=\\'/conselho/'+encodeURIComponent(t.groupId)+'\\'"') : '';
+      html += '<div class="ranking-row"'+(t.groupId?' style="cursor:pointer;"'+linkAbre:'')+'>' +
+        '<span class="ranking-pos">'+(i+1)+'º</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div class="ranking-nome" style="white-space:normal;">'+contato+' <span style="color:#9F9F9F;font-weight:500;">· '+t.cs+'</span></div>' +
+          '<div style="height:5px;background:#2A2A2A;border-radius:99px;overflow:hidden;margin-top:5px;"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C89A2E,#e8c574);border-radius:99px;"></div></div>' +
+        '</div>' +
         '<span class="ranking-valor num">'+t.total+'</span></div>';
     });
     html += '</div>';
   } else {
-    html += '<div class="empty-state">Nenhum case ou matchmaking atribuído a um conselho ainda.</div>';
+    html += '<div class="empty-state">Nenhum case ou matchmaking atribuído a um conselho '+(impactoConselhosModo_==='periodo'?'neste período':'ainda')+'.</div>';
   }
   el.innerHTML = html;
 }
