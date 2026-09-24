@@ -1402,8 +1402,16 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
   // Linha que não casa com nenhum membro do roster não some: vai pra bigDealsSemMembro.
   const bigDealsPorMembro = new Map<string, any[]>();
   const bigDealsSemMembro: any[] = [];
+  //
+  // Dois formatos (mes_referencia, adicionada na extração de 24/09/2026): MENSAL ("Janeiro/2026" —
+  // uma frase curta dentro do bloco do próprio membro, sem risco de deslocamento) e TRIMESTRAL
+  // ("2o Ato / Agosto/2026", ou null nas linhas antigas do piloto — a revisão em tabela no fim da
+  // ata, onde o deslocamento acontece). Só o trimestral vai pra caixa de "posição incerta".
   dados.bigDeals.filter((b: any) => b.group_id === groupId).forEach((b: any) => {
+    const mesRef: string | null = b.mes_referencia || null;
     const item = {
+      tipo: (mesRef && !/ato/i.test(mesRef) ? 'mensal' : 'trimestral') as 'mensal' | 'trimestral',
+      mesReferencia: mesRef,
       membroNomeAta: b.membro_nome_ata, conferido: !!b.conferido, fonteDocUrl: b.fonte_doc_url,
       feedbacksPositivos: b.feedbacks_positivos, feedbacksNegativos: b.feedbacks_negativos,
       feedbackConselheiro: b.feedback_conselheiro, conclusoes: b.conclusoes,
@@ -1431,7 +1439,8 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
       nome: m.nome, presencaPorMes, atas,
       plaquinha: m.plaquinha || null, statusPagamento: m.status_pagamento || null,
       taxaPresencaAno: registros > 0 ? Math.round((presente / registros) * 100) : null,
-      bigDeals: bigDealsPorMembro.get(m.nome) || [],
+      // trimestral primeiro (revisão mais completa), depois os mensais
+      bigDeals: (bigDealsPorMembro.get(m.nome) || []).sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === 'trimestral' ? -1 : 1)),
     };
   });
 

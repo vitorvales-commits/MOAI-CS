@@ -387,12 +387,20 @@ function renderAtaDoMes(ata) {
 // Big Deal: NUNCA conferido ainda. Os quatro campos que descrevem o próprio membro aparecem
 // normais; "Big Deal definido" e "Observações gerais" — que a extração frequentemente associa ao
 // membro vizinho na tabela da ata — ficam numa caixa tracejada, com aviso explícito.
+// Big Deal MENSAL (frase curta dentro do bloco do próprio membro) não tem o problema de
+// deslocamento — só leva o selo de não conferido, sem a caixa de posição incerta.
 function renderBigDeal(b) {
+  var selo = b.conferido ? '' : '<span class="selo-nao-conferido">⚠ Não conferido · checar com o conselheiro</span>';
+  var ref = b.mesReferencia ? ' · ' + esc(b.mesReferencia) : '';
+  if (b.tipo === 'mensal') {
+    return '<div class="bigdeal"><div class="bigdeal-head"><span class="bigdeal-titulo">Big Deal do mês' + ref + '</span>' + selo + '</div>' +
+      (campoAta('Big Deal', b.bigDealDefinido) || '<div class="mes-ata-vazio">Sem texto extraído.</div>') +
+      '<div class="bigdeal-origem">Nome na ata: ' + esc(b.membroNomeAta) + '</div></div>';
+  }
   var confiaveis = campoAta('Feedbacks positivos', b.feedbacksPositivos) + campoAta('Feedbacks negativos', b.feedbacksNegativos) +
     campoAta('Feedback do conselheiro', b.feedbackConselheiro) + campoAta('Conclusões', b.conclusoes);
   var incertos = campoAta('Big Deal definido', b.bigDealDefinido) + campoAta('Observações gerais', b.observacoesGerais);
-  var html = '<div class="bigdeal"><div class="bigdeal-head"><span class="bigdeal-titulo">Big Deal do trimestre</span>' +
-    (b.conferido ? '' : '<span class="selo-nao-conferido">⚠ Não conferido · checar com o conselheiro</span>') + '</div>';
+  var html = '<div class="bigdeal"><div class="bigdeal-head"><span class="bigdeal-titulo">Big Deal do trimestre' + ref + '</span>' + selo + '</div>';
   html += confiaveis || '<div class="mes-ata-vazio">Sem feedbacks/conclusões extraídos.</div>';
   if (incertos) {
     html += '<div class="bigdeal-incerto"><div class="bigdeal-incerto-aviso">Posição incerta na ata: estes dois campos podem ser de um membro vizinho no documento.</div>' + incertos + '</div>';
