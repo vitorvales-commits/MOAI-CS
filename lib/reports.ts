@@ -1046,8 +1046,18 @@ function normalizarMesSemAcento(mes: string): string {
   return String(mes || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 const MESES_SEM_ACENTO = MESES_ORDEM.map(normalizarMesSemAcento);
+// mes_ata chega em dois formatos, conforme a rodada de extração: só o mês ("Marco", "Junho" —
+// piloto e Tarso) ou mês com ano ("Março/2026" — Gallo, JP e as extrações seguintes). BUG FIX
+// (24/09/2026): o formato com ano não casava com nenhum mês, então as atas desses conselhos
+// nunca apareciam na tela. Aqui separa as duas partes; o ano explícito, quando existe, vence
+// qualquer inferência por agenda.
+function partesMesAta(mesAta: string): { mesIdx: number; ano: number | null } {
+  const m = String(mesAta || '').trim().match(/^([^\/\s\d]+)\s*(?:[\/\s-]\s*(\d{4}))?/);
+  if (!m) return { mesIdx: -1, ano: null };
+  return { mesIdx: MESES_SEM_ACENTO.indexOf(normalizarMesSemAcento(m[1])), ano: m[2] ? Number(m[2]) : null };
+}
 function indiceMesAta(mesAta: string): number {
-  return MESES_SEM_ACENTO.indexOf(normalizarMesSemAcento(mesAta));
+  return partesMesAta(mesAta).mesIdx;
 }
 
 // mes_ata não carrega ano (ex. "Marco", nunca "Março 2026"). Pra decidir o ano, cruza com a
@@ -1095,8 +1105,12 @@ function organizarAtasDoConselho(
   atasRows.filter((a: any) => a.group_id === groupId).forEach((a: any) => {
     const membro = nomeCasaComRoster(a.membro_nome_ata, roster);
     if (!membro) return;
+    const partes = partesMesAta(a.mes_ata);
+    if (partes.mesIdx === -1) return; // mês ilegível — não dá pra posicionar no período
     const item: AtaMembroMes = {
-      membroNome: membro.nome, mesAta: a.mes_ata, ano: anoDaAta(a.mes_ata, contatoConselho, agendaMap, anoFallback),
+      // mesAta sai sempre canônico ("Março"), independente do formato gravado na tabela
+      membroNome: membro.nome, mesAta: MESES_ORDEM[partes.mesIdx],
+      ano: partes.ano ?? anoDaAta(a.mes_ata, contatoConselho, agendaMap, anoFallback),
       desafio: a.desafio, compromisso: a.compromisso, ganhos: a.ganhos, anotacoes: a.anotacoes, sugestoes: a.sugestoes,
       oportunidadesMapeadas: a.oportunidades_mapeadas || [], fonteDocUrl: a.fonte_doc_url,
     };
