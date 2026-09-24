@@ -1261,7 +1261,7 @@ function presencaDoMes(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo
 // A ata é gravada literal, então o campo `ganhos` às vezes traz só um marcador de "nada a relatar"
 // ("Não apresentou.", "Primeira reunião.", "Sem ganhos") — isso não conta como ganho relatado no
 // healthscore (visto nas extrações de Luis Gustavo/Adriana, 24/09/2026).
-const SEM_GANHO_RE = /^-?\s*(n[aã]o apresentou|primeira reuni[aã]o|primeiro conselho|n[aã]o houve|sem ganhos?|nenhum|n\/a|-)\.?\s*$/i;
+const SEM_GANHO_RE = /^-?\s*(n[aã]o apresentou( ganhos?)?|primeira reuni[aã]o|primeiro conselho|n[aã]o houve( ganhos?)?|sem ganhos?|sem informa[çc][õo]es|nenhum|n\/a|-)\.?\s*$/i;
 function ganhoRelatado(ganhos: string | null): boolean {
   if (!ganhos || !ganhos.trim()) return false;
   return ganhos.split('\n').some((l) => l.trim() && !SEM_GANHO_RE.test(l.trim()));
@@ -1430,7 +1430,12 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
   // uma frase curta dentro do bloco do próprio membro, sem risco de deslocamento) e TRIMESTRAL
   // ("2o Ato / Agosto/2026", ou null nas linhas antigas do piloto — a revisão em tabela no fim da
   // ata, onde o deslocamento acontece). Só o trimestral vai pra caixa de "posição incerta".
-  dados.bigDeals.filter((b: any) => b.group_id === groupId).forEach((b: any) => {
+  // Linha só com placeholder do template ("Sem informações") não é Big Deal definido — fica no banco
+  // (extração literal) mas não é exibida.
+  const soPlaceholder = (b: any) => ['big_deal_definido', 'observacoes_gerais', 'feedbacks_positivos',
+    'feedbacks_negativos', 'feedback_conselheiro', 'conclusoes']
+    .every((k) => !b[k] || /^\s*(sem informa[çc][õo]es|-|n\/a)\.?\s*$/i.test(b[k]));
+  dados.bigDeals.filter((b: any) => b.group_id === groupId && !soPlaceholder(b)).forEach((b: any) => {
     const mesRef: string | null = b.mes_referencia || null;
     const item = {
       tipo: (mesRef && !/ato/i.test(mesRef) ? 'mensal' : 'trimestral') as 'mensal' | 'trimestral',
