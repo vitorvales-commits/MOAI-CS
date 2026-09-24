@@ -75,6 +75,15 @@
 //     no-show (confirmou presença e depois o status virou falta) — setembro
 //     de 2026 é o "mês zero" desse log: não dá pra reconstruir transições
 //     anteriores a esta versão existir, começa a valer a partir de agora.
+//
+// v13 (24/09/2026 — pedido do Vitor, aba "Conselhos" da home): (1)
+// syncConselheiros espelha o perfil de cada conselheiro do board
+// "Conselheiros 2026" (segmento, perfis, especialidade, status de
+// engajamento — de onde saem os selos "ATENÇÃO"/"CONGELADO" dos cartões —,
+// e-mail, data de entrada, faturamento, dados pessoais) em `conselheiros`;
+// só texto, leve, roda junto com o resto a cada execução (a foto continua
+// em syncConselheirosFotos, com throttle próprio). (2) syncConselhos passa
+// a guardar também Plaquinha e Status de Pagamento de cada membro.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -103,6 +112,15 @@ const BOARDS = {
 };
 
 const CONSELHEIROS_FOTO_COL = 'file_mm519xd1';
+const CONSELHEIROS_COLS = {
+  csResponsavel: 'person', nivel: 'color_mkxkdaes', email: 'text_mkyfyxzp', status: 'status',
+  dataEntrada: 'data', faturamento: 'numeric_mkxkt5ks', filhos: 'color_mkxkqr3b',
+  segmento: 'color_mm52cgy8', perfilConselho: 'color_mm527dbv', perfilConselheiro: 'color_mm521r4g',
+  especialidade: 'color_mm52jx3q', endereco: 'text_mkxkfayk', estadoCivil: 'color_mkxk1kbj',
+  vegetariano: 'color_mkxkdtzs', formacao: 'text_mm53mq3m', dataNascimento: 'date_mkxkmtdn',
+  curiosidades: 'text_mm53k7mv',
+};
+const CONSELHOS_MEMBRO_COLS = { plaquinha: 'color_mm52vb2t', statusPagamento: 'color_mm5bzhq3' };
 
 const METAS_COLS = { meta: 'numeric_mm2fmyy8', alcancado: 'numeric_mm2fcwfg' };
 const CASES_COLS_LEVE = { cs: 'person', empresa: 'short_textjsf26bus', produto: 'status' };
@@ -523,7 +541,10 @@ async function syncCases() {
 
 async function syncMatchmakings() {
   const groups = await fetchGroups(BOARDS.MATCHMAKINGS);
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){items_page(limit:250){items{id name creator_id}}}}}`;
+  // BUG FIX (v13, 24/09/2026): a query não pedia `id title` do grupo, então board_group_id e
+  // mes_grupo_titulo iam null e o upsert era rejeitado (NOT NULL) — matchmakings_items ficou
+  // parado desde 17/09/2026 sem ninguém perceber (o erro só aparecia em sync_log).
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
@@ -587,7 +608,7 @@ async function syncConselhos() {
 
   const repoGroupIdsResolvidos = grupoRow.map((g) => g.repo_group_id).filter((id): id is string => !!id);
   const todosGroupIds = [...ativos.map((g) => g.id), ...repoGroupIdsResolvidos];
-  const colsTodos = Object.values(CONSELHOS_COL_POR_MES);
+  const colsTodos = [...Object.values(CONSELHOS_COL_POR_MES), ...Object.values(CONSELHOS_MEMBRO_COLS)];
   const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id items_page(limit:30){items{id name column_values(ids:[${colsTodos.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.CONSELHOS], groupIds: todosGroupIds });
 
@@ -596,7 +617,11 @@ async function syncConselhos() {
   (data.boards[0].groups || []).forEach((g: any) => {
     (g.items_page?.items || []).forEach((item: any) => {
       if (item.name === 'ATAS') return;
-      membros.push({ id: Number(item.id), group_id: g.id, nome: item.name });
+      membros.push({
+        id: Number(item.id), group_id: g.id, nome: item.name,
+        plaquinha: colText(item.column_values, CONSELHOS_MEMBRO_COLS.plaquinha) || null,
+        status_pagamento: colText(item.column_values, CONSELHOS_MEMBRO_COLS.statusPagamento) || null,
+      });
       Object.keys(CONSELHOS_COL_POR_MES).forEach((mes) => {
         const status = colText(item.column_values, CONSELHOS_COL_POR_MES[mes]);
         if (status) statusRows.push({ membro_id: Number(item.id), mes, status });
@@ -685,6 +710,33 @@ async function syncConselheirosFotos() {
     });
   }
   await upsert('conselheiros_fotos', rows, 'conselheiro_nome');
+  return rows.length;
+}
+
+// board "Conselheiros 2026": perfil de cada conselheiro (só colunas de texto/status — a foto fica
+// em syncConselheirosFotos). Guarda o grupo do Monday ("Conselheiros MOAI" x "Arquivo") pra quem
+// lê poder separar conselheiro ativo de arquivado sem outra consulta.
+async function syncConselheiros() {
+  const colsIds = Object.values(CONSELHEIROS_COLS);
+  const query = `query($boardId:[ID!]){boards(ids:$boardId){items_page(limit:200){items{id name group{title} column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.CONSELHEIROS] });
+  const rows = data.boards[0].items_page.items.map((it: any) => {
+    const cv = it.column_values;
+    const t = (col: string) => colText(cv, col) || null;
+    return {
+      monday_item_id: Number(it.id), nome: it.name, grupo_monday: it.group?.title || null,
+      cs_responsavel: t(CONSELHEIROS_COLS.csResponsavel), nivel: t(CONSELHEIROS_COLS.nivel),
+      email: t(CONSELHEIROS_COLS.email), status_engajamento: t(CONSELHEIROS_COLS.status),
+      data_entrada: dateOrNull(t(CONSELHEIROS_COLS.dataEntrada)), faturamento: numOrNull(t(CONSELHEIROS_COLS.faturamento)),
+      filhos: t(CONSELHEIROS_COLS.filhos), segmento: t(CONSELHEIROS_COLS.segmento),
+      perfil_conselho: t(CONSELHEIROS_COLS.perfilConselho), perfil_conselheiro: t(CONSELHEIROS_COLS.perfilConselheiro),
+      especialidade: t(CONSELHEIROS_COLS.especialidade), endereco: t(CONSELHEIROS_COLS.endereco),
+      estado_civil: t(CONSELHEIROS_COLS.estadoCivil), vegetariano: t(CONSELHEIROS_COLS.vegetariano),
+      formacao: t(CONSELHEIROS_COLS.formacao), data_nascimento: dateOrNull(t(CONSELHEIROS_COLS.dataNascimento)),
+      curiosidades: t(CONSELHEIROS_COLS.curiosidades), synced_at: new Date().toISOString(),
+    };
+  });
+  await upsert('conselheiros', rows, 'monday_item_id');
   return rows.length;
 }
 
@@ -785,6 +837,7 @@ const SYNC_TASKS: Record<string, () => Promise<number>> = {
   historico_gtd: syncHistoricoGtd,
   status_usuarios: syncStatusUsuarios,
   conselheiros_fotos: syncConselheirosFotos,
+  conselheiros: syncConselheiros,
 };
 
 Deno.serve(async (req) => {

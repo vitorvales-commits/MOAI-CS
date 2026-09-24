@@ -32,12 +32,21 @@ function tituloContemApelido(titulo: string, apelido: string | null): boolean {
   return normalizeNome(titulo).includes('(' + normalizeNome(apelido) + ')');
 }
 
-function extrairContatoDoTitulo(titulo: string): string | null {
+// Título de grupo ativo do board de Conselhos: "Nível | Conselheiro (CS)", às vezes com texto extra
+// depois — ex. "C-Level | Gallo (Vitor) | Mapear Executivos bons, upsell." e "Executivo | João
+// Vitor (Mateus) | EXTERNO". BUG FIX (24/09/2026): a regex anterior exigia o "(CS)" no fim da
+// string, então esses dois conselhos ficavam sem conselheiro (sem agenda, sem GTD, sem foto).
+export function parseTituloConselho(titulo: string): { nivel: string; contato: string; cs: string } | null {
   if (!titulo) return null;
   const t = titulo.replace(/\[?congelado\]?/i, '').trim();
-  const m = t.match(/^(.*?)\s*\|\s*(.*?)\s*\((.*?)\)\s*$/i);
-  if (!m) return null;
-  return m[2].trim();
+  const m = t.match(/^(.*?)\s*\|\s*([^|()]*?)\s*\(([^)]*)\)/);
+  if (!m || !m[2].trim()) return null;
+  return { nivel: m[1].trim(), contato: m[2].trim(), cs: m[3].trim() };
+}
+
+function extrairContatoDoTitulo(titulo: string): string | null {
+  const p = parseTituloConselho(titulo);
+  return p ? p.contato : null;
 }
 
 // BUG FIX (17/09/2026): a versão anterior fixava o dia 31 como último dia de qualquer mês,
@@ -175,12 +184,12 @@ export async function removerGestor(sb: SupabaseClient, email: string): Promise<
 // conselhos_status_mensal já passou de 1000 linhas, então um único range(0, 9999) só trazia as
 // primeiras ~1000, deixando o restante fora do Map em getDadosBrutos (daí membros aparecerem como
 // se não tivessem status algum). Pagina de verdade, blocos de 1000, até vir uma página incompleta.
-async function fetchAll(sb: SupabaseClient, table: string) {
+async function fetchAll(sb: SupabaseClient, table: string, colunas = '*') {
   const PAGE_SIZE = 1000;
   let allRows: any[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await sb.from(table).select('*').range(from, from + PAGE_SIZE - 1);
+    const { data, error } = await sb.from(table).select(colunas).range(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
     if (!data || data.length === 0) break;
     allRows = allRows.concat(data);
@@ -195,19 +204,22 @@ export async function getDadosBrutos(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
-    statusHistorico, conselheirosFotos,
+    statusHistorico, conselheirosFotos, bigDeals, conselheiros,
   ] = await Promise.all([
     fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
     fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
     fetchAll(sb, 'matchmakings_items'), fetchAll(sb, 'conselhos_grupos'), fetchAll(sb, 'conselhos_membros'),
     fetchAll(sb, 'conselhos_status_mensal'), fetchAll(sb, 'agenda_conselhos_items'), fetchAll(sb, 'historico_conselhos_items'),
     fetchAll(sb, 'atas_conselho_extraido'),
-    fetchAll(sb, 'conselhos_status_historico'), fetchAll(sb, 'conselheiros_fotos'),
+    // Sem foto_base64 (~200KB por conselheiro, ~6MB no total): a imagem em si é servida à parte
+    // por /conselheiro-foto/[id], com cache no navegador — aqui só precisa saber quem TEM foto.
+    fetchAll(sb, 'conselhos_status_historico'), fetchAll(sb, 'conselheiros_fotos', 'conselheiro_nome,monday_item_id'),
+    fetchAll(sb, 'atas_conselho_bigdeal'), fetchAll(sb, 'conselheiros'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
-    statusHistorico, conselheirosFotos,
+    statusHistorico, conselheirosFotos, bigDeals, conselheiros,
   };
 }
 export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
@@ -600,7 +612,8 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const conselhos = gruposDoCS.map((g: any) => {
     const itemsPrincipais = membrosPorGrupo.get(g.group_id) || [];
     const itemsRepo = g.repo_group_id ? (membrosPorGrupo.get(g.repo_group_id) || []) : [];
-    return parseConselhoItems(itemsPrincipais, itemsRepo, g.titulo, g.congelado, mesesRelevantes, statusPorMembro, agendaMap, g.group_id);
+    const c = parseConselhoItems(itemsPrincipais, itemsRepo, g.titulo, g.congelado, mesesRelevantes, statusPorMembro, agendaMap, g.group_id);
+    return { ...c, fotoConselheiro: urlFotoConselheiro(extrairContatoDoTitulo(g.titulo), dados) };
   });
 
   // GTD (histórico de desempenho dos conselhos)
@@ -719,6 +732,13 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const impactoConselhosHistorico = calcularImpactoConselhos(dados);
   const impactoConselhosPeriodo = calcularImpactoConselhos(dados, seletorMes, ano);
 
+  // grade de conselhos da aba "Conselhos" — isolada num try/catch: um dado inesperado aqui nunca
+  // pode derrubar o relatório da equipe inteiro (lição do bug de regex de 23/09/2026).
+  let gradeConselhos: ReturnType<typeof montarGradeConselhos> | null = null;
+  let gradeConselhosErro: string | null = null;
+  try { gradeConselhos = montarGradeConselhos(dados, seletorMes, ano); }
+  catch (e: any) { gradeConselhosErro = e?.message || String(e); console.error('[gradeConselhos]', e); }
+
   return {
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     membrosIncluidos: relatorios.map((r) => r.cs.nome),
@@ -739,6 +759,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     impactoConselhos: impactoConselhosHistorico,
     impactoConselhosHistorico,
     impactoConselhosPeriodo,
+    gradeConselhos,
+    gradeConselhosErro,
   };
 }
 
@@ -844,8 +866,7 @@ function calcularImpactoConselhos(dados: DadosBrutos, seletorMes?: string, ano?:
 
     const total = casesDoConselho.length + mmDoConselho.length;
     if (total > 0) {
-      const cfgMatch = g.titulo.match(/\((.*?)\)\s*$/);
-      porConselho.push({ nome: g.titulo, groupId: g.group_id, cs: cfgMatch ? cfgMatch[1] : '', total });
+      porConselho.push({ nome: g.titulo, groupId: g.group_id, cs: parseTituloConselho(g.titulo)?.cs || '', total });
     }
   });
 
@@ -1035,15 +1056,22 @@ function indiceMesAta(mesAta: string): number {
 // mês bate com mes_ata. V1: sem nenhum encontro de agenda com esse mês, assume o ano informado
 // como fallback — pode errar em conselhos com histórico de mais de 12 meses sem cobertura de
 // agenda pro período.
+// BUG FIX (24/09/2026): a agenda também tem encontros FUTUROS (ex. conselho piloto com 28/10/2026
+// e 25/11/2026 já agendados), então as atas de Outubro/Novembro de 2025 viravam 2026. Uma ata
+// nunca é do futuro: só encontros já passados contam, e o fallback também nunca cai num mês
+// posterior ao atual (Dezembro sem agenda, visto em setembro/2026, é Dezembro/2025).
 function anoDaAta(mesAta: string, contatoConselho: string | null, agendaMap: Map<string, { dataIso: string; status: string | null }[]>, anoFallback: number): number {
   const mesIdx = indiceMesAta(mesAta);
-  if (mesIdx === -1 || !contatoConselho) return anoFallback;
+  const agora = new Date();
+  const semFuturo = (ano: number) => (ano > agora.getFullYear() || (ano === agora.getFullYear() && mesIdx > agora.getMonth())) ? Math.min(ano, agora.getFullYear()) - (mesIdx > agora.getMonth() ? 1 : 0) : ano;
+  if (mesIdx === -1) return anoFallback;
+  if (!contatoConselho) return semFuturo(anoFallback);
   const chave = normalizeNome(contatoConselho);
   const chaveAlias = APELIDOS_AGENDA_NORM[chave];
   const registros = agendaMap.get(chave) || (chaveAlias ? agendaMap.get(chaveAlias) : null);
-  if (!registros || registros.length === 0) return anoFallback;
-  const candidatos = registros.map((r) => new Date(r.dataIso)).filter((d) => d.getMonth() === mesIdx).map((d) => d.getFullYear());
-  if (candidatos.length === 0) return anoFallback;
+  const candidatos = (registros || []).map((r) => new Date(r.dataIso))
+    .filter((d) => d.getMonth() === mesIdx && d <= agora).map((d) => d.getFullYear());
+  if (candidatos.length === 0) return semFuturo(anoFallback);
   return Math.max(...candidatos);
 }
 
@@ -1080,27 +1108,37 @@ function organizarAtasDoConselho(
 
 // ============ healthscore v1 ============
 // Primeira versão, sujeita a ajuste com feedback do Vitor — documentado aqui, nunca apresentado
-// como definitivo. Média ponderada simples (0-100) de três sinais, todos já calculados a partir
-// de dado que o app já lê, sem depender de nenhuma fonte nova:
+// como definitivo. Média ponderada simples (0-100) de quatro sinais:
 //   - taxa de presença no período (peso maior — o sinal mais direto de saúde do conselho),
 //     mesma lógica de parseConselhoItems já existente;
-//   - cumprimento de GTD no período (etapas já rastreadas pela automação existente, via
+//   - cumprimento de GTD (etapas já rastreadas pela automação existente, via
 //     historico_conselhos_items);
 //   - volume de cases + matchmakings gerados no período, normalizado pelo número de membros do
 //     conselho (evita que um conselho grande pareça sempre "mais saudável" só por ter mais
-//     gente).
-// NÃO inclui Big Deal nem nenhum dado de ata na fórmula v1 (cobertura de ata ainda parcial) —
-// plugar aqui quando a extração cobrir todos os conselhos. Só o número final (selo) é exposto
-// pro usuário final, nunca a fórmula.
-const PESOS_HEALTHSCORE = { presenca: 0.5, gtd: 0.3, volume: 0.2 };
+//     gente);
+//   - frequência de ganho relatado na ata (pedido do Vitor em 24/09/2026 — "a evolução, o ganho"
+//     de cada membro): pra cada membro titular, proporção dos meses com ata processada no
+//     período em que o campo `ganhos` dele veio preenchido; média entre os membros. É só
+//     "relatou algum ganho ou não" — não lê o texto livre, não tenta extrair valor nem julgar se
+//     o ganho foi grande ou pequeno (isso exige leitura semântica do texto, candidato a v2).
+//     Como a cobertura de ata ainda é parcial, esse sinal só entra quando o conselho TEM ata
+//     processada no período; sem ata ele fica de fora e os pesos dos outros três são
+//     renormalizados — nunca penaliza um conselho só porque a ata dele ainda não foi extraída.
+// NÃO inclui Big Deal (atas_conselho_bigdeal, sem conferência humana ainda) — plugar aqui só
+// quando esse dado for conferido. Só o número final (selo) é exposto pro usuário, nunca a fórmula.
+const PESOS_HEALTHSCORE = { presenca: 0.4, gtd: 0.25, volume: 0.2, ganhos: 0.15 };
 
 function calcularHealthscore(params: {
   presente: number | null; registros: number | null;
   taxaCumprimentoGtd: number | null;
   totalCasesMatchmakings: number; numMembros: number;
+  frequenciaGanhos: number | null;
 }): number | null {
   const sinais: { valor: number; peso: number }[] = [];
-  if (params.registros !== null && params.registros > 0) {
+  // presente > 0: período com ausências lançadas mas nenhuma presença é quase sempre encontro cuja
+  // presença ainda não foi registrada (ver comentário em montarGradeConselhos) — nesse caso o
+  // sinal fica de fora em vez de derrubar o score pra perto de zero.
+  if (params.registros !== null && params.registros > 0 && (params.presente || 0) > 0) {
     sinais.push({ valor: Math.max(0, Math.min(1, (params.presente || 0) / params.registros)), peso: PESOS_HEALTHSCORE.presenca });
   }
   if (params.taxaCumprimentoGtd !== null && params.taxaCumprimentoGtd !== undefined) {
@@ -1112,41 +1150,235 @@ function calcularHealthscore(params: {
     const porMembro = params.totalCasesMatchmakings / params.numMembros;
     sinais.push({ valor: Math.max(0, Math.min(1, porMembro / 3)), peso: PESOS_HEALTHSCORE.volume });
   }
+  if (params.frequenciaGanhos !== null && params.frequenciaGanhos !== undefined) {
+    sinais.push({ valor: Math.max(0, Math.min(1, params.frequenciaGanhos)), peso: PESOS_HEALTHSCORE.ganhos });
+  }
   if (sinais.length === 0) return null;
   const somaPeso = sinais.reduce((s, x) => s + x.peso, 0);
   const somaPonderada = sinais.reduce((s, x) => s + x.valor * x.peso, 0);
   return Math.round((somaPonderada / somaPeso) * 100);
 }
 
-// ============ página/modal completo do conselho ============
-// Uma função só alimenta os dois níveis de drill-down (modal rápido e página completa /
-// conselho/[grupo]) — o front-end de cada um decide qual subconjunto do retorno mostrar, sem
-// duplicar nenhuma busca ou lógica de casamento por nome.
-export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
-  const dados = dadosParam || (await getDadosBrutos(sb));
-  const { geral } = periodoDatas(seletorMes, ano);
+// ============ conselheiro (board "Conselheiros 2026") ============
+// O título do grupo traz o conselheiro abreviado/apelidado ("Gallo", "Gui Figueiredo", "JP",
+// "Digo Melo"), o board de Conselheiros traz o nome completo ("Eduardo Gallo", "Guilherme
+// Figueiredo", ...). Casamento: igualdade sem acento; senão, todo token do título tem que ser
+// início de algum token do nome completo ("gui" -> "guilherme") e o candidato tem que ser único.
+// Apelidos que não são prefixo de nada ficam na tabela abaixo.
+const APELIDOS_CONSELHEIRO: Record<string, string> = {
+  jp: 'joao pedro costa',
+  'digo melo': 'rodrigo melo',
+};
 
-  const grupo = dados.conselhosGrupos.find((g: any) => g.group_id === groupId && !g.is_repo);
-  if (!grupo) throw new Error(`Conselho "${groupId}" não encontrado`);
+function casarConselheiroPorNome<T>(contato: string | null, lista: T[], nomeDe: (x: T) => string): T | null {
+  if (!contato) return null;
+  let alvo = normalizeNome(contato);
+  if (APELIDOS_CONSELHEIRO[alvo]) alvo = APELIDOS_CONSELHEIRO[alvo];
+  const exato = lista.find((x) => normalizeNome(nomeDe(x)) === alvo);
+  if (exato) return exato;
+  const tokensAlvo = alvo.split(/\s+/).filter((t) => /\w/.test(t));
+  if (tokensAlvo.length === 0) return null;
+  const candidatos = lista.filter((x) => {
+    const tokensNome = normalizeNome(nomeDe(x)).split(/\s+/);
+    return tokensAlvo.every((t) => tokensNome.some((n) => n.startsWith(t)));
+  });
+  return candidatos.length === 1 ? candidatos[0] : null;
+}
 
+function urlFotoConselheiro(contato: string | null, dados: DadosBrutos): string | null {
+  const foto = casarConselheiroPorNome(contato, dados.conselheirosFotos, (f: any) => f.conselheiro_nome);
+  return foto ? `/conselheiro-foto/${(foto as any).monday_item_id}` : null;
+}
+
+function perfilConselheiro(contato: string | null, dados: DadosBrutos) {
+  const c: any = casarConselheiroPorNome(contato, dados.conselheiros, (x: any) => x.nome);
+  if (!c) return null;
+  return {
+    nome: c.nome, csResponsavel: c.cs_responsavel, nivel: c.nivel, email: c.email,
+    statusEngajamento: c.status_engajamento, dataEntrada: c.data_entrada, faturamento: c.faturamento,
+    filhos: c.filhos, segmento: c.segmento, perfilConselho: c.perfil_conselho,
+    perfilConselheiro: c.perfil_conselheiro, especialidade: c.especialidade, endereco: c.endereco,
+    estadoCivil: c.estado_civil, vegetariano: c.vegetariano, formacao: c.formacao,
+    dataNascimento: c.data_nascimento, curiosidades: c.curiosidades,
+  };
+}
+
+// ============ contexto compartilhado dos conselhos ============
+// Índices montados UMA vez por requisição e reaproveitados por conselho — tanto pela grade (35
+// conselhos de uma vez) quanto pelo detalhe de um conselho só, pra os dois nunca divergirem no
+// cálculo de presença/volume/GTD/ganhos/healthscore.
+function montarContextoConselhos(dados: DadosBrutos) {
   const membrosPorGrupo = new Map<string, any[]>();
   dados.conselhosMembros.forEach((m: any) => {
     if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
     membrosPorGrupo.get(m.group_id)!.push(m);
   });
-  const roster = montarRosterConselho(grupo, membrosPorGrupo);
-  const itemsPrincipais = membrosPorGrupo.get(grupo.group_id) || [];
-  const itemsRepo = grupo.repo_group_id ? (membrosPorGrupo.get(grupo.repo_group_id) || []) : [];
-
   const statusPorMembro = new Map<number, Map<string, string>>();
   dados.conselhosStatusMensal.forEach((s: any) => {
     if (!statusPorMembro.has(s.membro_id)) statusPorMembro.set(s.membro_id, new Map());
     statusPorMembro.get(s.membro_id)!.set(s.mes, s.status);
   });
-  const agendaMap = buildAgendaMap(dados.agenda);
-  const mesesRelevantes = geral ? MESES_ORDEM : [seletorMes];
+  return {
+    dados, membrosPorGrupo, statusPorMembro,
+    agendaMap: buildAgendaMap(dados.agenda),
+    cicloAtual: cicloAtualPorConselho(dados.historico),
+  };
+}
+type ContextoConselhos = ReturnType<typeof montarContextoConselhos>;
 
-  const resumo = parseConselhoItems(itemsPrincipais, itemsRepo, grupo.titulo, grupo.congelado, mesesRelevantes, statusPorMembro, agendaMap, grupo.group_id);
+// presença de UM mês de UM conselho: titulares presentes/ausentes + substitutos presentes (mesmo
+// critério de parseConselhoItems). `membros` = titulares que faziam parte do conselho naquele mês
+// (tinham qualquer status, exceto "Não era do conselho"/"Retirado"/"Churn").
+function presencaDoMes(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo: any[], mes: string) {
+  let titulares = 0, reposicoes = 0, agendados = 0, membros = 0;
+  itemsPrincipais.forEach((m: any) => {
+    const s = ctx.statusPorMembro.get(m.id)?.get(mes);
+    if (s && s !== STATUS_NAO_ERA && s !== 'Retirado' && s !== 'Churn') membros++;
+    if (s === STATUS_PRESENTE) { titulares++; agendados++; }
+    else if (s && STATUS_AUSENTE_SET.includes(s)) agendados++;
+  });
+  itemsRepo.forEach((r: any) => {
+    if (ctx.statusPorMembro.get(r.id)?.get(mes) === STATUS_PRESENTE) { reposicoes++; agendados++; }
+  });
+  const presentes = titulares + reposicoes;
+  return { mes, titulares, reposicoes, presentes, agendados, membros, taxa: agendados > 0 ? Math.round((presentes / agendados) * 100) : null };
+}
+
+function calcularConselho(ctx: ContextoConselhos, grupo: any, seletorMes: string, ano: number) {
+  const { dados } = ctx;
+  const geral = seletorMes === 'Visão Geral';
+  const roster = montarRosterConselho(grupo, ctx.membrosPorGrupo);
+  const itemsPrincipais = ctx.membrosPorGrupo.get(grupo.group_id) || [];
+  const itemsRepo = grupo.repo_group_id ? (ctx.membrosPorGrupo.get(grupo.repo_group_id) || []) : [];
+  const mesesRelevantes = geral ? MESES_ORDEM : [seletorMes];
+  const titulo = parseTituloConselho(grupo.titulo);
+  const contato = titulo ? titulo.contato : null;
+
+  const resumo = parseConselhoItems(itemsPrincipais, itemsRepo, grupo.titulo, grupo.congelado, mesesRelevantes, ctx.statusPorMembro, ctx.agendaMap, grupo.group_id);
+
+  // cases/matchmakings do período, só deste conselho — mesmo critério de casamento por nome de
+  // calcularImpactoConselhos, aplicado a um roster só.
+  const casesPeriodo = (geral ? filtrarAnoFlexivel(dados.cases, ano) : filtrarPorMesAnoFlexivel(dados.cases, seletorMes, ano))
+    .filter((c: any) => itemPertenceRoster(c.nome, roster));
+  const mmPeriodo = (geral ? filtrarAnoFlexivel(dados.matchmakings, ano) : filtrarPorMesAnoFlexivel(dados.matchmakings, seletorMes, ano))
+    .filter((m: any) => itemPertenceRoster(m.nome, roster));
+
+  // ata do período selecionado (por nome de mês sem acento + ano resolvido via anoDaAta)
+  const atasDoConselho = organizarAtasDoConselho(dados.atas, grupo.group_id, roster, contato, ctx.agendaMap, ano);
+  const atasNoPeriodo = new Map<string, AtaMembroMes[]>();
+  atasDoConselho.forEach((lista, nomeMembro) => {
+    const filtradas = lista.filter((a) => geral
+      ? a.ano === ano
+      : (a.ano === ano && normalizarMesSemAcento(a.mesAta) === normalizarMesSemAcento(seletorMes)));
+    if (filtradas.length > 0) atasNoPeriodo.set(nomeMembro, filtradas);
+  });
+
+  // frequência de ganho relatado (4º sinal do healthscore — ver comentário em PESOS_HEALTHSCORE):
+  // denominador = meses do período em que o conselho TEM ata processada (de qualquer membro).
+  const mesesComAta = new Set<string>();
+  atasNoPeriodo.forEach((lista) => lista.forEach((a) => mesesComAta.add(normalizarMesSemAcento(a.mesAta))));
+  let frequenciaGanhos: number | null = null;
+  if (mesesComAta.size > 0 && itemsPrincipais.length > 0) {
+    const porMembro = itemsPrincipais.map((m: any) => {
+      const comGanho = new Set((atasNoPeriodo.get(m.nome) || [])
+        .filter((a) => a.ganhos && a.ganhos.trim())
+        .map((a) => normalizarMesSemAcento(a.mesAta)));
+      return comGanho.size / mesesComAta.size;
+    });
+    frequenciaGanhos = porMembro.reduce((s: number, x: number) => s + x, 0) / porMembro.length;
+  }
+
+  // GTD — mesma fonte que já alimenta o card do CS (historico_conselhos_items), casado pelo
+  // conselheiro extraído do título.
+  const histDoConselho = contato ? ctx.cicloAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato)) : null;
+  const taxaCumprimentoGtd = histDoConselho ? histDoConselho.taxa_cumprimento : null;
+
+  const healthscore = calcularHealthscore({
+    presente: resumo.presente, registros: resumo.registros,
+    taxaCumprimentoGtd,
+    totalCasesMatchmakings: casesPeriodo.length + mmPeriodo.length,
+    numMembros: roster.length,
+    frequenciaGanhos,
+  });
+
+  return {
+    titulo, contato, roster, itemsPrincipais, itemsRepo, mesesRelevantes, geral, resumo,
+    casesPeriodo, mmPeriodo, atasNoPeriodo, frequenciaGanhos, taxaCumprimentoGtd, healthscore,
+  };
+}
+
+// ============ grade de conselhos (aba "Conselhos" da home) ============
+// Um cartão por conselho ativo, sempre ordenado pelo PRÓXIMO encontro (o mais próximo primeiro;
+// conselhos sem data futura na agenda vão pro fim). Selos "ATENÇÃO" e "CONGELADO" seguem a
+// coluna Status do board "Conselheiros 2026" (Em atenção / Congelado) — regra que já existe no
+// Monday, não inventada aqui; "CONGELADO" também vale pro grupo marcado como congelado no título.
+//
+// Variação do cartão: taxa de presença do conselho no mês de referência (o mês selecionado, ou o
+// mês atual em "Visão Geral") contra o mês anterior, em pontos percentuais. Se o mês de
+// referência ainda não teve encontro, usa o último mês com encontro até ele — e compara com o
+// mês com encontro imediatamente anterior, pra nunca comparar contra um mês vazio.
+export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano: number) {
+  const ctx = montarContextoConselhos(dados);
+  const mesRef = seletorMes === 'Visão Geral' ? mesAtualReal() : seletorMes;
+  const idxRef = MESES_ORDEM.indexOf(mesRef);
+
+  const cards = dados.conselhosGrupos
+    .filter((g: any) => !g.is_repo && parseTituloConselho(g.titulo))
+    .map((g: any) => {
+      const calc = calcularConselho(ctx, g, seletorMes, ano);
+      const perfil = perfilConselheiro(calc.contato, dados);
+      const status = perfil?.statusEngajamento || null;
+
+      const porMes = MESES_ORDEM.slice(0, idxRef + 1).map((mes) => presencaDoMes(ctx, calc.itemsPrincipais, calc.itemsRepo, mes));
+      // Mês sem NENHUM "Presente" não conta como encontro realizado: é o encontro que acabou de
+      // acontecer e ainda não teve a presença lançada (achado real: piloto em 24/09, encontro de
+      // 23/09 com todo mundo ainda "Confirmado" e só um "Não vai" -> aparecia 0%, -57 p.p.).
+      const comDado = porMes.filter((p) => p.taxa !== null && p.presentes > 0);
+      const atual = comDado.length ? comDado[comDado.length - 1] : null;
+      const anterior = comDado.length > 1 ? comDado[comDado.length - 2] : null;
+
+      return {
+        groupId: g.group_id,
+        conselheiro: perfil?.nome || calc.contato,
+        nivel: calc.titulo!.nivel,
+        csResponsavel: calc.titulo!.cs,
+        membros: calc.itemsPrincipais.length,
+        fotoUrl: urlFotoConselheiro(calc.contato, dados),
+        congelado: !!g.congelado || status === 'Congelado',
+        atencao: status === 'Em atenção',
+        statusEngajamento: status,
+        proximaData: calc.resumo.proximaData,
+        proximaDataEhFutura: calc.resumo.proximaDataEhFutura,
+        healthscore: calc.healthscore,
+        presenca: atual ? {
+          mes: atual.mes, taxa: atual.taxa,
+          mesAnterior: anterior ? anterior.mes : null,
+          variacaoPp: anterior && anterior.taxa !== null ? (atual.taxa as number) - anterior.taxa : null,
+        } : null,
+      };
+    });
+
+  const tempo = (c: { proximaData: string | null; proximaDataEhFutura: boolean | null }) =>
+    c.proximaData && c.proximaDataEhFutura ? new Date(c.proximaData).getTime() : Number.MAX_SAFE_INTEGER;
+  cards.sort((a, b) => tempo(a) - tempo(b) || a.conselheiro!.localeCompare(b.conselheiro!));
+  return { mesReferencia: mesRef, cards };
+}
+
+// ============ página/modal completo do conselho ============
+// Uma função só alimenta o modal rápido (página do CS) e a página completa /conselho/[grupo] —
+// que agora também é a visão combinada conselheiro + conselho aberta pelos cartões da aba
+// "Conselhos" da home (perfil do board "Conselheiros 2026", presença mensal, tabela de membros com
+// plaquinha/pagamento, ata e Big Deal). O front-end de cada tela decide qual subconjunto mostrar.
+export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  periodoDatas(seletorMes, ano); // valida o mês
+
+  const grupo = dados.conselhosGrupos.find((g: any) => g.group_id === groupId && !g.is_repo);
+  if (!grupo) throw new Error(`Conselho "${groupId}" não encontrado`);
+
+  const ctx = montarContextoConselhos(dados);
+  const calc = calcularConselho(ctx, grupo, seletorMes, ano);
+  const { resumo, itemsPrincipais, itemsRepo, mesesRelevantes, geral, contato, roster } = calc;
 
   // pizza de presença: sempre um mês concreto — "Visão Geral" resolve pro mês real atual (ver
   // comentário em calcularPresencaMes/mesAtualReal).
@@ -1157,96 +1389,92 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     historicoPorMembroMes.get(chave)!.push({ statusAnterior: h.status_anterior });
   });
   const mesPresenca = geral ? mesAtualReal() : seletorMes;
-  const presencaMes = calcularPresencaMes(itemsPrincipais, itemsRepo, mesPresenca, statusPorMembro, historicoPorMembroMes);
+  const presencaMes = calcularPresencaMes(itemsPrincipais, itemsRepo, mesPresenca, ctx.statusPorMembro, historicoPorMembroMes);
 
-  // nível / conselheiro / CS responsável a partir do título, ex. "Fast Track | Julio Faccioli (Vitor)"
-  const contato = extrairContatoDoTitulo(grupo.titulo);
-  const nivelMatch = grupo.titulo.match(/^(.*?)\s*\|/);
-  const nivel = nivelMatch ? nivelMatch[1].trim() : null;
-  const csMatch = grupo.titulo.match(/\((.*?)\)\s*$/);
-  const csResponsavel = csMatch ? csMatch[1].trim() : null;
-
-  // cases/matchmakings do período, só deste conselho — mesmo critério de casamento por nome de
-  // calcularImpactoConselhos, aplicado a um roster só em vez de todos os grupos de uma vez.
-  const casesPeriodo = (geral ? filtrarAnoFlexivel(dados.cases, ano) : filtrarPorMesAnoFlexivel(dados.cases, seletorMes, ano))
-    .filter((c: any) => itemPertenceRoster(c.nome, roster));
-  const mmPeriodo = (geral ? filtrarAnoFlexivel(dados.matchmakings, ano) : filtrarPorMesAnoFlexivel(dados.matchmakings, seletorMes, ano))
-    .filter((m: any) => itemPertenceRoster(m.nome, roster));
-
-  // ata do período selecionado (por nome de mês sem acento + ano resolvido via anoDaAta)
-  const atasDoConselho = organizarAtasDoConselho(dados.atas, groupId, roster, contato, agendaMap, ano);
-  const atasNoPeriodo = new Map<string, AtaMembroMes[]>();
-  atasDoConselho.forEach((lista, nomeMembro) => {
-    const filtradas = lista.filter((a) => geral
-      ? a.ano === ano
-      : (a.ano === ano && normalizarMesSemAcento(a.mesAta) === normalizarMesSemAcento(seletorMes)));
-    if (filtradas.length > 0) atasNoPeriodo.set(nomeMembro, filtradas);
-  });
-  const totalOportunidadesMapeadas = [...atasNoPeriodo.values()]
+  const totalOportunidadesMapeadas = [...calc.atasNoPeriodo.values()]
     .reduce((soma, lista) => soma + lista.reduce((s, a) => s + (a.oportunidadesMapeadas?.length || 0), 0), 0);
 
-  // GTD do período — mesma fonte que já alimenta o card do CS (historico_conselhos_items),
-  // casado pelo conselheiro extraído do título.
-  const cicloAtual = cicloAtualPorConselho(dados.historico);
-  const histDoConselho = contato ? cicloAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato)) : null;
-  const taxaCumprimentoGtd = histDoConselho ? histDoConselho.taxa_cumprimento : null;
-
-  const healthscore = calcularHealthscore({
-    presente: resumo.presente, registros: resumo.registros,
-    taxaCumprimentoGtd,
-    totalCasesMatchmakings: casesPeriodo.length + mmPeriodo.length,
-    numMembros: roster.length,
+  // Big Deal (atas_conselho_bigdeal): NUNCA conferido por humano ainda (conferido=false em toda
+  // linha) e a extração embaralha membros adjacentes da tabela da ata — big_deal_definido e
+  // observacoes_gerais frequentemente pertencem ao membro ANTERIOR no documento. Vai pro front-end
+  // separado em "campos do membro" x "campos de posição incerta", sempre com o flag conferido, e
+  // sem nenhuma tentativa de corrigir o deslocamento aqui (não validada pra todos os conselhos).
+  // Linha que não casa com nenhum membro do roster não some: vai pra bigDealsSemMembro.
+  const bigDealsPorMembro = new Map<string, any[]>();
+  const bigDealsSemMembro: any[] = [];
+  dados.bigDeals.filter((b: any) => b.group_id === groupId).forEach((b: any) => {
+    const item = {
+      membroNomeAta: b.membro_nome_ata, conferido: !!b.conferido, fonteDocUrl: b.fonte_doc_url,
+      feedbacksPositivos: b.feedbacks_positivos, feedbacksNegativos: b.feedbacks_negativos,
+      feedbackConselheiro: b.feedback_conselheiro, conclusoes: b.conclusoes,
+      bigDealDefinido: b.big_deal_definido, observacoesGerais: b.observacoes_gerais,
+    };
+    const membro = nomeCasaComRoster(b.membro_nome_ata, roster);
+    if (!membro) { bigDealsSemMembro.push(item); return; }
+    if (!bigDealsPorMembro.has(membro.nome)) bigDealsPorMembro.set(membro.nome, []);
+    bigDealsPorMembro.get(membro.nome)!.push(item);
   });
 
-  // membros expansíveis: cada membro do roster oficial (titulares), com a presença e a ata (se
-  // existir) de cada mês do período — membro/mês sem ata fica de fora do array `atas` daquele
-  // membro; quem renderiza mostra o estado vazio explícito, nunca omite a linha do membro.
+  // membros expansíveis: cada titular, com presença/ata de cada mês do período, mais os dados da
+  // "tabela de membros" do Monday (plaquinha, status de pagamento) e a taxa de presença no ano.
+  // Membro/mês sem ata fica de fora de `atas`; quem renderiza mostra o estado vazio explícito.
   const membros = itemsPrincipais.map((m: any) => {
-    const presencaPorMes = mesesRelevantes.map((mes) => ({ mes, status: statusPorMembro.get(m.id)?.get(mes) || null }));
-    const atas = (atasNoPeriodo.get(m.nome) || []).sort((a, b) => a.ano - b.ano || indiceMesAta(a.mesAta) - indiceMesAta(b.mesAta));
-    return { nome: m.nome, presencaPorMes, atas };
+    const presencaPorMes = mesesRelevantes.map((mes) => ({ mes, status: ctx.statusPorMembro.get(m.id)?.get(mes) || null }));
+    const atas = (calc.atasNoPeriodo.get(m.nome) || []).sort((a, b) => a.ano - b.ano || indiceMesAta(a.mesAta) - indiceMesAta(b.mesAta));
+    let presente = 0, registros = 0;
+    MESES_ORDEM.forEach((mes) => {
+      const s = ctx.statusPorMembro.get(m.id)?.get(mes);
+      if (s === STATUS_PRESENTE) { presente++; registros++; }
+      else if (s && STATUS_AUSENTE_SET.includes(s)) registros++;
+    });
+    return {
+      nome: m.nome, presencaPorMes, atas,
+      plaquinha: m.plaquinha || null, statusPagamento: m.status_pagamento || null,
+      taxaPresencaAno: registros > 0 ? Math.round((presente / registros) * 100) : null,
+      bigDeals: bigDealsPorMembro.get(m.nome) || [],
+    };
   });
 
-  // lista de encontros dentro do período: um encontro por mês (cada mês tem no máximo uma
-  // reunião do conselho), com a presença agregada daquele mês — inclui titulares E substitutos
-  // do grupo de reposição (mesmo critério de resumo.presente/registros em parseConselhoItems,
-  // pra "totalEncontros" nas métricas e a soma aqui nunca divergirem). Só entra na lista o mês
-  // que realmente teve algum dado de presença/ausência (agendados > 0).
-  const encontros = mesesRelevantes.map((mes) => {
-    let presentesNoMes = 0, agendadosNoMes = 0;
-    itemsPrincipais.forEach((m: any) => {
-      const s = statusPorMembro.get(m.id)?.get(mes);
-      if (s === STATUS_PRESENTE) { presentesNoMes++; agendadosNoMes++; }
-      else if (s && STATUS_AUSENTE_SET.includes(s)) agendadosNoMes++;
-    });
-    itemsRepo.forEach((r: any) => {
-      const s = statusPorMembro.get(r.id)?.get(mes);
-      if (s === STATUS_PRESENTE) { presentesNoMes++; agendadosNoMes++; }
-    });
-    return { mes, presentes: presentesNoMes, agendados: agendadosNoMes };
-  }).filter((e) => e.agendados > 0);
+  // lista de encontros dentro do período: um encontro por mês, com a presença agregada daquele
+  // mês (titulares + substitutos, mesmo critério de resumo.presente/registros). Só entra o mês
+  // que realmente teve algum dado de presença/ausência.
+  const encontros = mesesRelevantes.map((mes) => presencaDoMes(ctx, itemsPrincipais, itemsRepo, mes))
+    .filter((e) => e.agendados > 0)
+    .map((e) => ({ mes: e.mes, presentes: e.presentes, agendados: e.agendados }));
 
-  const fotoConselheiro = contato
-    ? dados.conselheirosFotos.find((f: any) => normalizeNome(f.conselheiro_nome) === normalizeNome(contato))
-    : null;
+  // gráfico de presença mensal do ano inteiro (titulares + reposições) e membros no conselho por
+  // mês — sempre os 12 meses, independente do período selecionado (mesmo formato do card do
+  // conselheiro que o Vitor usa como referência).
+  const presencaMensal = MESES_ORDEM.map((mes) => {
+    const p = presencaDoMes(ctx, itemsPrincipais, itemsRepo, mes);
+    return { mes, titulares: p.titulares, reposicoes: p.reposicoes, membros: p.membros };
+  });
+
+  const perfil = perfilConselheiro(contato, dados);
 
   return {
     grupo: {
-      groupId: grupo.group_id, titulo: resumo.nome, nivel, conselheiro: contato, csResponsavel,
-      congelado: grupo.congelado,
-      fotoConselheiroUrl: fotoConselheiro?.foto_base64 || null,
+      groupId: grupo.group_id, titulo: resumo.nome, nivel: calc.titulo?.nivel || null,
+      conselheiro: perfil?.nome || contato, csResponsavel: calc.titulo?.cs || null,
+      congelado: !!grupo.congelado || perfil?.statusEngajamento === 'Congelado',
+      atencao: perfil?.statusEngajamento === 'Em atenção',
+      fotoConselheiroUrl: urlFotoConselheiro(contato, dados),
+      proximaData: resumo.proximaData, proximaDataEhFutura: resumo.proximaDataEhFutura,
     },
+    conselheiro: perfil,
     periodo: { mes: seletorMes, ano, geral },
     metricas: {
-      totalEncontros: resumo.registros || 0,
-      totalMatchmakings: mmPeriodo.length,
-      totalCases: casesPeriodo.length,
+      totalEncontros: encontros.length,
+      totalMatchmakings: calc.mmPeriodo.length,
+      totalCases: calc.casesPeriodo.length,
       totalOportunidadesMapeadas,
-      healthscore,
+      healthscore: calc.healthscore,
     },
     presencaMes,
+    presencaMensal,
     encontros,
     membros,
+    bigDealsSemMembro,
   };
 }
 export type ConselhoDetalhe = Awaited<ReturnType<typeof generateConselhoDetalhe>>;

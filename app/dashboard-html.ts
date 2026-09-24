@@ -260,6 +260,33 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .attention-box li { font-size: 12.5px; color: #5D5D5D; padding: 4px 0; padding-left: 14px; position: relative; }
 .attention-box li::before { content: '—'; position: absolute; left: 0; color: #C0433D; }
 .attention-desc { font-size: 12.5px; color:#5D5D5D; padding-left:14px; line-height:1.6; }
+.home-tabs { display:flex; justify-content:center; gap:6px; margin:-28px 0 34px; }
+.home-tab { padding:9px 22px; border-radius:99px; font-size:12px; font-weight:800; letter-spacing:0.3px; color:#807E7E; background:#fff; border:0.75pt solid #D8D5D5; cursor:pointer; transition:all .2s; }
+.home-tab:hover { color:#1A1A1A; border-color:#1A1A1A; }
+.home-tab.active { background:#1A1A1A; color:#fff; border-color:#1A1A1A; }
+#homeAbaConselhos { text-align:left; }
+.cons-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:16px; }
+.cons-card { position:relative; border-radius:22px; overflow:hidden; background:#1A1A1A; color:#fff; text-decoration:none; display:flex; flex-direction:column; transition:transform .2s, box-shadow .2s; }
+.cons-card:hover { transform:translateY(-3px); box-shadow:0 14px 30px rgba(0,0,0,0.18); }
+.cons-card.congelado .cons-foto, .cons-card.congelado .cons-foto-fallback { filter:grayscale(1); opacity:0.55; }
+.cons-foto-wrap { position:relative; aspect-ratio: 1 / 1; background:#242424; }
+.cons-foto { width:100%; height:100%; object-fit:cover; display:block; }
+.cons-foto-fallback { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Bricolage Grotesque',sans-serif; font-weight:800; font-size:44px; color:#C89A2E; }
+.cons-foto-wrap::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(26,26,26,0) 45%, rgba(26,26,26,0.92) 100%); }
+.cons-over { position:absolute; left:14px; right:14px; bottom:12px; z-index:1; }
+.cons-nome { font-family:'Bricolage Grotesque',sans-serif; font-size:17px; font-weight:800; line-height:1.15; }
+.cons-nivel { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; color:#C89A2E; margin-top:3px; }
+.cons-selo { position:absolute; top:12px; left:12px; z-index:1; font-size:9px; font-weight:800; letter-spacing:0.7px; text-transform:uppercase; padding:4px 9px; border-radius:99px; }
+.cons-selo.congelado { background:#007eb5; color:#fff; }
+.cons-selo.atencao { background:#C89A2E; color:#1A1A1A; }
+.cons-health { position:absolute; top:12px; right:12px; z-index:1; background:rgba(20,20,20,0.75); border:0.75pt solid rgba(200,154,46,0.6); color:#e8c574; font-size:10px; font-weight:800; padding:4px 9px; border-radius:99px; }
+.cons-body { padding:12px 14px 14px; display:flex; flex-direction:column; gap:6px; }
+.cons-linha { font-size:11px; color:#9F9F9F; display:flex; align-items:center; gap:6px; }
+.cons-linha svg { width:12px; height:12px; flex-shrink:0; }
+.cons-rodape { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; border-top:0.75pt solid #2A2A2A; padding-top:9px; margin-top:4px; font-size:11px; color:#C6C4C4; }
+.cons-var { font-weight:800; font-size:12px; }
+.cons-var.alta { color:#5fbf86; } .cons-var.queda { color:#e0645e; } .cons-var.neutra { color:#9F9F9F; }
+.ranking-health { font-size:9.5px; font-weight:800; color:#e8c574; border:0.75pt solid rgba(200,154,46,0.5); border-radius:99px; padding:2px 7px; margin-left:6px; }
 .council-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:14px; }
 .council-card { background:#fff; border:0.75pt solid #D8D5D5; border-radius:20px; padding:18px; position:relative; transition: transform .2s; }
 .council-card.clicavel { cursor:pointer; }
@@ -333,6 +360,16 @@ select.pickmes:hover { border-color:#1A1A1A; }
   <div class="home-title">Time de CS</div>
   <div class="home-sub">Selecione um CS para ver os indicadores, em tempo real.</div>
   <div class="team-grid" id="teamGrid"></div>
+  <div class="home-tabs">
+    <div class="home-tab active" id="homeTabIndicadores" onclick="mostrarAbaHome('indicadores')">Indicadores</div>
+    <div class="home-tab" id="homeTabConselhos" onclick="mostrarAbaHome('conselhos')">Conselhos</div>
+  </div>
+  <div id="homeAbaConselhos" style="display:none;">
+    <div class="section-title">Conselhos · ordenados pelo próximo encontro<div class="line"></div></div>
+    <div id="equipeGradeConselhos"></div>
+    <div class="section-title" style="margin-top:36px;">Impacto dos conselhos<div class="line"></div></div>
+    <div id="equipeImpactoConselhos"></div>
+  </div>
   <div id="equipeSection">
     <div class="section-title">Próximos conselhos<div class="line"></div></div>
     <div id="equipeProximosConselhos"></div>
@@ -342,8 +379,6 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div id="equipeSemanal"></div>
     <div class="section-title" style="margin-top:36px;">Conselhos — visão consolidada<div class="line"></div></div>
     <div id="equipeConselhos"></div>
-    <div class="section-title" style="margin-top:36px;">Impacto dos conselhos<div class="line"></div></div>
-    <div id="equipeImpactoConselhos"></div>
     <div class="section-title" style="margin-top:36px;">CS Top 3<div class="line"></div></div>
     <div id="csTop"></div>
     <div class="section-title" style="margin-top:36px;">Ranking do time<div class="line"></div></div>
@@ -637,6 +672,8 @@ function renderSkeletonEquipe(){
   document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid"><div class="dark-card skel" style="height:160px;"></div><div class="dark-card skel" style="height:160px;"></div></div>';
   document.getElementById('csTop').innerHTML = '<div class="cstop-grid">'+Array(3).fill('<div class="cstop-card skel" style="height:180px;"></div>').join('')+'</div>';
   document.getElementById('equipeRanking').innerHTML = '<div class="ranking-grid">'+Array(6).fill('<div class="ranking-card skel" style="height:180px;"></div>').join('')+'</div>';
+  document.getElementById('equipeGradeConselhos').innerHTML = '<div class="cons-grid">'+Array(8).fill('<div class="cons-card skel" style="height:300px;"></div>').join('')+'</div>';
+  document.getElementById('equipeImpactoConselhos').innerHTML = '<div class="chart-card skel" style="height:180px;"></div>';
 }
 
 function carregarRelatorio(nome, mes, ano){
@@ -679,6 +716,8 @@ function carregarEquipe(mes, ano){
     document.getElementById('equipeConselhos').innerHTML = msgErro;
     document.getElementById('csTop').innerHTML = msgErro;
     document.getElementById('equipeRanking').innerHTML = msgErro;
+    document.getElementById('equipeGradeConselhos').innerHTML = msgErro;
+    document.getElementById('equipeImpactoConselhos').innerHTML = msgErro;
   }).getEquipeReportPublico(mes, ano);
 }
 
@@ -1184,7 +1223,9 @@ function carregarImpactoPeriodoModal(groupId){
       html += '<div class="empty-state" style="padding:8px 0;">Nenhum membro neste conselho.</div>';
     } else {
       d.membros.forEach(function(mb){
-        var ata = (mb.atas || []).find(function(a){ return a.mesAta === mesResumo; });
+        // mes_ata vem sem acento ("Marco") — compara normalizado, nunca por igualdade crua.
+        var semAcento = function(s){ return String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase(); };
+        var ata = (mb.atas || []).find(function(a){ return semAcento(a.mesAta) === semAcento(mesResumo); });
         html += '<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:12.5px;color:#1A1A1A;margin-bottom:3px;">'+mb.nome+'</div>';
         if (!ata) {
           html += '<div style="font-size:12px;color:#9F9F9F;font-style:italic;">ata ainda não processada</div>';
@@ -1197,7 +1238,7 @@ function carregarImpactoPeriodoModal(groupId){
       });
     }
 
-    html += '<a href="/conselho/'+encodeURIComponent(groupId)+'" class="destaque-form-btn" style="display:inline-block;text-decoration:none;margin-top:4px;">Ver histórico completo do conselho</a>';
+    html += '<a href="/conselho/'+encodeURIComponent(groupId)+'?mes='+encodeURIComponent(currentMes)+'&ano='+currentAno+'" class="destaque-form-btn" style="display:inline-block;text-decoration:none;margin-top:4px;">Ver histórico completo do conselho</a>';
     el.innerHTML = html;
   }).catch(function(err){
     var el = document.getElementById('conselhoPeriodoWrap');
@@ -1363,9 +1404,90 @@ function renderEquipe(data){
       '</div></div>';
   });
 
-  renderEquipeSecao_('equipeImpactoConselhos', function(){ renderImpactoConselhosEquipe(data.impactoConselhos); });
+  // BUG FIX (24/09/2026): antes passava data.impactoConselhos (o alias, que é só o objeto do
+  // histórico) pra uma função que lê .impactoConselhosHistorico/.impactoConselhosPeriodo dele —
+  // os dois vinham undefined e a seção sempre mostrava "Sem dados de impacto disponíveis".
+  renderEquipeSecao_('equipeGradeConselhos', function(){ renderGradeConselhos(data); });
+  renderEquipeSecao_('equipeImpactoConselhos', function(){ renderImpactoConselhosEquipe(data); });
   renderEquipeSecao_('csTop', function(){ renderCSTop(data.csTop); });
   renderEquipeSecao_('equipeRanking', function(){ renderRankingEquipe(data.ranking); });
+}
+
+// Home da equipe em duas abas (pedido do Vitor, 24/09/2026): "Indicadores" (tudo que já existia)
+// e "Conselhos" (grade de conselheiros + impacto dos conselhos). A aba escolhida fica guardada
+// no navegador só como conveniência — a tela funciona igual sem isso.
+function mostrarAbaHome(aba){
+  var conselhos = aba === 'conselhos';
+  document.getElementById('homeAbaConselhos').style.display = conselhos ? 'block' : 'none';
+  document.getElementById('equipeSection').style.display = conselhos ? 'none' : 'block';
+  document.getElementById('homeTabConselhos').classList.toggle('active', conselhos);
+  document.getElementById('homeTabIndicadores').classList.toggle('active', !conselhos);
+  try { localStorage.setItem('moaiHomeAba', aba); } catch (e) {}
+}
+(function restaurarAbaHome(){
+  var aba = null;
+  try { aba = localStorage.getItem('moaiHomeAba'); } catch (e) {}
+  if (aba === 'conselhos') mostrarAbaHome('conselhos');
+})();
+
+function escHtml_(s){
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
+  });
+}
+
+// Grade de conselhos: um cartão por conselho, sempre na ordem do próximo encontro (já vem
+// ordenada do servidor). Clique abre a visão combinada conselheiro + conselho (/conselho/[grupo]),
+// já no mesmo período selecionado aqui.
+var gradeConselhosAtual_ = null;
+function renderGradeConselhos(data){
+  var el = document.getElementById('equipeGradeConselhos');
+  gradeConselhosAtual_ = data.gradeConselhos;
+  if (!data.gradeConselhos) {
+    el.innerHTML = '<div class="empty-state">Não foi possível montar a grade de conselhos' + (data.gradeConselhosErro ? ': ' + escHtml_(data.gradeConselhosErro) : '.') + '</div>';
+    return;
+  }
+  var cards = data.gradeConselhos.cards || [];
+  if (!cards.length) { el.innerHTML = '<div class="empty-state">Nenhum conselho ativo encontrado.</div>'; return; }
+  var qs = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
+  var html = '<div class="cons-grid">';
+  cards.forEach(function(c){
+    var foto = c.fotoUrl
+      ? '<img class="cons-foto" loading="lazy" src="' + escHtml_(c.fotoUrl) + '" alt="">'
+      : '<div class="cons-foto-fallback">' + escHtml_(iniciais(c.conselheiro)) + '</div>';
+    var selo = c.congelado ? '<div class="cons-selo congelado">Congelado</div>' : (c.atencao ? '<div class="cons-selo atencao">Atenção</div>' : '');
+    var health = (c.healthscore !== null && c.healthscore !== undefined) ? '<div class="cons-health" title="Healthscore do conselho no período">♥ ' + c.healthscore + '</div>' : '';
+    var proxima = '';
+    if (c.proximaData && c.proximaDataEhFutura) {
+      var f = formatarDataConselho(c.proximaData);
+      if (f) proxima = '<div class="cons-linha">' + ICONS.calendar + 'Próximo: ' + escHtml_(f.texto) + '</div>';
+    }
+    if (!proxima) proxima = '<div class="cons-linha">' + ICONS.clock + 'Sem próximo encontro na agenda</div>';
+    var variacao = '<span class="cons-var neutra">sem presença registrada</span>';
+    if (c.presenca) {
+      var v = c.presenca.variacaoPp;
+      var seta = v === null ? '' : (v > 0 ? '▲ ' : (v < 0 ? '▼ ' : '= '));
+      var classe = v === null ? 'neutra' : (v > 0 ? 'alta' : (v < 0 ? 'queda' : 'neutra'));
+      var comp = v === null ? '' : ' · ' + seta + Math.abs(v) + ' p.p. vs ' + c.presenca.mesAnterior.slice(0,3);
+      variacao = '<span class="cons-var ' + classe + '" title="Presença em ' + escHtml_(c.presenca.mes) + ' comparada ao encontro anterior">' + c.presenca.taxa + '%' + comp + '</span>';
+    }
+    html += '<a class="cons-card' + (c.congelado ? ' congelado' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + qs + '">' +
+      '<div class="cons-foto-wrap">' + foto + selo + health +
+        '<div class="cons-over"><div class="cons-nome">' + escHtml_(c.conselheiro) + '</div><div class="cons-nivel">' + escHtml_(c.nivel) + '</div></div>' +
+      '</div>' +
+      '<div class="cons-body">' +
+        '<div class="cons-linha">CS responsável: <b style="color:#fff;">' + escHtml_(c.csResponsavel) + '</b></div>' +
+        proxima +
+        '<div class="cons-rodape"><span>' + c.membros + ' membros</span>' + variacao + '</div>' +
+      '</div></a>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+function healthscoreDoGrupo_(groupId){
+  if (!gradeConselhosAtual_ || !groupId) return null;
+  var c = (gradeConselhosAtual_.cards || []).find(function(x){ return x.groupId === groupId; });
+  return c ? c.healthscore : null;
 }
 
 // Duas visões, nunca uma substituindo a outra (decisão confirmada com o Vitor): histórico
@@ -1406,11 +1528,12 @@ function desenharImpactoConselhosEquipe_(){
     imp.topConselhos.forEach(function(t, i){
       var contato = parseConselhoNome(t.nome).contato;
       var pct = Math.round(t.total / maxTotal * 100);
-      var linkAbre = t.groupId ? (' onclick="window.location.href=\\'/conselho/'+encodeURIComponent(t.groupId)+'\\'"') : '';
+      var linkAbre = t.groupId ? (' onclick="window.location.href=\\'/conselho/'+encodeURIComponent(t.groupId)+'?mes='+encodeURIComponent(currentMes)+'&ano='+currentAno+'\\'"') : '';
       html += '<div class="ranking-row"'+(t.groupId?' style="cursor:pointer;"'+linkAbre:'')+'>' +
         '<span class="ranking-pos">'+(i+1)+'º</span>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div class="ranking-nome" style="white-space:normal;">'+contato+' <span style="color:#9F9F9F;font-weight:500;">· '+t.cs+'</span></div>' +
+          '<div class="ranking-nome" style="white-space:normal;">'+contato+' <span style="color:#9F9F9F;font-weight:500;">· '+t.cs+'</span>' +
+            (healthscoreDoGrupo_(t.groupId) !== null ? '<span class="ranking-health" title="Healthscore do conselho no período">♥ '+healthscoreDoGrupo_(t.groupId)+'</span>' : '') + '</div>' +
           '<div style="height:5px;background:#2A2A2A;border-radius:99px;overflow:hidden;margin-top:5px;"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C89A2E,#e8c574);border-radius:99px;"></div></div>' +
         '</div>' +
         '<span class="ranking-valor num">'+t.total+'</span></div>';
