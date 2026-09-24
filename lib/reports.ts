@@ -1258,6 +1258,15 @@ function presencaDoMes(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo
   return { mes, titulares, reposicoes, presentes, agendados, membros, taxa: agendados > 0 ? Math.round((presentes / agendados) * 100) : null };
 }
 
+// A ata é gravada literal, então o campo `ganhos` às vezes traz só um marcador de "nada a relatar"
+// ("Não apresentou.", "Primeira reunião.", "Sem ganhos") — isso não conta como ganho relatado no
+// healthscore (visto nas extrações de Luis Gustavo/Adriana, 24/09/2026).
+const SEM_GANHO_RE = /^-?\s*(n[aã]o apresentou|primeira reuni[aã]o|primeiro conselho|n[aã]o houve|sem ganhos?|nenhum|n\/a|-)\.?\s*$/i;
+function ganhoRelatado(ganhos: string | null): boolean {
+  if (!ganhos || !ganhos.trim()) return false;
+  return ganhos.split('\n').some((l) => l.trim() && !SEM_GANHO_RE.test(l.trim()));
+}
+
 function calcularConselho(ctx: ContextoConselhos, grupo: any, seletorMes: string, ano: number) {
   const { dados } = ctx;
   const geral = seletorMes === 'Visão Geral';
@@ -1295,7 +1304,7 @@ function calcularConselho(ctx: ContextoConselhos, grupo: any, seletorMes: string
   if (mesesComAta.size > 0 && itemsPrincipais.length > 0) {
     const porMembro = itemsPrincipais.map((m: any) => {
       const comGanho = new Set((atasNoPeriodo.get(m.nome) || [])
-        .filter((a) => a.ganhos && a.ganhos.trim())
+        .filter((a) => ganhoRelatado(a.ganhos))
         .map((a) => normalizarMesSemAcento(a.mesAta)));
       return comGanho.size / mesesComAta.size;
     });
