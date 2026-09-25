@@ -473,7 +473,6 @@ function parseConselhoItems(
   mesesRelevantes.forEach((mes) => {
     itemsPrincipais.forEach((m, idx) => {
       const s = statusPorMembro.get(m.id)?.get(mes) || null;
-      if (s === STATUS_CONFIRMADO) confirmados.push({ nome: m.nome, mes });
       if (!s || s === STATUS_NAO_ERA) return;
       temDado = true;
       const md = membrosDetalhe[idx];
@@ -483,8 +482,26 @@ function parseConselhoItems(
     });
     itemsRepo.forEach((r) => {
       const s = statusPorMembro.get(r.id)?.get(mes) || null;
-      if (s === STATUS_CONFIRMADO) confirmados.push({ nome: r.nome, mes });
       if (s === STATUS_PRESENTE) { presentes++; agendados++; reposPresentes++; temDado = true; }
+    });
+  });
+
+  // BUG FIX (25/09/2026 — pedido do Vitor, Parte A: "confirmados do próximo encontro continuam
+  // não aparecendo"): "quem está confirmado" é uma pergunta sobre a PRÓXIMA reunião, não sobre o
+  // mês selecionado na tela — sempre varre os 12 meses, independente de mesesRelevantes ter sido
+  // restringido a um mês só. Achado real: conselho do JP (group_mktkwg6v) tinha setembro (mês
+  // selecionado por padrão) já resolvido (ninguém "Confirmado" lá, todos viraram
+  // Presente/Ausente/Congelado) e os 6 confirmados reais em outubro — card sempre vinha vazio
+  // porque mesesRelevantes só olhava setembro. A dedup logo abaixo (já existente, mantém a
+  // ocorrência do mês mais recente) já cobre alguém ficar "Confirmado" esquecido em mais de um mês.
+  MESES_ORDEM.forEach((mes) => {
+    itemsPrincipais.forEach((m) => {
+      const s = statusPorMembro.get(m.id)?.get(mes) || null;
+      if (s === STATUS_CONFIRMADO) confirmados.push({ nome: m.nome, mes });
+    });
+    itemsRepo.forEach((r) => {
+      const s = statusPorMembro.get(r.id)?.get(mes) || null;
+      if (s === STATUS_CONFIRMADO) confirmados.push({ nome: r.nome, mes });
     });
   });
 
@@ -509,15 +526,6 @@ function parseConselhoItems(
   });
   const confirmadosDeduplicados = [...confirmadosPorNome.values()];
 
-  // TEMP DEBUG (investigação bug "confirmados" divergindo do Monday — remover depois de achar a causa)
-  console.log(`[CONSELHO_DEBUG] ${new Date().toISOString()} grupo="${nomeGrupo}" meses=[${mesesRelevantes.join(',')}] brutos=${confirmados.length} dedup=${confirmadosDeduplicados.length} nomes=[${confirmadosDeduplicados.map((c) => c.nome + '/' + c.mes).join('; ')}]`);
-  const _debugMembros = itemsPrincipais.map((m) => ({
-    id: m.id,
-    idTipo: typeof m.id,
-    nome: m.nome,
-    statusSetembro: statusPorMembro.get(m.id)?.get('Setembro') ?? 'SEM_MATCH',
-  }));
-
   return {
     nome: nomeGrupo, groupId, congelado, membros: membrosBase,
     presente: temDado ? presentes : null,
@@ -527,7 +535,6 @@ function parseConselhoItems(
     status: temDado ? 'realizado' : 'aguardando_confirmacao',
     membrosDetalhe: membrosDetalhe.map((m) => ({ nome: m.nome, reposicao: m.reposicao, taxa: m.registros > 0 ? Math.round((m.presente / m.registros) * 100) : null })),
     confirmadosFuturos: confirmadosDeduplicados,
-    _debugMembros,
     proximaData: proximoConselho ? proximoConselho.dataIso : null,
     proximaDataEhFutura: proximoConselho ? proximoConselho.futuro : null,
     proximaDataStatus: proximoConselho ? proximoConselho.status : null,
