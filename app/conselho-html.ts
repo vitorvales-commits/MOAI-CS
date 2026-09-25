@@ -47,6 +47,9 @@ export const CONSELHO_STYLE = `
 .selo.congelado{background:#007eb5;color:#fff;}
 .selo.atencao{background:var(--dourado);color:var(--preto-tinta);}
 .selo.neutro{background:rgba(255,255,255,0.1);color:#E9E9E9;border:1px solid rgba(255,255,255,0.2);}
+.hero-confirmados{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.hero-confirmados-label{font-size:10.5px;font-weight:700;color:#C6C4C4;}
+.confirmado-chip{font-size:11px;font-weight:700;padding:4px 11px;border-radius:99px;background:rgba(200,154,46,0.16);color:#e8c574;border:1px solid rgba(200,154,46,0.4);}
 .hero-selector{position:relative;z-index:1;margin-top:22px;display:flex;gap:8px;flex-wrap:wrap;}
 .hero-selector select{background:rgba(255,255,255,0.08);color:var(--branco);border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:7px 12px;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
 .hero-selector option{color:var(--preto-tinta);}
@@ -159,6 +162,7 @@ export const CONSELHO_HTML = `
         <h1 id="heroTitulo">Carregando…</h1>
         <p class="hero-sub" id="heroSub"></p>
         <div class="hero-selos" id="heroSelos"></div>
+        <div class="hero-confirmados" id="heroConfirmados"></div>
       </div>
     </div>
     <div class="hero-selector">
@@ -277,6 +281,14 @@ function renderHero(d) {
   else if (d.grupo.atencao) selos += '<span class="selo atencao">Atenção</span>';
   if (d.conselheiro && d.conselheiro.statusEngajamento && !d.grupo.congelado && !d.grupo.atencao) selos += '<span class="selo neutro">' + esc(d.conselheiro.statusEngajamento) + '</span>';
   document.getElementById('heroSelos').innerHTML = selos;
+  // BUG FIX (25/09/2026 — "não tá puxando as confirmações do conselho"): confirmadosFuturos
+  // sempre existia em resumo (parseConselhoItems), só nunca tinha sido incluído no retorno de
+  // generateConselhoDetalhe nem desenhado aqui — a tabela de dados sempre esteve certa.
+  var confirmados = d.confirmadosFuturos || [];
+  document.getElementById('heroConfirmados').innerHTML = confirmados.length
+    ? '<span class="hero-confirmados-label">Confirmados para o próximo encontro:</span>' +
+      confirmados.map(function (c) { return '<span class="confirmado-chip">' + esc(c.nome) + ' · ' + esc(c.mes.slice(0, 3)) + '</span>'; }).join('')
+    : '';
   var fotoWrap = document.getElementById('fotoConselheiroWrap');
   if (d.grupo.fotoConselheiroUrl) {
     fotoWrap.innerHTML = '<img class="foto-conselheiro" src="' + esc(d.grupo.fotoConselheiroUrl) + '" alt="">';

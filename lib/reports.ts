@@ -731,12 +731,21 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     catch (e) { return null; }
   }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
 
+  // BUG FIX (25/09/2026 — "matchmaking tem 127 no monday e 129 na aba de indicadores, cases são 38
+  // e no painel 39"): até aqui somava ind.alcancado, o valor "vencedor" entre manual (board de
+  // Metas) e calculado (contagem real nas tabelas) — decisão do Vitor: aba Indicadores (totais da
+  // equipe) passa a somar sempre ind.calculado, nunca o blend. ind.calculado é null só pra
+  // indicadores sem contrapartida manual (ex. revenueChurn), aí cai pra ind.alcancado (que já É o
+  // calculado puro nesses casos, não muda nada pra eles). Só afeta esta soma da equipe — os
+  // relatórios individuais de CS e a visão do gestor continuam expondo os três valores
+  // (manual/calculado/vencedor) como já faziam, sem mudança.
   function somaInd(chave: string) {
     let meta = 0, temMeta = false, alcancado = 0;
     relatorios.forEach((r) => {
       const ind: any = (r.indicadores as any)[chave];
       if (ind.meta !== null && ind.meta !== undefined) { meta += ind.meta; temMeta = true; }
-      if (ind.alcancado !== null && ind.alcancado !== undefined) alcancado += ind.alcancado;
+      const valor = ind.calculado !== null && ind.calculado !== undefined ? ind.calculado : ind.alcancado;
+      if (valor !== null && valor !== undefined) alcancado += valor;
     });
     return { meta: temMeta ? meta : null, alcancado, tipoMeta: (relatorios[0]?.indicadores as any)?.[chave]?.tipoMeta || 'min', unidade: (relatorios[0]?.indicadores as any)?.[chave]?.unidade || 'qtd' };
   }
@@ -1749,7 +1758,15 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
       atencao: perfil?.statusEngajamento === 'Em atenção',
       fotoConselheiroUrl: urlFotoConselheiro(contato, dados),
       proximaData: resumo.proximaData, proximaDataEhFutura: resumo.proximaDataEhFutura,
+      proximaDataStatus: resumo.proximaDataStatus,
     },
+    // Confirmados pro próximo encontro (BUG FIX 25/09/2026 — "não tá puxando as confirmações do
+    // conselho do JP"): conselhos_status_mensal batia 100% com o Monday nos testes (não era bug de
+    // sync); o dado sempre existiu em resumo.confirmadosFuturos (parseConselhoItems), só nunca
+    // tinha sido incluído no retorno desta função — a página de detalhe nunca recebia esse campo,
+    // por isso nunca aparecia em lugar nenhum aqui (diferente da home, que já lia isso há tempos
+    // via generateEquipeReport/proximosConselhos).
+    confirmadosFuturos: resumo.confirmadosFuturos,
     conselheiro: perfil,
     periodo: { mes: seletorMes, ano, geral },
     metricas: {

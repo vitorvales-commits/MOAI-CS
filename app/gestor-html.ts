@@ -120,9 +120,17 @@ export const GESTOR_STYLE = `
 .form-inline{display:flex;gap:10px;margin-bottom:8px;}
 .form-inline input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--cinza-borda);font-size:13px;font-family:'Inter',sans-serif;}
 .form-inline input.erro{border-color:var(--vermelho);}
+.form-inline select{padding:11px 14px;border-radius:12px;border:1px solid var(--cinza-borda);font-size:13px;font-family:'Inter',sans-serif;background:var(--branco);}
 .form-inline button{padding:11px 20px;border-radius:12px;border:none;background:var(--preto-tinta);color:var(--branco);font-weight:600;font-size:13px;cursor:pointer;}
 .form-inline button:disabled{opacity:0.5;cursor:not-allowed;}
 .erro-msg{color:var(--vermelho);font-size:12px;margin:0 0 16px;min-height:14px;}
+.sync-desc{font-size:12px;color:var(--cinza-apoio);margin:0 0 14px;line-height:1.5;}
+.sync-status{font-size:12px;margin:8px 0 0;min-height:14px;}
+.sync-status.ok{color:var(--verde);}
+.sync-status.erro{color:var(--vermelho);}
+.sync-resultado-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--cinza-borda);font-size:12.5px;}
+.sync-resultado-item:last-child{border-bottom:none;}
+.sync-resultado-item .erro{color:var(--vermelho);}
 .lista-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--cinza-linha);}
 .lista-item:last-child{border-bottom:none;}
 .lista-item-nome{font-size:13px;font-weight:600;}
@@ -237,6 +245,32 @@ export const GESTOR_HTML = `
       <div class="perfis-card">
         <h3>CS ativos</h3>
         <div id="listaCS"></div>
+      </div>
+      <div class="perfis-card">
+        <h3>Sincronização com o Monday</h3>
+        <p class="sync-desc">A sincronização automática roda a cada 5 minutos. Use aqui só quando precisar do dado mais recente na hora — dispara chamadas reais à API do Monday.</p>
+        <div class="form-inline">
+          <select id="selSyncBoard">
+            <option value="">Tudo</option>
+            <option value="churn">Churn</option>
+            <option value="upsell_downsell">Upsell/Downsell</option>
+            <option value="reports_semanais">Reports semanais</option>
+            <option value="metas">Metas</option>
+            <option value="rounds">Rounds</option>
+            <option value="feedback">Feedback</option>
+            <option value="cases">Cases de sucesso</option>
+            <option value="matchmakings">Matchmakings</option>
+            <option value="conselhos">Conselhos</option>
+            <option value="agenda">Agenda dos conselhos</option>
+            <option value="historico_gtd">Histórico GTD</option>
+            <option value="status_usuarios">Status de usuários</option>
+            <option value="conselheiros_fotos">Fotos dos conselheiros</option>
+            <option value="conselheiros">Conselheiros (perfil)</option>
+          </select>
+          <button id="btnSyncAgora">Sincronizar agora</button>
+        </div>
+        <p class="sync-status" id="syncStatus"></p>
+        <div id="syncResultado"></div>
       </div>
     </div>
   </div>
@@ -488,6 +522,42 @@ document.getElementById('btnAddGestor').addEventListener('click', function () {
     .then(function (data) { input.value = ''; renderGestores(data.gestores || []); })
     .catch(function (err) { erroEl.textContent = err.message; input.classList.add('erro'); })
     .then(function () { btn.disabled = false; });
+});
+
+// ============ controle de perfis: sincronizar agora ============
+// Pendência do diagnóstico de 25/09/2026: a Edge Function sync-monday já aceitava chamada manual
+// com ?board= e o segredo compartilhado, só faltava um jeito autenticado de disparar isso sem
+// abrir o terminal. /api/sync-agora (Next.js, restrito a gestor) faz essa ponte.
+document.getElementById('btnSyncAgora').addEventListener('click', function () {
+  var sel = document.getElementById('selSyncBoard');
+  var btn = document.getElementById('btnSyncAgora');
+  var status = document.getElementById('syncStatus');
+  var resultado = document.getElementById('syncResultado');
+  var board = sel.value;
+  btn.disabled = true;
+  sel.disabled = true;
+  status.textContent = 'Sincronizando' + (board ? ' (' + sel.options[sel.selectedIndex].text + ')' : ' tudo') + '… pode levar alguns segundos.';
+  status.className = 'sync-status';
+  resultado.innerHTML = '';
+  fetchJSON_('/api/sync-agora' + (board ? '?board=' + encodeURIComponent(board) : ''), { method: 'POST' })
+    .then(function (data) {
+      var boards = Object.keys(data);
+      var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
+      status.textContent = comErro.length
+        ? comErro.length + ' de ' + boards.length + ' board(s) com erro.'
+        : 'Sincronização concluída com sucesso.';
+      status.className = 'sync-status ' + (comErro.length ? 'erro' : 'ok');
+      resultado.innerHTML = boards.map(function (b) {
+        var r = data[b];
+        return '<div class="sync-resultado-item"><span>' + b + '</span><span' + (r.status === 'erro' ? ' class="erro"' : '') + '>' +
+          (r.status === 'erro' ? (r.erro || 'erro') : (r.itens + ' item(ns)')) + '</span></div>';
+      }).join('');
+    })
+    .catch(function (err) {
+      status.textContent = 'Erro: ' + err.message;
+      status.className = 'sync-status erro';
+    })
+    .then(function () { btn.disabled = false; sel.disabled = false; });
 });
 
 // ============ controle de perfis: roster de CS ============

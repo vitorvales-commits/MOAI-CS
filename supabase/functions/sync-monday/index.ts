@@ -90,6 +90,19 @@
 // crachá ficam de fora de tudo, nem sincronizados. A coluna plaquinha em
 // conselhos_membros continua existindo no banco (não migrada por não ser
 // destrutiva mantê-la parada), só não é mais escrita nem lida por ninguém.
+//
+// v16 (25/09/2026 — diagnóstico do Vitor: "matchmaking tem 127 no monday e
+// 129 na aba de indicadores"): causa raiz confirmada — matchmakings_items
+// tinha 2 linhas de itens já apagados/movidos no Monday que nunca saíram do
+// Supabase, porque nenhuma sync fazia delete, só upsert. Sistêmico (qualquer
+// board acumula lixo assim). Fix: pruneOrfaos (churn, upsell_downsell,
+// reports_semanais, metas, rounds, feedback, cases, matchmakings — todas
+// leem o board INTEIRO a cada execução, então um id que sobrou no Supabase e
+// não voltou nesta leitura realmente não existe mais) e
+// prunarMembrosRemovidos (conselhos_membros, escopado por group_id pra não
+// mexer em grupos fora do escopo desta leitura, com cascata manual pra
+// conselhos_status_historico/conselhos_status_mensal antes do pai, já que
+// não têm ON DELETE CASCADE).
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -303,6 +316,59 @@ async function insertRows(table: string, rows: any[]) {
   }
 }
 
+// DELETE puro por filtro PostgREST (ex.: "id=in.(1,2,3)") — base dos helpers de prune abaixo.
+async function deleteWhere(table: string, filtro: string) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filtro}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Prefer: 'return=minimal',
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase delete falhou (${table} ${filtro}): ${res.status} ${await res.text()}`);
+}
+
+// ============ prune de linhas órfãs (25/09/2026 — pedido do Vitor) ============
+// Achado real: matchmakings_items tinha 129 linhas com mes_grupo_titulo='Setembro' contra 127
+// itens ao vivo no grupo "Setembro" do board — 2 itens tinham sido apagados/movidos no Monday
+// depois de sincronizados e nunca saíram do Supabase, porque nenhuma sync fazia nada além de
+// upsert (nunca um delete). Isso é sistêmico: qualquer board onde alguém apague ou mova um item
+// no Monday acumula lixo no Supabase pra sempre. pruneOrfaos cobre os boards "achatados" (sync lê
+// o board INTEIRO a cada execução, então qualquer id que sobrou no Supabase e não veio nesta
+// leitura realmente não existe mais no Monday — sem risco de derrubar algo que só ficou fora do
+// escopo desta leitura por acaso).
+async function pruneOrfaos(table: string, idsValidos: Set<number>, colunaId = 'id'): Promise<number> {
+  const existentes = await fetchAllFromSupabase(table, colunaId);
+  const orfaos = existentes.map((r: any) => Number(r[colunaId])).filter((id) => !idsValidos.has(id));
+  if (orfaos.length === 0) return 0;
+  await deleteWhere(table, `${colunaId}=in.(${orfaos.join(',')})`);
+  console.warn(`[sync-monday] prune: removidas ${orfaos.length} linha(s) órfã(s) de ${table} (ids: ${orfaos.join(',')})`);
+  return orfaos.length;
+}
+
+// syncConselhos só lê os grupos "ativos" (ver ehGrupoDeReposicao/filtro "em designa") + seus
+// grupos de reposição resolvidos nesta execução — não o board inteiro (grupos tipo "Em
+// designação" ficam de fora de propósito). Por isso o prune de conselhos_membros tem que ser
+// escopado por group_id: só considera órfão um membro cujo group_id ESTAVA no escopo desta
+// leitura (todosGroupIds) e cujo id não veio de volta — nunca um membro de um grupo que
+// simplesmente não fez parte desta leitura. Cascata manual (conselhos_status_historico e
+// conselhos_status_mensal têm FK pra conselhos_membros, sem ON DELETE CASCADE): apaga os filhos
+// antes do pai, senão o Postgres rejeita o delete por violação de FK.
+async function prunarMembrosRemovidos(idsValidos: Set<number>, groupIdsEscopo: Set<string>): Promise<number> {
+  const existentes = await fetchAllFromSupabase('conselhos_membros', 'id,group_id');
+  const orfaos = existentes
+    .filter((r: any) => groupIdsEscopo.has(r.group_id) && !idsValidos.has(Number(r.id)))
+    .map((r: any) => Number(r.id));
+  if (orfaos.length === 0) return 0;
+  const filtro = `membro_id=in.(${orfaos.join(',')})`;
+  await deleteWhere('conselhos_status_historico', filtro);
+  await deleteWhere('conselhos_status_mensal', filtro);
+  await deleteWhere('conselhos_membros', `id=in.(${orfaos.join(',')})`);
+  console.warn(`[sync-monday] prune: removidos ${orfaos.length} membro(s) órfão(s) de conselhos_membros (ids: ${orfaos.join(',')})`);
+  return orfaos.length;
+}
+
 // remove linhas duplicadas (mesma chave de conflito) antes de mandar num único
 // comando de upsert — Postgres rejeita ON CONFLICT DO UPDATE afetando a mesma
 // linha duas vezes no mesmo comando. Mantém a última ocorrência de cada chave.
@@ -408,6 +474,7 @@ async function syncChurn() {
     data: dateOrNull(colText(it.column_values, CHURN_COLS.data)),
   }));
   await upsert('churn_items', rows);
+  await pruneOrfaos('churn_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -421,6 +488,7 @@ async function syncUpsellDownsell() {
     data: dateOrNull(colText(it.column_values, UD_COLS.data)),
   }));
   await upsert('upsell_downsell_items', rows);
+  await pruneOrfaos('upsell_downsell_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -442,6 +510,7 @@ async function syncReportsSemanais() {
     indicacoes: Number(colText(it.column_values, REPORTS_COLS.indicacoes)) || 0,
   }));
   await upsert('reports_semanais_items', rows);
+  await pruneOrfaos('reports_semanais_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -466,6 +535,7 @@ async function syncMetas() {
     });
   });
   await upsert('metas_subitens', rows);
+  await pruneOrfaos('metas_subitens', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -486,6 +556,7 @@ async function syncRounds() {
     });
   });
   await upsert('rounds_items', rows);
+  await pruneOrfaos('rounds_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -514,6 +585,7 @@ async function syncFeedback() {
     });
   });
   await upsert('feedback_items', rows);
+  await pruneOrfaos('feedback_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -544,6 +616,7 @@ async function syncCases() {
     });
   });
   await upsert('cases_items', rows);
+  await pruneOrfaos('cases_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -567,6 +640,7 @@ async function syncMatchmakings() {
     });
   });
   await upsert('matchmakings_items', rows);
+  await pruneOrfaos('matchmakings_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -658,6 +732,8 @@ async function syncConselhos() {
   await insertRows('conselhos_status_historico', historicoRows);
 
   await upsert('conselhos_status_mensal', statusRowsDedup, 'membro_id,mes');
+
+  await prunarMembrosRemovidos(new Set(membros.map((m) => m.id)), new Set(todosGroupIds));
   return membros.length;
 }
 
