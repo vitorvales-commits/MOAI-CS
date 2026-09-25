@@ -12,7 +12,8 @@ import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
-  PESOS_SCORE_CS, FOTOS_CS,
+  PESOS_SCORE_CS, FOTOS_CS, NIVEL_ORDEM,
+  STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA,
 } from './constants';
 
 // ============ util ============
@@ -1340,6 +1341,31 @@ function calcularConselho(ctx: ContextoConselhos, grupo: any, seletorMes: string
 // mês atual em "Visão Geral") contra o mês anterior, em pontos percentuais. Se o mês de
 // referência ainda não teve encontro, usa o último mês com encontro até ele — e compara com o
 // mês com encontro imediatamente anterior, pra nunca comparar contra um mês vazio.
+// pizza pagante x permuta de um conselho: só os titulares do grupo (mesmo roster que o card já usa
+// pra "X membros"; substitutos do grupo de reposição ficam de fora, igual ao resto da grade).
+// Conselheiro/Sócio de Conselheiro nunca entram (nem no denominador — ver STATUS_PAGAMENTO_*);
+// status nulo ou fora dos dois buckets conhecidos também não entra (não inventa classificação pra
+// um dado que não temos, mesmo espírito do resto do arquivo).
+function calcularPagamento(itemsPrincipais: any[]): { pagante: number; permuta: number; total: number } | null {
+  let pagante = 0, permuta = 0;
+  itemsPrincipais.forEach((m: any) => {
+    const s = m.status_pagamento;
+    if (!s) return;
+    if (STATUS_PAGAMENTO_PAGANTE.includes(s)) pagante++;
+    else if (STATUS_PAGAMENTO_PERMUTA.includes(s)) permuta++;
+  });
+  const total = pagante + permuta;
+  return total > 0 ? { pagante, permuta, total } : null;
+}
+
+// Ordem de produto pra ordenação padrão da grade (ver NIVEL_ORDEM): índice na hierarquia, ou
+// Number.MAX_SAFE_INTEGER pra "Setorial" e qualquer nível fora dela — sempre depois dos cinco
+// níveis, nunca misturado (grupo à parte, decisão fechada com o Vitor).
+function ordemNivel(nivel: string): number {
+  const idx = NIVEL_ORDEM.indexOf(nivel);
+  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+}
+
 export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano: number) {
   const ctx = montarContextoConselhos(dados);
   const mesRef = seletorMes === 'Visão Geral' ? mesAtualReal() : seletorMes;
@@ -1364,12 +1390,16 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
         groupId: g.group_id,
         conselheiro: perfil?.nome || calc.contato,
         nivel: calc.titulo!.nivel,
+        nivelOrdem: ordemNivel(calc.titulo!.nivel),
         csResponsavel: calc.titulo!.cs,
         membros: calc.itemsPrincipais.length,
         fotoUrl: urlFotoConselheiro(calc.contato, dados),
         congelado: !!g.congelado || status === 'Congelado',
         atencao: status === 'Em atenção',
         statusEngajamento: status,
+        segmentoAtuacao: perfil?.segmento || null,
+        especialidadeConselheiro: perfil?.especialidade || null,
+        pagamento: calcularPagamento(calc.itemsPrincipais),
         proximaData: calc.resumo.proximaData,
         proximaDataEhFutura: calc.resumo.proximaDataEhFutura,
         healthscore: calc.healthscore,
@@ -1381,9 +1411,11 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
       };
     });
 
-  const tempo = (c: { proximaData: string | null; proximaDataEhFutura: boolean | null }) =>
-    c.proximaData && c.proximaDataEhFutura ? new Date(c.proximaData).getTime() : Number.MAX_SAFE_INTEGER;
-  cards.sort((a, b) => tempo(a) - tempo(b) || a.conselheiro!.localeCompare(b.conselheiro!));
+  // Ordem padrão: produto (hierarquia NIVEL_ORDEM, Setorial e afins sempre por último), depois
+  // nome do conselheiro — decisão fechada com o Vitor (25/09/2026), substitui o padrão antigo por
+  // próximo encontro. O front-end guarda nivelOrdem/proximaData pra poder reordenar por "Próximo
+  // encontro" sem pedir nada de novo ao servidor (mesmo padrão do toggle de impacto dos conselhos).
+  cards.sort((a, b) => a.nivelOrdem - b.nivelOrdem || a.conselheiro!.localeCompare(b.conselheiro!));
   return { mesReferencia: mesRef, cards };
 }
 
@@ -1391,7 +1423,7 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
 // Uma função só alimenta o modal rápido (página do CS) e a página completa /conselho/[grupo] —
 // que agora também é a visão combinada conselheiro + conselho aberta pelos cartões da aba
 // "Conselhos" da home (perfil do board "Conselheiros 2026", presença mensal, tabela de membros com
-// plaquinha/pagamento, ata e Big Deal). O front-end de cada tela decide qual subconjunto mostrar.
+// status de pagamento, ata e Big Deal). O front-end de cada tela decide qual subconjunto mostrar.
 export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
   const dados = dadosParam || (await getDadosBrutos(sb));
   periodoDatas(seletorMes, ano); // valida o mês
@@ -1451,8 +1483,9 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     bigDealsPorMembro.get(membro.nome)!.push(item);
   });
 
-  // membros expansíveis: cada titular, com presença/ata de cada mês do período, mais os dados da
-  // "tabela de membros" do Monday (plaquinha, status de pagamento) e a taxa de presença no ano.
+  // membros expansíveis: cada titular, com presença/ata de cada mês do período, mais o status de
+  // pagamento (coluna do Monday) e a taxa de presença no ano. Nunca lê/expõe plaquinha ou crachá
+  // (decisão fechada com o Vitor, 25/09/2026 — fica de fora de tudo).
   // Membro/mês sem ata fica de fora de `atas`; quem renderiza mostra o estado vazio explícito.
   const membros = itemsPrincipais.map((m: any) => {
     const presencaPorMes = mesesRelevantes.map((mes) => ({ mes, status: ctx.statusPorMembro.get(m.id)?.get(mes) || null }));
@@ -1465,7 +1498,7 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     });
     return {
       nome: m.nome, presencaPorMes, atas,
-      plaquinha: m.plaquinha || null, statusPagamento: m.status_pagamento || null,
+      statusPagamento: m.status_pagamento || null,
       taxaPresencaAno: registros > 0 ? Math.round((presente / registros) * 100) : null,
       // trimestral primeiro (revisão mais completa), depois os mensais
       bigDeals: (bigDealsPorMembro.get(m.nome) || []).sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === 'trimestral' ? -1 : 1)),

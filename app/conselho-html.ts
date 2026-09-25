@@ -8,9 +8,10 @@
 //
 // 24/09/2026 (pedido do Vitor): esta página virou a visão COMBINADA conselheiro + conselho, aberta
 // pelos cartões da aba "Conselhos" da home — perfil do conselheiro (board "Conselheiros 2026"),
-// presença mensal do ano, tabela de membros (plaquinha, presença, pagamento), ata por membro/mês e
+// presença mensal do ano, tabela de membros (presença, status de pagamento), ata por membro/mês e
 // Big Deal (sempre com o selo "não conferido"). Uma tela só, em vez de modal de conselheiro +
-// página de conselho separados.
+// página de conselho separados. Plaquinha/crachá nunca aparecem aqui (decisão fechada com o Vitor,
+// 25/09/2026 — fora de tudo).
 
 export const CONSELHO_STYLE = `
 :root{
@@ -415,11 +416,6 @@ function chipPagamento(s) {
   var cls = s === 'Inadimplente' ? 'vermelho' : (s === 'Pagante Padrão' || s === 'Pagante com desconto' ? 'verde' : 'dourado');
   return '<span class="chip ' + cls + '" title="Status de pagamento">' + esc(s) + '</span>';
 }
-function chipPlaquinha(s) {
-  if (!s) return '';
-  var cls = s === 'Tem' ? 'verde' : (s === 'Não tem' || s === 'Perdida' ? 'vermelho' : '');
-  return '<span class="chip ' + cls + '" title="Plaquinha">Plaquinha: ' + esc(s) + '</span>';
-}
 function chipPresenca(t) {
   if (t === null || t === undefined) return '<span class="chip" title="Presença no ano">Presença —</span>';
   var cls = t >= 75 ? 'verde' : (t >= 60 ? 'dourado' : 'vermelho');
@@ -448,7 +444,7 @@ function renderMembros(d) {
     var temBigDeal = (m.bigDeals || []).length > 0;
     return '<div class="membro-card"><div class="membro-head" onclick="toggleMembro(' + idx + ')">' +
       '<span class="membro-nome">' + esc(m.nome) + '</span>' +
-      '<span class="membro-chips">' + chipPresenca(m.taxaPresencaAno) + chipPlaquinha(m.plaquinha) + chipPagamento(m.statusPagamento) +
+      '<span class="membro-chips">' + chipPresenca(m.taxaPresencaAno) + chipPagamento(m.statusPagamento) +
         (temBigDeal ? '<span class="chip dourado">Big Deal</span>' : '') + '</span>' +
       '<span class="membro-toggle" id="toggleLabel' + idx + '">ver detalhes ▾</span></div>' +
       '<div class="membro-body" id="membroBody' + idx + '">' + (corpo || '<div class="mes-ata-vazio">Sem dado neste período.</div>') + '</div></div>';

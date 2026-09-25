@@ -283,6 +283,12 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .cons-body { padding:12px 14px 14px; display:flex; flex-direction:column; gap:6px; }
 .cons-linha { font-size:11px; color:#9F9F9F; display:flex; align-items:center; gap:6px; }
 .cons-linha svg { width:12px; height:12px; flex-shrink:0; }
+.cons-pag { margin-top:2px; }
+.cons-pag-bar { display:flex; height:6px; border-radius:99px; overflow:hidden; background:#2A2A2A; }
+.cons-pag-seg-pagante { background:#3D8B5F; }
+.cons-pag-seg-permuta { background:#7dd3fc; }
+.cons-pag-legend { display:flex; gap:12px; font-size:10px; color:#9F9F9F; margin-top:6px; }
+.cons-pag-vazio { font-size:10px; color:#807E7E; font-style:italic; }
 .cons-rodape { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; border-top:0.75pt solid #2A2A2A; padding-top:9px; margin-top:4px; font-size:11px; color:#C6C4C4; }
 .cons-var { font-weight:800; font-size:12px; }
 .cons-var.alta { color:#5fbf86; } .cons-var.queda { color:#e0645e; } .cons-var.neutra { color:#9F9F9F; }
@@ -365,7 +371,8 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div class="home-tab" id="homeTabConselhos" onclick="mostrarAbaHome('conselhos')">Conselhos</div>
   </div>
   <div id="homeAbaConselhos" style="display:none;">
-    <div class="section-title">Conselhos · ordenados pelo próximo encontro<div class="line"></div></div>
+    <div class="section-title">Conselhos<div class="line"></div></div>
+    <div id="gradeConselhosOrdenacao" style="margin-bottom:14px;"></div>
     <div id="equipeGradeConselhos"></div>
     <div class="section-title" style="margin-top:36px;">Impacto dos conselhos<div class="line"></div></div>
     <div id="equipeImpactoConselhos"></div>
@@ -1436,19 +1443,46 @@ function escHtml_(s){
   });
 }
 
-// Grade de conselhos: um cartão por conselho, sempre na ordem do próximo encontro (já vem
-// ordenada do servidor). Clique abre a visão combinada conselheiro + conselho (/conselho/[grupo]),
-// já no mesmo período selecionado aqui.
+// Grade de conselhos: um cartão por conselho. Ordem padrão é por produto (nivelOrdem, já vem
+// calculado do servidor a partir do próprio nome do grupo — Setorial e afins sempre por último);
+// um controle visível deixa trocar pra "Próximo encontro" (padrão antigo) sem pedir nada de novo
+// ao servidor — mesmo padrão do toggle de impacto dos conselhos, reordena em memória. Clique no
+// cartão abre a visão combinada conselheiro + conselho (/conselho/[grupo]), já no mesmo período
+// selecionado aqui.
 var gradeConselhosAtual_ = null;
+var gradeConselhosOrdenacao_ = 'produto';
 function renderGradeConselhos(data){
-  var el = document.getElementById('equipeGradeConselhos');
   gradeConselhosAtual_ = data.gradeConselhos;
   if (!data.gradeConselhos) {
-    el.innerHTML = '<div class="empty-state">Não foi possível montar a grade de conselhos' + (data.gradeConselhosErro ? ': ' + escHtml_(data.gradeConselhosErro) : '.') + '</div>';
+    document.getElementById('gradeConselhosOrdenacao').innerHTML = '';
+    document.getElementById('equipeGradeConselhos').innerHTML = '<div class="empty-state">Não foi possível montar a grade de conselhos' + (data.gradeConselhosErro ? ': ' + escHtml_(data.gradeConselhosErro) : '.') + '</div>';
     return;
   }
-  var cards = data.gradeConselhos.cards || [];
+  renderGradeOrdenacaoControl_();
+  desenharGradeConselhos_();
+}
+function mudarGradeOrdenacaoProduto(){ gradeConselhosOrdenacao_ = 'produto'; renderGradeOrdenacaoControl_(); desenharGradeConselhos_(); }
+function mudarGradeOrdenacaoProximo(){ gradeConselhosOrdenacao_ = 'proximo'; renderGradeOrdenacaoControl_(); desenharGradeConselhos_(); }
+function renderGradeOrdenacaoControl_(){
+  var estiloAtivo = 'background:#C89A2E;color:#1A1A1A;border:none;';
+  var estiloInativo = 'background:#1A1A1A;color:#9F9F9F;border:0.75pt solid #2A2A2A;';
+  document.getElementById('gradeConselhosOrdenacao').innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<span style="font-size:11px;color:#807E7E;font-weight:700;">Ordenar por</span>' +
+      '<button class="destaque-form-btn" style="'+(gradeConselhosOrdenacao_==='produto'?estiloAtivo:estiloInativo)+'" onclick="mudarGradeOrdenacaoProduto()">Produto</button>' +
+      '<button class="destaque-form-btn" style="'+(gradeConselhosOrdenacao_==='proximo'?estiloAtivo:estiloInativo)+'" onclick="mudarGradeOrdenacaoProximo()">Próximo encontro</button>' +
+    '</div>';
+}
+function desenharGradeConselhos_(){
+  var el = document.getElementById('equipeGradeConselhos');
+  var cards = (gradeConselhosAtual_ && gradeConselhosAtual_.cards || []).slice();
   if (!cards.length) { el.innerHTML = '<div class="empty-state">Nenhum conselho ativo encontrado.</div>'; return; }
+  if (gradeConselhosOrdenacao_ === 'proximo') {
+    var tempo = function(c){ return c.proximaData && c.proximaDataEhFutura ? new Date(c.proximaData).getTime() : Number.MAX_SAFE_INTEGER; };
+    cards.sort(function(a,b){ return tempo(a) - tempo(b) || a.conselheiro.localeCompare(b.conselheiro); });
+  } else {
+    cards.sort(function(a,b){ return a.nivelOrdem - b.nivelOrdem || a.conselheiro.localeCompare(b.conselheiro); });
+  }
   var qs = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
   var html = '<div class="cons-grid">';
   cards.forEach(function(c){
@@ -1471,13 +1505,25 @@ function renderGradeConselhos(data){
       var comp = v === null ? '' : ' · ' + seta + Math.abs(v) + ' p.p. vs ' + c.presenca.mesAnterior.slice(0,3);
       variacao = '<span class="cons-var ' + classe + '" title="Presença em ' + escHtml_(c.presenca.mes) + ' comparada ao encontro anterior">' + c.presenca.taxa + '%' + comp + '</span>';
     }
+    var perfilLinhas = '';
+    if (c.segmentoAtuacao) perfilLinhas += '<div class="cons-linha">Segmento: ' + escHtml_(c.segmentoAtuacao) + '</div>';
+    if (c.especialidadeConselheiro) perfilLinhas += '<div class="cons-linha">Especialidade: ' + escHtml_(c.especialidadeConselheiro) + '</div>';
+    var pagamento = '<div class="cons-pag-vazio">Sem status de pagamento classificado</div>';
+    if (c.pagamento) {
+      var pctPag = Math.round(c.pagamento.pagante / c.pagamento.total * 100);
+      pagamento = '<div class="cons-pag-bar"><div class="cons-pag-seg-pagante" style="width:' + pctPag + '%;"></div><div class="cons-pag-seg-permuta" style="width:' + (100-pctPag) + '%;"></div></div>' +
+        '<div class="cons-pag-legend"><span><span class="legend-dot" style="background:#3D8B5F;"></span>' + c.pagamento.pagante + ' pagante(s)</span>' +
+        '<span><span class="legend-dot" style="background:#7dd3fc;"></span>' + c.pagamento.permuta + ' permuta</span></div>';
+    }
     html += '<a class="cons-card' + (c.congelado ? ' congelado' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + qs + '">' +
       '<div class="cons-foto-wrap">' + foto + selo + health +
         '<div class="cons-over"><div class="cons-nome">' + escHtml_(c.conselheiro) + '</div><div class="cons-nivel">' + escHtml_(c.nivel) + '</div></div>' +
       '</div>' +
       '<div class="cons-body">' +
         '<div class="cons-linha">CS responsável: <b style="color:#fff;">' + escHtml_(c.csResponsavel) + '</b></div>' +
+        perfilLinhas +
         proxima +
+        '<div class="cons-pag">' + pagamento + '</div>' +
         '<div class="cons-rodape"><span>' + c.membros + ' membros</span>' + variacao + '</div>' +
       '</div></a>';
   });

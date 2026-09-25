@@ -28,6 +28,14 @@ export const PRODUCT_PRICES: Record<string, number> = {
   'High End': 4500,
 };
 
+// Hierarquia de produto (nível do conselho) pra ordenação padrão da grade de conselhos da home —
+// extraído do próprio nome do grupo do Monday (campo `nivel` de parseTituloConselho), nunca de
+// coluna de status. "Setorial" (e qualquer nível não listado aqui) fica fora da hierarquia — grupo
+// à parte, sempre depois dos cinco níveis abaixo (ver montarGradeConselhos em lib/reports.ts).
+// Grafia sem espaço em "C-Level+" é a que aparece de fato nos títulos do board (diferente de
+// PRODUCT_PRICES, que usa "C-Level +" — tabelas com propósitos diferentes, não precisam bater).
+export const NIVEL_ORDEM = ['Fast Track', 'Executivo', 'C-Level', 'C-Level+', 'High End'];
+
 export const CHURN_EXCLUIR = ['Comunidade', 'N/D'];
 export const ROUNDS_STATUS_VALIDO = 'Realizado';
 export const UD_STATUS_VALIDO = 'Finalizado';
@@ -70,6 +78,15 @@ export const APELIDOS_AGENDA: Record<string, string> = {
   'Thiago Correa': 'Thiago Correia',
   'Tati Moura': 'Tatiana Moura',
 };
+
+// Buckets do "Status de Pagamento" (coluna color_mm5bzhq3 do board de Gestão dos Conselhos) pro
+// gráfico de pizza pagante x permuta de cada conselho (ver montarGradeConselhos em lib/reports.ts).
+// Decisão fechada com o Vitor (25/09/2026): Conselheiro e Sócio de Conselheiro ficam de fora da
+// conta inteira (nem entram no denominador) — não são membros pagantes nem em permuta, são o
+// próprio conselheiro ou sócio dele.
+export const STATUS_PAGAMENTO_PAGANTE = ['Pagante Padrão', 'Pagante com desconto', 'Parceria Estratégica', 'Inadimplente'];
+export const STATUS_PAGAMENTO_PERMUTA = ['Permuta Clube de Permuta', 'Permuta de Conselho'];
+export const STATUS_PAGAMENTO_EXCLUIR = ['Conselheiro', 'Sócio de Conselheiro'];
 
 // Pesos do CS Top 3 (pontuação ponderada) — somam 100. Ver calcularScoreCS em reports.ts.
 export const PESOS_SCORE_CS: Record<string, number> = {

@@ -84,6 +84,12 @@
 // só texto, leve, roda junto com o resto a cada execução (a foto continua
 // em syncConselheirosFotos, com throttle próprio). (2) syncConselhos passa
 // a guardar também Plaquinha e Status de Pagamento de cada membro.
+//
+// v14 (25/09/2026 — pedido do Vitor): syncConselhos para de ler a coluna
+// Plaquinha (color_mm52vb2t) — decisão fechada com o Vitor: plaquinha e
+// crachá ficam de fora de tudo, nem sincronizados. A coluna plaquinha em
+// conselhos_membros continua existindo no banco (não migrada por não ser
+// destrutiva mantê-la parada), só não é mais escrita nem lida por ninguém.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -120,7 +126,9 @@ const CONSELHEIROS_COLS = {
   vegetariano: 'color_mkxkdtzs', formacao: 'text_mm53mq3m', dataNascimento: 'date_mkxkmtdn',
   curiosidades: 'text_mm53k7mv',
 };
-const CONSELHOS_MEMBRO_COLS = { plaquinha: 'color_mm52vb2t', statusPagamento: 'color_mm5bzhq3' };
+// Plaquinha (color_mm52vb2t) e Crachá nunca são lidos — decisão fechada com o Vitor (25/09/2026):
+// essas colunas do Monday ficam de fora de tudo, nem sincronizadas.
+const CONSELHOS_MEMBRO_COLS = { statusPagamento: 'color_mm5bzhq3' };
 
 const METAS_COLS = { meta: 'numeric_mm2fmyy8', alcancado: 'numeric_mm2fcwfg' };
 const CASES_COLS_LEVE = { cs: 'person', empresa: 'short_textjsf26bus', produto: 'status' };
@@ -619,7 +627,6 @@ async function syncConselhos() {
       if (item.name === 'ATAS') return;
       membros.push({
         id: Number(item.id), group_id: g.id, nome: item.name,
-        plaquinha: colText(item.column_values, CONSELHOS_MEMBRO_COLS.plaquinha) || null,
         status_pagamento: colText(item.column_values, CONSELHOS_MEMBRO_COLS.statusPagamento) || null,
       });
       Object.keys(CONSELHOS_COL_POR_MES).forEach((mes) => {
