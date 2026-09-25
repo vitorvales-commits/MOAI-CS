@@ -5,7 +5,7 @@
 // agregados históricos via getCSListParaAgregados (nunca filtra por ativo, mesmo tratamento já
 // dado aos ex-membros sem conta).
 import { NextRequest, NextResponse } from 'next/server';
-import { getCSRosterAdmin, setCSAtivo } from '@/lib/reports';
+import { getCSRosterAdmin, setCSAtivo, getDadosBrutos, getCSListParaAgregados, detectarCSNaoVinculados } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +15,11 @@ export async function GET() {
     const { supabase, isGestor } = await requireMoaiUser();
     if (!isGestor) return NextResponse.json({ error: 'Esta área é restrita a gestores.' }, { status: 403 });
     const roster = await getCSRosterAdmin(supabase);
-    return NextResponse.json({ roster });
+    // Parte A (25-26/09/2026): detecta CS não vinculados a cada carregamento desta tela — ver
+    // detectarCSNaoVinculados em lib/reports.ts.
+    const [dados, csConhecidos] = await Promise.all([getDadosBrutos(supabase), getCSListParaAgregados(supabase)]);
+    const naoVinculados = detectarCSNaoVinculados(dados, csConhecidos);
+    return NextResponse.json({ roster, naoVinculados });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

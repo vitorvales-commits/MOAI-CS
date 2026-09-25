@@ -13,7 +13,7 @@ import {
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
   PESOS_SCORE_CS, FOTOS_CS, NIVEL_ORDEM,
-  STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA,
+  STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA, STATUS_PAGAMENTO_EXCLUIR,
   LIMIAR_HEALTHSCORE_ATENCAO, LIMIAR_PRESENCA_ATENCAO, MESES_JANELA_MATCHMAKINGS_PARADO, SIMILARIDADE_DESAFIO_MIN,
 } from './constants';
 
@@ -167,6 +167,67 @@ export async function setCSAtivo(sb: SupabaseClient, nome: string, ativo: boolea
   const { data, error } = await sb.rpc('set_cs_ativo', { p_nome: nome, p_ativo: ativo });
   if (error) throw new Error('Erro ao alterar status do CS: ' + error.message);
   return data as boolean;
+}
+
+// Parte A (pedido do Vitor, 25-26/09/2026): CS novo (ex.: Amanda) fica invisível até alguém rodar
+// um INSERT à mão em cs_config — verificado ao vivo: "Lucas Nicoli" e "Alejandro Colina" já
+// aparecem como CS responsável em conselheiros sem nenhuma linha em cs_config, agora mesmo, não é
+// hipotético. Varre os mesmos 5 campos de texto onde um nome de CS aparece cru (multi-pessoa
+// separado por vírgula, mesmo padrão de cs_responsavel_raw em rounds) e reporta qualquer nome que
+// não bata (via normalizeNome) com nenhum CS já cadastrado (ativo, inativo, ou ex-membro sem
+// conta — getCSListParaAgregados já traz os três juntos).
+export type CSNaoVinculado = { nome: string; ocorrenciasPorOrigem: { origem: string; qtd: number }[]; totalOcorrencias: number };
+
+const FONTES_CS_NAO_VINCULADO: { origem: string; textos: (dados: DadosBrutos) => (string | null)[] }[] = [
+  { origem: 'Conselheiros (CS responsável)', textos: (d) => d.conselheiros.map((c: any) => c.cs_responsavel) },
+  { origem: 'Rounds', textos: (d) => d.rounds.map((r: any) => r.cs_responsavel_raw) },
+  { origem: 'Cases de Sucesso', textos: (d) => d.cases.map((c: any) => c.cs_raw) },
+  { origem: 'Upsell/Downsell', textos: (d) => d.upsellDownsell.map((u: any) => u.cs_raw) },
+  { origem: 'Churn', textos: (d) => d.churn.map((c: any) => c.quem_e_seu_cs) },
+];
+
+export function detectarCSNaoVinculados(dados: DadosBrutos, csConhecidos: CSConfig[]): CSNaoVinculado[] {
+  const conhecidos = new Set<string>();
+  csConhecidos.forEach((c) => {
+    if (c.nomeCompleto) conhecidos.add(normalizeNome(c.nomeCompleto));
+    if (c.nome) conhecidos.add(normalizeNome(c.nome));
+  });
+  const porNome = new Map<string, { nomeOriginal: string; origens: Map<string, number> }>();
+  FONTES_CS_NAO_VINCULADO.forEach(({ origem, textos }) => {
+    textos(dados).forEach((texto) => {
+      (texto || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((nomeBruto) => {
+        const norm = normalizeNome(nomeBruto);
+        if (!norm || conhecidos.has(norm)) return;
+        if (!porNome.has(norm)) porNome.set(norm, { nomeOriginal: nomeBruto, origens: new Map() });
+        const entrada = porNome.get(norm)!;
+        entrada.origens.set(origem, (entrada.origens.get(origem) || 0) + 1);
+      });
+    });
+  });
+  return [...porNome.values()]
+    .map((e) => ({
+      nome: e.nomeOriginal,
+      ocorrenciasPorOrigem: [...e.origens.entries()].map(([origem, qtd]) => ({ origem, qtd })),
+      totalOcorrencias: [...e.origens.values()].reduce((s, n) => s + n, 0),
+    }))
+    .sort((a, b) => b.totalOcorrencias - a.totalOcorrencias);
+}
+
+// Passa pela função SECURITY DEFINER vincular_cs (mesmo padrão de setVezesDestaque/setCSAtivo) —
+// cs_config só tem policy de SELECT (RLS deny-all pra INSERT), um .insert() direto aqui não
+// escreveria nada. Restrito a gestor (checado de novo dentro do banco), mesmo critério de
+// setCSAtivo: criar/alterar o roster de CS é uma ação de gestão, não uma ação de qualquer CS.
+export async function vincularCS(
+  sb: SupabaseClient,
+  params: { nome: string; nomeCompleto: string; apelidoConselho: string | null; mondayUserId: number | null },
+): Promise<void> {
+  const { error } = await sb.rpc('vincular_cs', {
+    p_nome: params.nome,
+    p_nome_completo: params.nomeCompleto,
+    p_apelido_conselho: params.apelidoConselho,
+    p_monday_user_id: params.mondayUserId,
+  });
+  if (error) throw new Error('Erro ao vincular CS: ' + error.message);
 }
 
 // B4 (pedido do Vitor, 25/09/2026): confirma o membro certo pra um nome de ata que não casou com
@@ -1497,6 +1558,79 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
   // encontro" sem pedir nada de novo ao servidor (mesmo padrão do toggle de impacto dos conselhos).
   cards.sort((a, b) => a.nivelOrdem - b.nivelOrdem || a.conselheiro!.localeCompare(b.conselheiro!));
   return { mesReferencia: mesRef, cards };
+}
+
+// ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
+// Bloco novo na Visão geral do gestor, separado do ranking/radar por CS de generateVisaoGestor:
+// olha a rede inteira de conselhos ativos no período selecionado (mesmo mês/ano dos outros blocos),
+// não um CS específico. "Conselho ativo" = mesmo critério de montarGradeConselhos (grupo não-repo
+// com título parseável).
+export type BandaPresenca = 'critica' | 'baixa' | 'atencao' | 'saudavel';
+
+// Faixas do kanban de presença por membro — reaproveita LIMIAR_PRESENCA_ATENCAO (70%) como o corte
+// de "Em atenção", pra não inventar uma escala nova e desalinhada do resto do painel.
+function bandaPresenca(taxa: number): BandaPresenca {
+  if (taxa <= 20) return 'critica';
+  if (taxa <= 50) return 'baixa';
+  if (taxa <= LIMIAR_PRESENCA_ATENCAO) return 'atencao';
+  return 'saudavel';
+}
+
+// Taxa de presença de UM titular dentro do período selecionado — mesmo critério de taxaPresencaAno
+// (generateConselhoDetalhe), mas sobre mesesRelevantes (o mês selecionado, ou os 12 meses em
+// "Visão Geral") em vez de sempre o ano inteiro fixo.
+function taxaPresencaPeriodo(membro: any, ctx: ContextoConselhos, mesesRelevantes: string[]): number | null {
+  let presente = 0, registros = 0;
+  mesesRelevantes.forEach((mes) => {
+    const s = ctx.statusPorMembro.get(membro.id)?.get(mes);
+    if (s === STATUS_PRESENTE) { presente++; registros++; }
+    else if (s && STATUS_AUSENTE_SET.includes(s)) registros++;
+  });
+  return registros > 0 ? Math.round((presente / registros) * 100) : null;
+}
+
+export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: string, ano: number) {
+  const dados = await getDadosBrutos(sb);
+  const ctx = montarContextoConselhos(dados);
+  const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && parseTituloConselho(g.titulo));
+
+  const grade = montarGradeConselhos(dados, seletorMes, ano);
+
+  let totalMembros = 0;
+  const todosItemsPrincipais: any[] = [];
+  const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca }[] = [];
+
+  gruposAtivos.forEach((g: any) => {
+    const calc = calcularConselho(ctx, g, seletorMes, ano);
+    // Conselheiro/Sócio de Conselheiro nunca contam como membro da rede — mesma exclusão já usada
+    // na pizza pagante x permuta de cada conselho (ver STATUS_PAGAMENTO_EXCLUIR/calcularPagamento).
+    const itemsValidos = calc.itemsPrincipais.filter((m: any) => !STATUS_PAGAMENTO_EXCLUIR.includes(m.status_pagamento));
+    totalMembros += itemsValidos.length;
+    todosItemsPrincipais.push(...calc.itemsPrincipais);
+    itemsValidos.forEach((m: any) => {
+      const taxa = taxaPresencaPeriodo(m, ctx, calc.mesesRelevantes);
+      if (taxa === null) return; // sem registro de presença no período — não inventa banda pra quem não tem dado
+      kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: bandaPresenca(taxa) });
+    });
+  });
+
+  const pagamentoRede = calcularPagamento(todosItemsPrincipais);
+
+  return {
+    periodo: { mes: seletorMes, ano },
+    totalMembros,
+    pagamentoRede,
+    presencaConselhos: grade.cards.map((c) => ({
+      groupId: c.groupId, conselheiro: c.conselheiro, nivel: c.nivel, membros: c.membros,
+      congelado: c.congelado, atencao: c.atencao, presenca: c.presenca,
+    })),
+    kanbanPresenca: {
+      critica: kanbanMembros.filter((m) => m.banda === 'critica'),
+      baixa: kanbanMembros.filter((m) => m.banda === 'baixa'),
+      atencao: kanbanMembros.filter((m) => m.banda === 'atencao'),
+      saudavel: kanbanMembros.filter((m) => m.banda === 'saudavel'),
+    },
+  };
 }
 
 // ============ ações sugeridas (B3, pedido do Vitor 25/09/2026) ============

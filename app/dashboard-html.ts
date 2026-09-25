@@ -54,6 +54,13 @@ svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-w
 .gestor-topbar-link:hover { color:#1A1A1A; background:#F0E4C8; }
 select.pickmes { background:#fff; color:#1A1A1A; border: 0.75pt solid #D8D5D5; border-radius: 10px; padding: 7px 12px; font-family:'Inter',sans-serif; font-size: 12px; font-weight: 700; cursor:pointer; transition: border-color .2s; }
 select.pickmes:hover { border-color:#1A1A1A; }
+.sync-wrap { display:flex; align-items:center; gap:8px; }
+.sync-btn { font-family:'Inter',sans-serif; font-size:11px; font-weight:700; color:#1A1A1A; background:#fff; border:0.75pt solid #D8D5D5; border-radius:8px; padding:7px 12px; cursor:pointer; transition: border-color .15s, background .15s; }
+.sync-btn:hover { border-color:#1A1A1A; }
+.sync-btn:disabled { opacity:0.55; cursor:not-allowed; }
+.sync-status-topbar { font-size:10.5px; color:#807E7E; max-width:180px; }
+.sync-status-topbar.ok { color:#3D8B5F; }
+.sync-status-topbar.erro { color:#C0433D; }
 .back-link { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#5D5D5D; cursor:pointer; transition: color .15s; }
 .back-link:hover { color:#1A1A1A; }
 
@@ -547,6 +554,7 @@ function renderTopbar(){
     '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
     '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
     '<span class="live-label"><span class="live-dot"></span>ao vivo</span>' +
+    '<span class="sync-wrap"><button class="sync-btn" id="btnSyncTopbar" onclick="sincronizarAgora()">Sincronizar agora</button><span class="sync-status-topbar" id="syncStatusTopbar"></span></span>' +
     (souGestor ? '<a class="gestor-topbar-link" href="/gestor">Visão da área</a>' : '') +
     '<a class="logout-link" href="/auth/signout">Sair</a>';
   document.getElementById('topbarRight').innerHTML = html;
@@ -555,6 +563,39 @@ function renderTopbar(){
   MESES.forEach(function(m){ var o=document.createElement('option'); o.textContent=m; selMes.appendChild(o); });
   selMes.value = currentMes;
   document.getElementById('selAno').value = currentAno;
+}
+
+// Botão "Sincronizar agora" (movido pra cá em 25-26/09/2026: antes vivia só na Controle de perfis
+// do gestor, agora aparece pra qualquer usuário moai autenticado — /api/sync-agora só exige
+// requireMoaiUser(), não é mais restrito a gestor). Sempre sincroniza todos os boards de uma vez
+// (sem seletor de board, pra caber na topbar ao lado do filtro de mês/ano).
+var sincronizandoAgora = false;
+function sincronizarAgora(){
+  if (sincronizandoAgora) return;
+  sincronizandoAgora = true;
+  var btn = document.getElementById('btnSyncTopbar');
+  var status = document.getElementById('syncStatusTopbar');
+  if (btn) btn.disabled = true;
+  if (status) { status.textContent = 'Sincronizando…'; status.className = 'sync-status-topbar'; }
+  fetchJSON_('/api/sync-agora', { method: 'POST' })
+    .then(function (data) {
+      var boards = Object.keys(data);
+      var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
+      var status2 = document.getElementById('syncStatusTopbar');
+      if (status2) {
+        status2.textContent = comErro.length ? (comErro.length + ' de ' + boards.length + ' board(s) com erro.') : 'Sincronizado.';
+        status2.className = 'sync-status-topbar ' + (comErro.length ? 'erro' : 'ok');
+      }
+    })
+    .catch(function (err) {
+      var status3 = document.getElementById('syncStatusTopbar');
+      if (status3) { status3.textContent = 'Erro: ' + err.message; status3.className = 'sync-status-topbar erro'; }
+    })
+    .then(function () {
+      sincronizandoAgora = false;
+      var btn2 = document.getElementById('btnSyncTopbar');
+      if (btn2) btn2.disabled = false;
+    });
 }
 
 function onFiltroChange(){

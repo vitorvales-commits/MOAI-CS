@@ -1,11 +1,11 @@
-// POST /api/sync-agora — "Sincronizar agora" (pendência do diagnóstico de 25/09/2026): expõe pro
-// gestor, autenticado, a mesma chamada manual que a Edge Function sync-monday já aceitava
-// (?board=<nome>, com o segredo compartilhado) — antes só dava pra disparar via curl/terminal.
-// Restrito a gestor (não qualquer moai user): dispara chamadas reais à API do Monday pra todos os
-// boards de uma vez quando sem ?board=, e escreve no banco compartilhado — mesmo padrão de
-// permissão de setCSAtivo (ações com efeito amplo/custo de API externa ficam com o gestor).
+// POST /api/sync-agora — "Sincronizar agora" (pendência do diagnóstico de 25/09/2026, movida pro
+// topo do dashboard principal em 25-26/09/2026): expõe pra qualquer usuário autenticado da moai a
+// mesma chamada manual que a Edge Function sync-monday já aceitava (?board=<nome>, com o segredo
+// compartilhado) — antes só dava pra disparar via curl/terminal. Não é mais restrito a gestor: o
+// botão passou a aparecer pra qualquer um logado, só precisa estar autenticado (requireMoaiUser já
+// garante isso). O segredo real de acesso ao Monday (SYNC_FUNCTION_SECRET) nunca sai do servidor.
 import { NextRequest, NextResponse } from 'next/server';
-import { requireMoaiUser, authErrorResponse, AuthError } from '@/lib/auth';
+import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +15,7 @@ const SYNC_FUNCTION_SECRET = process.env.SYNC_FUNCTION_SECRET || '';
 
 export async function POST(req: NextRequest) {
   try {
-    const { isGestor } = await requireMoaiUser();
-    if (!isGestor) throw new AuthError(403, 'Restrito a gestor.');
+    await requireMoaiUser();
     if (!SYNC_FUNCTION_SECRET) {
       return NextResponse.json({ error: 'SYNC_FUNCTION_SECRET não configurado no Vercel.' }, { status: 500 });
     }

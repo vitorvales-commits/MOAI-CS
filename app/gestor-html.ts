@@ -113,6 +113,34 @@ export const GESTOR_STYLE = `
 .risk-list{margin:0;padding:0;list-style:none;font-size:12.5px;color:var(--cinza-texto);line-height:1.9;}
 .risk-list li::before{content:"— ";color:var(--cinza-apoio);}
 
+/* visão geral da rede */
+.rede-stats{display:flex;gap:20px;align-items:stretch;flex-wrap:wrap;margin-bottom:24px;}
+.rede-stat{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:20px 28px;text-align:center;display:flex;flex-direction:column;justify-content:center;}
+.rede-stat-value{font-family:'Bricolage Grotesque',sans-serif;font-size:34px;font-weight:800;line-height:1.1;}
+.rede-stat-label{font-size:12px;color:var(--cinza-apoio);margin-top:4px;}
+.rede-pizza-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:16px 24px;display:flex;align-items:center;gap:20px;}
+.rede-pizza-legenda{font-size:12.5px;color:var(--cinza-texto);}
+.rede-pizza-legenda .legenda-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.rede-pizza-legenda .legenda-item:last-child{margin-bottom:0;}
+.rede-pizza-legenda .legenda-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.kanban-collapse{margin-top:24px;}
+.kanban-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:14px;padding:16px 20px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--preto-tinta);}
+.kanban-toggle-icon{transition:transform .15s;display:inline-block;}
+.kanban-toggle.aberto .kanban-toggle-icon{transform:rotate(180deg);}
+.kanban-body{margin-top:14px;}
+.kanban-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.kanban-col{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:16px;padding:14px;}
+.kanban-col-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--cinza-linha);display:flex;justify-content:space-between;}
+.kanban-col-critica .kanban-col-head{color:var(--vermelho);}
+.kanban-col-baixa .kanban-col-head{color:#C87A2E;}
+.kanban-col-atencao .kanban-col-head{color:var(--dourado);}
+.kanban-col-saudavel .kanban-col-head{color:var(--verde);}
+.kanban-card{background:var(--cinza-superficie);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:12px;}
+.kanban-card:last-child{margin-bottom:0;}
+.kanban-card-taxa{float:right;font-weight:700;}
+.kanban-card-nome{font-weight:700;}
+.kanban-card-conselho{font-size:10.5px;color:var(--cinza-apoio);clear:both;}
+
 /* controle de perfis */
 .perfis-grid{display:grid;grid-template-columns:1fr;gap:24px;}
 .perfis-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:24px;}
@@ -125,18 +153,22 @@ export const GESTOR_STYLE = `
 .form-inline button:disabled{opacity:0.5;cursor:not-allowed;}
 .erro-msg{color:var(--vermelho);font-size:12px;margin:0 0 16px;min-height:14px;}
 .sync-desc{font-size:12px;color:var(--cinza-apoio);margin:0 0 14px;line-height:1.5;}
-.sync-status{font-size:12px;margin:8px 0 0;min-height:14px;}
-.sync-status.ok{color:var(--verde);}
-.sync-status.erro{color:var(--vermelho);}
-.sync-resultado-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--cinza-borda);font-size:12.5px;}
-.sync-resultado-item:last-child{border-bottom:none;}
-.sync-resultado-item .erro{color:var(--vermelho);}
 .lista-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--cinza-linha);}
 .lista-item:last-child{border-bottom:none;}
 .lista-item-nome{font-size:13px;font-weight:600;}
 .lista-item-sub{font-size:11px;color:var(--cinza-apoio);}
 .btn-remover{background:none;border:1px solid var(--cinza-borda);color:var(--vermelho);font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;}
 .btn-remover:hover{background:rgba(192,67,61,0.08);}
+
+.pendente-item{padding:12px 0;border-bottom:1px solid var(--cinza-linha);}
+.pendente-item:last-child{border-bottom:none;}
+.pendente-row{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.btn-vincular-toggle{background:none;border:1px solid var(--cinza-borda);color:var(--preto-tinta);font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;flex-shrink:0;}
+.btn-vincular-toggle:hover{background:rgba(0,0,0,0.04);}
+.pendente-form{margin-top:12px;padding:14px;background:var(--cinza-superficie);border-radius:14px;}
+.pendente-form .form-inline{margin-bottom:10px;}
+.pendente-form .form-inline:last-child{margin-bottom:0;}
+.btn-cancelar-vinculo{background:none;border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:600;font-size:13px;padding:11px 20px;border-radius:12px;cursor:pointer;}
 .switch{position:relative;width:38px;height:22px;flex-shrink:0;}
 .switch input{opacity:0;width:0;height:0;}
 .switch-track{position:absolute;inset:0;background:var(--cinza-superficie);border-radius:999px;cursor:pointer;transition:background .15s;}
@@ -153,6 +185,8 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
   .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
   .form-inline{flex-direction:column;}
+  .kanban-grid{grid-template-columns:1fr;}
+  .rede-stats{flex-direction:column;align-items:stretch;}
 }
 `;
 
@@ -229,6 +263,32 @@ export const GESTOR_HTML = `
       <div class="block-head"><h2>Sinalizadores de risco</h2><p>Alertas já calculados no servidor (indicador abaixo da meta ou divergência alta entre o real e o autodeclarado).</p></div>
       <div class="risk-grid" id="riskGrid"></div>
     </section>
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Visão geral da rede</h2>
+        <p>Todos os conselhos ativos, agregados no mesmo período selecionado acima — não é sobre nenhum CS em específico.</p>
+      </div>
+      <div class="rede-stats">
+        <div class="rede-stat"><span class="rede-stat-value" id="redeStatMembros">—</span><span class="rede-stat-label">Membros na rede</span></div>
+        <div id="redePizzaWrap"></div>
+      </div>
+      <div class="table-wrap"><div class="table-scroll">
+        <table>
+          <thead><tr><th>Conselheiro</th><th>Nível</th><th class="num">Membros</th><th class="num">Presença</th><th>Status</th></tr></thead>
+          <tbody id="redeTabelaBody"></tbody>
+        </table>
+      </div></div>
+      <div class="kanban-collapse">
+        <button class="kanban-toggle" id="btnToggleKanban" type="button">
+          <span id="kanbanToggleLabel">Presença por membro</span>
+          <span class="kanban-toggle-icon">▾</span>
+        </button>
+        <div class="kanban-body" id="kanbanBody" style="display:none">
+          <div class="kanban-grid" id="kanbanGrid"></div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis">
@@ -247,30 +307,9 @@ export const GESTOR_HTML = `
         <div id="listaCS"></div>
       </div>
       <div class="perfis-card">
-        <h3>Sincronização com o Monday</h3>
-        <p class="sync-desc">A sincronização automática roda a cada 5 minutos. Use aqui só quando precisar do dado mais recente na hora — dispara chamadas reais à API do Monday.</p>
-        <div class="form-inline">
-          <select id="selSyncBoard">
-            <option value="">Tudo</option>
-            <option value="churn">Churn</option>
-            <option value="upsell_downsell">Upsell/Downsell</option>
-            <option value="reports_semanais">Reports semanais</option>
-            <option value="metas">Metas</option>
-            <option value="rounds">Rounds</option>
-            <option value="feedback">Feedback</option>
-            <option value="cases">Cases de sucesso</option>
-            <option value="matchmakings">Matchmakings</option>
-            <option value="conselhos">Conselhos</option>
-            <option value="agenda">Agenda dos conselhos</option>
-            <option value="historico_gtd">Histórico GTD</option>
-            <option value="status_usuarios">Status de usuários</option>
-            <option value="conselheiros_fotos">Fotos dos conselheiros</option>
-            <option value="conselheiros">Conselheiros (perfil)</option>
-          </select>
-          <button id="btnSyncAgora">Sincronizar agora</button>
-        </div>
-        <p class="sync-status" id="syncStatus"></p>
-        <div id="syncResultado"></div>
+        <h3 id="tituloNaoVinculados">Detectados, ainda não vinculados</h3>
+        <p class="sync-desc">Nomes de CS encontrados nos dados do Monday (conselheiros, rounds, cases, upsell/downsell, churn) que ainda não têm perfil em "CS ativos". Clique em "Vincular" para criar o perfil.</p>
+        <div id="listaNaoVinculados"></div>
       </div>
     </div>
   </div>
@@ -301,6 +340,7 @@ function fetchJSON_(url, opts) {
 var ENDPOINT_VISAO_GERAL = '/api/gestor/visao-geral';
 var ENDPOINT_GESTORES = '/api/gestor/gestores';
 var ENDPOINT_CS_ROSTER = '/api/gestor/cs-roster';
+var ENDPOINT_VINCULAR_CS = '/api/gestor/vincular-cs';
 
 // ============ tabs ============
 
@@ -451,6 +491,92 @@ function renderRiscos() {
   if (!el.children.length) el.innerHTML = '<div class="gestor-empty">Nenhum alerta neste período.</div>';
 }
 
+// ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
+// Bloco separado do ranking/radar por CS acima — olha a rede inteira de conselhos ativos no mesmo
+// período selecionado. Os dados já vêm prontos em DADOS.visaoGeralRede (generateVisaoGeralRede em
+// lib/reports.ts); este código só desenha.
+
+// Mesma pizza SVG de pagante x permuta usada no detalhe de UM conselho (conselho-html.ts), só que
+// aqui somada sobre todos os conselhos ativos da rede de uma vez (ver calcularPagamento no back-end).
+function pizzaRedeSVG(p) {
+  var r = 46, c = 2 * Math.PI * r;
+  var fatias = [
+    { valor: p.pagante, cor: '#3D8B5F' },
+    { valor: p.permuta, cor: '#7dd3fc' },
+  ].filter(function (f) { return f.valor > 0; });
+  var offset = 0;
+  var circulos = fatias.map(function (f) {
+    var comprimento = (f.valor / p.total) * c;
+    var svg = '<circle cx="60" cy="60" r="' + r + '" fill="none" stroke="' + f.cor + '" stroke-width="16" '
+      + 'stroke-dasharray="' + comprimento + ' ' + (c - comprimento) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 60 60)"></circle>';
+    offset += comprimento;
+    return svg;
+  }).join('');
+  var pct = Math.round(p.pagante / p.total * 100);
+  return '<svg width="120" height="120" viewBox="0 0 120 120">' + circulos
+    + '<text x="60" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="700" fill="#1A1A1A">' + pct + '%</text></svg>';
+}
+
+function statusConselhoLabel(c) {
+  if (c.congelado) return 'Congelado';
+  if (c.atencao) return 'Em atenção';
+  return '—';
+}
+
+var KANBAN_LABELS = { critica: 'Presença crítica (≤20%)', baixa: 'Presença baixa (21–50%)', atencao: 'Em atenção (51–70%)', saudavel: 'Saudável (>70%)' };
+var KANBAN_ORDEM = ['critica', 'baixa', 'atencao', 'saudavel'];
+
+function renderVisaoRede() {
+  var rede = DADOS.visaoGeralRede;
+  if (!rede) return;
+
+  document.getElementById('redeStatMembros').textContent = rede.totalMembros;
+
+  var pizzaWrap = document.getElementById('redePizzaWrap');
+  if (!rede.pagamentoRede || !rede.pagamentoRede.total) {
+    pizzaWrap.innerHTML = '<div class="gestor-empty">Sem status de pagamento classificado.</div>';
+  } else {
+    var p = rede.pagamentoRede;
+    pizzaWrap.innerHTML = '<div class="rede-pizza-card">' + pizzaRedeSVG(p)
+      + '<div class="rede-pizza-legenda">'
+      + '<div class="legenda-item"><span class="legenda-dot" style="background:#3D8B5F"></span>Pagante <b>' + p.pagante + '</b></div>'
+      + '<div class="legenda-item"><span class="legenda-dot" style="background:#7dd3fc"></span>Permuta <b>' + p.permuta + '</b></div>'
+      + '</div></div>';
+  }
+
+  var body = document.getElementById('redeTabelaBody');
+  if (!rede.presencaConselhos.length) {
+    body.innerHTML = '<tr><td colspan="5" class="gestor-empty">Nenhum conselho ativo neste período.</td></tr>';
+  } else {
+    body.innerHTML = rede.presencaConselhos.map(function (c) {
+      var presenca = (c.presenca && c.presenca.taxa !== null && c.presenca.taxa !== undefined) ? (c.presenca.taxa + '%') : '—';
+      return '<tr><td class="name">' + (c.conselheiro || '—') + '</td><td>' + (c.nivel || '—') + '</td>'
+        + '<td class="num">' + c.membros + '</td><td class="num">' + presenca + '</td><td>' + statusConselhoLabel(c) + '</td></tr>';
+    }).join('');
+  }
+
+  var grid = document.getElementById('kanbanGrid');
+  var totalCritica = (rede.kanbanPresenca.critica || []).length;
+  document.getElementById('kanbanToggleLabel').textContent = 'Presença por membro' + (totalCritica ? ' — ' + totalCritica + ' em presença crítica' : '');
+  grid.innerHTML = KANBAN_ORDEM.map(function (chave) {
+    var lista = rede.kanbanPresenca[chave] || [];
+    var cards = lista.length
+      ? lista.map(function (m) {
+          return '<div class="kanban-card"><span class="kanban-card-taxa">' + m.taxaPresenca + '%</span>'
+            + '<div class="kanban-card-nome">' + m.nome + '</div><div class="kanban-card-conselho">' + m.conselho + '</div></div>';
+        }).join('')
+      : '<div class="gestor-empty" style="padding:8px 0;">Nenhum membro nesta faixa.</div>';
+    return '<div class="kanban-col kanban-col-' + chave + '"><div class="kanban-col-head"><span>' + KANBAN_LABELS[chave] + '</span><span>' + lista.length + '</span></div>' + cards + '</div>';
+  }).join('');
+}
+
+document.getElementById('btnToggleKanban').addEventListener('click', function () {
+  var body = document.getElementById('kanbanBody');
+  var aberto = body.style.display !== 'none';
+  body.style.display = aberto ? 'none' : 'block';
+  this.classList.toggle('aberto', !aberto);
+});
+
 function carregarVisaoGeral() {
   fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
     DADOS = data;
@@ -460,6 +586,7 @@ function carregarVisaoGeral() {
     renderTabelaHead();
     renderTabela('calculado');
     renderRiscos();
+    renderVisaoRede();
   }).catch(function (err) {
     document.getElementById('rankingList').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
   });
@@ -524,42 +651,6 @@ document.getElementById('btnAddGestor').addEventListener('click', function () {
     .then(function () { btn.disabled = false; });
 });
 
-// ============ controle de perfis: sincronizar agora ============
-// Pendência do diagnóstico de 25/09/2026: a Edge Function sync-monday já aceitava chamada manual
-// com ?board= e o segredo compartilhado, só faltava um jeito autenticado de disparar isso sem
-// abrir o terminal. /api/sync-agora (Next.js, restrito a gestor) faz essa ponte.
-document.getElementById('btnSyncAgora').addEventListener('click', function () {
-  var sel = document.getElementById('selSyncBoard');
-  var btn = document.getElementById('btnSyncAgora');
-  var status = document.getElementById('syncStatus');
-  var resultado = document.getElementById('syncResultado');
-  var board = sel.value;
-  btn.disabled = true;
-  sel.disabled = true;
-  status.textContent = 'Sincronizando' + (board ? ' (' + sel.options[sel.selectedIndex].text + ')' : ' tudo') + '… pode levar alguns segundos.';
-  status.className = 'sync-status';
-  resultado.innerHTML = '';
-  fetchJSON_('/api/sync-agora' + (board ? '?board=' + encodeURIComponent(board) : ''), { method: 'POST' })
-    .then(function (data) {
-      var boards = Object.keys(data);
-      var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
-      status.textContent = comErro.length
-        ? comErro.length + ' de ' + boards.length + ' board(s) com erro.'
-        : 'Sincronização concluída com sucesso.';
-      status.className = 'sync-status ' + (comErro.length ? 'erro' : 'ok');
-      resultado.innerHTML = boards.map(function (b) {
-        var r = data[b];
-        return '<div class="sync-resultado-item"><span>' + b + '</span><span' + (r.status === 'erro' ? ' class="erro"' : '') + '>' +
-          (r.status === 'erro' ? (r.erro || 'erro') : (r.itens + ' item(ns)')) + '</span></div>';
-      }).join('');
-    })
-    .catch(function (err) {
-      status.textContent = 'Erro: ' + err.message;
-      status.className = 'sync-status erro';
-    })
-    .then(function () { btn.disabled = false; sel.disabled = false; });
-});
-
 // ============ controle de perfis: roster de CS ============
 
 function renderCSRoster(lista) {
@@ -581,8 +672,75 @@ function renderCSRoster(lista) {
 }
 
 function carregarCSRoster() {
-  fetchJSON_(ENDPOINT_CS_ROSTER).then(function (data) { renderCSRoster(data.roster || []); })
-    .catch(function (err) { document.getElementById('listaCS').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>'; });
+  fetchJSON_(ENDPOINT_CS_ROSTER).then(function (data) { renderCSRoster(data.roster || []); renderNaoVinculados(data.naoVinculados || []); })
+    .catch(function (err) {
+      document.getElementById('listaCS').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
+      document.getElementById('listaNaoVinculados').innerHTML = '';
+    });
+}
+
+// ============ controle de perfis: CS detectados e ainda não vinculados ============
+
+function primeiroNomeSugerido_(nomeDetectado) {
+  return (nomeDetectado || '').trim().split(/\\s+/)[0] || '';
+}
+
+function renderNaoVinculados(lista) {
+  var titulo = document.getElementById('tituloNaoVinculados');
+  if (titulo) titulo.textContent = 'Detectados, ainda não vinculados' + (lista.length ? ' (' + lista.length + ')' : '');
+  var el = document.getElementById('listaNaoVinculados');
+  if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum nome pendente — tudo vinculado.</div>'; return; }
+  el.innerHTML = lista.map(function (p, i) {
+    var origens = p.ocorrenciasPorOrigem.map(function (o) { return o.origem + ' (' + o.qtd + ')'; }).join(', ');
+    return '<div class="pendente-item">'
+      + '<div class="pendente-row">'
+      + '<div><div class="lista-item-nome">' + p.nome + '</div><div class="lista-item-sub">' + origens + ' · ' + p.totalOcorrencias + ' ocorrência(s)</div></div>'
+      + '<button class="btn-vincular-toggle" data-idx="' + i + '">Vincular</button>'
+      + '</div>'
+      + '<div class="pendente-form" id="pendenteForm' + i + '" style="display:none">'
+      + '<div class="form-inline"><input type="text" placeholder="Nome curto" data-field="nome" value="' + primeiroNomeSugerido_(p.nome) + '"></div>'
+      + '<div class="form-inline"><input type="text" placeholder="Nome completo (exato do Monday)" data-field="nomeCompleto" value="' + p.nome + '"></div>'
+      + '<div class="form-inline"><input type="text" placeholder="Apelido no conselho (opcional)" data-field="apelidoConselho"></div>'
+      + '<div class="form-inline"><input type="text" placeholder="Monday user ID (opcional)" data-field="mondayUserId"></div>'
+      + '<p class="erro-msg" id="erroPendente' + i + '"></p>'
+      + '<div class="form-inline"><button class="btn-salvar-vinculo" data-idx="' + i + '">Salvar</button><button class="btn-cancelar-vinculo" data-idx="' + i + '">Cancelar</button></div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  el.querySelectorAll('.btn-vincular-toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var form = document.getElementById('pendenteForm' + b.dataset.idx);
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+  el.querySelectorAll('.btn-cancelar-vinculo').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('pendenteForm' + b.dataset.idx).style.display = 'none';
+    });
+  });
+  el.querySelectorAll('.btn-salvar-vinculo').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var idx = b.dataset.idx;
+      var form = document.getElementById('pendenteForm' + idx);
+      var erroEl = document.getElementById('erroPendente' + idx);
+      erroEl.textContent = '';
+      var nome = form.querySelector('[data-field="nome"]').value.trim();
+      var nomeCompleto = form.querySelector('[data-field="nomeCompleto"]').value.trim();
+      var apelidoConselho = form.querySelector('[data-field="apelidoConselho"]').value.trim();
+      var mondayUserIdRaw = form.querySelector('[data-field="mondayUserId"]').value.trim();
+      if (!nome || !nomeCompleto) { erroEl.textContent = 'Informe nome e nome completo.'; return; }
+      if (mondayUserIdRaw && !/^[0-9]+$/.test(mondayUserIdRaw)) { erroEl.textContent = 'Monday user ID precisa ser numérico.'; return; }
+      b.disabled = true;
+      fetchJSON_(ENDPOINT_VINCULAR_CS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nome, nomeCompleto: nomeCompleto, apelidoConselho: apelidoConselho || null, mondayUserId: mondayUserIdRaw || null }),
+      })
+        .then(function (data) { renderCSRoster(data.roster || []); renderNaoVinculados(data.naoVinculados || []); })
+        .catch(function (err) { erroEl.textContent = 'Erro: ' + err.message; b.disabled = false; });
+    });
+  });
 }
 
 carregarVisaoGeral();

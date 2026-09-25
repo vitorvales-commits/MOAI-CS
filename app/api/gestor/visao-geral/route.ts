@@ -3,7 +3,7 @@
 // requireMoaiUser() já garante domínio @moaiclubedelideres.com; aqui checamos isGestor ANTES de
 // tocar em qualquer dado — nunca monta a resposta pra depois filtrar quem pode ver.
 import { NextRequest, NextResponse } from 'next/server';
-import { generateVisaoGestor } from '@/lib/reports';
+import { generateVisaoGestor, generateVisaoGeralRede } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
     if (!isGestor) {
       return NextResponse.json({ error: 'Esta área é restrita a gestores.' }, { status: 403 });
     }
-    const data = await generateVisaoGestor(supabase, mes, ano);
-    return NextResponse.json(data);
+    // visaoGeralRede (Parte B, 25-26/09/2026): mesmo seletor de período, bloco separado do
+    // ranking/radar por CS — olha a rede inteira de conselhos ativos, não um CS específico.
+    const [data, visaoGeralRede] = await Promise.all([
+      generateVisaoGestor(supabase, mes, ano),
+      generateVisaoGeralRede(supabase, mes, ano),
+    ]);
+    return NextResponse.json({ ...data, visaoGeralRede });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
