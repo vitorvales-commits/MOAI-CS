@@ -159,6 +159,26 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .kpi-realizado { font-size: 44px; line-height:1; }
 .kpi-sub { font-size: 11.5px; color:#9F9F9F; margin-top:8px; }
 .c-g{color:#6ee7b7;}.c-y{color:#fbbf24;}.c-r{color:#f87171;}.c-gray{color:#807E7E;}
+/* Parte B (25/09/2026): linha de contexto do time dentro do card individual, blur configurável pelo gestor */
+.kpi-time-linha { font-size: 11px; color:#7A7878; margin-top:7px; }
+.kpi-time-valor { font-weight:800; color:#B7B5B5; }
+.kpi-blur .kpi-time-valor { filter: blur(4px); user-select:none; }
+/* notinha clicável de pontuação/critério (Parte A/C, 25/09/2026) */
+.info-btn { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:rgba(255,255,255,0.14); color:#e5e5e5; font-size:10px; font-weight:800; border:none; cursor:pointer; margin-left:6px; flex-shrink:0; font-family:'Inter',sans-serif; line-height:1; padding:0; }
+.info-btn:hover { background:rgba(255,255,255,0.28); }
+.info-btn.dark { background:#E9E9E9; color:#5D5D5D; }
+.info-btn.dark:hover { background:#D8D5D5; }
+.score-detalhe-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:0.75pt solid #EEECEC; font-size:12px; color:#5D5D5D; }
+.score-detalhe-row:last-child { border-bottom:none; }
+.score-detalhe-label { flex:1; color:#3a3a3a; font-weight:600; }
+.score-detalhe-peso { color:#9F9F9F; font-size:11px; }
+.score-detalhe-valor { color:#9F9F9F; white-space:nowrap; }
+.score-detalhe-pontos { font-weight:800; color:#1A1A1A; white-space:nowrap; min-width:56px; text-align:right; }
+/* posição/top3 na home restrita do CS comum (Parte A, 25/09/2026) */
+.minha-posicao-badge { display:inline-flex; align-items:center; gap:8px; background:#fff; border:0.75pt solid #D8D5D5; border-radius:99px; padding:10px 18px; font-size:12.5px; font-weight:700; color:#1A1A1A; margin-top:6px; }
+.perfil-vazio { max-width:480px; margin:0 auto; text-align:center; padding:120px 24px; color:#5D5D5D; }
+.perfil-vazio h2 { font-size:20px; color:#1A1A1A; margin-bottom:10px; }
+.perfil-vazio p { font-size:13px; line-height:1.6; }
 
 .gtd-card { background:#1A1A1A; border-radius:24px; padding:22px 24px 20px; color:#fff; margin-top:2px; }
 .gtd-card-top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
@@ -417,6 +437,11 @@ select.pickmes:hover { border-color:#1A1A1A; }
     </div>
   </div>
   <div class="destaques-grid" id="destaquesGrid"></div>
+  <div id="restritoExtras" style="display:none;padding:0 28px;max-width:1040px;margin:0 auto 30px;">
+    <div class="section-title">CS Top 3<div class="line"></div></div>
+    <div id="restritoTop3"></div>
+    <div id="restritoPosicao"></div>
+  </div>
   <div class="tabs">
     <div class="tab active" onclick="showTab('indicadores',event)">Indicadores</div>
     <div class="tab" onclick="showTab('semanal',event)">Cases de Sucesso</div>
@@ -530,7 +555,7 @@ function formatarDataConselho(iso){
 var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 var currentCS = null, currentMes = MESES[new Date().getMonth()], currentAno = new Date().getFullYear();
 
-var cachePessoa = {}, cacheEquipe = {}, cacheFotos = null;
+var cachePessoa = {}, cacheEquipe = {}, cacheFotos = null, cacheResumo = {};
 var requestSeq = 0;
 var pendingCount = 0;
 function chaveP(nome, mes, ano){ return nome + '|' + mes + '|' + ano; }
@@ -538,18 +563,55 @@ function chaveE(mes, ano){ return mes + '|' + ano; }
 function pendingInc(){ pendingCount++; document.getElementById('progressBar').classList.add('ativo'); }
 function pendingDec(){ pendingCount = Math.max(0, pendingCount-1); if (pendingCount===0) document.getElementById('progressBar').classList.remove('ativo'); }
 
-// Preenchido de forma assíncrona por verificarGestor() — o link abaixo é só conveniência visual;
-// quem decide de verdade se a rota abre é o servidor em app/gestor/page.tsx e em
-// /api/gestor/visao-geral, que checam isGestor de novo e nunca confiam em nada vindo do client.
+// Preenchido de forma assíncrona por inicializarSessao() — os dois abaixo são só conveniência
+// visual (o que a topbar mostra, se o grid do time aparece); quem decide de verdade o que cada
+// rota devolve é o servidor (requireMoaiUser + isGestor/csNome em cada /api/*, nunca confia em
+// nada vindo do client). Parte A (25/09/2026): souGestor já existia; meuCSNome e modoRestritoCS
+// são novos — um CS comum (souGestor=false) sem vínculo nenhum (meuCSNome=null) não tem "os
+// próprios números" pra mostrar, então cai no estado vazio de mostrarPerfilNaoVinculado().
 var souGestor = false;
-function verificarGestor(){
-  fetch('/api/gestor/check', { cache: 'no-store' }).then(function(r){ return r.json(); })
-    .then(function(d){ souGestor = !!d.isGestor; renderTopbar(); })
+var meuCSNome = null;
+var modoRestritoCS = false;
+var configRevelarIndicadoresTime = false;
+
+function inicializarSessao(){
+  fetch('/api/perfil', { cache: 'no-store' }).then(function(r){ return r.json(); })
+    .then(function(perfil){
+      souGestor = !!perfil.isGestor;
+      meuCSNome = perfil.csNome || null;
+      modoRestritoCS = !souGestor;
+      renderTopbar();
+      if (souGestor) { iniciarHomeGestor(); return; }
+      if (!meuCSNome) { mostrarPerfilNaoVinculado(); return; }
+      fetch('/api/config', { cache: 'no-store' }).then(function(r){ return r.json(); })
+        .then(function(cfg){ configRevelarIndicadoresTime = !!cfg.revelarIndicadoresEquipe; })
+        .catch(function(){})
+        .then(function(){ abrirPessoa(meuCSNome); });
+    })
     .catch(function(){});
+}
+function iniciarHomeGestor(){
+  var grid = document.getElementById('teamGrid');
+  for (var i=0;i<5;i++){
+    var s = document.createElement('div'); s.className = 'team-card';
+    s.innerHTML = '<div class="skel" style="border-radius:50%;width:104px;height:104px;margin:0 auto 16px;"></div><div class="skel" style="height:10px;border-radius:5px;width:70%;margin:0 auto 6px;"></div><div class="skel" style="height:7px;border-radius:5px;width:45%;margin:0 auto;"></div>';
+    grid.appendChild(s);
+  }
+  carregarFotosTime();
+  renderSkeletonEquipe();
+  carregarEquipe(currentMes, currentAno);
+}
+// Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
+// números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
+// Perfis (nenhuma chamada a /api/cs, /api/equipe ou /api/home-resumo acontece daqui).
+function mostrarPerfilNaoVinculado(){
+  document.getElementById('screenHome').innerHTML =
+    '<div class="perfil-vazio"><h2>Perfil ainda não vinculado</h2>' +
+    '<p>Seu login ainda não está associado a um perfil de CS. Fale com seu gestor pra vincular seu e-mail em Controle de Perfis — assim que isso acontecer, seus indicadores aparecem aqui.</p></div>';
 }
 
 function renderTopbar(){
-  var isPessoa = currentCS !== null;
+  var isPessoa = currentCS !== null && !modoRestritoCS;
   var html = (isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
     '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
     '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
@@ -603,16 +665,20 @@ function onFiltroChange(){
   currentAno = Number(document.getElementById('selAno').value);
   if (currentCS) {
     var chave = chaveP(currentCS, currentMes, currentAno);
-    if (cachePessoa[chave]) { renderDashboard(cachePessoa[chave]); animarMFills(); }
-    else renderSkeletonPessoa();
-    carregarRelatorio(currentCS, currentMes, currentAno);
+    var chaveR = chaveE(currentMes, currentAno);
+    if (cachePessoa[chave] && (!modoRestritoCS || cacheResumo[chaveR])) {
+      renderDashboard(cachePessoa[chave], modoRestritoCS ? cacheResumo[chaveR] : undefined);
+      animarMFills();
+    } else renderSkeletonPessoa();
+    if (modoRestritoCS) carregarRelatorioRestrito(currentCS, currentMes, currentAno);
+    else carregarRelatorio(currentCS, currentMes, currentAno);
   } else {
     carregarEquipe(currentMes, currentAno);
   }
 }
 
 renderTopbar();
-verificarGestor();
+inicializarSessao();
 
 // Mensagem de quem tentou abrir /gestor sem ser gestor e foi redirecionado de volta pra cá pelo
 // servidor (ver app/gestor/page.tsx) — só um aviso, o bloqueio de verdade já aconteceu antes de
@@ -647,19 +713,11 @@ function pintarTeamGrid(equipe){
     grid.appendChild(card);
   });
 }
-(function(){
-  var grid = document.getElementById('teamGrid');
-  for (var i=0;i<5;i++){
-    var s = document.createElement('div'); s.className = 'team-card';
-    s.innerHTML = '<div class="skel" style="border-radius:50%;width:104px;height:104px;margin:0 auto 16px;"></div><div class="skel" style="height:10px;border-radius:5px;width:70%;margin:0 auto 6px;"></div><div class="skel" style="height:7px;border-radius:5px;width:45%;margin:0 auto;"></div>';
-    grid.appendChild(s);
-  }
-})();
-carregarFotosTime();
-renderSkeletonEquipe();
-carregarEquipe(currentMes, currentAno);
+// (grid de cards do time + carregarEquipe iniciais movidos pra iniciarHomeGestor() — só rodam
+// depois de confirmar souGestor via inicializarSessao(), Parte A 25/09/2026)
 
 function showHome(){
+  if (modoRestritoCS) return; // CS comum não tem home de equipe pra voltar (Parte A, 25/09/2026)
   document.getElementById('screenHome').style.display = 'block';
   document.getElementById('screenPessoa').style.display = 'none';
   currentCS = null;
@@ -673,14 +731,17 @@ function abrirPessoa(nome){
   document.getElementById('screenPessoa').style.display = 'block';
   renderTopbar();
   document.getElementById('pessoaBadgeDestaque').style.display = 'none';
+  document.getElementById('restritoExtras').style.display = modoRestritoCS ? 'block' : 'none';
   var chave = chaveP(nome, currentMes, currentAno);
-  if (cachePessoa[chave]) {
-    renderDashboard(cachePessoa[chave]);
+  var chaveR = chaveE(currentMes, currentAno);
+  if (cachePessoa[chave] && (!modoRestritoCS || cacheResumo[chaveR])) {
+    renderDashboard(cachePessoa[chave], modoRestritoCS ? cacheResumo[chaveR] : undefined);
     animarMFills();
   } else {
     renderSkeletonPessoa();
   }
-  carregarRelatorio(nome, currentMes, currentAno);
+  if (modoRestritoCS) carregarRelatorioRestrito(nome, currentMes, currentAno);
+  else carregarRelatorio(nome, currentMes, currentAno);
   atualizarBadgeDestaque(nome);
 }
 function atualizarBadgeDestaque(nome){
@@ -740,6 +801,37 @@ function carregarRelatorio(nome, mes, ano){
     }
   }).getReportPublico(nome, mes, ano);
 }
+// Home restrita do CS comum (Parte A, 25/09/2026): além do próprio relatório, busca em paralelo
+// /api/home-resumo (indicadores agregados do time sem nome de ninguém + Top 3 nomeado + própria
+// posição) — nunca chama /api/equipe, que agora é exclusivo de gestor.
+function carregarRelatorioRestrito(nome, mes, ano){
+  var meuSeq = ++requestSeq;
+  pendingInc();
+  var chaveR = chaveE(mes, ano);
+  Promise.all([
+    fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)),
+    cacheResumo[chaveR] ? Promise.resolve(cacheResumo[chaveR]) : fetchJSON_('/api/home-resumo?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)),
+  ]).then(function(res){
+    pendingDec();
+    var data = res[0], resumo = res[1];
+    cachePessoa[chaveP(nome, mes, ano)] = data;
+    cacheResumo[chaveR] = resumo;
+    if (meuSeq === requestSeq && currentCS === nome && currentMes === mes && currentAno === ano) {
+      renderDashboard(data, resumo);
+      animarMFills();
+    }
+  }).catch(function(err){
+    pendingDec();
+    if (meuSeq === requestSeq && currentCS === nome) {
+      var msgErro = '<div class="empty-state">Erro ao consultar: ' + err.message + '</div>';
+      document.getElementById('indicadores').innerHTML = msgErro;
+      document.getElementById('semanal').innerHTML = msgErro;
+      document.getElementById('conselhos').innerHTML = msgErro;
+      document.getElementById('feedbacks').innerHTML = msgErro;
+      document.getElementById('destaquesGrid').innerHTML = '';
+    }
+  });
+}
 function carregarEquipe(mes, ano){
   var meuSeq = ++requestSeq;
   var chave = chaveE(mes, ano);
@@ -783,15 +875,25 @@ function calcIndicador(ind){
     return { pct:100, cor:'r', corTxt:'c-r', pctLabel: Math.round(pctUso) + '% da meta', pill:'pr', pillLabel:'Acima do limite' };
   }
 }
-function kpiCard(label, ind, unidade){
+// timeInd/blurTime (Parte B, 25/09/2026): quando o card representa também um dado do TIME (não
+// só pessoal do CS), timeInd é o indicador agregado da equipe pro mesmo período — mostrado numa
+// linha própria embaixo do valor individual, com a parte numérica borrada por CSS quando
+// blurTime=true (configuracoes_globais.revelar_indicadores_equipe desligado). O "M" (m-fill-liquid
+// acima) nunca reflete o time, sempre o progresso REAL do indicador individual — nunca borrado.
+function kpiCard(label, ind, unidade, timeInd, blurTime){
   var c = calcIndicador(ind);
   var valorMostrado = (ind.alcancado===null||ind.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado);
   var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
   var fonteHtml = ind.fonte ? '<span class="kpi-fonte'+(ind.fonte==='manual'?' manual':'')+'"><span class="kpi-fonte-dot"></span>'+(ind.fonte==='manual'?'Validado no Monday':'Calculado automático')+'</span>' : '';
   var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+metaMostrada+' · '+c.pctLabel);
+  var timeHtml = '';
+  if (timeInd) {
+    var valorTime = (timeInd.alcancado===null||timeInd.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+timeInd.alcancado.toLocaleString('pt-BR') : timeInd.alcancado);
+    timeHtml = '<div class="kpi-time-linha'+(blurTime?' kpi-blur':'')+'">Time: <span class="kpi-time-valor">'+valorTime+'</span></div>';
+  }
   return '<div class="kpi"><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span></div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div></div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+'</div></div></div>';
 }
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
@@ -910,11 +1012,19 @@ function renderDestaques(data){
     destaqueCard('Destaque em feedback', destaqueFb);
 }
 
-function renderDashboard(data){
+// resumo (Parte A/B, 25/09/2026): só existe quando modoRestritoCS=true (payload de
+// /api/home-resumo) — indicadoresTime alimenta a linha "Time:" de cada card (Parte B), top3/
+// minhaPosicao alimentam os blocos sempre visíveis da Parte A. Ausente pra gestor navegando o
+// perfil de qualquer CS (comportamento de sempre, sem nenhuma dessas seções extras).
+function renderDashboard(data, resumo){
   modoGeralAtual = !!data.periodo.geral;
   renderJornadaHero(data);
   renderDestaques(data);
-  renderIndicadores(data); renderSemanal(data); renderConselhos(data); renderFeedback(data);
+  renderIndicadores(data, resumo); renderSemanal(data); renderConselhos(data); renderFeedback(data);
+  if (modoRestritoCS && resumo) {
+    renderCSTop(resumo.top3, 'restritoTop3');
+    renderMinhaPosicao(resumo);
+  }
   animarMFills();
 }
 function gtdCard(ind){
@@ -928,12 +1038,14 @@ function gtdCard(ind){
     '<div class="gtd-card-sub">Média das 9 etapas de acompanhamento (confirmação, jornada, encaminhamentos, matchmaking, upsell...) nos conselhos do ciclo atual. Clique em um conselho na aba Conselhos pra ver o detalhe etapa a etapa.</div>' +
   '</div>';
 }
-function renderIndicadores(data){
+function renderIndicadores(data, resumo){
   var ind = data.indicadores;
+  var t = resumo ? resumo.indicadoresTime : null;
+  var blur = modoRestritoCS && !configRevelarIndicadoresTime;
   document.getElementById('indicadores').innerHTML =
-    '<div class="grid3">'+kpiCard('Churn', ind.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$')+kpiCard('Cases de Sucesso', ind.casesSucesso)+'</div>' +
-    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings)+kpiCard('Rounds', ind.rounds)+kpiCard('Indicações', ind.indicacoes)+'</div>' +
-    '<div class="grid3">'+kpiCard('Health da Base', ind.healthDaBase)+kpiCard('Upsell', ind.upsell)+kpiCard('Downsell', ind.downsell)+'</div>' +
+    '<div class="grid3">'+kpiCard('Churn', ind.churn, null, t&&t.churn, blur)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$', t&&t.revenueChurn, blur)+kpiCard('Cases de Sucesso', ind.casesSucesso, null, t&&t.casesSucesso, blur)+'</div>' +
+    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings, null, t&&t.matchmakings, blur)+kpiCard('Rounds', ind.rounds, null, t&&t.rounds, blur)+kpiCard('Indicações', ind.indicacoes, null, t&&t.indicacoes, blur)+'</div>' +
+    '<div class="grid3">'+kpiCard('Health da Base', ind.healthDaBase, null, t&&t.healthDaBase, blur)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur)+'</div>' +
     gtdCard(ind.cumprimentoGtd);
 }
 function renderSemanal(data){
@@ -1614,19 +1726,65 @@ function desenharImpactoConselhosEquipe_(){
   el.innerHTML = html;
 }
 
-function renderCSTop(csTop){
-  var el = document.getElementById('csTop');
+// SCORE_MODAL_DATA_/registrarScoreModal_/abrirScoreModal (Parte A/C, pedido do Vitor 25/09/2026):
+// notinha clicável reaproveitada em qualquer lugar que mostre a pontuação ponderada de um CS —
+// Top 3 da home, própria posição — reaproveitando o modal de case/conselho já existente
+// (#caseModalOverlay), sempre com o detalhamento item a item que já vem pronto do servidor
+// (detalharScoreCS em lib/reports.ts, mesma fórmula/pesos de sempre, nunca inventados aqui).
+var SCORE_MODAL_DATA_ = [];
+function registrarScoreModal_(nome, score, detalhamento){
+  SCORE_MODAL_DATA_.push({ nome: nome, score: score, detalhamento: detalhamento || [] });
+  return SCORE_MODAL_DATA_.length - 1;
+}
+function abrirScoreModal(idx){
+  var d = SCORE_MODAL_DATA_[idx];
+  if (!d) return;
+  var linhas = d.detalhamento.map(function(item){
+    var val = (item.valorAlcancado===null||item.valorAlcancado===undefined) ? '—' : item.valorAlcancado;
+    var meta = (item.meta===null||item.meta===undefined) ? '—' : item.meta;
+    var ach = (item.achievementPct===null||item.achievementPct===undefined) ? '—' : item.achievementPct+'%';
+    return '<div class="score-detalhe-row">' +
+      '<span class="score-detalhe-label">'+item.label+'</span>' +
+      '<span class="score-detalhe-peso">peso '+item.peso+'</span>' +
+      '<span class="score-detalhe-valor">'+val+' / '+meta+' · '+ach+'</span>' +
+      '<span class="score-detalhe-pontos">'+item.pontos+' pts</span>' +
+    '</div>';
+  }).join('');
+  document.getElementById('caseModalBody').innerHTML =
+    '<div class="case-modal-header"><div><div class="case-modal-nome">'+d.nome+'</div>' +
+    '<div class="case-modal-empresa">Pontuação: '+(d.score===null?'—':d.score)+'</div></div></div>' +
+    '<div class="case-modal-campo"><div class="case-modal-label">Como a pontuação foi composta</div>' + linhas +
+    '<div class="case-modal-texto" style="margin-top:12px;color:#9F9F9F;">Pontos = peso × aproveitamento de cada indicador na meta. A soma dos pontos é a pontuação final (0–100).</div></div>';
+  document.getElementById('caseModalOverlay').classList.add('ativo');
+}
+
+function renderCSTop(csTop, targetId){
+  var el = document.getElementById(targetId || 'csTop');
   if (!csTop || csTop.length === 0) { el.innerHTML = '<div class="empty-state">Sem dados suficientes pra calcular o Top 3 neste período.</div>'; return; }
   var medalhas = ['1º lugar','2º lugar','3º lugar'];
   var html = '<div class="cstop-grid">';
   csTop.forEach(function(c, i){
     var fotoHtml = c.fotoUrl ? '<img class="cstop-foto" src="'+c.fotoUrl+'">' : '<div class="cstop-foto-fallback" style="background:'+corPara(c.nomeCompleto||c.nome)+'">'+iniciais(c.nomeCompleto||c.nome)+'</div>';
+    var idxModal = registrarScoreModal_(c.nome, c.score, c.detalhamento);
     html += '<div class="cstop-card pos'+(i+1)+'"><div class="cstop-medalha">'+(medalhas[i]||((i+1)+'º lugar'))+'</div>' +
       fotoHtml + '<div class="cstop-nome">'+c.nome+'</div>' +
-      '<div class="cstop-score num">'+c.score+'</div><div class="cstop-score-lbl">pontos</div></div>';
+      '<div class="cstop-score num">'+c.score+'<button class="info-btn" onclick="abrirScoreModal('+idxModal+')" title="Como essa pontuação foi composta">ⓘ</button></div><div class="cstop-score-lbl">pontos</div></div>';
   });
   html += '</div>';
   el.innerHTML = html;
+}
+
+// Exceção 2 da Parte A (25/09/2026): só a PRÓPRIA posição no ranking geral, nunca a lista inteira
+// de nomes/posições dos colegas.
+function renderMinhaPosicao(resumo){
+  var el = document.getElementById('restritoPosicao');
+  if (!el) return;
+  if (resumo.minhaPosicao === null || resumo.minhaPosicao === undefined) { el.innerHTML = ''; return; }
+  var idxModal = registrarScoreModal_(currentCS, resumo.meuScore, resumo.meuDetalhamento);
+  el.innerHTML = '<div class="minha-posicao-badge">Você está em <strong>'+resumo.minhaPosicao+'º lugar</strong> geral' +
+    (resumo.totalRankeados ? ' de '+resumo.totalRankeados : '') +
+    (resumo.meuScore !== null && resumo.meuScore !== undefined ? ' · '+resumo.meuScore+' pontos' : '') +
+    '<button class="info-btn dark" onclick="abrirScoreModal('+idxModal+')" title="Como essa pontuação foi composta">ⓘ</button></div>';
 }
 
 function rankingCard(titulo, lista, sufixo){

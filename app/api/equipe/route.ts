@@ -16,7 +16,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
   }
   try {
-    const { supabase } = await requireMoaiUser();
+    const { supabase, isGestor } = await requireMoaiUser();
+    // Parte A (pedido do Vitor 25/09/2026): relatório da equipe inteira (ranking nomeado, grade
+    // de conselhos de todo mundo etc.) é exclusivo da visão de gestor — um CS comum usa
+    // /api/home-resumo (indicadores agregados sem nome + as duas exceções) e o próprio
+    // /api/cs/[nome] pros dados individuais.
+    if (!isGestor) return NextResponse.json({ error: 'Esta área é restrita a gestores.' }, { status: 403 });
     const data = await generateEquipeReport(supabase, mes, ano);
     return NextResponse.json(data);
   } catch (e: any) {

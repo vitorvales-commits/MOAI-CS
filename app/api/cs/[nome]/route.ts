@@ -17,7 +17,12 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
     return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
   }
   try {
-    const { supabase } = await requireMoaiUser();
+    const { supabase, isGestor, csNome } = await requireMoaiUser();
+    // Parte A (pedido do Vitor 25/09/2026): gestor continua vendo qualquer perfil, sem restrição
+    // nenhuma; um CS comum só pode consultar o PRÓPRIO relatório (o vínculo em cs_usuarios).
+    if (!isGestor && nome !== csNome) {
+      return NextResponse.json({ error: 'Você só pode consultar o próprio relatório.' }, { status: 403 });
+    }
     const data = await generateCSReport(supabase, nome, mes, ano);
     return NextResponse.json(data);
   } catch (e: any) {

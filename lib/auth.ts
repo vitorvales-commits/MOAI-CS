@@ -17,7 +17,7 @@ export class AuthError extends Error {
   }
 }
 
-export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; email: string; isGestor: boolean }> {
+export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; email: string; isGestor: boolean; csNome: string | null }> {
   const supabase = getSupabaseServer();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user || !user.email) {
@@ -31,7 +31,11 @@ export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; ema
   // substitui ela.
   const { data: isGestor, error: gestorError } = await supabase.rpc('is_gestor');
   if (gestorError) throw new Error('Erro ao checar papel de gestor: ' + gestorError.message);
-  return { supabase, email: user.email, isGestor: !!isGestor };
+  // meu_cs() (Parte A, 25/09/2026): qual perfil de cs_config está vinculado a este e-mail —
+  // null quando o gestor ainda não fez esse vínculo em Controle de Perfis (ver cs_usuarios).
+  const { data: csNome, error: csNomeError } = await supabase.rpc('meu_cs');
+  if (csNomeError) throw new Error('Erro ao checar vínculo de CS: ' + csNomeError.message);
+  return { supabase, email: user.email, isGestor: !!isGestor, csNome: csNome || null };
 }
 
 export function authErrorResponse(e: unknown) {

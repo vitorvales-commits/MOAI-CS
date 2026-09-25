@@ -264,6 +264,41 @@ export async function removerGestor(sb: SupabaseClient, email: string): Promise<
   if (error) throw new Error(error.message);
 }
 
+// ============ vínculo e-mail -> CS (Parte A, pedido do Vitor 25/09/2026) ============
+// cs_usuarios: sem NENHUMA policy (RLS deny-all), mesmo padrão de `gestores` — só dá pra ler/
+// escrever via essas funções SECURITY DEFINER (meu_cs/listar_cs_usuarios/vincular_cs_usuario/
+// desvincular_cs_usuario), que checam is_moai_user()/is_gestor() dentro do banco.
+export type CSUsuarioItem = { email: string; nome: string; criadoEm: string };
+export async function listarCSUsuarios(sb: SupabaseClient): Promise<CSUsuarioItem[]> {
+  const { data, error } = await sb.rpc('listar_cs_usuarios');
+  if (error) throw new Error('Erro ao listar vínculos de CS: ' + error.message);
+  return (data || []).map((r: any) => ({ email: r.email, nome: r.nome, criadoEm: r.criado_em }));
+}
+export async function vincularCSUsuario(sb: SupabaseClient, email: string, nome: string): Promise<void> {
+  const { error } = await sb.rpc('vincular_cs_usuario', { p_email: email, p_nome: nome });
+  if (error) throw new Error(error.message);
+}
+export async function desvincularCSUsuario(sb: SupabaseClient, email: string): Promise<void> {
+  const { error } = await sb.rpc('desvincular_cs_usuario', { p_email: email });
+  if (error) throw new Error(error.message);
+}
+
+// ============ configurações globais (Parte B, pedido do Vitor 25/09/2026) ============
+// configuracoes_globais: mesmo padrão deny-all, singleton (id sempre true) — get é liberado pra
+// qualquer moai user (precisa saber se deve borrar os indicadores agregados do time na própria
+// home), set é restrito a gestor.
+export async function getConfiguracoesGlobais(sb: SupabaseClient): Promise<{ revelarIndicadoresEquipe: boolean }> {
+  const { data, error } = await sb.rpc('get_configuracoes_globais');
+  if (error) throw new Error('Erro ao buscar configurações globais: ' + error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return { revelarIndicadoresEquipe: !!row?.revelar_indicadores_equipe };
+}
+export async function setRevelarIndicadoresEquipe(sb: SupabaseClient, valor: boolean): Promise<boolean> {
+  const { data, error } = await sb.rpc('set_revelar_indicadores_equipe', { p_valor: valor });
+  if (error) throw new Error('Erro ao salvar configuração: ' + error.message);
+  return !!data;
+}
+
 // ============ busca única de dados brutos (equivalente a getDadosBrutos_) ============
 // Tabelas são pequenas o bastante (centenas de linhas) pra buscar por inteiro e filtrar em
 // memória, com .range() explícito pra nunca esbarrar no limite default de 1000 linhas do
@@ -704,6 +739,47 @@ function calcularScoreCS(indicadores: any, numConselhos: number, maxConselhosTim
   return somaPeso > 0 ? Math.round((somaPonderada / somaPeso) * 100) : null;
 }
 
+// Rótulos de cada indicador que entra na fórmula ponderada (PESOS_SCORE_CS) — usado só pelo
+// detalhamento abaixo (notinha clicável, Parte A/C, pedido do Vitor 25/09/2026), nunca pela
+// própria fórmula.
+const LABELS_SCORE_CS: Record<string, string> = {
+  carteira: 'Carteira de conselhos', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings',
+  rounds: 'Rounds', upsell: 'Upsell', indicacoes: 'Indicações', churn: 'Churn', downsell: 'Downsell',
+};
+
+export type ScoreDetalheItem = {
+  chave: string; label: string; peso: number;
+  achievementPct: number | null; pontos: number;
+  valorAlcancado: number | null; meta: number | null;
+};
+
+// Detalhamento item a item da MESMA fórmula ponderada de calcularScoreCS (nunca inventa peso
+// novo, só expõe o que já é calculado internamente) — pedido do Vitor 25/09/2026: a notinha
+// clicável junto de qualquer pontuação de CS (Top 3 da home, própria posição, ranking do gestor)
+// precisa listar cada indicador com o peso e o quanto ele contribuiu, não um resumo em frase.
+export function detalharScoreCS(indicadores: any, numConselhos: number, maxConselhosTime: number): ScoreDetalheItem[] {
+  return Object.keys(PESOS_SCORE_CS).map((chave) => {
+    const peso = PESOS_SCORE_CS[chave];
+    if (chave === 'carteira') {
+      const ach = maxConselhosTime > 0 ? Math.max(0, Math.min(1, numConselhos / maxConselhosTime)) : null;
+      return {
+        chave, label: LABELS_SCORE_CS.carteira, peso,
+        achievementPct: ach === null ? null : Math.round(ach * 100),
+        pontos: ach === null ? 0 : Math.round(ach * peso * 10) / 10,
+        valorAlcancado: numConselhos, meta: maxConselhosTime || null,
+      };
+    }
+    const ind = indicadores[chave];
+    const ach = achievementIndicador(ind);
+    return {
+      chave, label: LABELS_SCORE_CS[chave] || chave, peso,
+      achievementPct: ach === null ? null : Math.round(ach * 100),
+      pontos: ach === null ? 0 : Math.round(ach * peso * 10) / 10,
+      valorAlcancado: ind?.alcancado ?? null, meta: ind?.meta ?? null,
+    };
+  });
+}
+
 // ============ relatório individual ============
 
 export async function generateCSReport(sb: SupabaseClient, nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
@@ -861,11 +937,20 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   };
 
   const maxConselhosTime = relatorios.reduce((max, r) => Math.max(max, r.conselhos.length), 0);
-  const csTop = relatorios
-    .map((r) => ({ nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl, score: calcularScoreCS(r.indicadores, r.conselhos.length, maxConselhosTime) }))
+  // rankingGeralPorScore (Parte A, pedido do Vitor 25/09/2026): mesma pontuação ponderada de
+  // sempre (calcularScoreCS), só que agora guardamos a lista INTEIRA ordenada, não só o Top 3 —
+  // csTop continua sendo só os 3 primeiros (com o detalhamento item a item da notinha clicável),
+  // e a lista completa serve pra /api/home-resumo achar a posição de um CS específico sem expor
+  // o restante do ranking nomeado pra quem não é gestor.
+  const rankingGeralPorScore = relatorios
+    .map((r) => ({
+      nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
+      score: calcularScoreCS(r.indicadores, r.conselhos.length, maxConselhosTime),
+      detalhamento: detalharScoreCS(r.indicadores, r.conselhos.length, maxConselhosTime),
+    }))
     .filter((x) => x.score !== null)
-    .sort((a, b) => (b.score as number) - (a.score as number))
-    .slice(0, 3);
+    .sort((a, b) => (b.score as number) - (a.score as number));
+  const csTop = rankingGeralPorScore.slice(0, 3);
 
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
@@ -894,6 +979,10 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     casesPorCS,
     ranking: rankingIndicadores,
     csTop,
+    // Lista completa (nome + score + detalhamento) — usada internamente por generateHomeResumoCS
+    // pra achar a posição/pontuação/detalhamento de UM CS sem expor a lista inteira pra quem não
+    // é gestor (a lista nomeada completa só sai daqui via /api/equipe, que é gestor-only).
+    rankingGeralPorScore,
     conselhos: todosConselhos,
     proximosConselhos,
     // impactoConselhos: alias pro histórico, mantido pra não quebrar nada que já lê esse campo
@@ -1017,6 +1106,33 @@ function calcularImpactoConselhos(dados: DadosBrutos, seletorMes?: string, ano?:
   return { totalCases, totalMatchmakings, matchmakingsSemResultado, topConselhos };
 }
 
+// ============ resumo de home pro CS comum (Parte A/B, pedido do Vitor 25/09/2026) ============
+// Único endpoint que um CS que não é gestor pode chamar pra saber algo além do próprio relatório
+// individual (/api/cs/[nome]): os indicadores AGREGADOS do time (só a soma/média, sem nome de
+// ninguém — Parte B borra a parte numérica na home), e as duas exceções sempre visíveis pra
+// qualquer CS (Parte A): o Top 3 nomeado com pontuação (reaproveita generateEquipeReport.csTop,
+// já com o detalhamento item a item pronto) e a PRÓPRIA posição no ranking geral, nunca a lista
+// inteira — quem quer o ranking nomeado completo/radar comparativo usa a visão de gestor.
+export async function generateHomeResumoCS(sb: SupabaseClient, seletorMes: string, ano: number, meuNome: string | null) {
+  const equipe = await generateEquipeReport(sb, seletorMes, ano);
+  const minhaPosicao = meuNome
+    ? (() => {
+        const idx = equipe.rankingGeralPorScore.findIndex((r) => r.nome === meuNome);
+        return idx === -1 ? null : idx + 1;
+      })()
+    : null;
+  const meuScoreEntry = meuNome ? equipe.rankingGeralPorScore.find((r) => r.nome === meuNome) : null;
+  return {
+    periodo: equipe.periodo,
+    indicadoresTime: equipe.indicadores,
+    top3: equipe.csTop,
+    minhaPosicao,
+    meuScore: meuScoreEntry ? meuScoreEntry.score : null,
+    meuDetalhamento: meuScoreEntry ? meuScoreEntry.detalhamento : null,
+    totalRankeados: equipe.rankingGeralPorScore.length,
+  };
+}
+
 // ============ visão do gestor (dados não mascarados) ============
 // Diferente de generateEquipeReport (que só expõe "alcancado", o maior entre manual e
 // calculado), esta visão é só pra quem tem is_gestor()=true: mostra o valor calculado puro, o
@@ -1130,6 +1246,10 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
     indicadoresParaScoreReal[chave] = { ...i, alcancado: i.calculado };
   });
   const scoreReal = calcularScoreCS(indicadoresParaScoreReal, r.conselhos.length, maxConselhosTime);
+  // detalhamento (Parte C, pedido do Vitor 25/09/2026): notinha clicável junto da pontuação no
+  // ranking do gestor — mesma fórmula, sobre os mesmos indicadores 100% calculados (nunca o
+  // mascarado) usados no scoreReal acima.
+  const detalhamento = detalharScoreCS(indicadoresParaScoreReal, r.conselhos.length, maxConselhosTime);
 
   const radar = RADAR_EIXOS.map((eixo) => {
     const i = eixo.chave === 'cumprimentoGtd' ? indicadores.cumprimentoGtd : (indicadores as any)[eixo.chave];
@@ -1140,7 +1260,7 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
 
   return {
     nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
-    indicadores, indiceDivergencia, scoreReal, alertas, radar, temIndicadorAbaixoDaMeta,
+    indicadores, indiceDivergencia, scoreReal, detalhamento, alertas, radar, temIndicadorAbaixoDaMeta,
   };
 }
 
@@ -1171,7 +1291,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   const ranking = [...porCS]
     .filter((c) => c.scoreReal !== null)
     .sort((a, b) => (b.scoreReal as number) - (a.scoreReal as number))
-    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal }));
+    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal, detalhamento: c.detalhamento }));
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
@@ -1604,13 +1724,14 @@ function taxaPresencaHistorico(membro: any, ctx: ContextoConselhos): number | nu
 // mês com dado, nunca só o mês de referência. Mesmo motivo do bug fix acima: a tabela de presença
 // por conselho estava presa no mês de referência (montarGradeConselhos.presenca), distorcendo o
 // resultado pra conselhos com um mau mês isolado.
-function taxaPresencaHistoricoConselho(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo: any[]): number | null {
+type PresencaHistoricoConselho = { taxa: number | null; presentesTotal: number; agendadosTotal: number };
+function presencaHistoricoConselhoDetalhe(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo: any[]): PresencaHistoricoConselho {
   let presentesTotal = 0, agendadosTotal = 0;
   MESES_ORDEM.forEach((mes) => {
     const p = presencaDoMes(ctx, itemsPrincipais, itemsRepo, mes);
     if (p.agendados > 0) { presentesTotal += p.presentes; agendadosTotal += p.agendados; }
   });
-  return agendadosTotal > 0 ? Math.round((presentesTotal / agendadosTotal) * 100) : null;
+  return { taxa: agendadosTotal > 0 ? Math.round((presentesTotal / agendadosTotal) * 100) : null, presentesTotal, agendadosTotal };
 }
 
 export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: string, ano: number) {
@@ -1623,7 +1744,7 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
   let totalMembros = 0;
   const todosItemsPrincipais: any[] = [];
   const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca }[] = [];
-  const presencaHistoricoPorGrupo = new Map<string, number | null>();
+  const presencaHistoricoPorGrupo = new Map<string, PresencaHistoricoConselho>();
 
   gruposAtivos.forEach((g: any) => {
     const calc = calcularConselho(ctx, g, seletorMes, ano);
@@ -1637,7 +1758,7 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
       if (taxa === null) return; // sem nenhum registro de presença ainda — não inventa banda pra quem não tem dado
       kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: bandaPresenca(taxa) });
     });
-    presencaHistoricoPorGrupo.set(g.group_id, taxaPresencaHistoricoConselho(ctx, calc.itemsPrincipais, calc.itemsRepo));
+    presencaHistoricoPorGrupo.set(g.group_id, presencaHistoricoConselhoDetalhe(ctx, calc.itemsPrincipais, calc.itemsRepo));
   });
 
   const pagamentoRede = calcularPagamento(todosItemsPrincipais);
@@ -1646,11 +1767,25 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
     periodo: { mes: seletorMes, ano },
     totalMembros,
     pagamentoRede,
-    presencaConselhos: grade.cards.map((c) => ({
-      groupId: c.groupId, conselheiro: c.conselheiro, nivel: c.nivel, membros: c.membros,
-      congelado: c.congelado, atencao: c.atencao,
-      presenca: { taxa: presencaHistoricoPorGrupo.get(c.groupId) ?? null },
-    })),
+    presencaConselhos: grade.cards.map((c) => {
+      const p = presencaHistoricoPorGrupo.get(c.groupId) || { taxa: null, presentesTotal: 0, agendadosTotal: 0 };
+      return {
+        groupId: c.groupId, conselheiro: c.conselheiro, nivel: c.nivel, membros: c.membros,
+        congelado: c.congelado, atencao: c.atencao, statusEngajamento: c.statusEngajamento,
+        presenca: { taxa: p.taxa },
+        // criterioPresenca (Parte C, pedido do Vitor 25/09/2026): dado real de apoio pra notinha
+        // clicável do status "Em atenção" — a etiqueta em si vem do campo "Status de Engajamento"
+        // do board Conselheiros 2026 (ajuste manual da gestão), não de um cálculo automático;
+        // aqui vai o limiar/contagem/valor de presença já calculados no sistema pra dar contexto
+        // objetivo de apoio à etiqueta, sempre os mesmos usados no kanban de presença por membro.
+        criterioPresenca: {
+          limiarAtencaoPct: LIMIAR_PRESENCA_ATENCAO,
+          encontrosContados: p.agendadosTotal,
+          presentesContados: p.presentesTotal,
+          valorMedidoPct: p.taxa,
+        },
+      };
+    }),
     kanbanPresenca: {
       critica: kanbanMembros.filter((m) => m.banda === 'critica'),
       baixa: kanbanMembros.filter((m) => m.banda === 'baixa'),

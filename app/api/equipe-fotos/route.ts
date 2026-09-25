@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { supabase } = await requireMoaiUser();
+    const { supabase, isGestor } = await requireMoaiUser();
+    // Parte A (pedido do Vitor 25/09/2026): o grid de cards da equipe (pra navegar pro perfil de
+    // qualquer CS) só existe na home de gestor agora — CS comum não navega pra perfil alheio.
+    if (!isGestor) return NextResponse.json({ error: 'Esta área é restrita a gestores.' }, { status: 403 });
     const lista = await getCSListCompleto(supabase);
     const data = lista.map((c) => ({
       nome: c.nome,

@@ -193,6 +193,29 @@ export const GESTOR_STYLE = `
 .gestor-empty{padding:24px;color:var(--cinza-apoio);font-size:13px;}
 .gestor-erro{padding:24px;color:var(--vermelho);font-size:13px;}
 
+/* notinha clicável de pontuação/critério (Parte C, pedido do Vitor 25/09/2026) */
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--cinza-superficie);color:var(--cinza-texto);font-size:10px;font-weight:800;border:none;cursor:pointer;margin-left:6px;flex-shrink:0;font-family:'Inter',sans-serif;line-height:1;padding:0;}
+.info-btn:hover{background:var(--cinza-linha);}
+.info-btn.claro{background:rgba(255,255,255,0.16);color:#fff;}
+.info-btn.claro:hover{background:rgba(255,255,255,0.3);}
+.info-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;align-items:center;justify-content:center;padding:24px;}
+.info-modal-overlay.ativo{display:flex;}
+.info-modal{background:var(--branco);border-radius:26px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;padding:32px;position:relative;}
+.info-modal-close{position:absolute;top:20px;right:20px;width:32px;height:32px;border-radius:50%;background:var(--cinza-fundo);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--cinza-texto);}
+.info-modal-close:hover{background:var(--cinza-superficie);}
+.info-modal-titulo{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:800;color:var(--preto-tinta);margin-bottom:4px;padding-right:30px;}
+.info-modal-sub{font-size:12.5px;color:var(--cinza-texto);margin-bottom:16px;}
+.score-detalhe-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--cinza-linha);font-size:12px;color:var(--cinza-texto);}
+.score-detalhe-row:last-child{border-bottom:none;}
+.score-detalhe-label{flex:1;color:var(--preto-tinta);font-weight:600;}
+.score-detalhe-peso{color:var(--cinza-apoio);font-size:11px;}
+.score-detalhe-valor{color:var(--cinza-apoio);white-space:nowrap;}
+.score-detalhe-pontos{font-weight:800;color:var(--preto-tinta);white-space:nowrap;min-width:56px;text-align:right;}
+.info-modal-rodape{font-size:11.5px;color:var(--cinza-apoio);margin-top:14px;line-height:1.6;}
+.config-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:24px;display:flex;align-items:center;gap:16px;justify-content:space-between;}
+.config-card-desc{font-size:12.5px;color:var(--cinza-texto);line-height:1.6;max-width:520px;}
+.config-card-status{font-size:11px;font-weight:700;color:var(--cinza-apoio);margin-top:6px;}
+
 footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinza-linha);font-size:11.5px;color:var(--cinza-apoio);}
 
 @media (max-width:640px){
@@ -313,6 +336,17 @@ export const GESTOR_HTML = `
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis">
+    <div class="config-card" style="margin-bottom:24px;">
+      <div>
+        <h3 style="margin:0 0 6px;">Indicadores do time na home do CS</h3>
+        <div class="config-card-desc">Liga ou desliga, pra todo mundo que não é gestor de uma vez, a parte numérica dos indicadores agregados do time nos cards da home individual (o medidor visual nunca é afetado, sempre mostra o progresso real). Nasce desligado — indicadores borrados por padrão.</div>
+        <div class="config-card-status" id="statusRevelar">Carregando…</div>
+      </div>
+      <label class="switch" style="flex-shrink:0;">
+        <input type="checkbox" id="chkRevelarIndicadores">
+        <span class="switch-track"></span>
+      </label>
+    </div>
     <div class="perfis-grid">
       <div class="perfis-card">
         <h3>Gestores</h3>
@@ -322,6 +356,17 @@ export const GESTOR_HTML = `
         </div>
         <p class="erro-msg" id="erroGestor"></p>
         <div id="listaGestores"></div>
+      </div>
+      <div class="perfis-card">
+        <h3>Acesso de login por CS</h3>
+        <p class="sync-desc">Vincula o e-mail de login (Google, @moaiclubedelideres.com) ao perfil de CS correspondente — é esse vínculo que faz a home de um CS comum saber quais são "os próprios números" (Parte A). Sem vínculo, o CS vê uma tela vazia pedindo pra falar com o gestor.</p>
+        <div class="form-inline">
+          <input type="email" id="inputEmailCS" placeholder="email@moaiclubedelideres.com">
+          <select id="selectCSParaVincular"></select>
+          <button id="btnVincularCS">Vincular</button>
+        </div>
+        <p class="erro-msg" id="erroVinculoCS"></p>
+        <div id="listaVinculosCS"></div>
       </div>
       <div class="perfis-card">
         <h3>CS ativos</h3>
@@ -337,6 +382,12 @@ export const GESTOR_HTML = `
 
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
 </div>
+</div>
+<div class="info-modal-overlay" id="infoModalOverlay" onclick="if(event.target===this) fecharInfoModal()">
+  <div class="info-modal">
+    <div class="info-modal-close" onclick="fecharInfoModal()">✕</div>
+    <div id="infoModalBody"></div>
+  </div>
 </div>
 `;
 
@@ -362,6 +413,55 @@ var ENDPOINT_VISAO_GERAL = '/api/gestor/visao-geral';
 var ENDPOINT_GESTORES = '/api/gestor/gestores';
 var ENDPOINT_CS_ROSTER = '/api/gestor/cs-roster';
 var ENDPOINT_VINCULAR_CS = '/api/gestor/vincular-cs';
+var ENDPOINT_CONFIG = '/api/config';
+var ENDPOINT_GESTOR_CONFIG = '/api/gestor/config';
+var ENDPOINT_CS_USUARIOS = '/api/gestor/cs-usuarios';
+
+// ============ notinha clicável (Parte C, pedido do Vitor 25/09/2026) ============
+// Modal genérico reaproveitado em dois lugares: detalhamento item a item de uma pontuação
+// ponderada (mesma fórmula/pesos de sempre, calcularScoreCS/detalharScoreCS em lib/reports.ts,
+// nunca recalculado aqui) e o critério completo por trás de um status de conselho (ex. "Em
+// atenção"). Os dois só desenham o que o servidor já mandou pronto.
+function fecharInfoModal(){ document.getElementById('infoModalOverlay').classList.remove('ativo'); }
+
+var SCORE_MODAL_DATA_ = [];
+function registrarScoreModal_(nome, score, detalhamento){
+  SCORE_MODAL_DATA_.push({ nome: nome, score: score, detalhamento: detalhamento || [] });
+  return SCORE_MODAL_DATA_.length - 1;
+}
+function abrirScoreModal(idx){
+  var d = SCORE_MODAL_DATA_[idx];
+  if (!d) return;
+  var linhas = d.detalhamento.map(function (item) {
+    var val = (item.valorAlcancado === null || item.valorAlcancado === undefined) ? '—' : item.valorAlcancado;
+    var meta = (item.meta === null || item.meta === undefined) ? '—' : item.meta;
+    var ach = (item.achievementPct === null || item.achievementPct === undefined) ? '—' : item.achievementPct + '%';
+    return '<div class="score-detalhe-row">'
+      + '<span class="score-detalhe-label">' + item.label + '</span>'
+      + '<span class="score-detalhe-peso">peso ' + item.peso + '</span>'
+      + '<span class="score-detalhe-valor">' + val + ' / ' + meta + ' · ' + ach + '</span>'
+      + '<span class="score-detalhe-pontos">' + item.pontos + ' pts</span>'
+      + '</div>';
+  }).join('');
+  document.getElementById('infoModalBody').innerHTML =
+    '<div class="info-modal-titulo">' + d.nome + '</div>'
+    + '<div class="info-modal-sub">Pontuação: ' + (d.score === null || d.score === undefined ? '—' : d.score) + '</div>'
+    + linhas
+    + '<div class="info-modal-rodape">Pontos = peso × aproveitamento de cada indicador na meta. A soma dos pontos é a pontuação final (0–100) — mesma fórmula ponderada de sempre, só exposta item a item.</div>';
+  document.getElementById('infoModalOverlay').classList.add('ativo');
+}
+
+var CRITERIO_MODAL_DATA_ = [];
+function registrarCriterioModal_(titulo, corpo){
+  CRITERIO_MODAL_DATA_.push({ titulo: titulo, corpo: corpo });
+  return CRITERIO_MODAL_DATA_.length - 1;
+}
+function abrirCriterioModal(idx){
+  var d = CRITERIO_MODAL_DATA_[idx];
+  if (!d) return;
+  document.getElementById('infoModalBody').innerHTML = '<div class="info-modal-titulo">' + d.titulo + '</div>' + d.corpo;
+  document.getElementById('infoModalOverlay').classList.add('ativo');
+}
 
 // ============ tabs ============
 
@@ -371,7 +471,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); }
+    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); }
   });
 });
 
@@ -437,10 +537,11 @@ function renderRanking() {
   el.innerHTML = DADOS.ranking.map(function (r, i) {
     var status = classificarScore(r.scoreReal);
     var pct = maxScore > 0 ? (r.scoreReal / maxScore * 100) : 0;
+    var idxModal = registrarScoreModal_(r.nome, r.scoreReal, r.detalhamento);
     return '<div class="rank-row"><span class="rank-pos">' + (i + 1) + '</span>'
       + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><span class="rank-name">' + r.nome + '</span></div>'
       + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div></div>'
-      + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '</span></div>';
+      + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>';
   }).join('');
 }
 
@@ -449,8 +550,9 @@ function renderRadares() {
   el.innerHTML = '';
   DADOS.porCS.forEach(function (cs, idx) {
     var status = classificarScore(cs.scoreReal);
+    var idxModal = registrarScoreModal_(cs.nome, cs.scoreReal, cs.detalhamento);
     var card = document.createElement('div'); card.className = 'radar-card';
-    card.innerHTML = '<div class="radar-card-head"><span class="radar-card-name">' + cs.nome + '</span><span class="radar-card-score" style="color:' + status.cor + '">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '</span></div>'
+    card.innerHTML = '<div class="radar-card-head"><span class="radar-card-name">' + cs.nome + '</span><span class="radar-card-score" style="color:' + status.cor + '">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>'
       + radarSVG(DADOS.radarEixos, cs.radar, 'gradFill_' + idx);
     el.appendChild(card);
   });
@@ -486,7 +588,8 @@ function renderTabela(modo) {
       }
       return '<td class="num">' + valor + '</td>';
     }).join('');
-    body.innerHTML += '<tr><td class="name">' + cs.nome + '</td>' + celulas + '<td class="num" style="color:' + status.cor + ';font-weight:700;">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '</td></tr>';
+    var idxModal = registrarScoreModal_(cs.nome, cs.scoreReal, cs.detalhamento);
+    body.innerHTML += '<tr><td class="name">' + cs.nome + '</td>' + celulas + '<td class="num" style="color:' + status.cor + ';font-weight:700;">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></td></tr>';
   });
 }
 document.querySelectorAll('.toggle-btn').forEach(function (btn) {
@@ -537,9 +640,28 @@ function pizzaRedeSVG(p) {
     + '<text x="60" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="700" fill="#1A1A1A">' + pct + '%</text></svg>';
 }
 
+// Parte C (pedido do Vitor 25/09/2026): notinha clicável junto do status. As duas etiquetas vêm
+// do campo "Status de Engajamento" do board Conselheiros 2026 (ajuste manual da gestão, não um
+// cálculo automático) — a notinha deixa isso explícito e, pra "Em atenção", ainda mostra o mesmo
+// critério de presença (limiar, quantos encontros entraram na conta, valor medido) já usado no
+// kanban de presença por membro logo abaixo, como contexto objetivo de apoio.
 function statusConselhoBadge(c) {
-  if (c.congelado) return '<span class="status-badge congelado">Congelado</span>';
-  if (c.atencao) return '<span class="status-badge atencao">Em atenção</span>';
+  if (c.congelado) {
+    var idxC = registrarCriterioModal_('Por que "Congelado"?',
+      '<div class="info-modal-sub">Etiqueta definida no campo "Status de Engajamento" do board Conselheiros 2026 (ajuste manual da gestão) — não é gerada por um cálculo automático do sistema.</div>');
+    return '<span class="status-badge congelado">Congelado<button class="info-btn" style="background:rgba(0,0,0,0.08);" onclick="abrirCriterioModal(' + idxC + ')" title="Por que essa etiqueta?">ⓘ</button></span>';
+  }
+  if (c.atencao) {
+    var cp = c.criterioPresenca || {};
+    var valor = (cp.valorMedidoPct === null || cp.valorMedidoPct === undefined) ? '—' : cp.valorMedidoPct + '%';
+    var corpo = '<div class="info-modal-sub">Etiqueta definida no campo "Status de Engajamento" do board Conselheiros 2026 (ajuste manual da gestão) — não é gerada por um cálculo automático do sistema. Os números abaixo são o critério de presença que o sistema já usa em outros pontos do painel (kanban de presença por membro), como contexto objetivo.</div>'
+      + '<div class="score-detalhe-row"><span class="score-detalhe-label">Limiar de atenção (presença)</span><span class="score-detalhe-pontos">' + cp.limiarAtencaoPct + '%</span></div>'
+      + '<div class="score-detalhe-row"><span class="score-detalhe-label">Encontros considerados (histórico)</span><span class="score-detalhe-pontos">' + cp.encontrosContados + '</span></div>'
+      + '<div class="score-detalhe-row"><span class="score-detalhe-label">Presentes no total</span><span class="score-detalhe-pontos">' + cp.presentesContados + '</span></div>'
+      + '<div class="score-detalhe-row"><span class="score-detalhe-label">Valor medido de presença</span><span class="score-detalhe-pontos">' + valor + '</span></div>';
+    var idxA = registrarCriterioModal_('Por que "Em atenção"?', corpo);
+    return '<span class="status-badge atencao">Em atenção<button class="info-btn" style="background:rgba(0,0,0,0.08);" onclick="abrirCriterioModal(' + idxA + ')" title="Por que essa etiqueta?">ⓘ</button></span>';
+  }
   return ''; // sem alerta — célula vazia, sem traço (Ponto 3, correção 25/09/2026)
 }
 
@@ -725,7 +847,11 @@ document.getElementById('btnAddGestor').addEventListener('click', function () {
 
 // ============ controle de perfis: roster de CS ============
 
+// CS_ROSTER_ATUAL_ (Parte A, 25/09/2026): guardado aqui só pra popular o <select> de "Acesso de
+// login por CS" sem precisar buscar o roster de novo — mesma lista que já alimenta esta seção.
+var CS_ROSTER_ATUAL_ = [];
 function renderCSRoster(lista) {
+  CS_ROSTER_ATUAL_ = lista;
   var el = document.getElementById('listaCS');
   if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS cadastrado.</div>'; return; }
   el.innerHTML = lista.map(function (c) {
@@ -741,7 +867,72 @@ function renderCSRoster(lista) {
         .catch(function (err) { chk.checked = !novoAtivo; window.alert('Não foi possível alterar: ' + err.message); });
     });
   });
+  var sel = document.getElementById('selectCSParaVincular');
+  if (sel) sel.innerHTML = lista.map(function (c) { return '<option value="' + c.nome + '">' + c.nome + ' (' + c.nomeCompleto + ')</option>'; }).join('');
 }
+
+// ============ controle de perfis: acesso de login por CS (Parte A, 25/09/2026) ============
+function renderVinculosCS(lista) {
+  var el = document.getElementById('listaVinculosCS');
+  if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum login vinculado ainda — todo CS comum vê uma tela vazia até ser vinculado.</div>'; return; }
+  el.innerHTML = lista.map(function (v) {
+    return '<div class="lista-item"><div><div class="lista-item-nome">' + v.nome + '</div><div class="lista-item-sub">' + v.email + '</div></div>'
+      + '<button class="btn-remover" data-email="' + v.email + '">Remover</button></div>';
+  }).join('');
+  el.querySelectorAll('.btn-remover').forEach(function (b) { b.addEventListener('click', function () { removerVinculoCS(b.dataset.email); }); });
+}
+function carregarVinculosCS() {
+  fetchJSON_(ENDPOINT_CS_USUARIOS).then(function (data) { renderVinculosCS(data.vinculos || []); })
+    .catch(function (err) { document.getElementById('listaVinculosCS').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>'; });
+}
+function removerVinculoCS(email) {
+  if (!window.confirm('Remover o vínculo de ' + email + '? Esse CS perde acesso à própria home até vincular de novo.')) return;
+  fetchJSON_(ENDPOINT_CS_USUARIOS + '?email=' + encodeURIComponent(email), { method: 'DELETE' })
+    .then(function (data) { renderVinculosCS(data.vinculos || []); })
+    .catch(function (err) { window.alert('Não foi possível remover: ' + err.message); });
+}
+document.getElementById('btnVincularCS').addEventListener('click', function () {
+  var input = document.getElementById('inputEmailCS');
+  var sel = document.getElementById('selectCSParaVincular');
+  var erroEl = document.getElementById('erroVinculoCS');
+  var email = input.value.trim().toLowerCase();
+  var nome = sel.value;
+  erroEl.textContent = '';
+  input.classList.remove('erro');
+  if (!emailDominioValido(email)) {
+    erroEl.textContent = 'E-mail precisa terminar em ' + DOMINIO_GESTOR;
+    input.classList.add('erro');
+    return;
+  }
+  if (!nome) { erroEl.textContent = 'Selecione um CS.'; return; }
+  var btn = document.getElementById('btnVincularCS');
+  btn.disabled = true;
+  fetchJSON_(ENDPOINT_CS_USUARIOS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, nome: nome }) })
+    .then(function (data) { input.value = ''; renderVinculosCS(data.vinculos || []); })
+    .catch(function (err) { erroEl.textContent = err.message; input.classList.add('erro'); })
+    .then(function () { btn.disabled = false; });
+});
+
+// ============ controle de perfis: blur dos indicadores do time (Parte B, 25/09/2026) ============
+function renderStatusRevelar(valor) {
+  var chk = document.getElementById('chkRevelarIndicadores');
+  var status = document.getElementById('statusRevelar');
+  if (chk) chk.checked = !!valor;
+  if (status) status.textContent = valor ? 'Ligado — indicadores do time aparecem sem blur pra todo mundo.' : 'Desligado — indicadores do time aparecem borrados pra quem não é gestor.';
+}
+function carregarConfigRevelar() {
+  fetchJSON_(ENDPOINT_CONFIG).then(function (data) { renderStatusRevelar(data.revelarIndicadoresEquipe); })
+    .catch(function (err) { document.getElementById('statusRevelar').textContent = 'Erro ao carregar: ' + err.message; });
+}
+document.getElementById('chkRevelarIndicadores').addEventListener('change', function () {
+  var chk = this;
+  var novoValor = chk.checked;
+  chk.disabled = true;
+  fetchJSON_(ENDPOINT_GESTOR_CONFIG, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revelarIndicadoresEquipe: novoValor }) })
+    .then(function (data) { renderStatusRevelar(data.revelarIndicadoresEquipe); })
+    .catch(function (err) { chk.checked = !novoValor; window.alert('Não foi possível salvar: ' + err.message); })
+    .then(function () { chk.disabled = false; });
+});
 
 function carregarCSRoster() {
   fetchJSON_(ENDPOINT_CS_ROSTER).then(function (data) { renderCSRoster(data.roster || []); renderNaoVinculados(data.naoVinculados || []); })
