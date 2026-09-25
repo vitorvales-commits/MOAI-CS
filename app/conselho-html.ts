@@ -61,6 +61,12 @@ export const CONSELHO_STYLE = `
 .block h2{font-size:19px;font-weight:700;margin:0 0 16px;}
 .block h2 .sub{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--cinza-apoio);margin-left:6px;}
 
+.perfil-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:0;margin:0 0 16px;cursor:pointer;font-family:inherit;text-align:left;}
+.perfil-toggle-seta{font-size:16px;color:var(--cinza-apoio);transition:transform .2s;}
+.perfil-toggle.aberto .perfil-toggle-seta{transform:rotate(180deg);}
+.perfil-corpo{display:none;}
+.perfil-corpo.aberto{display:block;}
+
 .perfil-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
 .perfil-item{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:14px;padding:12px 14px;min-width:0;}
 .perfil-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--cinza-apoio);}
@@ -71,13 +77,32 @@ export const CONSELHO_STYLE = `
 .chart-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:20px;overflow-x:auto;}
 .chart-legenda{display:flex;gap:16px;font-size:12px;color:var(--cinza-texto);margin-top:10px;flex-wrap:wrap;}
 
+.presenca-dupla{display:flex;gap:20px;flex-wrap:wrap;}
+.presenca-dupla .presenca-card{flex:1;min-width:260px;}
 .presenca-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:20px;}
+.presenca-card-titulo{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:var(--cinza-apoio);margin-bottom:14px;}
 .presenca-flex{display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
 .legenda{display:flex;flex-direction:column;gap:8px;font-size:13px;}
 .legenda-item{display:flex;align-items:center;gap:8px;color:var(--cinza-texto);}
 .legenda-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
 .legenda-item b{color:var(--preto-tinta);}
 .legenda-obs{font-size:11.5px;color:var(--cinza-apoio);margin-top:4px;max-width:280px;}
+
+.acoes-lista{display:flex;flex-direction:column;gap:10px;}
+.acao-item{background:var(--branco);border:1px solid var(--cinza-borda);border-left:3px solid var(--dourado);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--preto-tinta);line-height:1.55;}
+.acoes-vazio{padding:18px 20px;color:var(--cinza-apoio);font-size:13px;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:12px;}
+
+.resolver-card{background:var(--branco);border:1px dashed var(--cinza-linha);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.resolver-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.resolver-nome-ata{font-weight:700;font-size:13.5px;}
+.resolver-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.resolver-select,.resolver-input{font-family:'Inter',sans-serif;font-size:12.5px;padding:7px 10px;border-radius:9px;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);}
+.resolver-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;padding:7px 14px;border-radius:9px;border:none;background:var(--preto-tinta);color:var(--branco);cursor:pointer;}
+.resolver-btn:disabled{opacity:0.5;cursor:default;}
+.resolver-status{font-size:11.5px;margin-top:6px;}
+.resolver-status.ok{color:var(--verde);}
+.resolver-status.erro{color:var(--vermelho);}
+.resolver-confirmado{font-size:12.5px;color:var(--verde);font-weight:700;}
 
 .encontros-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;overflow:hidden;}
 .encontro-row{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--cinza-linha);font-size:13px;}
@@ -144,8 +169,16 @@ export const CONSELHO_HTML = `
   </section>
 
   <section class="block">
-    <h2>Perfil do conselheiro</h2>
-    <div id="perfilConselheiro"><div class="empty">Carregando…</div></div>
+    <h2>Ações sugeridas <span class="sub">regras automáticas, sem IA — calculadas a partir do período em tela</span></h2>
+    <div id="acoesSugeridas"><div class="empty">Carregando…</div></div>
+  </section>
+
+  <section class="block">
+    <button class="perfil-toggle" id="perfilToggle" type="button" onclick="togglePerfil()">
+      <h2 style="margin:0;">Perfil do conselheiro</h2>
+      <span class="perfil-toggle-seta" id="perfilToggleSeta">▾</span>
+    </button>
+    <div id="perfilConselheiro" class="perfil-corpo"><div class="empty">Carregando…</div></div>
   </section>
 
   <section class="block">
@@ -154,8 +187,11 @@ export const CONSELHO_HTML = `
   </section>
 
   <section class="block">
-    <h2>Presença geral em <span id="presencaMesLabel"></span></h2>
-    <div class="presenca-card" id="presencaCard"><div class="empty">Carregando…</div></div>
+    <h2>Presença e pagamento em <span id="presencaMesLabel"></span></h2>
+    <div class="presenca-dupla">
+      <div class="presenca-card" id="presencaCard"><div class="empty">Carregando…</div></div>
+      <div class="presenca-card" id="pagamentoCard"><div class="empty">Carregando…</div></div>
+    </div>
   </section>
 
   <section class="block">
@@ -263,6 +299,25 @@ function renderMetricas(d) {
   }).join('');
 }
 
+// B3 (pedido do Vitor 25/09/2026): regras fixas e determinísticas calculadas no servidor
+// (calcularAcoesSugeridas em lib/reports.ts) — já vêm ordenadas por severidade, aqui só desenha.
+function renderAcoesSugeridas(d) {
+  var el = document.getElementById('acoesSugeridas');
+  var lista = d.acoesSugeridas || [];
+  if (!lista.length) { el.innerHTML = '<div class="acoes-vazio">Nenhum alerta identificado neste período.</div>'; return; }
+  el.innerHTML = '<div class="acoes-lista">' + lista.map(function (a) {
+    return '<div class="acao-item">' + esc(a.texto) + '</div>';
+  }).join('') + '</div>';
+}
+
+// B1 (pedido do Vitor 25/09/2026): Perfil do conselheiro começa recolhido — tela não abre
+// sobrecarregada com os ~15 campos. Estado é só visual (classe .aberto), não persiste entre
+// visitas nem afeta o que já foi carregado.
+function togglePerfil() {
+  document.getElementById('perfilToggle').classList.toggle('aberto');
+  document.getElementById('perfilConselheiro').classList.toggle('aberto');
+}
+
 function renderPerfil(d) {
   var el = document.getElementById('perfilConselheiro');
   var p = d.conselheiro;
@@ -354,10 +409,51 @@ function renderPresenca(d) {
   document.getElementById('presencaMesLabel').textContent = p.mes;
   var el = document.getElementById('presencaCard');
   if (!p.totalAgendados) {
-    el.innerHTML = '<div class="empty">Nenhum dado de presença registrado para ' + p.mes + '.</div>';
+    el.innerHTML = '<div class="presenca-card-titulo">Presença</div><div class="empty">Nenhum dado de presença registrado para ' + p.mes + '.</div>';
     return;
   }
-  el.innerHTML = '<div class="presenca-flex">' + pizzaPresencaSVG(p) + '<div class="legenda">' + legendaPresenca(p) + '</div></div>';
+  el.innerHTML = '<div class="presenca-card-titulo">Presença</div><div class="presenca-flex">' + pizzaPresencaSVG(p) + '<div class="legenda">' + legendaPresenca(p) + '</div></div>';
+}
+
+// B2 (pedido do Vitor 25/09/2026): mesma técnica de pizzaPresencaSVG (SVG puro), mesma paleta
+// verde/azul já usada em titulares x reposições — nunca cor genérica de biblioteca de gráfico.
+function pizzaPagamentoSVG(p) {
+  var r = 46, c = 2 * Math.PI * r;
+  var fatias = [
+    { valor: p.pagante, cor: '#3D8B5F' },
+    { valor: p.permuta, cor: '#7dd3fc' },
+  ].filter(function (f) { return f.valor > 0; });
+  var offset = 0;
+  var circulos = fatias.map(function (f) {
+    var comprimento = (f.valor / p.total) * c;
+    var svg = '<circle cx="60" cy="60" r="' + r + '" fill="none" stroke="' + f.cor + '" stroke-width="16" ' +
+      'stroke-dasharray="' + comprimento + ' ' + (c - comprimento) + '" stroke-dashoffset="' + (-offset) + '" transform="rotate(-90 60 60)"></circle>';
+    offset += comprimento;
+    return svg;
+  }).join('');
+  var pct = Math.round(p.pagante / p.total * 100);
+  return '<svg width="120" height="120" viewBox="0 0 120 120">' + circulos +
+    '<text x="60" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="700" fill="#1A1A1A">' + pct + '%</text></svg>';
+}
+function legendaPagamento(p) {
+  var itens = [
+    { label: 'Pagante', valor: p.pagante, cor: '#3D8B5F' },
+    { label: 'Permuta', valor: p.permuta, cor: '#7dd3fc' },
+  ];
+  var html = itens.map(function (i) {
+    return '<div class="legenda-item"><span class="legenda-dot" style="background:' + i.cor + '"></span>' + i.label + ' <b>' + i.valor + '</b></div>';
+  }).join('');
+  html += '<div class="legenda-obs">Conselheiro e Sócio de Conselheiro ficam fora da conta — não são membros pagantes nem em permuta.</div>';
+  return html;
+}
+function renderPagamento(d) {
+  var el = document.getElementById('pagamentoCard');
+  var p = d.pagamento;
+  if (!p || !p.total) {
+    el.innerHTML = '<div class="presenca-card-titulo">Pagamento</div><div class="empty">Sem status de pagamento classificado pros membros deste conselho.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="presenca-card-titulo">Pagamento</div><div class="presenca-flex">' + pizzaPagamentoSVG(p) + '<div class="legenda">' + legendaPagamento(p) + '</div></div>';
 }
 
 function renderEncontros(d) {
@@ -451,11 +547,77 @@ function renderMembros(d) {
   }).join('');
 }
 
+// B4 (pedido do Vitor 25/09/2026): mecanismo permanente de correção — d.bigDealsSemMembro chega
+// agrupado por nome_ata (um nome pode aparecer em vários meses/trimestres; confirmar resolve todas
+// as ocorrências de uma vez, ver confirmar_membro_ata no banco). rosterAtual_/bigDealsSemMembroAtual_
+// guardam o estado necessário pros handlers onclick (índice do grupo, roster pro <select>).
+var rosterAtual_ = [];
+var bigDealsSemMembroAtual_ = [];
+
+function renderResolverControle_(grupo, idx) {
+  if (grupo.membroResolvido) {
+    return '<div class="resolver-confirmado">✓ Confirmado como: ' + esc(grupo.membroResolvido) + '</div>';
+  }
+  var opcoes = '<option value="">Selecionar do roster…</option>' +
+    rosterAtual_.map(function (nome) { return '<option value="' + esc(nome) + '">' + esc(nome) + '</option>'; }).join('');
+  return '<div class="resolver-linha">' +
+      '<select class="resolver-select" id="resolverSelect' + idx + '">' + opcoes + '</select>' +
+      '<span style="font-size:11px;color:#9F9F9F;">ou</span>' +
+      '<input class="resolver-input" id="resolverInput' + idx + '" type="text" placeholder="digitar nome (convidado/ex-membro)">' +
+      '<button class="resolver-btn" id="resolverBtn' + idx + '" onclick="confirmarMembro(' + idx + ')" type="button">Confirmar</button>' +
+    '</div>' +
+    '<div class="resolver-status" id="resolverStatus' + idx + '"></div>';
+}
+
 function renderBigDealsSemMembro(d) {
   var bloco = document.getElementById('bigDealsSemMembroBlock');
-  var lista = d.bigDealsSemMembro || [];
-  bloco.style.display = lista.length ? 'block' : 'none';
-  document.getElementById('bigDealsSemMembro').innerHTML = lista.map(renderBigDeal).join('');
+  var grupos = d.bigDealsSemMembro || [];
+  rosterAtual_ = (d.membros || []).map(function (m) { return m.nome; });
+  bigDealsSemMembroAtual_ = grupos;
+  bloco.style.display = grupos.length ? 'block' : 'none';
+  document.getElementById('bigDealsSemMembro').innerHTML = grupos.map(function (g, idx) {
+    return '<div class="resolver-card"><div class="resolver-head">' +
+        '<span class="resolver-nome-ata">Nome na ata: ' + esc(g.nomeAta) + '</span>' +
+      '</div>' + renderResolverControle_(g, idx) +
+      '<div style="margin-top:10px;">' + g.itens.map(renderBigDeal).join('') + '</div></div>';
+  }).join('');
+}
+
+function confirmarMembro(idx) {
+  var grupo = bigDealsSemMembroAtual_[idx];
+  var select = document.getElementById('resolverSelect' + idx);
+  var input = document.getElementById('resolverInput' + idx);
+  var btn = document.getElementById('resolverBtn' + idx);
+  var status = document.getElementById('resolverStatus' + idx);
+  var membroOficial = (select && select.value) || (input && input.value.trim()) || '';
+  if (!membroOficial) {
+    status.textContent = 'Escolha um nome do roster ou digite um nome.';
+    status.className = 'resolver-status erro';
+    return;
+  }
+  btn.disabled = true;
+  status.textContent = 'Confirmando…';
+  status.className = 'resolver-status';
+  fetch('/api/conselho/' + encodeURIComponent(GROUP_ID) + '/confirmar-membro', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nomeAta: grupo.nomeAta, membroOficial: membroOficial }),
+  }).then(function (res) {
+    return res.json().then(function (data) {
+      if (!res.ok) throw new Error((data && data.error) || ('Erro ' + res.status));
+      return data;
+    });
+  }).then(function () {
+    status.textContent = 'Confirmado — atualizando…';
+    status.className = 'resolver-status ok';
+    limparCacheConselhoAtual_();
+    var selMes = document.getElementById('selMesConselho'), selAno = document.getElementById('selAnoConselho');
+    carregarConselho(selMes.value, Number(selAno.value));
+  }).catch(function (err) {
+    btn.disabled = false;
+    status.textContent = 'Erro: ' + err.message;
+    status.className = 'resolver-status erro';
+  });
 }
 
 function toggleMembro(idx) {
@@ -465,21 +627,64 @@ function toggleMembro(idx) {
   label.textContent = aberto ? 'ocultar ▴' : 'ver detalhes ▾';
 }
 
+function renderTudo_(d) {
+  renderHero(d);
+  renderMetricas(d);
+  renderAcoesSugeridas(d);
+  renderPerfil(d);
+  renderPresencaMensal(d);
+  renderPresenca(d);
+  renderPagamento(d);
+  renderEncontros(d);
+  renderMembros(d);
+  renderBigDealsSemMembro(d);
+}
+
+// Cache de sessão (Parte C, pedido do Vitor 25/09/2026 — reportou lentidão inclusive ao voltar pra
+// uma tela já visitada): a navegação aqui é sempre um reload de página inteira (<a href> comum,
+// não Link do Next — o app não usa React no cliente), então uma variável JS em memória não
+// sobreviveria a isso; sessionStorage sim. Mostra o que já foi visto NA HORA (sem esqueleto de
+// carregamento) e sempre revalida com um fetch novo em seguida, atualizando silenciosamente se
+// algo mudou — nunca serve só o cache sem checar o servidor de novo.
+var CACHE_CONSELHO_TTL_MS = 10 * 60 * 1000; // trava de sanidade — a tela sempre revalida em seguida, isso só evita mostrar algo velho demais por um instante
+function chaveCacheConselho_(mes, ano) { return 'conselho_' + GROUP_ID + '_' + mes + '_' + ano; }
+function lerCacheConselho_(mes, ano) {
+  try {
+    var raw = sessionStorage.getItem(chaveCacheConselho_(mes, ano));
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.dados || (Date.now() - obj.salvoEm) > CACHE_CONSELHO_TTL_MS) return null;
+    return obj.dados;
+  } catch (e) { return null; }
+}
+function gravarCacheConselho_(mes, ano, dados) {
+  try { sessionStorage.setItem(chaveCacheConselho_(mes, ano), JSON.stringify({ dados: dados, salvoEm: Date.now() })); } catch (e) {}
+}
+// chamado depois de confirmar um membro de ata (B4) — a correção precisa aparecer na hora, não
+// esperar o cache de sessão deste conselho expirar sozinho.
+function limparCacheConselhoAtual_() {
+  try {
+    for (var i = sessionStorage.length - 1; i >= 0; i--) {
+      var k = sessionStorage.key(i);
+      if (k && k.indexOf('conselho_' + GROUP_ID + '_') === 0) sessionStorage.removeItem(k);
+    }
+  } catch (e) {}
+}
+
 function carregarConselho(mes, ano) {
+  var cacheado = lerCacheConselho_(mes, ano);
+  if (cacheado) renderTudo_(cacheado);
   fetchJSON_('/api/conselho/' + encodeURIComponent(GROUP_ID) + '?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function (d) {
-    renderHero(d);
-    renderMetricas(d);
-    renderPerfil(d);
-    renderPresencaMensal(d);
-    renderPresenca(d);
-    renderEncontros(d);
-    renderMembros(d);
-    renderBigDealsSemMembro(d);
+    gravarCacheConselho_(mes, ano, d);
+    renderTudo_(d);
   }).catch(function (err) {
+    if (cacheado) return; // já tem algo em tela (do cache) — não estraga a experiência por uma revalidação que falhou
     document.getElementById('metricGrid').innerHTML = '';
     document.getElementById('presencaCard').innerHTML = '';
+    document.getElementById('pagamentoCard').innerHTML = '';
     document.getElementById('perfilConselheiro').innerHTML = '';
     document.getElementById('presencaMensalCard').innerHTML = '';
+    document.getElementById('acoesSugeridas').innerHTML = '';
     document.getElementById('encontrosList').innerHTML = '<div class="erro">Erro ao carregar: ' + esc(err.message) + '</div>';
     document.getElementById('membrosList').innerHTML = '';
     document.getElementById('heroTitulo').textContent = 'Não foi possível carregar este conselho';

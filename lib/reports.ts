@@ -14,6 +14,7 @@ import {
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
   PESOS_SCORE_CS, FOTOS_CS, NIVEL_ORDEM,
   STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA,
+  LIMIAR_HEALTHSCORE_ATENCAO, LIMIAR_PRESENCA_ATENCAO, MESES_JANELA_MATCHMAKINGS_PARADO, SIMILARIDADE_DESAFIO_MIN,
 } from './constants';
 
 // ============ util ============
@@ -157,6 +158,22 @@ export async function setCSAtivo(sb: SupabaseClient, nome: string, ativo: boolea
   return data as boolean;
 }
 
+// B4 (pedido do Vitor, 25/09/2026): confirma o membro certo pra um nome de ata que não casou com
+// nenhum membro do roster. Passa pela função SECURITY DEFINER confirmar_membro_ata (mesmo padrão
+// de setVezesDestaque/setCSAtivo), que grava o apelido permanente em atas_membro_aliases e
+// atualiza membro_resolvido + conferido=true em TODAS as linhas daquele group_id+nome_ata nas duas
+// tabelas de ata — não só a ocorrência clicada, já que o mesmo nome se repete em vários meses.
+export async function confirmarMembroAta(sb: SupabaseClient, groupId: string, nomeAta: string, membroOficial: string): Promise<number> {
+  const { data, error } = await sb.rpc('confirmar_membro_ata', { p_group_id: groupId, p_nome_ata: nomeAta, p_membro_oficial: membroOficial });
+  if (error) throw new Error('Erro ao confirmar membro da ata: ' + error.message);
+  // invalida os dois caches em memória (Parte C) — a correção precisa aparecer na hora, não esperar
+  // o TTL expirar sozinho. invalidarDadosBrutosCache/invalidarCacheConselho são declaradas mais
+  // abaixo no arquivo, mas function declaration é hoisted — chamar aqui em cima é seguro.
+  invalidarDadosBrutosCache();
+  invalidarCacheConselho(groupId);
+  return data as number;
+}
+
 // gestores: tabela sem NENHUMA policy (RLS deny-all) — só dá pra ler/escrever via essas três
 // funções SECURITY DEFINER (listar_gestores/adicionar_gestor/remover_gestor), que checam
 // is_gestor() dentro do banco antes de qualquer coisa.
@@ -200,8 +217,32 @@ async function fetchAll(sb: SupabaseClient, table: string, colunas = '*') {
   return allRows;
 }
 
-export async function getDadosBrutos(sb: SupabaseClient) {
-  noStore();
+// ============ cache em memória do processo (Parte C — pedido do Vitor 25/09/2026, lentidão geral) ============
+// Achado ao ler o caminho de dados por inteiro (rota /api/conselho/[grupo], generateConselhoDetalhe,
+// getDadosBrutos): NENHUM cache existia em lugar nenhum — nem servidor (noStore() explícito aqui, e
+// toda rota de API já declarava dynamic='force-dynamic'), nem cliente (fetch com cache:'no-store'
+// no client-side de app/conselho-html.ts, sem SWR/React Query), nem HTTP (Cache-Control no-store em
+// app/route.ts). Resultado: TODA visita a um conselho — mesmo um já visto segundos antes —
+// disparava de novo as 18 buscas paralelas abaixo (já eram paralelas via Promise.all, isso não
+// precisou mudar), incluindo tabelas de meses fechados que não mudam mais entre uma sincronização
+// do Monday e outra (pg_cron roda a cada 5 minutos).
+//
+// getDadosBrutos busca o board INTEIRO (não filtra por mês/ano — o filtro é em memória depois), e
+// o resultado é idêntico pra qualquer CS autorizado (a policy de RLS é um gate is_moai_user(), não
+// uma separação de linhas por usuário), então um cache de processo simples — sem Redis/KV nova,
+// sem tocar em RLS/service role — já resolve o essencial: mesmo TTL curto pra todo mundo, bem menor
+// que os 5 minutos do sync, só pra absorver a rajada de cliques/telas abertas em sequência.
+// Limitação conhecida: cache por instância serverless da Vercel, não compartilhado entre instâncias
+// nem sobrevive a cold start — ainda assim, remove a maior parte da carga repetida numa sessão real
+// de uso, e é o mesmo princípio de cache curto que o Apps Script original usava, adaptado a este
+// stack sem introduzir infraestrutura nova.
+const DADOS_BRUTOS_TTL_MS = 60_000;
+
+// Fetch de verdade isolado numa função própria só pra tipagem: getDadosBrutos precisa retornar o
+// mesmo tipo tanto no caminho de cache-hit quanto no de busca real, e tipar o cache com o alias
+// DadosBrutos (declarado a partir do retorno de getDadosBrutos) criaria referência circular —
+// daqui o cache é tipado a partir DESTA função interna, sem circularidade.
+async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
@@ -222,6 +263,19 @@ export async function getDadosBrutos(sb: SupabaseClient) {
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros,
   };
+}
+let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
+
+export function invalidarDadosBrutosCache() {
+  dadosBrutosCache = null;
+}
+
+export async function getDadosBrutos(sb: SupabaseClient) {
+  noStore();
+  if (dadosBrutosCache && dadosBrutosCache.expiraEm > Date.now()) return dadosBrutosCache.valor;
+  const dados = await buscarDadosBrutosSemCache(sb);
+  dadosBrutosCache = { valor: dados, expiraEm: Date.now() + DADOS_BRUTOS_TTL_MS };
+  return dados;
 }
 export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
 
@@ -1104,7 +1158,9 @@ function organizarAtasDoConselho(
 ): Map<string, AtaMembroMes[]> {
   const porMembro = new Map<string, AtaMembroMes[]>();
   atasRows.filter((a: any) => a.group_id === groupId).forEach((a: any) => {
-    const membro = nomeCasaComRoster(a.membro_nome_ata, roster);
+    // membro_resolvido (apelido confirmado em atas_membro_aliases via B4) sempre vence sobre o
+    // texto bruto da ata quando existir — ver confirmarMembroAta.
+    const membro = nomeCasaComRoster(a.membro_resolvido || a.membro_nome_ata, roster);
     if (!membro) return;
     const partes = partesMesAta(a.mes_ata);
     if (partes.mesIdx === -1) return; // mês ilegível — não dá pra posicionar no período
@@ -1397,9 +1453,6 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
         congelado: !!g.congelado || status === 'Congelado',
         atencao: status === 'Em atenção',
         statusEngajamento: status,
-        segmentoAtuacao: perfil?.segmento || null,
-        especialidadeConselheiro: perfil?.especialidade || null,
-        pagamento: calcularPagamento(calc.itemsPrincipais),
         proximaData: calc.resumo.proximaData,
         proximaDataEhFutura: calc.resumo.proximaDataEhFutura,
         healthscore: calc.healthscore,
@@ -1419,12 +1472,146 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
   return { mesReferencia: mesRef, cards };
 }
 
+// ============ ações sugeridas (B3, pedido do Vitor 25/09/2026) ============
+// Regras fixas e determinísticas — sem IA, sem chamada de API — calculadas a partir de dados que
+// já existem no banco para o conselho e período em tela. Limiares nomeados em lib/constants.ts.
+// Prioridade por severidade quando mais de uma regra dispara (ordem abaixo, mais severo primeiro):
+// sinais agregados de saúde do conselho (healthscore, presença) antes de problemas de qualidade de
+// dado (desafio parado, Big Deal não confirmado) antes de lembretes de atividade (matchmakings,
+// oportunidades) — julgamento v1, ajustável revisando só a ordem do array TIPOS_ACAO_SUGERIDA.
+
+export type AcaoSugerida = { tipo: string; texto: string };
+
+const TIPOS_ACAO_SUGERIDA = [
+  'healthscore_baixo', 'presenca_baixa', 'desafio_parado', 'bigdeal_nao_confirmado',
+  'matchmakings_zerados', 'matchmakings_sem_case', 'sem_oportunidades_mapeadas',
+] as const;
+
+// tokens de pelo menos 3 letras/dígitos, sem acento/maiúscula — mesmo espírito de normalizeNome.
+function tokensTexto(texto: string): Set<string> {
+  const norm = normalizeNome(texto).replace(/[^\p{L}\p{N}\s]/gu, ' ');
+  return new Set(norm.split(/\s+/).filter((t) => t.length >= 3));
+}
+// overlap coefficient (interseção / menor conjunto) em vez de Jaccard — um desafio pode ser escrito
+// de forma mais curta ou mais longa em meses diferentes sem deixar de ser "o mesmo problema", e o
+// overlap coefficient não penaliza essa diferença de tamanho como o Jaccard penalizaria.
+function similaridadeTexto(a: string, b: string): number {
+  const ta = tokensTexto(a), tb = tokensTexto(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  ta.forEach((t) => { if (tb.has(t)) inter++; });
+  return inter / Math.min(ta.size, tb.size);
+}
+
+// desafio repetido/parecido em meses SEGUIDOS (mesIdx consecutivo, cruzando ano) pra QUALQUER
+// membro — olha o histórico de ata inteiro do conselho, não só o período selecionado, porque
+// "não mostra evolução entre os meses" é um sinal estrutural, não algo que um único mês em tela
+// consiga revelar sozinho.
+function temDesafioParado(atasPorMembro: Map<string, AtaMembroMes[]>): boolean {
+  for (const lista of atasPorMembro.values()) {
+    const comDesafio = lista.filter((a) => a.desafio && a.desafio.trim())
+      .slice().sort((a, b) => a.ano - b.ano || indiceMesAta(a.mesAta) - indiceMesAta(b.mesAta));
+    for (let i = 0; i < comDesafio.length - 1; i++) {
+      const atual = comDesafio[i], proximo = comDesafio[i + 1];
+      const idxAtual = indiceMesAta(atual.mesAta), idxProximo = indiceMesAta(proximo.mesAta);
+      const seguidos = (proximo.ano === atual.ano && idxProximo === idxAtual + 1) ||
+        (proximo.ano === atual.ano + 1 && idxAtual === 11 && idxProximo === 0);
+      if (seguidos && similaridadeTexto(atual.desafio!, proximo.desafio!) >= SIMILARIDADE_DESAFIO_MIN) return true;
+    }
+  }
+  return false;
+}
+
+// matchmakings do roster nos últimos N meses corridos (terminando no mês real atual), IGNORANDO o
+// período selecionado — "conselho parado" é um sinal absoluto, não relativo ao filtro em tela.
+// mes_grupo_titulo aparece com ou sem ano conforme a leva de sincronização (mesma flexibilidade de
+// filtrarPorMesAnoFlexivel), então casa os dois formatos.
+function matchmakingsJanelaRecente(matchmakings: any[], roster: any[], nMeses: number): number {
+  const agora = new Date();
+  const alvos = new Set<string>();
+  for (let i = 0; i < nMeses; i++) {
+    const idx = ((agora.getMonth() - i) % 12 + 12) % 12;
+    const ano = agora.getFullYear() - (agora.getMonth() - i < 0 ? 1 : 0);
+    alvos.add(MESES_ORDEM[idx].toUpperCase());
+    alvos.add((MESES_ORDEM[idx] + ' ' + ano).toUpperCase());
+  }
+  return matchmakings.filter((m: any) => alvos.has((m.mes_grupo_titulo || '').trim().toUpperCase()) && itemPertenceRoster(m.nome, roster)).length;
+}
+
+function calcularAcoesSugeridas(params: {
+  dados: DadosBrutos; roster: any[]; atasCompletas: Map<string, AtaMembroMes[]>;
+  healthscore: number | null; taxaPresenca: number | null;
+  matchmakingsPeriodo: number; casesPeriodo: number; oportunidadesMapeadas: number;
+  bigDealsNaoConfirmados: number;
+}): AcaoSugerida[] {
+  const disparadas: Partial<Record<typeof TIPOS_ACAO_SUGERIDA[number], string>> = {};
+
+  if (params.healthscore !== null && params.healthscore < LIMIAR_HEALTHSCORE_ATENCAO) {
+    disparadas.healthscore_baixo = `Healthscore do conselho está em ${params.healthscore}, abaixo do limiar de ${LIMIAR_HEALTHSCORE_ATENCAO} — atenção geral recomendada.`;
+  }
+  if (params.taxaPresenca !== null && params.taxaPresenca < LIMIAR_PRESENCA_ATENCAO) {
+    disparadas.presenca_baixa = `Presença do mês de referência está em ${params.taxaPresenca}%, abaixo de ${LIMIAR_PRESENCA_ATENCAO}% — reforçar engajamento e comparecimento.`;
+  }
+  if (temDesafioParado(params.atasCompletas)) {
+    disparadas.desafio_parado = 'O mesmo desafio (ou um muito parecido) aparece em meses seguidos na ata sem mostrar evolução — aprofundar o acompanhamento desse ponto específico.';
+  }
+  if (params.bigDealsNaoConfirmados > 0) {
+    disparadas.bigdeal_nao_confirmado = `${params.bigDealsNaoConfirmados} registro(s) de Big Deal sem membro confirmado — confirme a identidade pra não perder esse histórico.`;
+  }
+  const semMatchmakingsRecente = matchmakingsJanelaRecente(params.dados.matchmakings, params.roster, MESES_JANELA_MATCHMAKINGS_PARADO) === 0;
+  if (params.matchmakingsPeriodo === 0 || semMatchmakingsRecente) {
+    disparadas.matchmakings_zerados = params.matchmakingsPeriodo === 0
+      ? 'Nenhum matchmaking registrado no período selecionado — estimular indicações e matchmakings entre os membros do conselho.'
+      : `Nenhum matchmaking registrado nos últimos ${MESES_JANELA_MATCHMAKINGS_PARADO} meses — estimular indicações e matchmakings entre os membros do conselho.`;
+  } else if (params.matchmakingsPeriodo > 0 && params.casesPeriodo === 0) {
+    disparadas.matchmakings_sem_case = 'Há matchmakings registrados no período, mas nenhum case de sucesso decorrente deles — fazer follow-up e registrar como case quando fechar.';
+  }
+  if (params.oportunidadesMapeadas === 0) {
+    disparadas.sem_oportunidades_mapeadas = 'Nenhuma oportunidade mapeada registrada no período — reforçar o mapeamento de oportunidades nas próximas atas.';
+  }
+
+  return TIPOS_ACAO_SUGERIDA.filter((t) => disparadas[t]).map((t) => ({ tipo: t, texto: disparadas[t]! }));
+}
+
 // ============ página/modal completo do conselho ============
 // Uma função só alimenta o modal rápido (página do CS) e a página completa /conselho/[grupo] —
 // que agora também é a visão combinada conselheiro + conselho aberta pelos cartões da aba
 // "Conselhos" da home (perfil do board "Conselheiros 2026", presença mensal, tabela de membros com
 // status de pagamento, ata e Big Deal). O front-end de cada tela decide qual subconjunto mostrar.
+
+// Cache do RESULTADO já calculado, por conselho+período (Parte C) — em cima do cache de
+// getDadosBrutos, não em vez dele: evita recalcular presença/GTD/healthscore/ações sugeridas do
+// zero a cada clique no mesmo conselho+mês. TTL diferente pro princípio pedido pelo Vitor (mesmo do
+// Apps Script original): mês FECHADO (qualquer mês estritamente antes do mês real atual, ou ano
+// anterior) não muda mais — pode ficar em cache por muito mais tempo; mês corrente/"Visão Geral"
+// segue mudando o dia inteiro (novo encontro, nova ata, status mudando), TTL curto igual ao de
+// getDadosBrutos. Invalidado explicitamente por confirmarMembroAta (B4), que corrige dado desse
+// mesmo conselho e não pode esperar o TTL expirar sozinho.
+const TTL_CONSELHO_DETALHE_MES_FECHADO_MS = 30 * 60_000;
+const TTL_CONSELHO_DETALHE_MES_ABERTO_MS = 60_000;
+const conselhoDetalheCache = new Map<string, { valor: any; expiraEm: number }>();
+
+function mesEstaFechado(seletorMes: string, ano: number): boolean {
+  if (seletorMes === 'Visão Geral') return false;
+  const agora = new Date();
+  if (ano < agora.getFullYear()) return true;
+  if (ano > agora.getFullYear()) return false;
+  return MESES_ORDEM.indexOf(seletorMes) < agora.getMonth();
+}
+
+export function invalidarCacheConselho(groupId: string) {
+  [...conselhoDetalheCache.keys()].forEach((chave) => {
+    if (chave.startsWith(`${groupId}|`)) conselhoDetalheCache.delete(chave);
+  });
+}
+
 export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const chaveCache = `${groupId}|${seletorMes}|${ano}`;
+  if (!dadosParam) {
+    const cache = conselhoDetalheCache.get(chaveCache);
+    if (cache && cache.expiraEm > Date.now()) return cache.valor;
+  }
+
   const dados = dadosParam || (await getDadosBrutos(sb));
   periodoDatas(seletorMes, ano); // valida o mês
 
@@ -1446,17 +1633,29 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
   const mesPresenca = geral ? mesAtualReal() : seletorMes;
   const presencaMes = calcularPresencaMes(itemsPrincipais, itemsRepo, mesPresenca, ctx.statusPorMembro, historicoPorMembroMes);
 
+  // pizza pagante x permuta (B2, pedido do Vitor 25/09/2026) — mesmos titulares usados em "membros"
+  // e no card de presença, nunca soma o grupo de reposição. Ver calcularPagamento.
+  const pagamento = calcularPagamento(itemsPrincipais);
+
   const totalOportunidadesMapeadas = [...calc.atasNoPeriodo.values()]
     .reduce((soma, lista) => soma + lista.reduce((s, a) => s + (a.oportunidadesMapeadas?.length || 0), 0), 0);
+
+  // histórico de ata INTEIRO do conselho (não filtrado pelo período em tela) — só pra detectar
+  // desafio parado em meses seguidos (ver calcularAcoesSugeridas), que é um sinal estrutural.
+  const atasCompletas = organizarAtasDoConselho(dados.atas, groupId, roster, contato, ctx.agendaMap, ano);
 
   // Big Deal (atas_conselho_bigdeal): NUNCA conferido por humano ainda (conferido=false em toda
   // linha) e a extração embaralha membros adjacentes da tabela da ata — big_deal_definido e
   // observacoes_gerais frequentemente pertencem ao membro ANTERIOR no documento. Vai pro front-end
   // separado em "campos do membro" x "campos de posição incerta", sempre com o flag conferido, e
   // sem nenhuma tentativa de corrigir o deslocamento aqui (não validada pra todos os conselhos).
-  // Linha que não casa com nenhum membro do roster não some: vai pra bigDealsSemMembro.
+  // Linha que não casa com nenhum membro do roster não some: vai pra bigDealsSemMembro, agrupada
+  // por nome_ata (texto exato da ata) — uma pessoa não confirmada pode aparecer em vários meses/
+  // trimestres, e o mecanismo de confirmação (B4, ver confirmarMembroAta no front-end e a função
+  // SECURITY DEFINER confirmar_membro_ata) resolve todas de uma vez, então a tela também agrupa
+  // assim em vez de repetir o mesmo controle de resolução várias vezes.
   const bigDealsPorMembro = new Map<string, any[]>();
-  const bigDealsSemMembro: any[] = [];
+  const semMembroPorNomeAta = new Map<string, { membroResolvido: string | null; itens: any[] }>();
   //
   // Dois formatos (mes_referencia, adicionada na extração de 24/09/2026): MENSAL ("Janeiro/2026" —
   // uma frase curta dentro do bloco do próprio membro, sem risco de deslocamento) e TRIMESTRAL
@@ -1477,10 +1676,30 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
       feedbackConselheiro: b.feedback_conselheiro, conclusoes: b.conclusoes,
       bigDealDefinido: b.big_deal_definido, observacoesGerais: b.observacoes_gerais,
     };
-    const membro = nomeCasaComRoster(b.membro_nome_ata, roster);
-    if (!membro) { bigDealsSemMembro.push(item); return; }
+    // membro_resolvido (B4) vence sobre o texto bruto; só cai em "sem membro" quando nem o
+    // resolvido nem o texto bruto casam com o roster atual (ex.: confirmado como convidado/
+    // ex-membro que não faz mais parte do conselho — fica visível, mas sem controle de resolução
+    // de novo, já está confirmado).
+    const membro = nomeCasaComRoster(b.membro_resolvido || b.membro_nome_ata, roster);
+    if (!membro) {
+      const chave = b.membro_nome_ata;
+      if (!semMembroPorNomeAta.has(chave)) semMembroPorNomeAta.set(chave, { membroResolvido: b.membro_resolvido || null, itens: [] });
+      semMembroPorNomeAta.get(chave)!.itens.push(item);
+      return;
+    }
     if (!bigDealsPorMembro.has(membro.nome)) bigDealsPorMembro.set(membro.nome, []);
     bigDealsPorMembro.get(membro.nome)!.push(item);
+  });
+  const bigDealsSemMembro = [...semMembroPorNomeAta.entries()].map(([nomeAta, v]) => ({
+    nomeAta, membroResolvido: v.membroResolvido, itens: v.itens,
+  }));
+
+  const acoesSugeridas = calcularAcoesSugeridas({
+    dados, roster, atasCompletas,
+    healthscore: calc.healthscore, taxaPresenca: presencaMes.taxaPresenca,
+    matchmakingsPeriodo: calc.mmPeriodo.length, casesPeriodo: calc.casesPeriodo.length,
+    oportunidadesMapeadas: totalOportunidadesMapeadas,
+    bigDealsNaoConfirmados: bigDealsSemMembro.filter((g) => !g.membroResolvido).length,
   });
 
   // membros expansíveis: cada titular, com presença/ata de cada mês do período, mais o status de
@@ -1522,7 +1741,7 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
 
   const perfil = perfilConselheiro(contato, dados);
 
-  return {
+  const resultado = {
     grupo: {
       groupId: grupo.group_id, titulo: resumo.nome, nivel: calc.titulo?.nivel || null,
       conselheiro: perfil?.nome || contato, csResponsavel: calc.titulo?.cs || null,
@@ -1541,10 +1760,18 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
       healthscore: calc.healthscore,
     },
     presencaMes,
+    pagamento,
     presencaMensal,
     encontros,
     membros,
     bigDealsSemMembro,
+    acoesSugeridas,
   };
+
+  if (!dadosParam) {
+    const ttl = mesEstaFechado(seletorMes, ano) ? TTL_CONSELHO_DETALHE_MES_FECHADO_MS : TTL_CONSELHO_DETALHE_MES_ABERTO_MS;
+    conselhoDetalheCache.set(chaveCache, { valor: resultado, expiraEm: Date.now() + ttl });
+  }
+  return resultado;
 }
 export type ConselhoDetalhe = Awaited<ReturnType<typeof generateConselhoDetalhe>>;

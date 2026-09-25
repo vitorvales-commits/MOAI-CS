@@ -88,6 +88,14 @@ export const STATUS_PAGAMENTO_PAGANTE = ['Pagante Padrão', 'Pagante com descont
 export const STATUS_PAGAMENTO_PERMUTA = ['Permuta Clube de Permuta', 'Permuta de Conselho'];
 export const STATUS_PAGAMENTO_EXCLUIR = ['Conselheiro', 'Sócio de Conselheiro'];
 
+// Limiares das "ações sugeridas" do conselho (B3, pedido do Vitor 25/09/2026) — regras fixas e
+// determinísticas, sem IA, calculadas a partir de dados que já existem no banco. Nomeados aqui,
+// num único lugar, pra dar pra ajustar sem mexer na lógica em lib/reports.ts (calcularAcoesSugeridas).
+export const LIMIAR_HEALTHSCORE_ATENCAO = 60; // healthscore (0-100) abaixo disso sinaliza atenção geral ao conselho
+export const LIMIAR_PRESENCA_ATENCAO = 70; // taxa de presença (%) do mês de referência abaixo disso sinaliza reforçar engajamento
+export const MESES_JANELA_MATCHMAKINGS_PARADO = 3; // janela (meses corridos terminando no mês real atual) sem nenhum matchmaking pra considerar o conselho "parado" nessa frente
+export const SIMILARIDADE_DESAFIO_MIN = 0.6; // overlap mínimo (0-1, por token) pra dois desafios de meses seguidos contarem como "o mesmo problema sem evolução"
+
 // Pesos do CS Top 3 (pontuação ponderada) — somam 100. Ver calcularScoreCS em reports.ts.
 export const PESOS_SCORE_CS: Record<string, number> = {
   carteira: 15,
