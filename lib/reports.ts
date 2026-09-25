@@ -23,6 +23,17 @@ export function normalizeNome(s: any): string {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
+// Usada por parseCases, parseRounds e parseUpsellDownsell pra atribuir cada item ao CS certo.
+// Correspondência EXATA de token (normalizado), não fuzzy — nomeCompletoCS (cs_config.nome_completo,
+// digitado à mão) precisa ser IDÊNTICO ao nome que o Monday usa nos campos de pessoa desses três
+// boards, não uma versão abreviada. BUG FIX real (25/09/2026): Marcos estava cadastrado como
+// "Marcos Vinicius" (Monday usa "Marcos Vinicius De Oliveira Teixeira") e Luana como "Luana
+// Sampaio" (Monday usa "Luana Sampaio Alves") — os dois nunca batiam aqui, zerando o calculado
+// deles em Cases/Rounds/Upsell-Downsell por meses inteiros, sem nenhum erro visível (corrigido
+// direto em cs_config; nenhuma migração de dado necessária, essas três funções recalculam a
+// partir das tabelas brutas a cada request). syncStatusUsuarios (Edge Function) agora compara
+// nome_completo contra o nome real do Monday pra esse monday_user_id e avisa no log quando
+// divergir — não corrige sozinho, só alerta (nome_completo é editado à mão).
 function nomeBateColunaPessoa(textoColuna: string | null, nomeCompletoCS: string | null): boolean {
   if (!textoColuna || !nomeCompletoCS) return false;
   const alvo = normalizeNome(nomeCompletoCS);

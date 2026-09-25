@@ -103,6 +103,20 @@
 // mexer em grupos fora do escopo desta leitura, com cascata manual pra
 // conselhos_status_historico/conselhos_status_mensal antes do pai, já que
 // não têm ON DELETE CASCADE).
+//
+// v17 (25/09/2026 — pedido do Vitor): causa raiz real do "Rounds do card de
+// Indicadores não bate com o Ranking" era outra: cs_config.nome_completo
+// truncado pra Marcos ("Marcos Vinicius" em vez de "Marcos Vinicius De
+// Oliveira Teixeira") e Luana ("Luana Sampaio" em vez de "Luana Sampaio
+// Alves") — nomeBateColunaPessoa (lib/reports.ts, usada por Cases/Rounds/
+// Upsell-Downsell) faz correspondência exata de token, então esses dois
+// nunca batiam nos campos de pessoa desses três boards, zerando o calculado
+// deles silenciosamente por meses. Corrigido direto em cs_config (sem
+// deploy, sem migração de dado — essas funções recalculam a partir das
+// tabelas brutas a cada request). syncStatusUsuarios agora compara
+// nome_completo contra o nome real do Monday pra aquele monday_user_id a
+// cada execução e avisa no log quando divergir, pra não passar batido de
+// novo se alguém digitar um nome_completo incompleto no futuro.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -880,25 +894,44 @@ async function syncHistoricoGtd() {
 
 // atualiza o status de conta ativa (enabled) dos CS já cadastrados em cs_config
 async function syncStatusUsuarios() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,monday_user_id&monday_user_id=not.is.null`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,nome,nome_completo,monday_user_id&monday_user_id=not.is.null`, {
     headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
   });
   const csConfig = await res.json();
   const ids = csConfig.map((c: any) => c.monday_user_id);
   if (ids.length === 0) return 0;
-  const data = await mondayFetch(`query($ids:[ID!]){users(ids:$ids){id enabled}}`, { ids });
-  const porId: Record<string, boolean> = {};
-  data.users.forEach((u: any) => (porId[u.id] = u.enabled));
+  const data = await mondayFetch(`query($ids:[ID!]){users(ids:$ids){id name enabled}}`, { ids });
+  const porId: Record<string, { name: string; enabled: boolean }> = {};
+  data.users.forEach((u: any) => (porId[u.id] = { name: u.name, enabled: u.enabled }));
   for (const c of csConfig) {
-    const ativo = porId[c.monday_user_id];
-    if (ativo === undefined) continue;
+    const infoMonday = porId[c.monday_user_id];
+    if (!infoMonday) continue;
+
+    // Validação (pedido do Vitor, 25/09/2026 — achado real): nome_completo é digitado à mão em
+    // cs_config e precisa bater EXATO (a menos de acento/maiúscula) com o nome que o Monday usa nos
+    // campos de pessoa dos boards de Rounds/Cases/Upsell-Downsell — nomeBateColunaPessoa
+    // (lib/reports.ts) casa por token via normalizeNome (ignora acento/maiúscula, não ignora
+    // palavra faltando). Marcos estava cadastrado como "Marcos Vinicius" (faltando "De Oliveira
+    // Teixeira") e Luana como "Luana Sampaio" (faltando "Alves") — isso zerava silenciosamente o
+    // calculado desses dois nesses três indicadores por meses inteiros, sem nenhum erro visível em
+    // lugar nenhum. A comparação aqui usa normalizarTexto (mesmo tratamento de acento/maiúscula que
+    // normalizeNome do Next.js) pra não disparar falso positivo em quem só está com uma variação de
+    // caixa (ex.: "RODRIGO QUEIROZ CAMPOS" no Monday x "Rodrigo Queiroz Campos" em cs_config — isso
+    // já casa igual em nomeBateColunaPessoa, não é o bug). Só avisa no log (não corrige sozinho:
+    // nome_completo é editado à mão e uma correção automática poderia sobrescrever uma variação
+    // intencional que a própria pessoa preferiu cadastrar).
+    if (infoMonday.name && c.nome_completo && normalizarTexto(infoMonday.name) !== normalizarTexto(c.nome_completo)) {
+      console.warn(`[sync-monday] cs_config.nome_completo diverge do nome no Monday pra "${c.nome}": cadastrado="${c.nome_completo}" · Monday="${infoMonday.name}" — Cases de Sucesso/Rounds/Upsell-Downsell desse CS podem estar sendo subcontados (ver nomeBateColunaPessoa em lib/reports.ts).`);
+    }
+
+    if (infoMonday.enabled === undefined) continue;
     await fetch(`${SUPABASE_URL}/rest/v1/cs_config?id=eq.${c.id}`, {
       method: 'PATCH',
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json', Prefer: 'return=minimal',
       },
-      body: JSON.stringify({ ativo, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ ativo: infoMonday.enabled, updated_at: new Date().toISOString() }),
     });
   }
   return csConfig.length;
