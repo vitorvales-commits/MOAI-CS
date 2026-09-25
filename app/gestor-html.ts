@@ -36,6 +36,8 @@ export const GESTOR_STYLE = `
 .topbar-title{font-size:14px;color:var(--cinza-texto);font-weight:500;}
 .topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .pill{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:500;}
+.pill-select{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;}
+.pill-select:hover{border-color:var(--preto-tinta);}
 
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--cinza-linha);margin-bottom:32px;}
 .tab-btn{
@@ -67,6 +69,8 @@ export const GESTOR_STYLE = `
 .block-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
 .block-head h2{font-size:22px;font-weight:700;margin:0 0 6px;}
 .block-head p{font-size:13px;color:var(--cinza-texto);margin:0;max-width:520px;line-height:1.55;}
+.toggle-inline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--cinza-texto);font-weight:600;cursor:pointer;white-space:nowrap;}
+.toggle-inline input{width:16px;height:16px;cursor:pointer;accent-color:var(--preto-tinta);}
 
 .ranking-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;overflow:hidden;}
 .rank-row{display:grid;grid-template-columns:32px 1fr 200px 64px;align-items:center;gap:18px;padding:16px 22px;border-bottom:1px solid var(--cinza-linha);}
@@ -123,6 +127,16 @@ export const GESTOR_STYLE = `
 .rede-pizza-legenda .legenda-item{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .rede-pizza-legenda .legenda-item:last-child{margin-bottom:0;}
 .rede-pizza-legenda .legenda-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.tabela-rede tbody tr:nth-child(even){background:var(--cinza-fundo);}
+.tabela-rede tbody td{padding:16px;}
+.nivel-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(200,154,46,0.12);color:var(--dourado);white-space:nowrap;}
+.presenca-bar-wrap{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
+.presenca-bar-bg{width:80px;height:6px;border-radius:999px;background:var(--cinza-superficie);overflow:hidden;flex-shrink:0;}
+.presenca-bar-fill{height:100%;border-radius:999px;}
+.presenca-bar-valor{font-size:12.5px;font-weight:700;min-width:34px;text-align:right;}
+.status-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+.status-badge.congelado{background:rgba(93,93,93,0.12);color:var(--cinza-texto);}
+.status-badge.atencao{background:rgba(200,154,46,0.15);color:var(--dourado);}
 .kanban-collapse{margin-top:24px;}
 .kanban-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:14px;padding:16px 20px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;color:var(--preto-tinta);}
 .kanban-toggle-icon{transition:transform .15s;display:inline-block;}
@@ -203,7 +217,8 @@ export const GESTOR_HTML = `
       <span class="topbar-title">Visão da área · perfil gestor</span>
     </div>
     <div class="topbar-right">
-      <span class="pill" id="pillMes"></span>
+      <select class="pill-select" id="selMesGestor"></select>
+      <select class="pill-select" id="selAnoGestor"><option>2026</option><option>2027</option></select>
       <span class="pill">Acesso restrito a gestores</span>
     </div>
   </header>
@@ -229,8 +244,14 @@ export const GESTOR_HTML = `
 
     <section class="block">
       <div class="block-head">
-        <h2>Ranking ponderado</h2>
-        <p>Pontuação única por CS (score real, já calculado no servidor), só com valor calculado.</p>
+        <div>
+          <h2>Ranking ponderado</h2>
+          <p>Pontuação única por CS (score real, já calculado no servidor), só com valor calculado.</p>
+        </div>
+        <label class="toggle-inline" title="Também afeta o radar por CS abaixo">
+          <input type="checkbox" id="chkExMembros">
+          <span>Mostrar ex-membros</span>
+        </label>
       </div>
       <div class="ranking-list" id="rankingList"><div class="gestor-empty">Carregando…</div></div>
     </section>
@@ -274,7 +295,7 @@ export const GESTOR_HTML = `
         <div id="redePizzaWrap"></div>
       </div>
       <div class="table-wrap"><div class="table-scroll">
-        <table>
+        <table class="tabela-rede">
           <thead><tr><th>Conselheiro</th><th>Nível</th><th class="num">Membros</th><th class="num">Presença</th><th>Status</th></tr></thead>
           <tbody id="redeTabelaBody"></tbody>
         </table>
@@ -399,7 +420,6 @@ function classificarScore(scoreReal) {
 var DADOS = null;
 
 function renderHero() {
-  document.getElementById('pillMes').textContent = DADOS.periodo.geral ? ('Visão Geral · ' + DADOS.periodo.ano) : (DADOS.periodo.mes + '/' + DADOS.periodo.ano);
   var scores = DADOS.porCS.map(function (c) { return c.scoreReal; }).filter(function (v) { return v !== null && v !== undefined; });
   var scoreMedio = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
   document.getElementById('statScore').textContent = scoreMedio === null ? '—' : scoreMedio;
@@ -517,10 +537,26 @@ function pizzaRedeSVG(p) {
     + '<text x="60" y="66" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="20" font-weight="700" fill="#1A1A1A">' + pct + '%</text></svg>';
 }
 
-function statusConselhoLabel(c) {
-  if (c.congelado) return 'Congelado';
-  if (c.atencao) return 'Em atenção';
-  return '—';
+function statusConselhoBadge(c) {
+  if (c.congelado) return '<span class="status-badge congelado">Congelado</span>';
+  if (c.atencao) return '<span class="status-badge atencao">Em atenção</span>';
+  return ''; // sem alerta — célula vazia, sem traço (Ponto 3, correção 25/09/2026)
+}
+
+// Mesmos limiares do kanban de presença (bandaPresenca no back-end): ≤50% e ≤70% (LIMIAR_PRESENCA_
+// ATENCAO), só que aqui em 3 cores (vermelho/amarelo/verde) em vez das 4 faixas do kanban — pedido
+// explícito do Vitor pra barra de progresso da tabela.
+function corPresenca(taxa) {
+  if (taxa === null) return 'var(--cinza-apoio)';
+  if (taxa <= 50) return 'var(--vermelho)';
+  if (taxa <= 70) return 'var(--dourado)';
+  return 'var(--verde)';
+}
+function presencaBarHTML(taxa) {
+  if (taxa === null) return '<span style="color:var(--cinza-apoio)">—</span>';
+  var cor = corPresenca(taxa);
+  return '<div class="presenca-bar-wrap"><div class="presenca-bar-bg"><div class="presenca-bar-fill" style="width:' + taxa + '%;background:' + cor + '"></div></div>'
+    + '<span class="presenca-bar-valor" style="color:' + cor + '">' + taxa + '%</span></div>';
 }
 
 var KANBAN_LABELS = { critica: 'Presença crítica (≤20%)', baixa: 'Presença baixa (21–50%)', atencao: 'Em atenção (51–70%)', saudavel: 'Saudável (>70%)' };
@@ -549,9 +585,9 @@ function renderVisaoRede() {
     body.innerHTML = '<tr><td colspan="5" class="gestor-empty">Nenhum conselho ativo neste período.</td></tr>';
   } else {
     body.innerHTML = rede.presencaConselhos.map(function (c) {
-      var presenca = (c.presenca && c.presenca.taxa !== null && c.presenca.taxa !== undefined) ? (c.presenca.taxa + '%') : '—';
-      return '<tr><td class="name">' + (c.conselheiro || '—') + '</td><td>' + (c.nivel || '—') + '</td>'
-        + '<td class="num">' + c.membros + '</td><td class="num">' + presenca + '</td><td>' + statusConselhoLabel(c) + '</td></tr>';
+      var taxa = (c.presenca && c.presenca.taxa !== null && c.presenca.taxa !== undefined) ? c.presenca.taxa : null;
+      return '<tr><td class="name">' + (c.conselheiro || '—') + '</td><td><span class="nivel-badge">' + (c.nivel || '—') + '</span></td>'
+        + '<td class="num">' + c.membros + '</td><td class="num">' + presencaBarHTML(taxa) + '</td><td>' + statusConselhoBadge(c) + '</td></tr>';
     }).join('');
   }
 
@@ -577,8 +613,23 @@ document.getElementById('btnToggleKanban').addEventListener('click', function ()
   this.classList.toggle('aberto', !aberto);
 });
 
+// Ponto 4 (correção 25/09/2026): toggle "Mostrar ex-membros", desligado por padrão — sem ele,
+// ranking e radar usam só cs_config ativo (getCSListCompleto no servidor); ligado, volta a incluir
+// EX_MEMBROS_SEM_CONTA (comportamento original). Os dois gráficos leem da mesma lista de membros
+// no servidor (ver generateVisaoGestor), então um único toggle já cobre ambos.
+var incluirExMembros = false;
+function inicializarToggleExMembros() {
+  var chk = document.getElementById('chkExMembros');
+  chk.checked = incluirExMembros;
+  chk.addEventListener('change', function () {
+    incluirExMembros = chk.checked;
+    carregarVisaoGeral();
+  });
+}
+inicializarToggleExMembros();
+
 function carregarVisaoGeral() {
-  fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
+  fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&incluirExMembros=' + incluirExMembros).then(function (data) {
     DADOS = data;
     renderHero();
     renderRanking();
@@ -592,10 +643,31 @@ function carregarVisaoGeral() {
   });
 }
 
+// ============ seletor de período (Ponto 2, correção 25/09/2026) ============
+// A tela de gestor tinha só uma pílula de texto mostrando o mês fixo do carregamento, sem nenhum
+// jeito de trocar — igual ao seletor de mês/ano que já existe no dashboard principal
+// (dashboard-html.ts), mas nunca tinha sido conectado aqui. mesAtual/anoAtual eram sempre "agora"
+// e carregarVisaoGeral() nunca era chamado de novo com outro período.
 var MESES_GESTOR = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 var agoraGestor = new Date();
 var mesAtual = MESES_GESTOR[agoraGestor.getMonth()];
 var anoAtual = agoraGestor.getFullYear();
+
+function inicializarSeletorPeriodoGestor() {
+  var selMes = document.getElementById('selMesGestor');
+  var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);
+  MESES_GESTOR.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
+  selMes.value = mesAtual;
+  document.getElementById('selAnoGestor').value = anoAtual;
+  selMes.addEventListener('change', onFiltroChangeGestor);
+  document.getElementById('selAnoGestor').addEventListener('change', onFiltroChangeGestor);
+}
+function onFiltroChangeGestor() {
+  mesAtual = document.getElementById('selMesGestor').value;
+  anoAtual = Number(document.getElementById('selAnoGestor').value);
+  carregarVisaoGeral();
+}
+inicializarSeletorPeriodoGestor();
 
 // ============ controle de perfis: gestores ============
 

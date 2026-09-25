@@ -1144,9 +1144,16 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   };
 }
 
-export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number) {
+// Ponto 4 (correção 25/09/2026): ranking ponderado e radar continuavam mostrando ex-CS sem conta
+// (EX_MEMBROS_SEM_CONTA) mesmo depois do pedido anterior de tirá-los — o ajuste anterior nunca
+// tinha sido aplicado aqui de fato. Em vez de simplesmente hard-codar a exclusão, agora é um toggle
+// visível na tela (desligado por padrão): desligado usa getCSListCompleto (só cs_config ativo, sem
+// ex-membros); ligado volta a usar getCSListParaAgregados (ativo + inativo + EX_MEMBROS_SEM_CONTA,
+// comportamento original). Os dois vêm da MESMA lista de membros que alimenta ranking e radar juntos
+// (relatorios/porCS abaixo), então o filtro nunca pode pegar um gráfico e esquecer o outro.
+export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, incluirExMembros: boolean = false) {
   const dados = await getDadosBrutos(sb);
-  const membros = await getCSListParaAgregados(sb);
+  const membros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
     try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados); }
@@ -1576,17 +1583,34 @@ function bandaPresenca(taxa: number): BandaPresenca {
   return 'saudavel';
 }
 
-// Taxa de presença de UM titular dentro do período selecionado — mesmo critério de taxaPresencaAno
-// (generateConselhoDetalhe), mas sobre mesesRelevantes (o mês selecionado, ou os 12 meses em
-// "Visão Geral") em vez de sempre o ano inteiro fixo.
-function taxaPresencaPeriodo(membro: any, ctx: ContextoConselhos, mesesRelevantes: string[]): number | null {
+// Taxa de presença de UM titular desde o início do conselho — SEMPRE os 12 meses (mesmo critério
+// de taxaPresencaAno em generateConselhoDetalhe), nunca filtrado por mesesRelevantes/seletorMes.
+// BUG FIX (Ponto 1, 25/09/2026): a primeira versão usava calc.mesesRelevantes (o mês selecionado,
+// quase sempre só um mês, ex. "Setembro" sozinho), então um membro que só faltou em setembro virava
+// "presença crítica" mesmo com frequência ótima no conselho inteiro. Presença por membro é sempre
+// histórico acumulado, o seletor de período no topo não filtra este bloco.
+function taxaPresencaHistorico(membro: any, ctx: ContextoConselhos): number | null {
   let presente = 0, registros = 0;
-  mesesRelevantes.forEach((mes) => {
+  MESES_ORDEM.forEach((mes) => {
     const s = ctx.statusPorMembro.get(membro.id)?.get(mes);
     if (s === STATUS_PRESENTE) { presente++; registros++; }
     else if (s && STATUS_AUSENTE_SET.includes(s)) registros++;
   });
   return registros > 0 ? Math.round((presente / registros) * 100) : null;
+}
+
+// Taxa de presença histórica de UM CONSELHO inteiro (titulares + reposições, mesmo critério de
+// presencaDoMes/presencaMensal já usado no resto do sistema) — soma presentes/agendados de todo
+// mês com dado, nunca só o mês de referência. Mesmo motivo do bug fix acima: a tabela de presença
+// por conselho estava presa no mês de referência (montarGradeConselhos.presenca), distorcendo o
+// resultado pra conselhos com um mau mês isolado.
+function taxaPresencaHistoricoConselho(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo: any[]): number | null {
+  let presentesTotal = 0, agendadosTotal = 0;
+  MESES_ORDEM.forEach((mes) => {
+    const p = presencaDoMes(ctx, itemsPrincipais, itemsRepo, mes);
+    if (p.agendados > 0) { presentesTotal += p.presentes; agendadosTotal += p.agendados; }
+  });
+  return agendadosTotal > 0 ? Math.round((presentesTotal / agendadosTotal) * 100) : null;
 }
 
 export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: string, ano: number) {
@@ -1599,6 +1623,7 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
   let totalMembros = 0;
   const todosItemsPrincipais: any[] = [];
   const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca }[] = [];
+  const presencaHistoricoPorGrupo = new Map<string, number | null>();
 
   gruposAtivos.forEach((g: any) => {
     const calc = calcularConselho(ctx, g, seletorMes, ano);
@@ -1608,10 +1633,11 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
     totalMembros += itemsValidos.length;
     todosItemsPrincipais.push(...calc.itemsPrincipais);
     itemsValidos.forEach((m: any) => {
-      const taxa = taxaPresencaPeriodo(m, ctx, calc.mesesRelevantes);
-      if (taxa === null) return; // sem registro de presença no período — não inventa banda pra quem não tem dado
+      const taxa = taxaPresencaHistorico(m, ctx);
+      if (taxa === null) return; // sem nenhum registro de presença ainda — não inventa banda pra quem não tem dado
       kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: bandaPresenca(taxa) });
     });
+    presencaHistoricoPorGrupo.set(g.group_id, taxaPresencaHistoricoConselho(ctx, calc.itemsPrincipais, calc.itemsRepo));
   });
 
   const pagamentoRede = calcularPagamento(todosItemsPrincipais);
@@ -1622,7 +1648,8 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
     pagamentoRede,
     presencaConselhos: grade.cards.map((c) => ({
       groupId: c.groupId, conselheiro: c.conselheiro, nivel: c.nivel, membros: c.membros,
-      congelado: c.congelado, atencao: c.atencao, presenca: c.presenca,
+      congelado: c.congelado, atencao: c.atencao,
+      presenca: { taxa: presencaHistoricoPorGrupo.get(c.groupId) ?? null },
     })),
     kanbanPresenca: {
       critica: kanbanMembros.filter((m) => m.banda === 'critica'),
