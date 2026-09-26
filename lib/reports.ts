@@ -111,7 +111,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ============ CS list ============
 
-export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null };
+export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null };
 
 export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]> {
   const { data, error } = await sb.from('cs_config').select('*').eq('ativo', true).order('nome');
@@ -119,7 +119,7 @@ export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]>
   return (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: FOTOS_CS[r.nome] || null,
+    fotoUrl: FOTOS_CS[r.nome] || null, metaCarteira: r.meta_carteira ?? null,
   }));
 }
 
@@ -129,9 +129,11 @@ export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConf
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: FOTOS_CS[r.nome] || null,
+    fotoUrl: FOTOS_CS[r.nome] || null, metaCarteira: r.meta_carteira ?? null,
   }));
-  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl'>[]).map((m) => ({ ...m, fotoUrl: FOTOS_CS[m.nome] || null }));
+  // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
+  // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.
+  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira'>[]).map((m) => ({ ...m, fotoUrl: FOTOS_CS[m.nome] || null, metaCarteira: null as number | null }));
   return ativos.concat(exMembros);
 }
 
@@ -154,11 +156,19 @@ export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: 
 // (só ativo=true, usado pelo resto do app). cs_config já tem policy de SELECT liberada pra
 // qualquer authenticated, então um select direto funciona; a restrição de quem pode VER essa
 // lista com inativos e quem pode TOGGLAR fica a cargo da rota de API (checa isGestor antes).
-export type CSRosterAdminItem = { nome: string; nomeCompleto: string; ativo: boolean };
+export type CSRosterAdminItem = { nome: string; nomeCompleto: string; ativo: boolean; metaCarteira: number | null };
 export async function getCSRosterAdmin(sb: SupabaseClient): Promise<CSRosterAdminItem[]> {
-  const { data, error } = await sb.from('cs_config').select('nome, nome_completo, ativo').order('nome');
+  const { data, error } = await sb.from('cs_config').select('nome, nome_completo, ativo, meta_carteira').order('nome');
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
-  return (data || []).map((r: any) => ({ nome: r.nome, nomeCompleto: r.nome_completo, ativo: !!r.ativo }));
+  return (data || []).map((r: any) => ({ nome: r.nome, nomeCompleto: r.nome_completo, ativo: !!r.ativo, metaCarteira: r.meta_carteira ?? null }));
+}
+// set_meta_carteira (SECURITY DEFINER) checa is_gestor() de novo dentro do banco e grava
+// auditoria — mesmo padrão de setCSAtivo/setVezesDestaque. p_meta null volta pro fallback
+// automático (metaCarteiraEfetiva usa o maior número de conselhos do time).
+export async function setMetaCarteira(sb: SupabaseClient, nome: string, meta: number | null): Promise<number | null> {
+  const { data, error } = await sb.rpc('set_meta_carteira', { p_nome: nome, p_meta: meta });
+  if (error) throw new Error('Erro ao salvar meta de carteira: ' + error.message);
+  return data as number | null;
 }
 // set_cs_ativo (SECURITY DEFINER) checa is_gestor() de novo dentro do banco e grava auditoria —
 // mesmo padrão de setVezesDestaque/set_destaque, só que restrito a gestor (não a qualquer moai
@@ -722,7 +732,20 @@ function achievementIndicador(ind: any): number | null {
   return Math.max(0, Math.min(1, 1 - ind.alcancado / meta));
 }
 
-function calcularScoreCS(indicadores: any, numConselhos: number, maxConselhosTime: number): number | null {
+// Meta individual de carteira (pedido do Vitor, 25/09/2026): até aqui o indicador "carteira" da
+// pontuação ponderada comparava numConselhos contra o MAIOR número de conselhos entre todo o
+// time (maxConselhosTime) — só quem tinha a maior carteira conseguia bater 100%, o resto nunca
+// alcançava o teto por mais que estivesse dentro do que o próprio gestor esperava dele. Agora
+// cada CS tem uma meta própria (cs_config.meta_carteira, editável na aba de gestor), na mesma
+// régua dos outros indicadores da fórmula (meta/alcançado). Sem meta preenchida (metaCarteira
+// null/0), cai pro comportamento antigo como fallback — maxConselhosTime continua existindo só
+// pra isso, nunca mais como a régua "normal" de ninguém.
+export function metaCarteiraEfetiva(metaCarteira: number | null | undefined, maxConselhosTime: number): { meta: number | null; semMetaPropria: boolean } {
+  if (metaCarteira !== null && metaCarteira !== undefined && metaCarteira > 0) return { meta: metaCarteira, semMetaPropria: false };
+  return { meta: maxConselhosTime > 0 ? maxConselhosTime : null, semMetaPropria: true };
+}
+
+function calcularScoreCS(indicadores: any, numConselhos: number, metaCarteira: number | null): number | null {
   let somaPeso = 0, somaPonderada = 0;
   Object.keys(PESOS_SCORE_CS).forEach((chave) => {
     if (chave === 'carteira') return;
@@ -731,8 +754,8 @@ function calcularScoreCS(indicadores: any, numConselhos: number, maxConselhosTim
     somaPonderada += ach * PESOS_SCORE_CS[chave];
     somaPeso += PESOS_SCORE_CS[chave];
   });
-  if (maxConselhosTime > 0) {
-    const achCarteira = Math.max(0, Math.min(1, numConselhos / maxConselhosTime));
+  if (metaCarteira !== null && metaCarteira > 0) {
+    const achCarteira = Math.max(0, Math.min(1, numConselhos / metaCarteira));
     somaPonderada += achCarteira * PESOS_SCORE_CS.carteira;
     somaPeso += PESOS_SCORE_CS.carteira;
   }
@@ -751,22 +774,27 @@ export type ScoreDetalheItem = {
   chave: string; label: string; peso: number;
   achievementPct: number | null; pontos: number;
   valorAlcancado: number | null; meta: number | null;
+  // Só preenchido na linha "carteira" — sinaliza que esse CS não tem meta_carteira própria
+  // cadastrada e a meta usada aqui é o fallback (maior número de conselhos do time). Ver
+  // metaCarteiraEfetiva.
+  semMetaPropria?: boolean;
 };
 
 // Detalhamento item a item da MESMA fórmula ponderada de calcularScoreCS (nunca inventa peso
 // novo, só expõe o que já é calculado internamente) — pedido do Vitor 25/09/2026: a notinha
 // clicável junto de qualquer pontuação de CS (Top 3 da home, própria posição, ranking do gestor)
 // precisa listar cada indicador com o peso e o quanto ele contribuiu, não um resumo em frase.
-export function detalharScoreCS(indicadores: any, numConselhos: number, maxConselhosTime: number): ScoreDetalheItem[] {
+export function detalharScoreCS(indicadores: any, numConselhos: number, metaCarteira: number | null, semMetaPropria?: boolean): ScoreDetalheItem[] {
   return Object.keys(PESOS_SCORE_CS).map((chave) => {
     const peso = PESOS_SCORE_CS[chave];
     if (chave === 'carteira') {
-      const ach = maxConselhosTime > 0 ? Math.max(0, Math.min(1, numConselhos / maxConselhosTime)) : null;
+      const ach = metaCarteira !== null && metaCarteira > 0 ? Math.max(0, Math.min(1, numConselhos / metaCarteira)) : null;
       return {
         chave, label: LABELS_SCORE_CS.carteira, peso,
         achievementPct: ach === null ? null : Math.round(ach * 100),
         pontos: ach === null ? 0 : Math.round(ach * peso * 10) / 10,
-        valorAlcancado: numConselhos, meta: maxConselhosTime || null,
+        valorAlcancado: numConselhos, meta: metaCarteira || null,
+        semMetaPropria: !!semMetaPropria,
       };
     }
     const ind = indicadores[chave];
@@ -856,7 +884,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const indicacoesR = valorRealizado(metas['Indicações']?.alcancadoSoma, indicacoesCalc);
 
   return {
-    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0 },
+    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0, metaCarteira: cfg.metaCarteira ?? null },
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     indicadores: {
       churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd', manual: churnR.manual, calculado: churnR.calculado },
@@ -943,11 +971,14 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // e a lista completa serve pra /api/home-resumo achar a posição de um CS específico sem expor
   // o restante do ranking nomeado pra quem não é gestor.
   const rankingGeralPorScore = relatorios
-    .map((r) => ({
-      nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
-      score: calcularScoreCS(r.indicadores, r.conselhos.length, maxConselhosTime),
-      detalhamento: detalharScoreCS(r.indicadores, r.conselhos.length, maxConselhosTime),
-    }))
+    .map((r) => {
+      const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(r.cs.metaCarteira, maxConselhosTime);
+      return {
+        nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
+        score: calcularScoreCS(r.indicadores, r.conselhos.length, metaCarteira),
+        detalhamento: detalharScoreCS(r.indicadores, r.conselhos.length, metaCarteira, semMetaPropria),
+      };
+    })
     .filter((x) => x.score !== null)
     .sort((a, b) => (b.score as number) - (a.score as number));
   const csTop = rankingGeralPorScore.slice(0, 3);
@@ -1200,7 +1231,7 @@ export type VisaoGestorCS = ReturnType<typeof montarVisaoGestorCS>;
 
 function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number) {
   const ind = r.indicadores as any;
-  const indicadores: Record<string, { meta: number | null; calculado: number | null; manual: number | null; unidade: string; status: StatusRisco; divergencia: number | null }> = {};
+  const indicadores: Record<string, { meta: number | null; calculado: number | null; manual: number | null; unidade: string; status: StatusRisco; divergencia: number | null; semMetaPropria?: boolean }> = {};
 
   INDICADORES_GESTOR.forEach((chave) => {
     const i = ind[chave];
@@ -1216,8 +1247,9 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   const achGtd = achievementIndicador({ meta: ind.cumprimentoGtd.meta, tipoMeta: ind.cumprimentoGtd.tipoMeta, alcancado: ind.cumprimentoGtd.alcancado });
   indicadores.cumprimentoGtd = { meta: ind.cumprimentoGtd.meta, calculado: ind.cumprimentoGtd.alcancado, manual: null, unidade: '%', status: statusRisco(achGtd), divergencia: null };
 
-  const achCarteira = achievementIndicador({ meta: maxConselhosTime || null, tipoMeta: 'min', alcancado: r.conselhos.length });
-  indicadores.numConselhos = { meta: maxConselhosTime || null, calculado: r.conselhos.length, manual: null, unidade: 'qtd', status: statusRisco(achCarteira), divergencia: null };
+  const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(r.cs.metaCarteira, maxConselhosTime);
+  const achCarteira = achievementIndicador({ meta: metaCarteira, tipoMeta: 'min', alcancado: r.conselhos.length });
+  indicadores.numConselhos = { meta: metaCarteira, calculado: r.conselhos.length, manual: null, unidade: 'qtd', status: statusRisco(achCarteira), divergencia: null, semMetaPropria };
 
   const indiceDivergencia = INDICADORES_GESTOR.reduce((soma, chave) => {
     const d = indicadores[chave].divergencia;
@@ -1245,11 +1277,11 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
     const i = ind[chave];
     indicadoresParaScoreReal[chave] = { ...i, alcancado: i.calculado };
   });
-  const scoreReal = calcularScoreCS(indicadoresParaScoreReal, r.conselhos.length, maxConselhosTime);
+  const scoreReal = calcularScoreCS(indicadoresParaScoreReal, r.conselhos.length, metaCarteira);
   // detalhamento (Parte C, pedido do Vitor 25/09/2026): notinha clicável junto da pontuação no
   // ranking do gestor — mesma fórmula, sobre os mesmos indicadores 100% calculados (nunca o
   // mascarado) usados no scoreReal acima.
-  const detalhamento = detalharScoreCS(indicadoresParaScoreReal, r.conselhos.length, maxConselhosTime);
+  const detalhamento = detalharScoreCS(indicadoresParaScoreReal, r.conselhos.length, metaCarteira, semMetaPropria);
 
   const radar = RADAR_EIXOS.map((eixo) => {
     const i = eixo.chave === 'cumprimentoGtd' ? indicadores.cumprimentoGtd : (indicadores as any)[eixo.chave];
@@ -1261,6 +1293,7 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   return {
     nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
     indicadores, indiceDivergencia, scoreReal, detalhamento, alertas, radar, temIndicadorAbaixoDaMeta,
+    semMetaPropria,
   };
 }
 
@@ -1291,7 +1324,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   const ranking = [...porCS]
     .filter((c) => c.scoreReal !== null)
     .sort((a, b) => (b.scoreReal as number) - (a.scoreReal as number))
-    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal, detalhamento: c.detalhamento }));
+    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal, detalhamento: c.detalhamento, semMetaPropria: c.semMetaPropria }));
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
@@ -1896,6 +1929,76 @@ function calcularAcoesSugeridas(params: {
   return TIPOS_ACAO_SUGERIDA.filter((t) => disparadas[t]).map((t) => ({ tipo: t, texto: disparadas[t]! }));
 }
 
+// ============ evolução dos membros por mês (pedido do Vitor 26/09/2026) ============
+// Nova seção da página de detalhe do conselho: uma linha por membro do roster e por mês, com
+// desafio, compromisso combinado e Big Deal daquele mês — reaproveita atasCompletas
+// (organizarAtasDoConselho, já monta desafio/compromisso/etc. por membro/mês a partir de
+// atas_conselho_extraido) e bigDealsPorMembro (atas_conselho_bigdeal, já organizado em
+// generateConselhoDetalhe), nenhum dado novo: só reorganiza os dois por membro e por mês.
+//
+// desafioStatus e compromissoStatus reaproveitam a MESMA comparação de similaridadeTexto/
+// SIMILARIDADE_DESAFIO_MIN que já detecta "desafio parado" em calcularAcoesSugeridas
+// (temDesafioParado, algumas dezenas de linhas acima) — não é uma métrica nova: é a régua que já
+// existia aplicada à visão por membro. Um desafio conta como "repetição" quando bate >=
+// SIMILARIDADE_DESAFIO_MIN contra o desafio da ata anterior do MESMO membro; "novo" quando muda
+// (ou quando é a primeira ata dele, sem base de comparação — sem_historico). O compromisso
+// combinado num mês só vira "cumprido" quando há evidência de avanço real: o desafio da PRÓXIMA
+// ata do membro mudou (não é repetição do desafio deste mês) — sem esse sinal (desafio repetiu, ou
+// ainda não existe próxima ata pra comparar) fica "pendente"; nunca marca cumprido por ausência de
+// dado. compromissoStatus fica null quando o próprio compromisso não foi registrado na ata.
+export type EvolucaoMembroLinha = {
+  mes: string; ano: number;
+  desafio: string | null; desafioStatus: 'novo' | 'repeticao' | 'sem_historico';
+  compromisso: string | null; compromissoStatus: 'cumprido' | 'pendente' | null;
+  bigDeal: string | null;
+};
+export type EvolucaoMembro = { nome: string; meses: EvolucaoMembroLinha[] };
+
+function montarEvolucaoMembros(
+  atasCompletas: Map<string, AtaMembroMes[]>,
+  bigDealsPorMembro: Map<string, any[]>,
+  roster: any[],
+): EvolucaoMembro[] {
+  return roster.map((m: any) => {
+    const historico = (atasCompletas.get(m.nome) || [])
+      .slice()
+      .sort((a, b) => a.ano - b.ano || indiceMesAta(a.mesAta) - indiceMesAta(b.mesAta));
+    // só Big Deal MENSAL (mes_referencia tipo "Janeiro/2026") casa com um mês específico — o
+    // trimestral (mes_referencia tipo "2o Ato / Agosto/2026") cobre um período maior que um único
+    // mês, não faz sentido forçar numa linha só, fica de fora desta tabela (continua disponível
+    // na seção de Big Deal já existente, por membro).
+    const bigDealsMensais = (bigDealsPorMembro.get(m.nome) || []).filter((b: any) => b.tipo === 'mensal' && b.mesReferencia);
+    const meses: EvolucaoMembroLinha[] = historico.map((ata, idx) => {
+      const anterior = idx > 0 ? historico[idx - 1] : null;
+      const proximo = idx < historico.length - 1 ? historico[idx + 1] : null;
+      const temDesafio = !!(ata.desafio && ata.desafio.trim());
+      let desafioStatus: EvolucaoMembroLinha['desafioStatus'] = 'sem_historico';
+      if (temDesafio) {
+        desafioStatus = (anterior?.desafio && similaridadeTexto(ata.desafio!, anterior.desafio) >= SIMILARIDADE_DESAFIO_MIN)
+          ? 'repeticao' : 'novo';
+      }
+      const temCompromisso = !!(ata.compromisso && ata.compromisso.trim());
+      let compromissoStatus: EvolucaoMembroLinha['compromissoStatus'] = null;
+      if (temCompromisso) {
+        const desafioAvancou = !!(proximo?.desafio && ata.desafio
+          && similaridadeTexto(ata.desafio, proximo.desafio) < SIMILARIDADE_DESAFIO_MIN);
+        compromissoStatus = desafioAvancou ? 'cumprido' : 'pendente';
+      }
+      const bigDealDoMes = bigDealsMensais.find((b: any) => {
+        const partes = partesMesAta(b.mesReferencia);
+        return partes.mesIdx === indiceMesAta(ata.mesAta) && (partes.ano === null || partes.ano === ata.ano);
+      });
+      return {
+        mes: ata.mesAta, ano: ata.ano,
+        desafio: ata.desafio, desafioStatus,
+        compromisso: ata.compromisso, compromissoStatus,
+        bigDeal: bigDealDoMes?.bigDealDefinido || null,
+      };
+    });
+    return { nome: m.nome, meses };
+  });
+}
+
 // ============ página/modal completo do conselho ============
 // Uma função só alimenta o modal rápido (página do CS) e a página completa /conselho/[grupo] —
 // que agora também é a visão combinada conselheiro + conselho aberta pelos cartões da aba
@@ -2017,6 +2120,11 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     nomeAta, membroResolvido: v.membroResolvido, itens: v.itens,
   }));
 
+  // evolução dos membros (Front 3, pedido do Vitor 26/09/2026): mesmo roster titular usado pela
+  // lista `membros` abaixo — reaproveita atasCompletas (histórico INTEIRO, não só o período em
+  // tela, pra evolução fazer sentido) e bigDealsPorMembro, já computados acima.
+  const evolucaoMembros = montarEvolucaoMembros(atasCompletas, bigDealsPorMembro, itemsPrincipais);
+
   const acoesSugeridas = calcularAcoesSugeridas({
     dados, roster, atasCompletas,
     healthscore: calc.healthscore, taxaPresenca: presencaMes.taxaPresenca,
@@ -2097,6 +2205,7 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     membros,
     bigDealsSemMembro,
     acoesSugeridas,
+    evolucaoMembros,
   };
 
   if (!dadosParam) {

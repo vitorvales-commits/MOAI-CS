@@ -144,6 +144,20 @@ export const CONSELHO_STYLE = `
 
 .empty{padding:24px;color:var(--cinza-apoio);font-size:13px;text-align:center;}
 .erro{padding:24px;color:var(--vermelho);font-size:13px;text-align:center;}
+
+.evolucao-toggle-btn{font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);cursor:pointer;}
+.evolucao-toggle-btn:hover{background:var(--cinza-superficie);}
+.evolucao-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;margin-bottom:12px;overflow:hidden;}
+.evolucao-card-head{padding:14px 18px;font-weight:700;font-size:14px;border-bottom:1px solid var(--cinza-linha);}
+.evolucao-mes-row{padding:14px 18px;border-bottom:1px solid var(--cinza-linha);}
+.evolucao-mes-row:last-child{border-bottom:none;}
+.evolucao-mes-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.evolucao-mes-titulo{font-size:12px;font-weight:700;color:var(--cinza-apoio);text-transform:uppercase;letter-spacing:0.04em;}
+.evolucao-campo{font-size:13px;margin-bottom:6px;line-height:1.5;}
+.evolucao-campo b{font-weight:700;color:var(--preto-tinta);}
+.evolucao-vazio{padding:16px 18px;color:var(--cinza-apoio);font-size:12.5px;font-style:italic;}
+.evolucao-ver-mais{font-size:12px;font-weight:600;color:var(--dourado);background:none;border:none;cursor:pointer;padding:12px 18px;text-align:left;width:100%;font-family:inherit;}
+.evolucao-ver-mais:hover{text-decoration:underline;}
 `;
 
 export const CONSELHO_HTML = `
@@ -206,6 +220,14 @@ export const CONSELHO_HTML = `
   <section class="block">
     <h2>Membros <span class="sub">clique pra ver ata, oportunidades e Big Deal</span></h2>
     <div id="membrosList"><div class="empty">Carregando…</div></div>
+  </section>
+
+  <section class="block">
+    <h2 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span>Evolução dos membros <span class="sub">desafio, compromisso e Big Deal por mês — reaproveita a ata já extraída</span></span>
+      <button class="evolucao-toggle-btn" id="evolucaoToggleBtn" type="button" onclick="toggleEvolucaoExpandida()">Expandir tudo</button>
+    </h2>
+    <div id="evolucaoMembrosList"><div class="empty">Carregando…</div></div>
   </section>
 
   <section class="block" id="bigDealsSemMembroBlock" style="display:none;">
@@ -559,6 +581,57 @@ function renderMembros(d) {
   }).join('');
 }
 
+// Evolução dos membros (pedido do Vitor 26/09/2026): uma linha por membro do roster e por mês —
+// desafio, marcador novo/repetição, status do compromisso combinado e Big Deal do mês, tudo já
+// calculado no servidor (montarEvolucaoMembros em lib/reports.ts, reaproveitando as mesmas tabelas
+// de ata sem recalcular nada). Recolhível por padrão: só os últimos 3 meses por membro, com um
+// botão único pra expandir o histórico inteiro de todo mundo de uma vez.
+var EVOLUCAO_EXPANDIDA_ = false;
+var ULTIMO_DADO_CONSELHO_ = null;
+
+function badgeDesafio(status) {
+  if (status === 'novo') return '<span class="chip verde">Novo</span>';
+  if (status === 'repeticao') return '<span class="chip dourado">Repetição do mês anterior</span>';
+  return '';
+}
+function badgeCompromisso(status) {
+  if (status === 'cumprido') return '<span class="chip verde">Cumprido</span>';
+  if (status === 'pendente') return '<span class="chip vermelho">Pendente</span>';
+  return '';
+}
+
+function renderEvolucaoMesLinha(linha) {
+  var head = '<div class="evolucao-mes-head"><span class="evolucao-mes-titulo">' + esc(linha.mes) + '/' + linha.ano + '</span></div>';
+  var corpo = '<div class="evolucao-campo"><b>Desafio:</b> ' + (linha.desafio ? esc(linha.desafio) : '<span style="color:#9F9F9F;">—</span>') + ' ' + badgeDesafio(linha.desafioStatus) + '</div>';
+  corpo += '<div class="evolucao-campo"><b>Compromisso:</b> ' + (linha.compromisso ? esc(linha.compromisso) : '<span style="color:#9F9F9F;">—</span>') + ' ' + badgeCompromisso(linha.compromissoStatus) + '</div>';
+  if (linha.bigDeal) corpo += '<div class="evolucao-campo"><b>Big Deal:</b> ' + esc(linha.bigDeal) + '</div>';
+  return '<div class="evolucao-mes-row">' + head + corpo + '</div>';
+}
+
+function renderEvolucaoMembros(d) {
+  var el = document.getElementById('evolucaoMembrosList');
+  var btn = document.getElementById('evolucaoToggleBtn');
+  btn.textContent = EVOLUCAO_EXPANDIDA_ ? 'Mostrar só os últimos 3 meses' : 'Expandir tudo';
+  var lista = d.evolucaoMembros || [];
+  if (!lista.length) { el.innerHTML = '<div class="empty">Nenhum membro neste conselho.</div>'; return; }
+  el.innerHTML = lista.map(function (m) {
+    var mesesDesc = (m.meses || []).slice().reverse(); // mais recente primeiro
+    var visiveis = EVOLUCAO_EXPANDIDA_ ? mesesDesc : mesesDesc.slice(0, 3);
+    var corpo = visiveis.length
+      ? visiveis.map(renderEvolucaoMesLinha).join('')
+      : '<div class="evolucao-vazio">Ata ainda não processada para este membro.</div>';
+    var restantes = mesesDesc.length - visiveis.length;
+    var verMais = (!EVOLUCAO_EXPANDIDA_ && restantes > 0)
+      ? '<button class="evolucao-ver-mais" type="button" onclick="toggleEvolucaoExpandida()">Ver mais ' + restantes + ' mês(es) ▾</button>' : '';
+    return '<div class="evolucao-card"><div class="evolucao-card-head">' + esc(m.nome) + '</div>' + corpo + verMais + '</div>';
+  }).join('');
+}
+
+function toggleEvolucaoExpandida() {
+  EVOLUCAO_EXPANDIDA_ = !EVOLUCAO_EXPANDIDA_;
+  if (ULTIMO_DADO_CONSELHO_) renderEvolucaoMembros(ULTIMO_DADO_CONSELHO_);
+}
+
 // B4 (pedido do Vitor 25/09/2026): mecanismo permanente de correção — d.bigDealsSemMembro chega
 // agrupado por nome_ata (um nome pode aparecer em vários meses/trimestres; confirmar resolve todas
 // as ocorrências de uma vez, ver confirmar_membro_ata no banco). rosterAtual_/bigDealsSemMembroAtual_
@@ -640,6 +713,7 @@ function toggleMembro(idx) {
 }
 
 function renderTudo_(d) {
+  ULTIMO_DADO_CONSELHO_ = d;
   renderHero(d);
   renderMetricas(d);
   renderAcoesSugeridas(d);
@@ -649,6 +723,7 @@ function renderTudo_(d) {
   renderPagamento(d);
   renderEncontros(d);
   renderMembros(d);
+  renderEvolucaoMembros(d);
   renderBigDealsSemMembro(d);
 }
 
@@ -699,6 +774,7 @@ function carregarConselho(mes, ano) {
     document.getElementById('acoesSugeridas').innerHTML = '';
     document.getElementById('encontrosList').innerHTML = '<div class="erro">Erro ao carregar: ' + esc(err.message) + '</div>';
     document.getElementById('membrosList').innerHTML = '';
+    document.getElementById('evolucaoMembrosList').innerHTML = '';
     document.getElementById('heroTitulo').textContent = 'Não foi possível carregar este conselho';
   });
 }

@@ -117,6 +117,21 @@
 // nome_completo contra o nome real do Monday pra aquele monday_user_id a
 // cada execução e avisa no log quando divergir, pra não passar batido de
 // novo se alguém digitar um nome_completo incompleto no futuro.
+//
+// v18 (26/09/2026 — pedido do Vitor, confirmado ao vivo: "100% dos
+// matchmakings sincronizados estão com o campo resultado vazio"): causa raiz
+// era a query de syncMatchmakings — pedia só `id name creator_id`, nunca
+// column_values, então motivo/categoria/origem/resultado/data (colunas que
+// já existiam em matchmakings_items desde uma versão antiga do painel)
+// ficavam sempre null, mesmo com as colunas existindo de verdade no board.
+// Ids das 5 colunas confirmados direto via API do Monday (get_board_info no
+// board 18409198202) nesta sessão, não copiados de documentação antiga (ver
+// MATCHMAKINGS_COLS). resultado alimenta matchmakingsSemResultado em
+// calcularImpactoConselhos (lib/reports.ts) — com o campo sempre vazio, esse
+// indicador mostrava 100% sem resultado pra qualquer conselho com
+// matchmaking. Depois do deploy, uma sincronização manual completa
+// (matchmakings) reprocessa o histórico inteiro (a query lê o board inteiro
+// a cada execução, sem filtro incremental).
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -167,6 +182,16 @@ const CHURN_COLS = { quemEhSeuCs: 'single_select7xxqn59', produto: 'single_selec
 const ROUNDS_COLS = { status: 'color_mm3sxe13', csResponsavel: 'multiple_person_mm3sb795' };
 const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
 const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
+// v18 (26/09/2026 — pedido do Vitor): matchmakings_items estava 100% sem motivo/categoria/
+// origem/resultado/data — a query de syncMatchmakings só pedia `id name creator_id`, nunca
+// column_values, então essas 5 colunas em matchmakings_items ficavam sempre null (o schema já
+// tinha as colunas, criadas numa versão antiga do painel, só a sincronização nunca as alimentou).
+// Ids confirmados ao vivo via get_board_info no board 18409198202 ("Matchmaking") nesta mesma
+// sessão — não copiados de documentação antiga, que podia estar desatualizada.
+const MATCHMAKINGS_COLS = {
+  motivo: 'long_textuevre4t8', categoria: 'single_selectyleiwd8', origem: 'single_selecto6mf971',
+  resultado: 'long_texto8zt8o1n', data: 'date_mm4e7y75',
+};
 const CONSELHOS_COL_POR_MES: Record<string, string> = {
   Janeiro: 'color_mkz343x2', Fevereiro: 'color_mkzt3sk3', Março: 'color_mkzt7139',
   Abril: 'color_mkztzmry', Maio: 'color_mkztc9tw', Junho: 'color_mkzt6p3k',
@@ -639,7 +664,13 @@ async function syncMatchmakings() {
   // BUG FIX (v13, 24/09/2026): a query não pedia `id title` do grupo, então board_group_id e
   // mes_grupo_titulo iam null e o upsert era rejeitado (NOT NULL) — matchmakings_items ficou
   // parado desde 17/09/2026 sem ninguém perceber (o erro só aparecia em sync_log).
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id}}}}}`;
+  // BUG FIX (v18, 26/09/2026): a query nunca pedia column_values — motivo/categoria/origem/
+  // resultado/data ficavam sempre null em matchmakings_items, e resultado alimenta o indicador de
+  // "matchmakings sem resultado" (calcularImpactoConselhos em lib/reports.ts), que por isso
+  // mostrava 100% sem resultado pra TODO matchmaking sincronizado. Agora pede as 5 colunas de
+  // conteúdo junto (ver MATCHMAKINGS_COLS).
+  const colsIds = Object.values(MATCHMAKINGS_COLS);
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
@@ -650,6 +681,11 @@ async function syncMatchmakings() {
         mes_grupo_titulo: g.title,
         nome: item.name,
         creator_id: item.creator_id ? Number(item.creator_id) : null,
+        motivo: colText(item.column_values, MATCHMAKINGS_COLS.motivo),
+        categoria: colText(item.column_values, MATCHMAKINGS_COLS.categoria),
+        origem: colText(item.column_values, MATCHMAKINGS_COLS.origem),
+        resultado: colText(item.column_values, MATCHMAKINGS_COLS.resultado),
+        data: dateOrNull(colText(item.column_values, MATCHMAKINGS_COLS.data)),
       });
     });
   });

@@ -174,6 +174,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .score-detalhe-peso { color:#9F9F9F; font-size:11px; }
 .score-detalhe-valor { color:#9F9F9F; white-space:nowrap; }
 .score-detalhe-pontos { font-weight:800; color:#1A1A1A; white-space:nowrap; min-width:56px; text-align:right; }
+.meta-aviso { font-size:10px; font-weight:600; color:#C89A2E; background:rgba(200,154,46,0.12); border-radius:999px; padding:2px 8px; white-space:nowrap; margin-left:8px; }
 /* posição/top3 na home restrita do CS comum (Parte A, 25/09/2026) */
 .minha-posicao-badge { display:inline-flex; align-items:center; gap:8px; background:#fff; border:0.75pt solid #D8D5D5; border-radius:99px; padding:10px 18px; font-size:12.5px; font-weight:700; color:#1A1A1A; margin-top:6px; }
 .perfil-vazio { max-width:480px; margin:0 auto; text-align:center; padding:120px 24px; color:#5D5D5D; }
@@ -1743,8 +1744,9 @@ function abrirScoreModal(idx){
     var val = (item.valorAlcancado===null||item.valorAlcancado===undefined) ? '—' : item.valorAlcancado;
     var meta = (item.meta===null||item.meta===undefined) ? '—' : item.meta;
     var ach = (item.achievementPct===null||item.achievementPct===undefined) ? '—' : item.achievementPct+'%';
+    var avisoMeta = item.semMetaPropria ? '<span class="meta-aviso" title="Sem meta própria cadastrada — usando o maior número de conselhos do time como fallback.">sem meta própria</span>' : '';
     return '<div class="score-detalhe-row">' +
-      '<span class="score-detalhe-label">'+item.label+'</span>' +
+      '<span class="score-detalhe-label">'+item.label+avisoMeta+'</span>' +
       '<span class="score-detalhe-peso">peso '+item.peso+'</span>' +
       '<span class="score-detalhe-valor">'+val+' / '+meta+' · '+ach+'</span>' +
       '<span class="score-detalhe-pontos">'+item.pontos+' pts</span>' +

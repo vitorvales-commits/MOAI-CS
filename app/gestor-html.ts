@@ -167,10 +167,15 @@ export const GESTOR_STYLE = `
 .form-inline button:disabled{opacity:0.5;cursor:not-allowed;}
 .erro-msg{color:var(--vermelho);font-size:12px;margin:0 0 16px;min-height:14px;}
 .sync-desc{font-size:12px;color:var(--cinza-apoio);margin:0 0 14px;line-height:1.5;}
-.lista-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--cinza-linha);}
+.lista-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--cinza-linha);gap:14px;}
 .lista-item:last-child{border-bottom:none;}
 .lista-item-nome{font-size:13px;font-weight:600;}
 .lista-item-sub{font-size:11px;color:var(--cinza-apoio);}
+.lista-item-acoes{display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.meta-carteira-campo{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.meta-carteira-campo label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);}
+.meta-carteira-input{width:64px;padding:6px 8px;border-radius:8px;border:1px solid var(--cinza-borda);font-size:12px;font-family:'Inter',sans-serif;text-align:center;}
+.meta-aviso{font-size:10px;font-weight:600;color:var(--dourado);background:rgba(200,154,46,0.12);border-radius:999px;padding:2px 8px;white-space:nowrap;}
 .btn-remover{background:none;border:1px solid var(--cinza-borda);color:var(--vermelho);font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;}
 .btn-remover:hover{background:rgba(192,67,61,0.08);}
 
@@ -436,8 +441,9 @@ function abrirScoreModal(idx){
     var val = (item.valorAlcancado === null || item.valorAlcancado === undefined) ? '—' : item.valorAlcancado;
     var meta = (item.meta === null || item.meta === undefined) ? '—' : item.meta;
     var ach = (item.achievementPct === null || item.achievementPct === undefined) ? '—' : item.achievementPct + '%';
+    var avisoMeta = item.semMetaPropria ? '<span class="meta-aviso" title="Sem meta própria cadastrada — usando o maior número de conselhos do time como fallback.">sem meta própria</span>' : '';
     return '<div class="score-detalhe-row">'
-      + '<span class="score-detalhe-label">' + item.label + '</span>'
+      + '<span class="score-detalhe-label">' + item.label + avisoMeta + '</span>'
       + '<span class="score-detalhe-peso">peso ' + item.peso + '</span>'
       + '<span class="score-detalhe-valor">' + val + ' / ' + meta + ' · ' + ach + '</span>'
       + '<span class="score-detalhe-pontos">' + item.pontos + ' pts</span>'
@@ -856,8 +862,17 @@ function renderCSRoster(lista) {
   if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS cadastrado.</div>'; return; }
   el.innerHTML = lista.map(function (c) {
     var checked = c.ativo ? 'checked' : '';
+    var temMeta = c.metaCarteira !== null && c.metaCarteira !== undefined;
+    var avisoSemMeta = temMeta ? '' : '<span class="meta-aviso" title="Sem meta própria: a pontuação de carteira desse CS usa o maior número de conselhos do time como fallback.">sem meta própria</span>';
     return '<div class="lista-item"><div><div class="lista-item-nome">' + c.nome + '</div><div class="lista-item-sub">' + c.nomeCompleto + '</div></div>'
-      + '<label class="switch"><input type="checkbox" ' + checked + ' data-nome="' + c.nome + '"><span class="switch-track"></span></label></div>';
+      + '<div class="lista-item-acoes">'
+      + '<div class="meta-carteira-campo">'
+      + '<label>Meta de carteira</label>'
+      + '<input type="number" min="1" step="1" class="meta-carteira-input" placeholder="—" value="' + (temMeta ? c.metaCarteira : '') + '" data-nome="' + c.nome + '">'
+      + avisoSemMeta
+      + '</div>'
+      + '<label class="switch"><input type="checkbox" ' + checked + ' data-nome="' + c.nome + '"><span class="switch-track"></span></label>'
+      + '</div></div>';
   }).join('');
   el.querySelectorAll('input[type=checkbox]').forEach(function (chk) {
     chk.addEventListener('change', function () {
@@ -865,6 +880,16 @@ function renderCSRoster(lista) {
       fetchJSON_(ENDPOINT_CS_ROSTER, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, ativo: novoAtivo }) })
         .then(function (data) { renderCSRoster(data.roster || []); })
         .catch(function (err) { chk.checked = !novoAtivo; window.alert('Não foi possível alterar: ' + err.message); });
+    });
+  });
+  el.querySelectorAll('.meta-carteira-input').forEach(function (inp) {
+    var valorAnterior = inp.value;
+    inp.addEventListener('change', function () {
+      var nome = inp.dataset.nome, novoValor = inp.value.trim();
+      inp.disabled = true;
+      fetchJSON_(ENDPOINT_CS_ROSTER, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: nome, metaCarteira: novoValor === '' ? null : Number(novoValor) }) })
+        .then(function (data) { renderCSRoster(data.roster || []); })
+        .catch(function (err) { inp.value = valorAnterior; inp.disabled = false; window.alert('Não foi possível salvar a meta: ' + err.message); });
     });
   });
   var sel = document.getElementById('selectCSParaVincular');
