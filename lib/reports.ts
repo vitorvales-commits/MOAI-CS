@@ -527,6 +527,44 @@ function parseUpsellDownsell(udRows: any[], nomeCompletoCS: string, mesInicio: s
   return { upsell, downsell };
 }
 
+// ============ contagem única pro total do TIME (BUG FIX 26/09/2026, pedido do Vitor) ============
+// Cases de Sucesso, Rounds e Upsell/Downsell atribuem um registro do Monday a cada CS listado na
+// coluna de pessoa (texto separado por vírgula, ex. "Vilker Ferreira, Mateus Ries") — certo pro
+// relatório INDIVIDUAL de cada CS (parseCases/parseRounds/parseUpsellDownsell acima, que continuam
+// exatamente iguais), mas somar o `calculado` de cada CS pro total do TIME conta esse mesmo
+// registro uma vez por CS nele, inflando a soma. Confirmado ao vivo em Setembro/2026: Cases tem 48
+// linhas reais + 1 registro com 2 CS (Vilker/Mateus) somando 49; Rounds tem 4 linhas "Realizado" +
+// 1 registro com 3 CS (Rodrigo/Marcos/Vilker) somando 6. As três funções abaixo replicam o mesmo
+// filtro de período/status de parseCases/parseRounds/parseUpsellDownsell, só que contam cada linha
+// UMA VEZ (desde que bata com pelo menos um CS conhecido), nunca uma vez por CS — usadas só no
+// total agregado do time (generateEquipeReport/somaInd), nunca no relatório individual.
+function algumNomeConhecidoNaColuna(textoColuna: string | null, nomesConhecidosNormalizados: Set<string>): boolean {
+  if (!textoColuna) return false;
+  return textoColuna.split(',').some((s) => nomesConhecidosNormalizados.has(normalizeNome(s)));
+}
+
+function contarCasesUnicosTime(casesRows: any[], nomesConhecidos: Set<string>, mes: string, ano: number, geral: boolean): number {
+  const filtradas = geral ? filtrarAnoFlexivel(casesRows, ano) : filtrarPorMesAnoFlexivel(casesRows, mes, ano);
+  return filtradas.filter((r) => algumNomeConhecidoNaColuna(r.cs_raw, nomesConhecidos)).length;
+}
+
+function contarRoundsUnicosTime(roundsRows: any[], nomesConhecidos: Set<string>, mes: string, geral: boolean): number {
+  const filtradas = geral ? filtrarAnoSeguro(roundsRows) : filtrarPorMesSeguro(roundsRows, mes);
+  return filtradas.filter((r) => r.status === ROUNDS_STATUS_VALIDO && algumNomeConhecidoNaColuna(r.cs_responsavel_raw, nomesConhecidos)).length;
+}
+
+function contarUpsellDownsellUnicosTime(udRows: any[], nomesConhecidos: Set<string>, mesInicio: string, mesFim: string): { upsell: number; downsell: number } {
+  let upsell = 0, downsell = 0;
+  udRows.forEach((r) => {
+    if (!algumNomeConhecidoNaColuna(r.cs_raw, nomesConhecidos) || r.status !== UD_STATUS_VALIDO) return;
+    const dataStr = r.data;
+    if (!dataStr || dataStr < mesInicio || dataStr > mesFim) return;
+    if (r.tipo_troca === 'Upsell') upsell++;
+    if (r.tipo_troca === 'Downsell' || r.tipo_troca === 'Downsell (Retirada de sócio)') downsell++;
+  });
+  return { upsell, downsell };
+}
+
 function parseReportsSemanais(rows: any[], userId: number | null, mesInicio: string, mesFim: string) {
   if (userId === null || userId === undefined) return [];
   return rows.filter((r) => Number(r.creator_id) === userId)
@@ -986,6 +1024,15 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
 
+  // BUG FIX (26/09/2026): contagem única pro total do time — ver contarCasesUnicosTime e vizinhas,
+  // logo acima de parseUpsellDownsell. Usa nome_completo (não o nome curto de nomesConhecidos
+  // acima, que é o campo usado por churn) porque cs_raw/cs_responsavel_raw desses três boards são
+  // comparados via nomeBateColunaPessoa, sempre contra nome_completo.
+  const nomesCompletosConhecidos = new Set(membros.map((m) => normalizeNome(m.nomeCompleto)).filter(Boolean));
+  const casesUnicosTime = contarCasesUnicosTime(dados.cases, nomesCompletosConhecidos, seletorMes, ano, geral);
+  const roundsUnicosTime = contarRoundsUnicosTime(dados.rounds, nomesCompletosConhecidos, seletorMes, geral);
+  const upsellDownsellUnicosTime = contarUpsellDownsellUnicosTime(dados.upsellDownsell, nomesCompletosConhecidos, mesInicio, mesFim);
+
   // impacto dos conselhos: as duas visões lado a lado (decisão confirmada com o Vitor — manter
   // as duas, nunca substituir uma pela outra). O front-end decide qual mostrar via toggle.
   const impactoConselhosHistorico = calcularImpactoConselhos(dados);
@@ -1002,9 +1049,16 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     membrosIncluidos: relatorios.map((r) => r.cs.nome),
     indicadores: {
-      churn: somaInd('churn'), revenueChurn: somaInd('revenueChurn'), casesSucesso: somaInd('casesSucesso'),
-      matchmakings: somaInd('matchmakings'), rounds: somaInd('rounds'), upsell: somaInd('upsell'),
-      downsell: somaInd('downsell'), indicacoes: somaInd('indicacoes'), healthDaBase: mediaInd('healthDaBase'),
+      churn: somaInd('churn'), revenueChurn: somaInd('revenueChurn'),
+      // casesSucesso/rounds/upsell/downsell: meta continua somando a de cada CS normalmente
+      // (somaInd), só o `alcancado` troca pra contagem única de linha (ver BUG FIX 26/09/2026
+      // acima) — nunca soma o `calculado` já creditado a cada CS do registro compartilhado.
+      casesSucesso: { ...somaInd('casesSucesso'), alcancado: casesUnicosTime },
+      matchmakings: somaInd('matchmakings'),
+      rounds: { ...somaInd('rounds'), alcancado: roundsUnicosTime },
+      upsell: { ...somaInd('upsell'), alcancado: upsellDownsellUnicosTime.upsell },
+      downsell: { ...somaInd('downsell'), alcancado: upsellDownsellUnicosTime.downsell },
+      indicacoes: somaInd('indicacoes'), healthDaBase: mediaInd('healthDaBase'),
     },
     churnOrfao,
     casesPorCS,
