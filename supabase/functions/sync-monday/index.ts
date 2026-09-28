@@ -132,6 +132,14 @@
 // matchmaking. Depois do deploy, uma sincronização manual completa
 // (matchmakings) reprocessa o histórico inteiro (a query lê o board inteiro
 // a cada execução, sem filtro incremental).
+//
+// v19 (28/09/2026 — pedido do Vitor, Parte B da agenda visual): rounds_items só guardava
+// board_group_id/mes_grupo_titulo/status/cs_responsavel_raw, sem nenhuma data — impossível
+// colocar Rounds numa agenda de verdade (pré-requisito direto da Parte C). syncRounds agora
+// também traz nome (item.name, nunca sincronizado antes), início/término do evento, local, tema,
+// especialista, público alvo e nº de pessoas. Ids confirmados ao vivo via get_board_info no board
+// 18415251314 nesta sessão (ver ROUNDS_COLS). Depois do deploy, uma sincronização manual completa
+// (rounds) reprocessa o histórico inteiro.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -179,7 +187,16 @@ const CASES_COLS_DETALHE = {
   decisao: 'long_texthukofl8i', resultado: 'long_textqu1an24s', impacto: 'ratingqc3dcemw', ondeAconteceu: 'color_mm2na1nq',
 };
 const CHURN_COLS = { quemEhSeuCs: 'single_select7xxqn59', produto: 'single_selectnwxipe5', data: 'date_mm3p6naz' };
-const ROUNDS_COLS = { status: 'color_mm3sxe13', csResponsavel: 'multiple_person_mm3sb795' };
+// Parte B (pedido do Vitor, 28/09/2026): datas e detalhes do evento — ids confirmados ao vivo via
+// get_board_info no board 18415251314 ("Rounds") nesta sessão, não copiados de documentação
+// antiga. Pré-requisito direto da agenda visual (Parte C): sem inicio/termino não dá pra colocar
+// Rounds numa agenda, só na lista solta de antes.
+const ROUNDS_COLS = {
+  status: 'color_mm3sxe13', csResponsavel: 'multiple_person_mm3sb795',
+  inicio: 'date_mm3s1zwh', termino: 'date_mm5qsn5y', local: 'dropdown_mm3s9p85',
+  tema: 'text_mm4v5gka', especialista: 'text_mm51zb1y', publicoAlvo: 'text_mm51yq3q',
+  numeroPessoas: 'numeric_mm3shhdy',
+};
 const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
 const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
 // v18 (26/09/2026 — pedido do Vitor): matchmakings_items estava 100% sem motivo/categoria/
@@ -578,9 +595,23 @@ async function syncMetas() {
   return rows.length;
 }
 
+// Monday devolve o texto de uma coluna de data já no fuso da conta (Brasil) — "" quando vazio,
+// "YYYY-MM-DD" quando só data, "YYYY-MM-DD HH:MM" (sem segundos) quando tem hora — mesma
+// convenção de AGENDA_COLS.data em syncAgendaConselhos, só que aqui defensivo contra o caso
+// data-sem-hora (Início/Término do Evento de Rounds nem sempre tem hora marcada, diferente da
+// Data de conselho que sempre tem).
+function dataHoraRoundsOrNull(txt: string | null): string | null {
+  if (!txt) return null;
+  return txt.includes(' ') ? txt.replace(' ', 'T') + ':00' : txt;
+}
+
 async function syncRounds() {
   const groups = await fetchGroups(BOARDS.ROUNDS);
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id column_values(ids:["${ROUNDS_COLS.status}","${ROUNDS_COLS.csResponsavel}"]){id text}}}}}}`;
+  const colIds = [
+    ROUNDS_COLS.status, ROUNDS_COLS.csResponsavel, ROUNDS_COLS.inicio, ROUNDS_COLS.termino,
+    ROUNDS_COLS.local, ROUNDS_COLS.tema, ROUNDS_COLS.especialista, ROUNDS_COLS.publicoAlvo, ROUNDS_COLS.numeroPessoas,
+  ];
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.ROUNDS], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
@@ -589,8 +620,16 @@ async function syncRounds() {
         id: Number(item.id),
         board_group_id: g.id,
         mes_grupo_titulo: g.title,
+        nome: item.name,
         status: colText(item.column_values, ROUNDS_COLS.status),
         cs_responsavel_raw: colText(item.column_values, ROUNDS_COLS.csResponsavel),
+        inicio: dataHoraRoundsOrNull(colText(item.column_values, ROUNDS_COLS.inicio)),
+        termino: dataHoraRoundsOrNull(colText(item.column_values, ROUNDS_COLS.termino)),
+        local: colText(item.column_values, ROUNDS_COLS.local),
+        tema: colText(item.column_values, ROUNDS_COLS.tema),
+        especialista: colText(item.column_values, ROUNDS_COLS.especialista),
+        publico_alvo: colText(item.column_values, ROUNDS_COLS.publicoAlvo),
+        numero_pessoas: numOrNull(colText(item.column_values, ROUNDS_COLS.numeroPessoas)),
       });
     });
   });
