@@ -360,12 +360,36 @@ export async function setRevelarIndicadoresEquipe(sb: SupabaseClient, valor: boo
 // conselhos_status_mensal já passou de 1000 linhas, então um único range(0, 9999) só trazia as
 // primeiras ~1000, deixando o restante fora do Map em getDadosBrutos (daí membros aparecerem como
 // se não tivessem status algum). Pagina de verdade, blocos de 1000, até vir uma página incompleta.
+// BUG FIX (28/09/2026 — pedido do Vitor, home do gestor travada em "Carregando…" pra sempre em
+// produção, logo depois do deploy das Partes A-G): cada página aqui era um await SEM limite de
+// tempo nenhum. getDadosBrutos dispara um Promise.all com fetchAll em ~20 tabelas — se qualquer
+// UMA travar ou demorar demais (rede, índice faltando, RLS cara), o Promise.all inteiro nunca
+// resolve NEM rejeita, e a rota de API correspondente nunca responde nada, nem sucesso nem erro.
+// Do lado do navegador isso aparece exatamente como "Carregando…" eterno, sem mensagem de erro
+// alguma — o sintoma relatado. Agora cada página tem um timeout de 8s (Promise.race contra a
+// consulta real); se estourar, vira um erro claro em vez de travar pra sempre. Qualquer página que
+// passe de 3s gera um console.warn nos logs do servidor, apontando exatamente qual tabela está
+// lenta — sem esse sinal, não dá pra saber qual das ~20 tabelas é a culpada real.
 async function fetchAll(sb: SupabaseClient, table: string, colunas = '*') {
   const PAGE_SIZE = 1000;
+  const TIMEOUT_MS = 8000;
+  const WARN_MS = 3000;
   let allRows: any[] = [];
   let from = 0;
   while (true) {
-    const { data, error } = await sb.from(table).select(colunas).range(from, from + PAGE_SIZE - 1);
+    const inicio = Date.now();
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`Timeout de ${TIMEOUT_MS}ms buscando ${table} (from=${from}) — consulta não respondeu a tempo`)), TIMEOUT_MS);
+    });
+    let data: any[] | null, error: any;
+    try {
+      ({ data, error } = await Promise.race([sb.from(table).select(colunas).range(from, from + PAGE_SIZE - 1), timeout]) as any);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+    const duracao = Date.now() - inicio;
+    if (duracao > WARN_MS) console.warn(`[getDadosBrutos] consulta lenta: ${table} (from=${from}) levou ${duracao}ms`);
     if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
     if (!data || data.length === 0) break;
     allRows = allRows.concat(data);
