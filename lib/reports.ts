@@ -404,7 +404,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
-    statusHistorico, conselheirosFotos, bigDeals, conselheiros,
+    statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
   ] = await Promise.all([
     fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
     fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
@@ -415,11 +415,14 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // por /conselheiro-foto/[id], com cache no navegador — aqui só precisa saber quem TEM foto.
     fetchAll(sb, 'conselhos_status_historico'), fetchAll(sb, 'conselheiros_fotos', 'conselheiro_nome,monday_item_id'),
     fetchAll(sb, 'atas_conselho_bigdeal'), fetchAll(sb, 'conselheiros'),
+    // Parte D (28/09/2026): NPS do board "NPS Conselhos Estratégicos 2026" — ver syncNpsConselhos
+    // na Edge Function e generateNpsConselhos/calcularNPS abaixo.
+    fetchAll(sb, 'nps_conselhos_items'), fetchAll(sb, 'nps_conselho_aliases'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
-    statusHistorico, conselheirosFotos, bigDeals, conselheiros,
+    statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -2445,3 +2448,138 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
   return resultado;
 }
 export type ConselhoDetalhe = Awaited<ReturnType<typeof generateConselhoDetalhe>>;
+
+// ============ NPS Conselhos Estratégicos (Parte D, 28/09/2026) ============
+// Board "NPS Conselhos Estratégicos 2026" (sincronizado por syncNpsConselhos na Edge Function, em
+// nps_conselhos_items). Régua padrão MOAI: nota 9-10 é Promotor, 7-8 Neutro, 0-6 Detrator — NPS é
+// %promotores - %detratores, -100 a 100. Função pura, reaproveitada nos três casos (conselheiro,
+// conselho, CS) e em qualquer corte — nunca duplicada.
+export type NPSResultado = { promotores: number; neutros: number; detratores: number; total: number; score: number | null };
+export function calcularNPS(notas: (number | null | undefined)[]): NPSResultado {
+  let promotores = 0, neutros = 0, detratores = 0;
+  notas.forEach((n) => {
+    if (n === null || n === undefined || typeof n !== 'number' || isNaN(n)) return;
+    if (n >= 9) promotores++;
+    else if (n >= 7) neutros++;
+    else detratores++;
+  });
+  const total = promotores + neutros + detratores;
+  const score = total > 0 ? Math.round(((promotores - detratores) / total) * 100) : null;
+  return { promotores, neutros, detratores, total, score };
+}
+
+// NPS do CS (decisão fechada com o Vitor, 28/09/2026): nota_cs_mes ("no mês", só ~35% de
+// preenchimento) e nota_cs_hoje ("no Conselho de hoje", 100% preenchido) NUNCA são fundidas na
+// sincronização — os dois recortes ficam sempre disponíveis lado a lado (csMes/csHoje), mais um
+// terceiro "csCombinado" (nota_cs_mes quando existe, senão nota_cs_hoje do mesmo envio) pra quem
+// preferir ver os dois juntos. Quem exibe decide juntar ou separar, nunca esta função.
+function notaCsCombinada(r: { nota_cs_mes: number | null; nota_cs_hoje: number | null }): number | null {
+  return (r.nota_cs_mes !== null && r.nota_cs_mes !== undefined) ? r.nota_cs_mes : r.nota_cs_hoje;
+}
+
+type NpsCorteResumo = {
+  totalRespostas: number;
+  conselheiro: NPSResultado; conselho: NPSResultado;
+  csMes: NPSResultado; csHoje: NPSResultado; csCombinado: NPSResultado;
+};
+function resumirNpsDeLista(lista: any[]): NpsCorteResumo {
+  return {
+    totalRespostas: lista.length,
+    conselheiro: calcularNPS(lista.map((r) => r.nota_conselheiro)),
+    conselho: calcularNPS(lista.map((r) => r.nota_conselho)),
+    csMes: calcularNPS(lista.map((r) => r.nota_cs_mes)),
+    csHoje: calcularNPS(lista.map((r) => r.nota_cs_hoje)),
+    csCombinado: calcularNPS(lista.map(notaCsCombinada)),
+  };
+}
+
+// mes_grupo_titulo neste board vem "Setembro 2026" (com ano, diferente da convenção "Setembro"
+// bare usada nos outros boards) — comparação direta contra "${mes} ${ano}"; "Visão Geral" pega o
+// ano inteiro via sufixo " ${ano}".
+function periodoNpsMatch(mesGrupoTitulo: string, seletorMes: string, ano: number, geral: boolean): boolean {
+  if (geral) return mesGrupoTitulo.endsWith(' ' + ano);
+  return mesGrupoTitulo === `${seletorMes} ${ano}`;
+}
+
+export async function generateNpsConselhos(sb: SupabaseClient, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  const geral = seletorMes === 'Visão Geral';
+  const itens = (dados.npsConselhos as any[]).filter((r) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, geral));
+
+  const porProduto = new Map<string, any[]>();
+  itens.forEach((r) => {
+    const chave = r.produto || 'Não identificado';
+    if (!porProduto.has(chave)) porProduto.set(chave, []);
+    porProduto.get(chave)!.push(r);
+  });
+
+  // corte por CS precisa do apelido do CS de cada group_id — mesmo parseTituloConselho já usado
+  // no resto do arquivo (título "Produto | Nome (CS)"); só entram respostas com group_id
+  // CONFIRMADO (nps_conselhos_items.group_id já vem null quando o alias não foi confirmado, ver
+  // syncNpsConselhos), nunca uma sugestão não revisada.
+  const csPorGroupId = new Map<string, string>();
+  (dados.conselhosGrupos as any[]).forEach((g) => {
+    const parsed = parseTituloConselho(g.titulo);
+    if (parsed) csPorGroupId.set(g.group_id, parsed.cs);
+  });
+  const porCS = new Map<string, any[]>();
+  itens.forEach((r) => {
+    if (!r.group_id) return;
+    const cs = csPorGroupId.get(r.group_id);
+    if (!cs) return;
+    if (!porCS.has(cs)) porCS.set(cs, []);
+    porCS.get(cs)!.push(r);
+  });
+
+  return {
+    periodo: { mes: seletorMes, ano, geral },
+    totalRespostas: itens.length,
+    respostasSemConselhoConfirmado: itens.filter((r) => !r.group_id).length,
+    geral: resumirNpsDeLista(itens),
+    porProduto: [...porProduto.entries()]
+      .map(([produto, lista]) => ({ produto, ...resumirNpsDeLista(lista) }))
+      .sort((a, b) => b.totalRespostas - a.totalRespostas),
+    porCS: [...porCS.entries()]
+      .map(([cs, lista]) => ({ cs, ...resumirNpsDeLista(lista) }))
+      .sort((a, b) => b.totalRespostas - a.totalRespostas),
+  };
+}
+export type NpsConselhosReport = Awaited<ReturnType<typeof generateNpsConselhos>>;
+
+// ============ alias conselho-do-board-de-NPS -> group_id (Parte D) ============
+// Mesmo padrão de resolução de atas_membro_aliases/confirmar_membro_ata: sync insere sugestão
+// automática com confirmado=false, uma tela de gestor confirma (ou corrige) antes de o corte "por
+// CS" contar aquela linha.
+export type NpsAliasPendente = {
+  conselhoRaw: string; produto: string | null;
+  groupIdSugerido: string | null; nomeGrupoSugerido: string | null;
+  criadoEm: string;
+};
+export async function listarAliasesNpsPendentes(sb: SupabaseClient): Promise<NpsAliasPendente[]> {
+  const { data, error } = await sb.from('nps_conselho_aliases').select('conselho_raw,produto,group_id,criado_em').eq('confirmado', false).order('conselho_raw');
+  if (error) throw new Error('Erro ao buscar aliases de NPS pendentes: ' + error.message);
+  const pendentes = data || [];
+  const groupIds = [...new Set(pendentes.map((p: any) => p.group_id).filter(Boolean))];
+  const titulos = new Map<string, string>();
+  if (groupIds.length) {
+    const { data: grupos, error: errGrupos } = await sb.from('conselhos_grupos').select('group_id,titulo').in('group_id', groupIds);
+    if (errGrupos) throw new Error('Erro ao buscar conselhos_grupos: ' + errGrupos.message);
+    (grupos || []).forEach((g: any) => titulos.set(g.group_id, g.titulo));
+  }
+  return pendentes.map((p: any) => ({
+    conselhoRaw: p.conselho_raw, produto: p.produto,
+    groupIdSugerido: p.group_id, nomeGrupoSugerido: p.group_id ? (titulos.get(p.group_id) || null) : null,
+    criadoEm: p.criado_em,
+  }));
+}
+export async function listarConselhosAtivosParaAlias(sb: SupabaseClient): Promise<{ groupId: string; titulo: string }[]> {
+  const { data, error } = await sb.from('conselhos_grupos').select('group_id,titulo').eq('is_repo', false).order('titulo');
+  if (error) throw new Error('Erro ao buscar conselhos ativos: ' + error.message);
+  return (data || []).filter((g: any) => !g.titulo.startsWith('Reposições')).map((g: any) => ({ groupId: g.group_id, titulo: g.titulo }));
+}
+// confirmar_alias_nps_conselho (SECURITY DEFINER) checa is_gestor() de novo dentro do banco e
+// grava auditoria — mesmo padrão de setCSAtivo/confirmarMembroAta.
+export async function confirmarAliasNpsConselho(sb: SupabaseClient, conselhoRaw: string, groupId: string): Promise<void> {
+  const { error } = await sb.rpc('confirmar_alias_nps_conselho', { p_conselho_raw: conselhoRaw, p_group_id: groupId });
+  if (error) throw new Error('Erro ao confirmar alias de NPS: ' + error.message);
+}

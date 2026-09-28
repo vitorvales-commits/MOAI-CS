@@ -149,6 +149,17 @@
 // vez com a mesma técnica. dataHoraBRParaISO (era dataHoraRoundsOrNull) agora acrescenta o offset
 // "-03:00" explicitamente pros dois casos (rounds e agenda) — ver a função pra detalhe. Os dados
 // já sincronizados se autocorrigem sozinhos no próximo ciclo do cron, sem backfill manual.
+//
+// v21 (28/09/2026 — pedido do Vitor, Parte D — NPS): syncNpsConselhos espelha o board "NPS
+// Conselhos Estratégicos 2026" (18393367198, ~1921 itens) em nps_conselhos_items — nunca lê
+// short_textwixr2i8s (CPF), nem pra descartar depois. Cada resposta traz "Qual é o seu Conselho?"
+// num formato próprio ("Nome [Produto]"), sem relação direta com group_id — nps_conselho_aliases
+// guarda esse casamento de forma revisável: sync insere sugestão automática (normalização de
+// acento/maiúscula + contém, ver sugerirGroupIdParaNps) só pra conselho_raw NOVOS, sempre
+// confirmado=false, e NUNCA sobrescreve uma linha já existente (insertIgnorandoDuplicatas, não
+// upsert — uma confirmação do Vitor nunca é desfeita pelo próximo ciclo do cron).
+// nps_conselhos_items.group_id só reflete alias CONFIRMADO; sugestão sozinha nunca vaza pra
+// cortes "por CS". confirmar_alias_nps_conselho (RPC, gestor-only) é quem confirma.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -174,6 +185,7 @@ const BOARDS = {
   AGENDA_CONSELHOS: '18395814635',
   HISTORICO_CONSELHOS: '18430666375',
   CONSELHEIROS: '18393359980',
+  NPS_CONSELHOS: '18393367198',
 };
 
 const CONSELHEIROS_FOTO_COL = 'file_mm519xd1';
@@ -252,6 +264,24 @@ const FEEDBACK_COLS = {
     { id: 'multi_selecttylvbs4z', categoria: 'Colabora ativamente com os membros da MOAI' },
     { id: 'multi_select2i0l1l28', categoria: 'Abertura a feedbacks' },
   ],
+};
+// Parte D (pedido do Vitor, 28/09/2026): ids confirmados ao vivo via get_board_info no board
+// 18393367198 ("NPS Conselhos Estratégicos 2026") nesta sessão. short_textwixr2i8s (CPF) fica de
+// fora de propósito — nunca aparece aqui, nem pra ser lido e descartado depois; a query GraphQL
+// simplesmente nunca pede essa coluna.
+const NPS_COLS = {
+  conselho: 'single_selectzvys0jr', destaqueTexto: 'short_textc5ybpqgt',
+  notaConselheiro: 'numberi5bzqbtu', notaConselho: 'number49n3iz6t', notaCsHoje: 'numbereb5t7y7m',
+  notaCsMes: 'number8bdxb28x', notaCsTrimestre: 'numberml97jxl0',
+  qualidadeTrocas: 'rating72gvedb0', evolucaoDesafios: 'rating1ebk8p2t', continuidadeDesafios: 'single_selectrts50fq',
+  avaliaCsTexto: 'long_text2g12iwyz',
+  notaEstruturaLocal: 'numberc7zdcs8l', notaComidaLocal: 'number368s965m',
+  aspectosLocal: 'multi_selectguga6402', localNome: 'single_selectpa0ihnp',
+  // BUG conhecido do board (achado ao vivo, 28/09/2026): a pergunta de sugestão migrou de coluna
+  // em algum momento — sugestaoTextoAtual só tem resposta a partir de ~maio/2026,
+  // sugestaoTextoLegado só antes disso (nunca as duas ao mesmo tempo na mesma linha, verificado
+  // contra dados reais). sugestao_texto grava o COALESCE das duas, nunca as duas juntas.
+  sugestaoTextoAtual: 'long_textndqvhypz', sugestaoTextoLegado: 'long_textbvscjehc',
 };
 // mesma tabela do Code.gs — grupo ativo do board de Conselhos -> grupo de reposição correspondente.
 // Prioridade sempre dela quando tiver entrada válida; resolverRepoGroupIdPorNome só entra em ação
@@ -358,6 +388,25 @@ async function fetchAllFromSupabase(table: string, select: string): Promise<any[
     offset += PAGE_SIZE;
   }
   return allRows;
+}
+
+// insert com "se já existe, ignora" (Prefer: resolution=ignore-duplicates) — pra popular
+// nps_conselho_aliases só com chaves NOVAS (Parte D, 28/09/2026): nunca pode sobrescrever uma
+// linha já confirmada por um gestor, então aqui nunca é merge-duplicates como upsert(), é
+// insert-e-ignora-se-já-tiver.
+async function insertIgnorandoDuplicatas(table: string, rows: any[], onConflict: string) {
+  if (rows.length === 0) return;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=ignore-duplicates,return=minimal',
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(`Supabase insert (ignore duplicates) falhou (${table}): ${res.status} ${await res.text()}`);
 }
 
 // insert puro (sem on_conflict) — pra log append-only (conselhos_status_historico), onde cada
@@ -843,6 +892,121 @@ async function syncConselhos() {
   return membros.length;
 }
 
+// ============ NPS Conselhos Estratégicos (Parte D, 28/09/2026) ============
+
+// "Nome [Produto]" (ex. "Julio Faccioli [Fast Track]") — diferente do padrão "Produto | Nome
+// (CS)" do board de Gestão, então precisa do próprio parser. Setorial vira Executivo aqui —
+// decisão fechada com o Vitor (28/09/2026): só dois casos reais (Tarso, Pedro Prado), tratados
+// como alias direto de Executivo, nunca como produto novo.
+function extrairNomeProdutoNps(labelNps: string): { nome: string; produto: string | null } {
+  const m = String(labelNps || '').match(/^(.*?)\s*\[([^\]]+)\]\s*$/);
+  if (!m) return { nome: labelNps.trim(), produto: null };
+  let produto = m[2].trim();
+  if (produto === 'Setorial') produto = 'Executivo';
+  return { nome: m[1].trim(), produto };
+}
+
+// Sugestão automática de group_id pro alias de um nome do board de NPS — normalização de acento/
+// maiúscula + "contém" nos dois sentidos (spec do Vitor), igual pediu: cobre tanto "Thiago"
+// (board de NPS) casando com "Thiago Correa" (contato do grupo) quanto o inverso. Só devolve
+// sugestão quando exatamente UM grupo ativo bate — ambíguo ou sem candidato nenhum fica sem
+// sugestão (nunca escolhe errado sozinho; validado ao vivo contra os 35 conselhos reais desta
+// sessão: 32 batem certo, 0 ambíguos, 3 sem match — todos casos genuínos pra revisão humana).
+function sugerirGroupIdParaNps(nomeNps: string, gruposAtivos: { group_id: string; titulo: string }[]): string | null {
+  const alvo = normalizarTexto(nomeNps);
+  if (!alvo) return null;
+  const candidatos: string[] = [];
+  gruposAtivos.forEach((g) => {
+    const parsed = parseGrupoAtivo(g.titulo);
+    if (!parsed) return;
+    const c = normalizarTexto(parsed.nome);
+    if (c.includes(alvo) || alvo.includes(c)) candidatos.push(g.group_id);
+  });
+  return candidatos.length === 1 ? candidatos[0] : null;
+}
+
+async function syncNpsConselhos() {
+  const groups = await fetchGroups(BOARDS.NPS_CONSELHOS);
+  const colIds = Object.values(NPS_COLS);
+  const fields = `id name column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}`;
+  const rows: any[] = [];
+  const conselhoRawInfo = new Map<string, { nome: string; produto: string | null }>();
+
+  // Paginação por grupo de verdade (cursor, não um limit fixo torcendo pra caber): board tem 1921
+  // itens em 12 grupos (~160/grupo em média, mas meses recentes têm mais) — os outros boards deste
+  // arquivo usam um items_page(limit:N) sem paginar mais fundo porque cabem folgado nisso; este
+  // não tem essa garantia, então pagina de verdade em vez de arriscar cortar um mês cheio calado.
+  for (const g of groups) {
+    const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){items_page(limit:250){cursor items{${fields}}}}}}`;
+    const data = await mondayFetch(query, { boardId: [BOARDS.NPS_CONSELHOS], groupIds: [g.id] });
+    const page = data.boards[0].groups[0]?.items_page;
+    let items = page ? page.items : [];
+    let cursor = page ? page.cursor : null;
+    while (cursor) {
+      const q2 = `query($cursor:String!){next_items_page(limit:250,cursor:$cursor){cursor items{${fields}}}}`;
+      const d2 = await mondayFetch(q2, { cursor });
+      items = items.concat(d2.next_items_page.items);
+      cursor = d2.next_items_page.cursor;
+    }
+    items.forEach((item: any) => {
+      const cv = item.column_values;
+      const conselhoRaw = colText(cv, NPS_COLS.conselho);
+      if (!conselhoRaw) return;
+      const { nome, produto } = extrairNomeProdutoNps(conselhoRaw);
+      if (!conselhoRawInfo.has(conselhoRaw)) conselhoRawInfo.set(conselhoRaw, { nome, produto });
+      const aspectosTxt = colText(cv, NPS_COLS.aspectosLocal) || '';
+      rows.push({
+        id: Number(item.id),
+        mes_grupo_titulo: g.title,
+        respondente_nome: item.name,
+        conselho_raw: conselhoRaw,
+        produto,
+        nota_conselheiro: numOrNull(colText(cv, NPS_COLS.notaConselheiro)),
+        nota_conselho: numOrNull(colText(cv, NPS_COLS.notaConselho)),
+        nota_cs_hoje: numOrNull(colText(cv, NPS_COLS.notaCsHoje)),
+        nota_cs_mes: numOrNull(colText(cv, NPS_COLS.notaCsMes)),
+        nota_cs_trimestre: numOrNull(colText(cv, NPS_COLS.notaCsTrimestre)),
+        nota_qualidade_trocas: numOrNull(colText(cv, NPS_COLS.qualidadeTrocas)),
+        nota_evolucao_desafios: numOrNull(colText(cv, NPS_COLS.evolucaoDesafios)),
+        continuidade_desafios: colText(cv, NPS_COLS.continuidadeDesafios),
+        destaque_texto_bruto: colText(cv, NPS_COLS.destaqueTexto),
+        avalia_cs_texto: colText(cv, NPS_COLS.avaliaCsTexto),
+        nota_estrutura_local: numOrNull(colText(cv, NPS_COLS.notaEstruturaLocal)),
+        nota_comida_local: numOrNull(colText(cv, NPS_COLS.notaComidaLocal)),
+        aspectos_local: aspectosTxt ? aspectosTxt.split(',').map((s: string) => s.trim()) : [],
+        local_nome: colText(cv, NPS_COLS.localNome),
+        sugestao_texto: colText(cv, NPS_COLS.sugestaoTextoAtual) || colText(cv, NPS_COLS.sugestaoTextoLegado) || null,
+      });
+    });
+  }
+
+  // Alias: só insere conselho_raw NOVOS, com sugestão automática e confirmado=false — nunca
+  // sobrescreve uma linha já existente (ver insertIgnorandoDuplicatas), então uma confirmação
+  // manual do Vitor nunca é desfeita pela sincronização seguinte.
+  const gruposTodosDb = await fetchAllFromSupabase('conselhos_grupos', 'group_id,titulo,is_repo');
+  const gruposAtivos = gruposTodosDb.filter((g: any) => !g.is_repo && !ehGrupoDeReposicao(g.titulo));
+  const aliasRowsNovos = [...conselhoRawInfo.entries()].map(([conselhoRaw, info]) => ({
+    conselho_raw: conselhoRaw,
+    produto: info.produto,
+    group_id: sugerirGroupIdParaNps(info.nome, gruposAtivos),
+    confirmado: false,
+  }));
+  await insertIgnorandoDuplicatas('nps_conselho_aliases', aliasRowsNovos, 'conselho_raw');
+
+  // group_id em nps_conselhos_items só reflete alias CONFIRMADO — nunca a sugestão sozinha (ver
+  // comentário na migração). Relê a tabela de alias inteira (já com os novos de cima) pra aplicar
+  // em cada linha antes do upsert final — assim uma confirmação recente do Vitor propaga pro
+  // histórico inteiro daquele conselho_raw já no próximo ciclo do cron.
+  const aliasesAtuais = await fetchAllFromSupabase('nps_conselho_aliases', 'conselho_raw,group_id,confirmado');
+  const groupIdConfirmadoPorRaw = new Map<string, string>();
+  aliasesAtuais.forEach((a: any) => { if (a.confirmado && a.group_id) groupIdConfirmadoPorRaw.set(a.conselho_raw, a.group_id); });
+  rows.forEach((r) => { r.group_id = groupIdConfirmadoPorRaw.get(r.conselho_raw) || null; });
+
+  await upsert('nps_conselhos_items', rows);
+  await pruneOrfaos('nps_conselhos_items', new Set(rows.map((r) => r.id)));
+  return rows.length;
+}
+
 // converte um ArrayBuffer pra base64 em blocos (evita "Maximum call stack size exceeded" do
 // spread operator em String.fromCharCode(...bytes) pra imagens de algumas centenas de KB).
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -1046,6 +1210,7 @@ const SYNC_TASKS: Record<string, () => Promise<number>> = {
   status_usuarios: syncStatusUsuarios,
   conselheiros_fotos: syncConselheirosFotos,
   conselheiros: syncConselheiros,
+  nps_conselhos: syncNpsConselhos,
 };
 
 Deno.serve(async (req) => {

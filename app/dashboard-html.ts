@@ -434,6 +434,19 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .agenda-mes-mais { font-size:8.5px; font-weight:700; color:#9F9F9F; padding:1px 5px; }
 @media (max-width:700px){ .agenda-mes-dia{ min-height:56px; } .agenda-mes-chip{ font-size:8px; } }
 
+/* ===== resolver de aliases de NPS (Parte D, 28/09/2026) ===== */
+.resolver-card { background:#fff; border:1px dashed #D8D5D5; border-radius:14px; padding:14px 16px; margin-bottom:10px; }
+.resolver-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.resolver-nome-raw { font-weight:700; font-size:13.5px; color:#1A1A1A; }
+.resolver-sub { font-size:11px; color:#9F9F9F; margin-top:2px; }
+.resolver-linha { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.resolver-select { font-family:'Inter',sans-serif; font-size:12.5px; padding:7px 10px; border-radius:9px; border:0.75pt solid #D8D5D5; background:#fff; color:#1A1A1A; min-width:220px; }
+.resolver-btn { font-family:'Inter',sans-serif; font-size:12px; font-weight:700; padding:7px 14px; border-radius:9px; border:none; background:#1A1A1A; color:#fff; cursor:pointer; }
+.resolver-btn:disabled { opacity:0.5; cursor:default; }
+.resolver-status { font-size:11.5px; margin-top:6px; }
+.resolver-status.ok { color:#3D8B5F; }
+.resolver-status.erro { color:#C0433D; }
+
 .empty-state { text-align:center; padding:60px 20px; color:#9F9F9F; font-size:12.5px; }
 </style>
 </head>
@@ -485,6 +498,11 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div id="csTop"></div>
     <div class="section-title" style="margin-top:36px;">Ranking do time<div class="line"></div></div>
     <div id="equipeRanking"></div>
+    <div id="npsAliasesPendentesBlock" style="display:none;margin-top:36px;">
+      <div class="section-title">NPS — conselhos pendentes de confirmação<div class="line"></div></div>
+      <p class="fb-intro">O board de NPS não amarra a resposta direto num conselho cadastrado — o texto digitado por quem respondeu ("Qual é o seu Conselho?") precisa ser confirmado contra o roster abaixo antes de entrar nos cortes por CS.</p>
+      <div id="npsAliasesPendentesList"></div>
+    </div>
   </div>
 </div>
 
@@ -686,6 +704,7 @@ function iniciarHomeGestor(){
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
   carregarAgendaVisual();
+  carregarNpsAliasesPendentes();
 }
 // Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
 // números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
@@ -1859,6 +1878,67 @@ function agendaAbrirModal_(i){
   document.getElementById('conselhoModalBody').innerHTML = html;
   document.getElementById('conselhoModalOverlay').classList.add('ativo');
 }
+
+// ============ NPS — resolver de aliases (Parte D, 28/09/2026) ============
+// Mesmo espírito do resolver de Big Deal sem membro (app/conselho-html.ts): mostra quem não bateu
+// automático contra o roster de conselhos ativos, gestor escolhe/confirma, some da lista.
+var npsRosterAtual_ = [];
+var npsPendentesAtual_ = [];
+function carregarNpsAliasesPendentes(){
+  fetchJSON_('/api/gestor/nps/aliases-pendentes').then(function(d){
+    npsRosterAtual_ = d.roster || [];
+    npsPendentesAtual_ = d.pendentes || [];
+    renderNpsAliasesPendentes_();
+  }).catch(function(){
+    // silencioso — não é uma seção crítica da home, não deve travar o resto da tela por causa dela
+  });
+}
+function renderNpsAliasesPendentes_(){
+  var bloco = document.getElementById('npsAliasesPendentesBlock');
+  var lista = npsPendentesAtual_;
+  bloco.style.display = lista.length ? 'block' : 'none';
+  if (!lista.length) return;
+  var opcoes = '<option value="">Selecionar do roster…</option>' +
+    npsRosterAtual_.map(function(g){ return '<option value="'+escAgenda_(g.groupId)+'">'+escAgenda_(g.titulo)+'</option>'; }).join('');
+  document.getElementById('npsAliasesPendentesList').innerHTML = lista.map(function(p, idx){
+    var sugestao = p.groupIdSugerido ? '<div class="resolver-sub">Sugestão automática: '+escAgenda_(p.nomeGrupoSugerido || p.groupIdSugerido)+'</div>' : '<div class="resolver-sub">Sem sugestão automática — escolha manualmente.</div>';
+    var selecaoInicial = p.groupIdSugerido || '';
+    return '<div class="resolver-card"><div class="resolver-head">' +
+        '<div><span class="resolver-nome-raw">'+escAgenda_(p.conselhoRaw)+'</span>'+sugestao+'</div>' +
+      '</div>' +
+      '<div class="resolver-linha">' +
+        '<select class="resolver-select" id="npsAliasSelect'+idx+'">'+opcoes+'</select>' +
+        '<button class="resolver-btn" id="npsAliasBtn'+idx+'" type="button" onclick="confirmarNpsAlias('+idx+')">Confirmar</button>' +
+      '</div>' +
+      '<div class="resolver-status" id="npsAliasStatus'+idx+'"></div></div>';
+  }).join('');
+  lista.forEach(function(p, idx){
+    var sel = document.getElementById('npsAliasSelect'+idx);
+    if (sel && p.groupIdSugerido) sel.value = p.groupIdSugerido;
+  });
+}
+function confirmarNpsAlias(idx){
+  var p = npsPendentesAtual_[idx];
+  var sel = document.getElementById('npsAliasSelect'+idx);
+  var btn = document.getElementById('npsAliasBtn'+idx);
+  var status = document.getElementById('npsAliasStatus'+idx);
+  var groupId = sel ? sel.value : '';
+  if (!groupId) { status.textContent = 'Escolha um conselho do roster.'; status.className = 'resolver-status erro'; return; }
+  btn.disabled = true; status.textContent = 'Confirmando…'; status.className = 'resolver-status';
+  fetchJSON_('/api/gestor/nps/aliases-pendentes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conselhoRaw: p.conselhoRaw, groupId: groupId }),
+  }).then(function(){
+    npsPendentesAtual_ = npsPendentesAtual_.filter(function(x){ return x.conselhoRaw !== p.conselhoRaw; });
+    renderNpsAliasesPendentes_();
+  }).catch(function(err){
+    btn.disabled = false;
+    status.textContent = 'Erro: ' + err.message;
+    status.className = 'resolver-status erro';
+  });
+}
+
 function renderChurnOrfao(churnOrfao){
   if (!churnOrfao || !churnOrfao.qtd) return '';
   var detalheTxt = (churnOrfao.detalhe || []).map(function(d){ return d.nome+' ('+d.qtd+')'; }).join(', ');
