@@ -17,9 +17,43 @@ export class AuthError extends Error {
   }
 }
 
+// BUG FIX (28/09/2026 — terceira rodada do travamento da home do gestor, depois de timeout+retry
+// em fetchAll e concorrência limitada em getDadosBrutos, nenhum dos dois resolveu de vez):
+// requireMoaiUser roda ANTES de qualquer lógica de página em TODA rota de API — inclusive antes
+// de getDadosBrutos — e fazia três chamadas ao Supabase (auth.getUser(), rpc is_gestor(), rpc
+// meu_cs()) sem nenhum timeout, nunca tocadas nas duas correções anteriores. is_gestor()/meu_cs()
+// são RPCs que passam pelo MESMO PostgREST que os logs do projeto mostram derrubando threads
+// ("Warp server error: Thread killed by timeout manager") durante os ciclos do sync-monday — se
+// qualquer uma travar aqui, a requisição trava na entrada, antes mesmo de chegar no código já
+// protegido em lib/reports.ts. Mesma proteção agora nesta camada: timeout de 5s + até 3 tentativas
+// por chamada (comTimeoutERetry). is_gestor()/meu_cs() não dependem uma da outra — rodam em
+// paralelo depois de confirmado o usuário, em vez de sequenciais, reduzindo a latência total além
+// de ficarem protegidas.
+async function comTimeoutERetry<T>(chamar: () => PromiseLike<{ data: T; error: any }>, label: string): Promise<{ data: T; error: any }> {
+  const TIMEOUT_MS = 5000;
+  const TENTATIVAS = 3;
+  const ESPERAS_MS = [400, 1200];
+  let resultado: { data: T; error: any } = { data: null as any, error: new Error(`${label}: nenhuma tentativa executou`) };
+  for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<{ data: T; error: any }>((resolve) => {
+      timeoutId = setTimeout(() => resolve({ data: null as any, error: new Error(`Timeout de ${TIMEOUT_MS}ms em ${label} — consulta não respondeu a tempo`) }), TIMEOUT_MS);
+    });
+    try {
+      resultado = await Promise.race([chamar(), timeout]);
+    } finally {
+      clearTimeout(timeoutId!);
+    }
+    if (!resultado.error) return resultado;
+    if (tentativa < TENTATIVAS) await new Promise((r) => setTimeout(r, ESPERAS_MS[tentativa - 1]));
+  }
+  return resultado;
+}
+
 export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; email: string; isGestor: boolean; csNome: string | null }> {
   const supabase = getSupabaseServer();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: userData, error } = await comTimeoutERetry(() => supabase.auth.getUser(), 'auth.getUser()');
+  const user = userData?.user;
   if (error || !user || !user.email) {
     throw new AuthError(401, 'Não autenticado.');
   }
@@ -28,12 +62,14 @@ export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; ema
   }
   // is_gestor() é a fonte de verdade (tabela gestores no banco) — nunca decida isGestor só pelo
   // formato do e-mail aqui no código; camada adicional sobre a checagem de domínio acima, não
-  // substitui ela.
-  const { data: isGestor, error: gestorError } = await supabase.rpc('is_gestor');
+  // substitui ela. meu_cs() (Parte A, 25/09/2026): qual perfil de cs_config está vinculado a este
+  // e-mail — null quando o gestor ainda não fez esse vínculo em Controle de Perfis (ver
+  // cs_usuarios). Nenhuma depende da outra — rodam em paralelo.
+  const [{ data: isGestor, error: gestorError }, { data: csNome, error: csNomeError }] = await Promise.all([
+    comTimeoutERetry(() => supabase.rpc('is_gestor'), 'rpc is_gestor()'),
+    comTimeoutERetry(() => supabase.rpc('meu_cs'), 'rpc meu_cs()'),
+  ]);
   if (gestorError) throw new Error('Erro ao checar papel de gestor: ' + gestorError.message);
-  // meu_cs() (Parte A, 25/09/2026): qual perfil de cs_config está vinculado a este e-mail —
-  // null quando o gestor ainda não fez esse vínculo em Controle de Perfis (ver cs_usuarios).
-  const { data: csNome, error: csNomeError } = await supabase.rpc('meu_cs');
   if (csNomeError) throw new Error('Erro ao checar vínculo de CS: ' + csNomeError.message);
   return { supabase, email: user.email, isGestor: !!isGestor, csNome: csNome || null };
 }
