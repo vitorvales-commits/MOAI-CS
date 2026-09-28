@@ -439,6 +439,23 @@ export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
 
 // ============ agenda real dos conselhos ============
 
+// Extraído de generateCSReport (era código duplicado inline) — usado também por
+// generateAgendaVisual. Puro: só reorganiza conselhos_membros/conselhos_status_mensal em mapas,
+// sem nenhuma lógica de negócio nova.
+function buildMembrosEStatusMaps(dados: { conselhosMembros: any[]; conselhosStatusMensal: any[] }) {
+  const membrosPorGrupo = new Map<string, any[]>();
+  dados.conselhosMembros.forEach((m: any) => {
+    if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
+    membrosPorGrupo.get(m.group_id)!.push(m);
+  });
+  const statusPorMembro = new Map<number, Map<string, string>>();
+  dados.conselhosStatusMensal.forEach((s: any) => {
+    if (!statusPorMembro.has(s.membro_id)) statusPorMembro.set(s.membro_id, new Map());
+    statusPorMembro.get(s.membro_id)!.set(s.mes, s.status);
+  });
+  return { membrosPorGrupo, statusPorMembro };
+}
+
 function buildAgendaMap(agendaRows: any[]) {
   const map = new Map<string, { dataIso: string; status: string | null }[]>();
   agendaRows.forEach((r) => {
@@ -467,6 +484,133 @@ function proximaDataConselho(tituloGrupo: string, agendaMap: Map<string, { dataI
     .sort((a, b) => new Date(b.dataIso).getTime() - new Date(a.dataIso).getTime());
   if (passados.length > 0) return { dataIso: passados[0].dataIso, status: passados[0].status, futuro: false };
   return null;
+}
+
+// ============ agenda visual (Parte C, pedido do Vitor 28/09/2026) ============
+// Diferente de proximaDataConselho (só a PRÓXIMA ou ÚLTIMA data), a agenda visual precisa de
+// TODAS as ocorrências de agenda_conselhos_items num intervalo — daqui o mapa inverso (chave de
+// agenda -> grupo), montado uma vez por chamada, reaproveitando o mesmo casamento por nome de
+// proximaDataConselho (mesma prioridade: contato direto, senão o alias — ver APELIDOS_AGENDA).
+function buildGrupoPorChaveAgenda(gruposAtivos: any[]) {
+  const map = new Map<string, { groupId: string; nomeGrupo: string; cs: string; nivel: string; congelado: boolean; repoGroupId: string | null }>();
+  gruposAtivos.forEach((g) => {
+    const parsed = parseTituloConselho(g.titulo);
+    if (!parsed) return;
+    const info = {
+      groupId: g.group_id, nomeGrupo: g.titulo.replace(/\[?congelado\]?/i, '').trim(),
+      cs: parsed.cs, nivel: parsed.nivel, congelado: !!g.congelado, repoGroupId: g.repo_group_id || null,
+    };
+    const chaveContato = normalizeNome(parsed.contato);
+    map.set(chaveContato, info);
+    const chaveAlias = APELIDOS_AGENDA_NORM[chaveContato];
+    if (chaveAlias) map.set(chaveAlias, info);
+  });
+  return map;
+}
+
+// Converte um timestamptz (instante absoluto, ex. "2026-09-28T17:00:00+00:00") pro calendário de
+// Brasília SEM depender do fuso do processo Node (Vercel roda em UTC) — subtrai 3h e lê os
+// getters UTC. Usada só pra achar em qual "mês" (coluna de status mensal) um encontro cai; nunca
+// pra formatar texto pro usuário (isso o client-side já faz certo via toLocaleString, porque quem
+// abre o dashboard está no Brasil).
+function calendarioBRT(iso: string): { ano: number; mesIdx: number; dia: number } {
+  const brt = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+  return { ano: brt.getUTCFullYear(), mesIdx: brt.getUTCMonth(), dia: brt.getUTCDate() };
+}
+
+// "Confirmado" só faz sentido pro mês exato do encontro sendo olhado (diferente de
+// confirmadosFuturos em parseConselhoItems, que varre os 12 meses atrás do próximo pendente) —
+// função própria, pequena, em vez de reaproveitar aquela e ter que desfazer o dedup entre meses.
+function confirmadosDoMes(itemsPrincipais: any[], itemsRepo: any[], mes: string, statusPorMembro: Map<number, Map<string, string>>) {
+  const confirmados: { nome: string; mes: string }[] = [];
+  itemsPrincipais.forEach((m) => { if (statusPorMembro.get(m.id)?.get(mes) === STATUS_CONFIRMADO) confirmados.push({ nome: m.nome, mes }); });
+  itemsRepo.forEach((r) => { if (statusPorMembro.get(r.id)?.get(mes) === STATUS_CONFIRMADO) confirmados.push({ nome: r.nome, mes }); });
+  return confirmados;
+}
+// Presença por membro num mês específico — reaproveita o mesmo statusPorMembro já usado em
+// parseConselhoItems/calcularPresencaMes, só que devolve a lista nome a nome (nenhuma das duas
+// funções existentes fazia isso) pra alimentar a visão de semana passada da agenda visual.
+function presencaPorMembroDoMes(itemsPrincipais: any[], itemsRepo: any[], mes: string, statusPorMembro: Map<number, Map<string, string>>) {
+  const linhas: { nome: string; status: string | null; reposicao: boolean }[] = [];
+  itemsPrincipais.forEach((m) => {
+    const s = statusPorMembro.get(m.id)?.get(mes) || null;
+    if (s && s !== STATUS_NAO_ERA) linhas.push({ nome: m.nome, status: s, reposicao: false });
+  });
+  itemsRepo.forEach((r) => {
+    const s = statusPorMembro.get(r.id)?.get(mes) || null;
+    if (s === STATUS_PRESENTE) linhas.push({ nome: r.nome, status: s, reposicao: true });
+  });
+  return linhas;
+}
+
+export type AgendaConselhoItem = {
+  groupId: string; nomeGrupo: string; cs: string; nivel: string; congelado: boolean;
+  dataIso: string; statusAgenda: string | null; passado: boolean;
+  presencaPorMembro: { nome: string; status: string | null; reposicao: boolean }[] | null;
+  confirmados: { nome: string; mes: string }[] | null;
+};
+export type AgendaRoundItem = {
+  id: number; nome: string; inicio: string | null; termino: string | null;
+  status: string | null; local: string | null; cs: string | null;
+};
+
+// Bloco novo da home do gestor (Parte C, 28/09/2026): agenda visual semana/mês, conselhos +
+// Rounds juntos na mesma visão (Rounds usando início/término da Parte B). dataInicioISO/
+// dataFimISO chegam como "YYYY-MM-DD" (limite do dia em Brasília, não UTC — ver parseLimiteBRT)
+// pra não cortar de leve um encontro perto da virada do dia por causa do fuso.
+function parseLimiteBRT(dataYYYYMMDD: string): Date {
+  return new Date(dataYYYYMMDD + 'T00:00:00-03:00');
+}
+export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: string, dataFimISO: string, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  const limiteInicio = parseLimiteBRT(dataInicioISO);
+  const limiteFim = parseLimiteBRT(dataFimISO);
+  const agora = new Date();
+
+  const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && !g.titulo.startsWith('Reposições'));
+  const grupoPorChave = buildGrupoPorChaveAgenda(gruposAtivos);
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+
+  const conselhos: AgendaConselhoItem[] = [];
+  dados.agenda.forEach((row: any) => {
+    if (!row.data_iso) return;
+    const d = new Date(row.data_iso);
+    if (d < limiteInicio || d >= limiteFim) return;
+    const grupo = grupoPorChave.get(normalizeNome(row.conselheiro_nome));
+    if (!grupo) return; // sem grupo ativo correspondente (nome não bate/conselho arquivado) — fica de fora, não quebra a agenda
+    const itemsPrincipais = membrosPorGrupo.get(grupo.groupId) || [];
+    const itemsRepo = grupo.repoGroupId ? (membrosPorGrupo.get(grupo.repoGroupId) || []) : [];
+    const { mesIdx } = calendarioBRT(row.data_iso);
+    const mes = MESES_ORDEM[mesIdx];
+    const passado = d < agora;
+    conselhos.push({
+      groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
+      dataIso: row.data_iso, statusAgenda: row.status || null, passado,
+      presencaPorMembro: passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null,
+      confirmados: passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro),
+    });
+  });
+  conselhos.sort((a, b) => new Date(a.dataIso).getTime() - new Date(b.dataIso).getTime());
+
+  // Rounds: cs_responsavel_raw é multi-pessoa (multiple_person_mm3sb795) — texto bruto (ex. "Vitor,
+  // Mateus"), então só pega o primeiro nome pra exibir na pílula, sem tentar casar contra
+  // cs_config (nenhum outro lugar do app faz esse cruzamento pra Rounds, e a pílula é só contexto
+  // visual, não um indicador calculado).
+  const rounds: AgendaRoundItem[] = (dados.rounds || [])
+    .filter((r: any) => {
+      const iso = r.inicio || r.termino;
+      if (!iso) return false;
+      const d = new Date(iso);
+      return d >= limiteInicio && d < limiteFim;
+    })
+    .map((r: any) => ({
+      id: r.id, nome: r.nome || null, inicio: r.inicio || null, termino: r.termino || null,
+      status: r.status || null, local: r.local || null,
+      cs: r.cs_responsavel_raw ? String(r.cs_responsavel_raw).split(',')[0].trim() : null,
+    }))
+    .sort((a: AgendaRoundItem, b: AgendaRoundItem) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime());
+
+  return { conselhos, rounds };
 }
 
 // ============ histórico de GTD ============
@@ -912,16 +1056,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const feedback = parseFeedback(dados.feedback, cfg.nome, seletorMes, ano, geral);
 
   // conselhos do CS: grupos ativos (não-repo) cujo título contém "(ApelidoConselho)"
-  const membrosPorGrupo = new Map<string, any[]>();
-  dados.conselhosMembros.forEach((m: any) => {
-    if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
-    membrosPorGrupo.get(m.group_id)!.push(m);
-  });
-  const statusPorMembro = new Map<number, Map<string, string>>();
-  dados.conselhosStatusMensal.forEach((s: any) => {
-    if (!statusPorMembro.has(s.membro_id)) statusPorMembro.set(s.membro_id, new Map());
-    statusPorMembro.get(s.membro_id)!.set(s.mes, s.status);
-  });
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
   const gruposDoCS = cfg.apelidoConselho
     ? dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, cfg.apelidoConselho) && !g.titulo.startsWith('Reposições'))
     : [];

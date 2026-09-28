@@ -394,6 +394,46 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .umaum-card-editar { font-size:11px; font-weight:700; color:#5D5D5D; background:none; border:0.75pt solid #D8D5D5; border-radius:999px; padding:5px 12px; cursor:pointer; }
 .umaum-card-editar:hover { background:#F5F5F5; }
 
+/* ===== agenda visual (Parte C, 28/09/2026) ===== */
+.agenda-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+.agenda-nav { display:flex; align-items:center; gap:10px; }
+.agenda-nav-btn { width:32px; height:32px; border-radius:50%; border:0.75pt solid #D8D5D5; background:#fff; color:#1A1A1A; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+.agenda-nav-btn:hover { background:#F5F5F5; }
+.agenda-periodo-label { font-size:13px; font-weight:800; color:#1A1A1A; min-width:150px; text-transform:capitalize; }
+.agenda-hoje-btn { font-size:11px; font-weight:700; color:#5D5D5D; background:#fff; border:0.75pt solid #D8D5D5; border-radius:999px; padding:6px 14px; cursor:pointer; }
+.agenda-hoje-btn:hover { background:#F5F5F5; }
+.agenda-view-toggle { display:flex; gap:6px; background:#EEECEC; border-radius:999px; padding:3px; }
+.agenda-view-btn { font-size:11.5px; font-weight:700; color:#5D5D5D; background:none; border:none; border-radius:999px; padding:7px 16px; cursor:pointer; }
+.agenda-view-btn.active { background:#1A1A1A; color:#fff; }
+
+.agenda-semana-list { display:flex; flex-direction:column; gap:10px; }
+.agenda-item-card { background:#fff; border:0.75pt solid #D8D5D5; border-radius:16px; padding:13px 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; transition: transform .2s, box-shadow .2s; }
+.agenda-item-card.clicavel { cursor:pointer; }
+.agenda-item-card.clicavel:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); border-color:#1A1A1A; }
+.agenda-item-data { width:50px; flex-shrink:0; text-align:center; }
+.agenda-item-dia { font-family:'Bricolage Grotesque',sans-serif; font-size:19px; font-weight:800; color:#1A1A1A; line-height:1.1; }
+.agenda-item-hora { font-size:10.5px; color:#807E7E; font-weight:700; }
+.agenda-item-corpo { flex:1; min-width:160px; }
+.agenda-item-tipo { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#807E7E; margin-bottom:2px; }
+.agenda-item-nome { font-size:13.5px; font-weight:700; color:#1A1A1A; }
+.agenda-item-sub { font-size:11.5px; color:#807E7E; margin-top:2px; }
+.agenda-pill { font-size:10px; font-weight:800; padding:5px 11px; border-radius:99px; color:#fff; white-space:nowrap; flex-shrink:0; }
+.agenda-presenca-mini { display:flex; gap:4px; flex-wrap:wrap; max-width:220px; }
+.agenda-presenca-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.agenda-vazio-dia { color:#9F9F9F; font-size:12px; padding:6px 0; }
+.agenda-semana-sem-itens { text-align:center; padding:40px 20px; color:#9F9F9F; font-size:12.5px; background:#fff; border:0.75pt dashed #D8D5D5; border-radius:16px; }
+
+.agenda-mes-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.agenda-mes-cab { text-align:center; font-size:10px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.4px; padding-bottom:4px; }
+.agenda-mes-dia { background:#fff; border:0.75pt solid #D8D5D5; border-radius:12px; padding:6px; min-height:78px; display:flex; flex-direction:column; gap:3px; }
+.agenda-mes-dia.fora-do-mes { background:#FAFAFA; border-color:#EEECEC; }
+.agenda-mes-dia.hoje { border-color:#1A1A1A; border-width:1.5pt; }
+.agenda-mes-dia-num { font-size:10.5px; font-weight:800; color:#5D5D5D; }
+.agenda-mes-dia.fora-do-mes .agenda-mes-dia-num { color:#C6C4C4; }
+.agenda-mes-chip { font-size:9px; font-weight:700; border-radius:5px; padding:2px 5px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.agenda-mes-mais { font-size:8.5px; font-weight:700; color:#9F9F9F; padding:1px 5px; }
+@media (max-width:700px){ .agenda-mes-dia{ min-height:56px; } .agenda-mes-chip{ font-size:8px; } }
+
 .empty-state { text-align:center; padding:60px 20px; color:#9F9F9F; font-size:12.5px; }
 </style>
 </head>
@@ -421,8 +461,20 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div id="equipeImpactoConselhos"></div>
   </div>
   <div id="equipeSection">
-    <div class="section-title">Próximos conselhos<div class="line"></div></div>
-    <div id="equipeProximosConselhos"></div>
+    <div class="section-title">Agenda<div class="line"></div></div>
+    <div class="agenda-toolbar">
+      <div class="agenda-nav">
+        <button class="agenda-nav-btn" type="button" onclick="agendaNavegar(-1)">&lsaquo;</button>
+        <div class="agenda-periodo-label" id="agendaPeriodoLabel">&nbsp;</div>
+        <button class="agenda-nav-btn" type="button" onclick="agendaNavegar(1)">&rsaquo;</button>
+        <button class="agenda-hoje-btn" type="button" onclick="agendaIrParaHoje()">Hoje</button>
+      </div>
+      <div class="agenda-view-toggle">
+        <button class="agenda-view-btn active" type="button" id="agendaViewSemanaBtn" onclick="agendaMudarVisao('semana')">Semana</button>
+        <button class="agenda-view-btn" type="button" id="agendaViewMesBtn" onclick="agendaMudarVisao('mes')">Mês</button>
+      </div>
+    </div>
+    <div id="agendaBody"><div class="empty-state">Carregando…</div></div>
     <div class="section-title" style="margin-top:36px;">Indicadores gerais da área<div class="line"></div></div>
     <div id="equipeIndicadores"></div>
     <div class="section-title" style="margin-top:36px;">Cases de sucesso do time<div class="line"></div></div>
@@ -633,6 +685,7 @@ function iniciarHomeGestor(){
   carregarFotosTime();
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
+  carregarAgendaVisual();
 }
 // Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
 // números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
@@ -807,7 +860,6 @@ function renderSkeletonPessoa(){
   document.getElementById('feedbacks').innerHTML = '<div class="votos-bar-card skel" style="height:120px;"></div><div class="quote-block skel" style="height:60px;"></div>';
 }
 function renderSkeletonEquipe(){
-  document.getElementById('equipeProximosConselhos').innerHTML = '<div class="proximos-grid">'+Array(3).fill('<div class="proximo-card skel" style="height:60px;"></div>').join('')+'</div>';
   document.getElementById('equipeIndicadores').innerHTML = '<div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div>';
   document.getElementById('equipeSemanal').innerHTML = '<div class="chart-card skel" style="height:180px;"></div>';
   document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid"><div class="dark-card skel" style="height:160px;"></div><div class="dark-card skel" style="height:160px;"></div></div>';
@@ -1602,47 +1654,208 @@ function salvarUmAUm(){
   });
 }
 
-var proximosConselhosAtuais = [];
-function renderProximosConselhosEquipe(lista){
-  proximosConselhosAtuais = lista || [];
-  var el = document.getElementById('equipeProximosConselhos');
-  if (!lista || lista.length === 0) { el.innerHTML = '<div class="empty-state">Nenhum conselho com data futura confirmada na agenda.</div>'; return; }
-  var html = '<div class="proximos-grid">';
-  lista.forEach(function(item, i){
-    var f = formatarDataConselho(item.dataIso);
-    if (!f) return;
-    var qtdConf = (item.confirmadosFuturos || []).length;
-    var temConf = qtdConf > 0;
-    html += '<div class="proximo-card'+(temConf?' clicavel':'')+'"'+(temConf?' onclick="abrirProximoConselhoModal('+i+')"':'')+'>' +
-      '<div class="proximo-data-badge" style="background:'+corPara(item.nome)+';"><div class="proximo-data-dia">'+f.dia+'</div><div class="proximo-data-mes">'+f.mes+'</div></div>' +
-      '<div class="proximo-info"><div class="proximo-nome">'+item.nome+'</div><div class="proximo-sub">'+item.cs+' · '+f.hora+'</div></div>' +
-      (temConf ? '<span class="confirm-badge" style="background:'+corConfirmacao(qtdConf)+';flex-shrink:0;">'+ICONS.check+qtdConf+
-        '<span class="confirm-tooltip">Confirmados: 0–1 vermelho · 2–3 laranja · 4–5 amarelo · 6–7 verde · 8+ azul</span></span>' : '') +
-    '</div>';
+// ============ agenda visual (Parte C, 28/09/2026) ============
+// Substitui a antiga "Próximos conselhos" (só a próxima data de cada conselho, sem Rounds) por
+// uma agenda de verdade — semana (com navegação e presença nas semanas já passadas) e mês (grade
+// compacta) — conselhos + Rounds juntos, usando /api/gestor/agenda (generateAgendaVisual em
+// lib/reports.ts). Reaproveita o mesmo #conselhoModalOverlay/#conselhoModalBody de sempre.
+function escAgenda_(s){
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
   });
-  html += '</div>';
-  el.innerHTML = html;
 }
-function abrirProximoConselhoModal(i){
-  var c = proximosConselhosAtuais[i];
-  if (!c) return;
-  var html = '<div class="case-modal-header"><div><div class="case-modal-nome">'+c.nome+'</div>' +
-    '<div class="case-modal-empresa">'+c.cs+'</div></div></div>';
-  var f = formatarDataConselho(c.dataIso);
-  if (f) {
-    html += '<div class="case-modal-campo"><div class="case-modal-label">Próximo encontro</div>' +
-      '<div class="case-modal-texto">'+f.texto+(c.proximaDataStatus?' · '+c.proximaDataStatus:'')+'</div></div>';
+var agendaVisao_ = 'semana';
+var agendaAncora_ = new Date();
+var agendaItensClique_ = [];
+var agendaReqSeq_ = 0;
+
+function agendaZerarHora_(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function agendaAddDias_(d, n){ var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function agendaInicioSemana_(d){
+  var base = agendaZerarHora_(d);
+  var dia = base.getDay(); // 0=Dom..6=Sáb
+  var offset = dia === 0 ? -6 : (1 - dia); // volta pra segunda-feira
+  return agendaAddDias_(base, offset);
+}
+function agendaFmtYYYYMMDD_(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function agendaRangeAtual_(){
+  if (agendaVisao_ === 'semana') {
+    var inicio = agendaInicioSemana_(agendaAncora_);
+    return { inicio: inicio, fim: agendaAddDias_(inicio, 7) };
   }
-  var confirmados = c.confirmadosFuturos || [];
-  html += '<div class="case-modal-campo"><div class="case-modal-label">Confirmados pra próximas reuniões</div><div>';
-  if (confirmados.length === 0) {
-    html += '<div class="empty-state" style="padding:16px 0;">Ninguém confirmado ainda.</div>';
+  var inicio = new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth(), 1);
+  var fim = new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth()+1, 1);
+  return { inicio: inicio, fim: fim };
+}
+function agendaAtualizarLabel_(range){
+  var el = document.getElementById('agendaPeriodoLabel');
+  if (agendaVisao_ === 'semana') {
+    var fimIncl = agendaAddDias_(range.fim, -1);
+    var mesmoMes = range.inicio.getMonth() === fimIncl.getMonth();
+    el.textContent = range.inicio.getDate() + (mesmoMes ? '' : ' '+MESES_ABREV[range.inicio.getMonth()]) +
+      ' – ' + fimIncl.getDate() + ' ' + MESES_ABREV[fimIncl.getMonth()] + ' ' + fimIncl.getFullYear();
   } else {
-    confirmados.forEach(function(cf){
-      html += '<span class="confirmado-chip"><span class="confirmado-avatar" style="background:'+corPara(cf.nome)+'">'+iniciais(cf.nome)+'</span>'+cf.nome+' <span class="confirmado-mes">· '+cf.mes+'</span></span>';
-    });
+    el.textContent = MESES[agendaAncora_.getMonth()] + ' ' + agendaAncora_.getFullYear();
   }
-  html += '</div></div>';
+}
+function agendaNavegar(direcao){
+  agendaAncora_ = agendaVisao_ === 'semana' ? agendaAddDias_(agendaAncora_, direcao*7)
+    : new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth()+direcao, 1);
+  carregarAgendaVisual();
+}
+function agendaIrParaHoje(){ agendaAncora_ = new Date(); carregarAgendaVisual(); }
+function agendaMudarVisao(v){
+  if (agendaVisao_ === v) return;
+  agendaVisao_ = v;
+  document.getElementById('agendaViewSemanaBtn').classList.toggle('active', v === 'semana');
+  document.getElementById('agendaViewMesBtn').classList.toggle('active', v === 'mes');
+  carregarAgendaVisual();
+}
+
+var ROUND_STATUS_COR_ = { 'Confirmado':'#fdab3d', 'Realizado':'#00c875', 'Cancelado':'#df2f4a', 'Agd. confirmação':'#007eb5', 'Adiado':'#9d50dd', 'A Planejar':'#757575' };
+function corStatusRound_(status){ return ROUND_STATUS_COR_[status] || '#9F9F9F'; }
+function corStatusPresenca_(status){
+  if (status === 'Presente') return '#3D8B5F';
+  if (status === 'Ausente' || status === 'Não vai') return '#C0433D';
+  if (status === 'Reposição') return '#7dd3fc';
+  return '#D8D5D5';
+}
+function agendaItensUnificados_(d){
+  var itens = [];
+  (d.conselhos||[]).forEach(function(c){
+    itens.push({ tipo:'conselho', dataIso:c.dataIso, nome:c.nomeGrupo, sub:c.cs, statusLabel:c.statusAgenda,
+      passado:c.passado, presencaPorMembro:c.presencaPorMembro, confirmados:c.confirmados, groupId:c.groupId });
+  });
+  (d.rounds||[]).forEach(function(r){
+    if (!r.inicio) return;
+    itens.push({ tipo:'round', dataIso:r.inicio, nome:r.nome, sub:r.local || r.cs || '', statusLabel:r.status, passado:false });
+  });
+  itens.sort(function(a,b){ return new Date(a.dataIso) - new Date(b.dataIso); });
+  return itens;
+}
+
+function carregarAgendaVisual(){
+  var range = agendaRangeAtual_();
+  agendaAtualizarLabel_(range);
+  var meuSeq = ++agendaReqSeq_;
+  document.getElementById('agendaBody').innerHTML = '<div class="empty-state">Carregando…</div>';
+  fetchJSON_('/api/gestor/agenda?inicio='+agendaFmtYYYYMMDD_(range.inicio)+'&fim='+agendaFmtYYYYMMDD_(range.fim)).then(function(d){
+    if (meuSeq !== agendaReqSeq_) return;
+    if (agendaVisao_ === 'semana') renderAgendaSemana_(d); else renderAgendaMes_(d, range);
+  }).catch(function(err){
+    if (meuSeq !== agendaReqSeq_) return;
+    document.getElementById('agendaBody').innerHTML = '<div class="empty-state">Erro ao carregar agenda: '+escAgenda_(err.message)+'</div>';
+  });
+}
+
+function agendaItemCardHtml_(item, i){
+  var dt = new Date(item.dataIso);
+  var dia = String(dt.getDate()).padStart(2,'0');
+  var hora = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+  var pill = '';
+  if (item.tipo === 'round') {
+    pill = '<span class="agenda-pill" style="background:'+corStatusRound_(item.statusLabel)+';">'+escAgenda_(item.statusLabel||'—')+'</span>';
+  } else if (item.passado) {
+    var lista = item.presencaPorMembro || [];
+    var presentes = lista.filter(function(p){ return p.status === 'Presente'; }).length;
+    if (lista.length) pill = '<span class="agenda-pill" style="background:#1A1A1A;">'+presentes+'/'+lista.length+' presentes</span>';
+  } else {
+    var qtd = (item.confirmados||[]).length;
+    if (qtd > 0) pill = '<span class="agenda-pill" style="background:'+corConfirmacao(qtd)+';">'+qtd+' confirmado'+(qtd>1?'s':'')+'</span>';
+  }
+  var presencaMini = '';
+  if (item.passado && (item.presencaPorMembro||[]).length) {
+    presencaMini = '<div class="agenda-presenca-mini">' + item.presencaPorMembro.map(function(p){
+      return '<span class="agenda-presenca-dot" style="background:'+corStatusPresenca_(p.status)+';" title="'+escAgenda_(p.nome)+' · '+escAgenda_(p.status||'—')+'"></span>';
+    }).join('') + '</div>';
+  }
+  return '<div class="agenda-item-card clicavel" onclick="agendaAbrirModal_('+i+')">' +
+    '<div class="agenda-item-data"><div class="agenda-item-dia">'+dia+'</div><div class="agenda-item-hora">'+MESES_ABREV[dt.getMonth()]+' · '+hora+'</div></div>' +
+    '<div class="agenda-item-corpo"><div class="agenda-item-tipo">'+(item.tipo==='round'?'Round':'Conselho')+'</div>' +
+      '<div class="agenda-item-nome">'+escAgenda_(item.nome||'—')+'</div>' +
+      (item.sub ? '<div class="agenda-item-sub">'+escAgenda_(item.sub)+'</div>' : '') +
+      presencaMini +
+    '</div>' + pill +
+  '</div>';
+}
+function renderAgendaSemana_(d){
+  agendaItensClique_ = agendaItensUnificados_(d);
+  var el = document.getElementById('agendaBody');
+  if (!agendaItensClique_.length) { el.innerHTML = '<div class="agenda-semana-sem-itens">Nenhum conselho ou round nesta semana.</div>'; return; }
+  el.innerHTML = '<div class="agenda-semana-list">' + agendaItensClique_.map(agendaItemCardHtml_).join('') + '</div>';
+}
+function renderAgendaMes_(d, range){
+  var itens = agendaItensUnificados_(d);
+  agendaItensClique_ = itens;
+  var porDia = {};
+  itens.forEach(function(item, i){
+    var chave = agendaFmtYYYYMMDD_(new Date(item.dataIso));
+    if (!porDia[chave]) porDia[chave] = [];
+    porDia[chave].push(i);
+  });
+
+  var diaSemanaPrimeiro = range.inicio.getDay();
+  var offsetSeg = diaSemanaPrimeiro === 0 ? 6 : diaSemanaPrimeiro - 1;
+  var inicioGrade = agendaAddDias_(range.inicio, -offsetSeg);
+  var hojeChave = agendaFmtYYYYMMDD_(new Date());
+  var mesAlvo = agendaAncora_.getMonth();
+
+  var html = '<div class="agenda-mes-grid">';
+  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach(function(rotulo){ html += '<div class="agenda-mes-cab">'+rotulo+'</div>'; });
+  for (var c=0; c<42; c++) {
+    var diaCel = agendaAddDias_(inicioGrade, c);
+    var chave = agendaFmtYYYYMMDD_(diaCel);
+    var foraDoMes = diaCel.getMonth() !== mesAlvo;
+    var idxs = porDia[chave] || [];
+    html += '<div class="agenda-mes-dia'+(foraDoMes?' fora-do-mes':'')+(chave===hojeChave?' hoje':'')+'"><div class="agenda-mes-dia-num">'+diaCel.getDate()+'</div>';
+    idxs.slice(0,3).forEach(function(idx){
+      var item = itens[idx];
+      var cor = item.tipo === 'round' ? corStatusRound_(item.statusLabel) : (item.passado ? '#1A1A1A' : corConfirmacao((item.confirmados||[]).length));
+      var dt = new Date(item.dataIso);
+      var horaChip = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+      html += '<div class="agenda-mes-chip" style="background:'+cor+';" onclick="agendaAbrirModal_('+idx+')" title="'+escAgenda_(item.nome)+'">'+horaChip+' '+escAgenda_(item.nome)+'</div>';
+    });
+    if (idxs.length > 3) html += '<div class="agenda-mes-mais">+'+(idxs.length-3)+' mais</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('agendaBody').innerHTML = html;
+}
+
+function agendaAbrirModal_(i){
+  var item = agendaItensClique_[i];
+  if (!item) return;
+  var dt = new Date(item.dataIso);
+  var dataTxt = String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+' às '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+  var html = '<div class="case-modal-header"><div><div class="case-modal-nome">'+escAgenda_(item.nome||'—')+'</div>' +
+    (item.sub ? '<div class="case-modal-empresa">'+escAgenda_(item.sub)+'</div>' : '') + '</div></div>';
+  html += '<div class="case-modal-campo"><div class="case-modal-label">'+(item.tipo==='round'?'Round':'Encontro')+'</div>' +
+    '<div class="case-modal-texto">'+dataTxt+(item.statusLabel?' · '+escAgenda_(item.statusLabel):'')+'</div></div>';
+
+  if (item.tipo === 'round') {
+    document.getElementById('conselhoModalBody').innerHTML = html;
+    document.getElementById('conselhoModalOverlay').classList.add('ativo');
+    return;
+  }
+  if (item.passado) {
+    var lista = item.presencaPorMembro || [];
+    html += '<div class="case-modal-campo"><div class="case-modal-label">Presença</div><div>';
+    if (!lista.length) html += '<div class="empty-state" style="padding:16px 0;">Sem registro de presença pra este mês.</div>';
+    else lista.forEach(function(p){
+      html += '<span class="confirmado-chip"><span class="confirmado-avatar" style="background:'+corStatusPresenca_(p.status)+'">'+iniciais(p.nome)+'</span>'+escAgenda_(p.nome)+
+        ' <span class="confirmado-mes">· '+escAgenda_(p.status||'—')+(p.reposicao?' (reposição)':'')+'</span></span>';
+    });
+    html += '</div></div>';
+  } else {
+    var confirmados = item.confirmados || [];
+    html += '<div class="case-modal-campo"><div class="case-modal-label">Confirmados</div><div>';
+    if (!confirmados.length) html += '<div class="empty-state" style="padding:16px 0;">Ninguém confirmado ainda.</div>';
+    else confirmados.forEach(function(cf){
+      html += '<span class="confirmado-chip"><span class="confirmado-avatar" style="background:'+corPara(cf.nome)+'">'+iniciais(cf.nome)+'</span>'+escAgenda_(cf.nome)+'</span>';
+    });
+    html += '</div></div>';
+  }
+  if (item.groupId) html += '<div class="case-modal-campo"><a href="/conselho/'+encodeURIComponent(item.groupId)+'" style="font-size:12px;font-weight:700;color:#1A1A1A;">Ver conselho completo →</a></div>';
   document.getElementById('conselhoModalBody').innerHTML = html;
   document.getElementById('conselhoModalOverlay').classList.add('ativo');
 }
@@ -1668,9 +1881,6 @@ function renderEquipeSecao_(id, fn){
 }
 function renderEquipe(data){
   modoGeralAtual = !!data.periodo.geral;
-  renderEquipeSecao_('equipeProximosConselhos', function(){
-    renderProximosConselhosEquipe(data.proximosConselhos);
-  });
   renderEquipeSecao_('equipeIndicadores', function(){
     var ind = data.indicadores;
     document.getElementById('equipeIndicadores').innerHTML =
