@@ -2736,3 +2736,93 @@ export async function confirmarAliasNpsDestaque(sb: SupabaseClient, groupId: str
   invalidarDadosBrutosCache();
   invalidarCacheConselho(groupId);
 }
+
+// Mesmo cálculo de destaqueRanking dentro de generateConselhoDetalhe, só que pra TODOS os
+// conselhos de uma vez (usado pelo relatório mensal, Parte G) — só entram respostas já casadas
+// com um conselho confirmado (Parte D). topGeral junta os votos de qualquer membro em qualquer
+// conselho, ordenado por votos; porConselho mantém a quebra por conselho (mesmo formato do card
+// de destaque da tela de conselho), ordenado pelo membro mais votado de cada um.
+function montarDestaqueRankingGeral(dados: DadosBrutos, seletorMes: string, ano: number) {
+  const geral = seletorMes === 'Visão Geral';
+  const membrosPorGrupo = new Map<string, any[]>();
+  dados.conselhosMembros.forEach((m: any) => {
+    if (!membrosPorGrupo.has(m.group_id)) membrosPorGrupo.set(m.group_id, []);
+    membrosPorGrupo.get(m.group_id)!.push(m);
+  });
+  const gruposAtivosPorId = new Map<string, any>();
+  dados.conselhosGrupos.forEach((g: any) => { if (!g.is_repo) gruposAtivosPorId.set(g.group_id, g); });
+  const aliasesConfirmados = new Map<string, string>();
+  dados.npsDestaqueAliases.forEach((a: any) => aliasesConfirmados.set(`${a.group_id}|${a.nome_destaque}`, a.membro_oficial));
+
+  const porConselhoMap = new Map<string, Map<string, number>>();
+  const votosGeral = new Map<string, { membro: string; conselho: string; votos: number }>();
+
+  dados.npsConselhos
+    .filter((r: any) => r.group_id && r.destaque_texto_bruto && r.destaque_texto_bruto.trim())
+    .filter((r: any) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, geral))
+    .forEach((r: any) => {
+      const grupo = gruposAtivosPorId.get(r.group_id);
+      if (!grupo) return;
+      const roster = montarRosterConselho(grupo, membrosPorGrupo);
+      const nomeLivre = String(r.destaque_texto_bruto).trim();
+      const membro = resolverDestaqueMembro(nomeLivre, r.group_id, roster, aliasesConfirmados);
+      if (!membro) return;
+      if (!porConselhoMap.has(r.group_id)) porConselhoMap.set(r.group_id, new Map());
+      const bucket = porConselhoMap.get(r.group_id)!;
+      bucket.set(membro, (bucket.get(membro) || 0) + 1);
+
+      const parsed = parseTituloConselho(grupo.titulo);
+      const nomeConselho = parsed ? parsed.contato : grupo.titulo;
+      const chave = `${r.group_id}|${membro}`;
+      if (!votosGeral.has(chave)) votosGeral.set(chave, { membro, conselho: nomeConselho, votos: 0 });
+      votosGeral.get(chave)!.votos++;
+    });
+
+  const porConselho = [...porConselhoMap.entries()].map(([groupId, bucket]) => {
+    const grupo = gruposAtivosPorId.get(groupId);
+    const parsed = grupo ? parseTituloConselho(grupo.titulo) : null;
+    const ranking = [...bucket.entries()].map(([membro, votos]) => ({ membro, votos })).sort((a, b) => b.votos - a.votos);
+    return { groupId, conselho: parsed ? parsed.contato : (grupo?.titulo || groupId), ranking };
+  }).sort((a, b) => (b.ranking[0]?.votos || 0) - (a.ranking[0]?.votos || 0));
+
+  const topGeral = [...votosGeral.values()].sort((a, b) => b.votos - a.votos).slice(0, 20);
+
+  return { porConselho, topGeral };
+}
+export type DestaqueRankingGeral = ReturnType<typeof montarDestaqueRankingGeral>;
+
+// ============ relatório mensal (Parte G, pedido do Vitor, 28/09/2026) ============
+// Junta NPS (Parte D), dados operacionais (Parte E) e ranking de destaque (Parte F) de um mês —
+// insumo puro do relatório, sem nenhuma marcação HTML aqui (ver gerarRelatorioMensalHtml em
+// lib/relatorio-mensal-html.ts, que consome exatamente este formato). `pontos` é uma linha por
+// resposta do período, já com produto/conselho/CS resolvidos — alimenta a "constelação" de NPS.
+export async function generateRelatorioMensal(sb: SupabaseClient, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  const [nps, operacional] = await Promise.all([
+    generateNpsConselhos(sb, seletorMes, ano, dados),
+    generateNpsOperacional(sb, seletorMes, ano, dados),
+  ]);
+  const destaque = montarDestaqueRankingGeral(dados, seletorMes, ano);
+
+  const geral = seletorMes === 'Visão Geral';
+  const csPorGroupId = new Map<string, string>();
+  const conselhoPorGroupId = new Map<string, string>();
+  dados.conselhosGrupos.forEach((g: any) => {
+    const parsed = parseTituloConselho(g.titulo);
+    if (parsed) { csPorGroupId.set(g.group_id, parsed.cs); conselhoPorGroupId.set(g.group_id, parsed.contato); }
+  });
+  const pontos = (dados.npsConselhos as any[])
+    .filter((r) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, geral))
+    .map((r) => ({
+      respondente: r.respondente_nome as string,
+      conselheiroNota: r.nota_conselheiro as number | null,
+      conselhoNota: r.nota_conselho as number | null,
+      csNota: notaCsCombinada(r),
+      produto: r.produto as string | null,
+      conselho: r.group_id ? (conselhoPorGroupId.get(r.group_id) || null) : null,
+      cs: r.group_id ? (csPorGroupId.get(r.group_id) || null) : null,
+    }));
+
+  return { periodo: nps.periodo, nps, operacional, destaque, pontos };
+}
+export type RelatorioMensal = Awaited<ReturnType<typeof generateRelatorioMensal>>;

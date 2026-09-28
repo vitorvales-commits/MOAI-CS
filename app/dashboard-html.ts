@@ -503,6 +503,16 @@ select.pickmes:hover { border-color:#1A1A1A; }
       <p class="fb-intro">O board de NPS não amarra a resposta direto num conselho cadastrado — o texto digitado por quem respondeu ("Qual é o seu Conselho?") precisa ser confirmado contra o roster abaixo antes de entrar nos cortes por CS.</p>
       <div id="npsAliasesPendentesList"></div>
     </div>
+    <div style="margin-top:36px;">
+      <div class="section-title">Relatório mensal de Conselhos<div class="line"></div></div>
+      <p class="fb-intro">NPS de conselheiro/conselho/CS, dados operacionais dos encontros e ranking de destaque de um mês, num único HTML autônomo pra baixar e compartilhar.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
+        <select class="pickmes" id="selMesRelatorio"></select>
+        <select class="pickmes" id="selAnoRelatorio"><option>2026</option><option>2027</option></select>
+        <button class="resolver-btn" type="button" onclick="preVisualizarRelatorioMensal()">Pré-visualizar</button>
+        <button class="resolver-btn" type="button" onclick="baixarRelatorioMensal()">Baixar HTML</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -705,6 +715,7 @@ function iniciarHomeGestor(){
   carregarEquipe(currentMes, currentAno);
   carregarAgendaVisual();
   carregarNpsAliasesPendentes();
+  iniciarSeletorRelatorioMensal_();
 }
 // Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
 // números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
@@ -1938,6 +1949,26 @@ function confirmarNpsAlias(idx){
     status.className = 'resolver-status erro';
   });
 }
+
+// ============ Relatório mensal (Parte G, 28/09/2026) ============
+// Seletor de mês/ano só escolhe QUAL relatório baixar — o arquivo baixado é sempre autônomo (todo
+// dado já embutido nele, ver gerarRelatorioMensalHtml), sem nenhuma chamada de volta pro app.
+function iniciarSeletorRelatorioMensal_(){
+  var sel = document.getElementById('selMesRelatorio');
+  if (!sel || sel.options.length) return;
+  var optGeral = document.createElement('option'); optGeral.textContent = 'Visão Geral'; sel.appendChild(optGeral);
+  MESES.forEach(function(m){ var o=document.createElement('option'); o.textContent=m; sel.appendChild(o); });
+  sel.value = MESES[agoraGlobal_().getMonth()];
+  document.getElementById('selAnoRelatorio').value = String(agoraGlobal_().getFullYear());
+}
+function agoraGlobal_(){ return new Date(); }
+function urlRelatorioMensal_(preview){
+  var mes = document.getElementById('selMesRelatorio').value;
+  var ano = document.getElementById('selAnoRelatorio').value;
+  return '/api/gestor/relatorio-mensal?mes='+encodeURIComponent(mes)+'&ano='+encodeURIComponent(ano)+(preview?'&preview=1':'');
+}
+function preVisualizarRelatorioMensal(){ window.open(urlRelatorioMensal_(true), '_blank'); }
+function baixarRelatorioMensal(){ window.open(urlRelatorioMensal_(false), '_blank'); }
 
 function renderChurnOrfao(churnOrfao){
   if (!churnOrfao || !churnOrfao.qtd) return '';
