@@ -363,30 +363,52 @@ export async function setRevelarIndicadoresEquipe(sb: SupabaseClient, valor: boo
 // BUG FIX (28/09/2026 — pedido do Vitor, home do gestor travada em "Carregando…" pra sempre em
 // produção, logo depois do deploy das Partes A-G): cada página aqui era um await SEM limite de
 // tempo nenhum. getDadosBrutos dispara um Promise.all com fetchAll em ~20 tabelas — se qualquer
-// UMA travar ou demorar demais (rede, índice faltando, RLS cara), o Promise.all inteiro nunca
-// resolve NEM rejeita, e a rota de API correspondente nunca responde nada, nem sucesso nem erro.
-// Do lado do navegador isso aparece exatamente como "Carregando…" eterno, sem mensagem de erro
-// alguma — o sintoma relatado. Agora cada página tem um timeout de 8s (Promise.race contra a
-// consulta real); se estourar, vira um erro claro em vez de travar pra sempre. Qualquer página que
-// passe de 3s gera um console.warn nos logs do servidor, apontando exatamente qual tabela está
-// lenta — sem esse sinal, não dá pra saber qual das ~20 tabelas é a culpada real.
+// UMA travar ou demorar demais, o Promise.all inteiro nunca resolve NEM rejeita, e a rota de API
+// correspondente nunca responde nada, nem sucesso nem erro. Do lado do navegador isso aparece
+// exatamente como "Carregando…" eterno, sem mensagem de erro alguma — o sintoma relatado.
+//
+// Causa raiz encontrada nos logs do projeto (postgrest_logs, 28/09/2026): "Warp server error:
+// Thread killed by timeout manager" se repete várias vezes seguidas SEMPRE dentro da janela de
+// ~2 minutos em que o sync-monday roda (a cada 5 minutos via pg_cron) — silêncio total nos ~3
+// minutos entre uma sincronização e outra. O próprio ciclo de sync (agora com o board de NPS da
+// Parte D, ~1919 itens em vários round-trips) satura as conexões do PostgREST/Postgres deste
+// projeto (max_connections=60, tier pequeno) durante sua execução, e QUALQUER requisição
+// concorrente ao PostgREST nessa janela — inclusive a da home do gestor — pode ter sua própria
+// thread matada do mesmo jeito. Um timeout sozinho transforma isso num erro visível (já é uma
+// melhoria), mas não evita o erro em si quando a home é aberta bem no meio dessa janela. Por isso
+// cada página agora tenta de novo (até 3 tentativas, com espera curta entre elas) antes de desistir
+// — a janela de contenção dura só ~2 min a cada 5, então uma segunda tentativa alguns segundos
+// depois tem boa chance de cair fora dela. Qualquer página que passe de 3s gera um console.warn nos
+// logs do servidor, apontando exatamente qual tabela está lenta.
+async function fetchAllPagina(sb: SupabaseClient, table: string, colunas: string, from: number, pageSize: number) {
+  const TIMEOUT_MS = 5000;
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Timeout de ${TIMEOUT_MS}ms buscando ${table} (from=${from}) — consulta não respondeu a tempo`)), TIMEOUT_MS);
+  });
+  try {
+    return (await Promise.race([sb.from(table).select(colunas).range(from, from + pageSize - 1), timeout])) as { data: any[] | null; error: any };
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+}
 async function fetchAll(sb: SupabaseClient, table: string, colunas = '*') {
   const PAGE_SIZE = 1000;
-  const TIMEOUT_MS = 8000;
   const WARN_MS = 3000;
+  const MAX_TENTATIVAS = 3;
+  const ESPERA_ENTRE_TENTATIVAS_MS = [500, 1500];
   let allRows: any[] = [];
   let from = 0;
   while (true) {
     const inicio = Date.now();
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error(`Timeout de ${TIMEOUT_MS}ms buscando ${table} (from=${from}) — consulta não respondeu a tempo`)), TIMEOUT_MS);
-    });
-    let data: any[] | null, error: any;
-    try {
-      ({ data, error } = await Promise.race([sb.from(table).select(colunas).range(from, from + PAGE_SIZE - 1), timeout]) as any);
-    } finally {
-      clearTimeout(timeoutId!);
+    let data: any[] | null = null, error: any = null;
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+      ({ data, error } = await fetchAllPagina(sb, table, colunas, from, PAGE_SIZE));
+      if (!error) break;
+      if (tentativa < MAX_TENTATIVAS) {
+        console.warn(`[getDadosBrutos] tentativa ${tentativa}/${MAX_TENTATIVAS} falhou pra ${table} (from=${from}): ${error.message} — tentando de novo`);
+        await new Promise((r) => setTimeout(r, ESPERA_ENTRE_TENTATIVAS_MS[tentativa - 1]));
+      }
     }
     const duracao = Date.now() - inicio;
     if (duracao > WARN_MS) console.warn(`[getDadosBrutos] consulta lenta: ${table} (from=${from}) levou ${duracao}ms`);
