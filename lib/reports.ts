@@ -151,6 +151,47 @@ export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: 
   return data as number;
 }
 
+// ============ 1:1 gestor ↔ CS (Parte A, pedido do Vitor 28/09/2026) ============
+// Visível igual pro gestor e pro próprio CS (sem separar visão) — quem decide se o e-mail logado
+// pode ver os 1:1 de um `cs_nome` é a rota de API (mesmo padrão de generateCSReport: isGestor ou
+// nome === csNome), não a RLS aqui (que só libera SELECT geral pra qualquer moai user).
+export type UmAUmRegistro = {
+  id: string;
+  csNome: string;
+  gestorEmail: string;
+  data: string;
+  oQueFoiFalado: string | null;
+  combinados: string | null;
+  criadoEm: string;
+};
+function mapUmAUmRow(r: any): UmAUmRegistro {
+  return {
+    id: r.id,
+    csNome: r.cs_nome,
+    gestorEmail: r.gestor_email,
+    data: r.data,
+    oQueFoiFalado: r.o_que_foi_falado,
+    combinados: r.combinados,
+    criadoEm: r.criado_em,
+  };
+}
+export async function listarUmAUm(sb: SupabaseClient, csNome: string): Promise<UmAUmRegistro[]> {
+  const { data, error } = await sb.from('um_a_um_registros').select('*').eq('cs_nome', csNome).order('data', { ascending: false });
+  if (error) throw new Error('Erro ao buscar registros de 1:1: ' + error.message);
+  return (data || []).map(mapUmAUmRow);
+}
+// criar_um_a_um (SECURITY DEFINER) checa is_gestor() de novo dentro do banco — só gestor conduz
+// e registra o 1:1, o CS só visualiza.
+export async function criarUmAUm(sb: SupabaseClient, csNome: string, data: string, oQueFoiFalado: string | null, combinados: string | null): Promise<string> {
+  const { data: id, error } = await sb.rpc('criar_um_a_um', { p_cs_nome: csNome, p_data: data, p_o_que_foi_falado: oQueFoiFalado, p_combinados: combinados });
+  if (error) throw new Error('Erro ao criar registro de 1:1: ' + error.message);
+  return id as string;
+}
+export async function editarUmAUm(sb: SupabaseClient, id: string, data: string, oQueFoiFalado: string | null, combinados: string | null): Promise<void> {
+  const { error } = await sb.rpc('editar_um_a_um', { p_id: id, p_data: data, p_o_que_foi_falado: oQueFoiFalado, p_combinados: combinados });
+  if (error) throw new Error('Erro ao editar registro de 1:1: ' + error.message);
+}
+
 // ============ controle de perfis (aba do gestor) ============
 // Roster ADMIN (ativos e inativos juntos, pra tela de toggle) — diferente de getCSListCompleto
 // (só ativo=true, usado pelo resto do app). cs_config já tem policy de SELECT liberada pra

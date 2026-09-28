@@ -373,6 +373,27 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .no-feedback-title { font-size:14px; font-weight: 800; color: #1A1A1A; margin-bottom:8px; }
 .no-feedback-sub { font-size: 11.5px; color: #807E7E; line-height:1.7; max-width:520px; margin:0 auto; }
 
+/* ===== 1:1 gestor↔CS (Parte A, 28/09/2026) ===== */
+.ultimo-umaum { display:inline-flex; flex-direction:column; gap:2px; margin-top:10px; background:rgba(255,255,255,0.08); border:0.75pt solid rgba(255,255,255,0.14); border-radius:16px; padding:10px 16px; font-size:12px; color:#e5e5e5; max-width:540px; }
+.ultimo-umaum-titulo { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#D4AF37; }
+.ultimo-umaum-data { font-size:11px; color:#9F9F9F; margin-top:2px; }
+.ultimo-umaum-combinados { font-size:12.5px; color:#fff; margin-top:4px; line-height:1.5; }
+.umaum-form-card { background:#1A1A1A; border-radius:24px; padding:20px 24px; margin-bottom:20px; color:#fff; }
+.umaum-form-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.umaum-form-row label { display:flex; flex-direction:column; gap:6px; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#9F9F9F; flex:1; min-width:180px; }
+.umaum-form-row input[type=date] { background:#0F0F0F; border:0.75pt solid #3A3A3A; border-radius:10px; color:#fff; font-size:13px; padding:9px 10px; font-family:'Inter',sans-serif; }
+.umaum-form-row textarea { background:#0F0F0F; border:0.75pt solid #3A3A3A; border-radius:10px; color:#fff; font-size:13px; padding:10px 12px; font-family:'Inter',sans-serif; resize:vertical; min-height:64px; width:100%; }
+.umaum-form-actions { display:flex; align-items:center; gap:12px; }
+.umaum-card { background:#fff; border:0.75pt solid #D8D5D5; border-radius:18px; padding:18px 20px; margin-bottom:12px; }
+.umaum-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.umaum-card-data { font-size:13px; font-weight:800; color:#1A1A1A; }
+.umaum-card-gestor { font-size:11px; color:#9F9F9F; }
+.umaum-card-campo { font-size:12.5px; color:#5D5D5D; line-height:1.6; margin-bottom:8px; }
+.umaum-card-campo:last-child { margin-bottom:0; }
+.umaum-card-campo b { color:#1A1A1A; font-weight:700; display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
+.umaum-card-editar { font-size:11px; font-weight:700; color:#5D5D5D; background:none; border:0.75pt solid #D8D5D5; border-radius:999px; padding:5px 12px; cursor:pointer; }
+.umaum-card-editar:hover { background:#F5F5F5; }
+
 .empty-state { text-align:center; padding:60px 20px; color:#9F9F9F; font-size:12.5px; }
 </style>
 </head>
@@ -427,6 +448,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
         <div class="jornada-sub" id="pessoaSub"></div>
         <div class="jornada-meta" id="pessoaMeta"></div>
         <div id="pessoaProximoConselho"></div>
+        <div id="pessoaUltimoUmAUm"></div>
       </div>
       <div class="jornada-badge" id="pessoaBadgeDestaque">
         <div class="jornada-badge-img-wrap">
@@ -447,12 +469,14 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div class="tab active" onclick="showTab('indicadores',event)">Indicadores</div>
     <div class="tab" onclick="showTab('semanal',event)">Cases de Sucesso</div>
     <div class="tab" onclick="showTab('conselhos',event)">Conselhos</div>
+    <div class="tab" onclick="showTab('umaum',event)">1:1</div>
     <div class="tab" onclick="showTab('feedbacks',event)">Feedbacks</div>
   </div>
   <div class="pessoa-conteudo">
     <div id="indicadores" class="panel active"></div>
     <div id="semanal" class="panel"></div>
     <div id="conselhos" class="panel"></div>
+    <div id="umaum" class="panel"></div>
     <div id="feedbacks" class="panel"></div>
   </div>
 </div>
@@ -744,6 +768,11 @@ function abrirPessoa(nome){
   if (modoRestritoCS) carregarRelatorioRestrito(nome, currentMes, currentAno);
   else carregarRelatorio(nome, currentMes, currentAno);
   atualizarBadgeDestaque(nome);
+  umAUmEditandoId_ = null;
+  umAUmAtual_ = [];
+  document.getElementById('pessoaUltimoUmAUm').innerHTML = '';
+  document.getElementById('umaum').innerHTML = '<div class="empty-state">Carregando...</div>';
+  carregarUmAUm(nome);
 }
 function atualizarBadgeDestaque(nome){
   google.script.run.withSuccessHandler(function(vezes){
@@ -1458,6 +1487,111 @@ function salvarVezesDestaque(){
     btn.disabled = false; status.style.color = '#C0392B'; status.textContent = 'Erro ao salvar';
     console.error(err);
   }).setVezesDestaquePublico(currentCS, valor);
+}
+
+// ============ 1:1 gestor ↔ CS (Parte A, 28/09/2026) ============
+// Visível igual pro gestor e pro CS (mesma lista, sem separar visão) — só o gestor tem o
+// formulário de registrar/editar (souGestor, já preenchido por inicializarSessao()); o CS comum
+// vê só o histórico. Carregado à parte de carregarRelatorio/carregarRelatorioRestrito pra não
+// misturar com o payload já grande de /api/cs/[nome].
+var umAUmAtual_ = [];
+var umAUmEditandoId_ = null;
+function escUmAUm_(s){
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
+  });
+}
+function dataBRUmAUm_(iso){
+  if (!iso) return '';
+  var p = String(iso).slice(0,10).split('-');
+  return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : String(iso);
+}
+function carregarUmAUm(nome){
+  return fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '/um-a-um').then(function(d){
+    if (currentCS !== nome) return;
+    umAUmAtual_ = d.registros || [];
+    renderUltimoUmAUm();
+    renderAbaUmAUm();
+  }).catch(function(err){
+    if (currentCS !== nome) return;
+    document.getElementById('pessoaUltimoUmAUm').innerHTML = '';
+    document.getElementById('umaum').innerHTML = '<div class="empty-state">Erro ao carregar 1:1: ' + escUmAUm_(err.message) + '</div>';
+  });
+}
+function renderUltimoUmAUm(){
+  var el = document.getElementById('pessoaUltimoUmAUm');
+  if (!umAUmAtual_.length) { el.innerHTML = ''; return; }
+  var u = umAUmAtual_[0];
+  el.innerHTML = '<div class="ultimo-umaum"><div class="ultimo-umaum-titulo">Último 1:1</div>' +
+    '<div class="ultimo-umaum-data">' + dataBRUmAUm_(u.data) + '</div>' +
+    (u.combinados ? '<div class="ultimo-umaum-combinados"><b>Combinados:</b> ' + escUmAUm_(u.combinados) + '</div>' : '') +
+    '</div>';
+}
+function formularioUmAUmHtml_(){
+  var editando = !!umAUmEditandoId_;
+  var registro = null;
+  if (editando) { for (var i=0;i<umAUmAtual_.length;i++) { if (umAUmAtual_[i].id === umAUmEditandoId_) { registro = umAUmAtual_[i]; break; } } }
+  var dataVal = registro ? String(registro.data).slice(0,10) : '';
+  var faladoVal = registro ? (registro.oQueFoiFalado || '') : '';
+  var combinVal = registro ? (registro.combinados || '') : '';
+  return '<div class="umaum-form-card">' +
+    '<div class="destaque-form-label" style="margin-bottom:14px;">' + (editando ? 'Editar 1:1' : 'Registrar novo 1:1') + '</div>' +
+    '<div class="umaum-form-row"><label>Data<input type="date" id="umaumData" value="' + escUmAUm_(dataVal) + '"></label></div>' +
+    '<div class="umaum-form-row"><label style="flex:1 1 100%;">O que foi falado<textarea id="umaumFalado" placeholder="Resumo da conversa...">' + escUmAUm_(faladoVal) + '</textarea></label></div>' +
+    '<div class="umaum-form-row"><label style="flex:1 1 100%;">Combinados<textarea id="umaumCombinados" placeholder="O que ficou combinado...">' + escUmAUm_(combinVal) + '</textarea></label></div>' +
+    '<div class="umaum-form-actions">' +
+      '<button class="destaque-form-btn" id="umaumSalvarBtn" onclick="salvarUmAUm()">' + (editando ? 'Salvar edição' : 'Registrar') + '</button>' +
+      (editando ? '<button class="destaque-form-btn" style="background:#3A3A3A;color:#fff;" onclick="cancelarEdicaoUmAUm()">Cancelar</button>' : '') +
+      '<span class="destaque-form-status" id="umaumStatus"></span>' +
+    '</div></div>';
+}
+function listaUmAUmHtml_(){
+  if (!umAUmAtual_.length) return '<div class="empty-state">Nenhum registro de 1:1 ainda.</div>';
+  return umAUmAtual_.map(function(r){
+    return '<div class="umaum-card">' +
+      '<div class="umaum-card-head"><span class="umaum-card-data">' + dataBRUmAUm_(r.data) + '</span>' +
+        '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\'' + r.id + '\')">Editar</button>' : '') + '</span></div>' +
+      (r.oQueFoiFalado ? '<div class="umaum-card-campo"><b>O que foi falado</b>' + escUmAUm_(r.oQueFoiFalado) + '</div>' : '') +
+      (r.combinados ? '<div class="umaum-card-campo"><b>Combinados</b>' + escUmAUm_(r.combinados) + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+function renderAbaUmAUm(){
+  var el = document.getElementById('umaum');
+  el.innerHTML = (souGestor ? formularioUmAUmHtml_() : '') + listaUmAUmHtml_();
+}
+function editarUmAUmClick(id){
+  umAUmEditandoId_ = id;
+  renderAbaUmAUm();
+  var formCard = document.querySelector('#umaum .umaum-form-card');
+  if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function cancelarEdicaoUmAUm(){
+  umAUmEditandoId_ = null;
+  renderAbaUmAUm();
+}
+function salvarUmAUm(){
+  var data = document.getElementById('umaumData').value;
+  var falado = document.getElementById('umaumFalado').value.trim();
+  var combinados = document.getElementById('umaumCombinados').value.trim();
+  var btn = document.getElementById('umaumSalvarBtn');
+  var status = document.getElementById('umaumStatus');
+  if (!data) { status.style.color = '#C0392B'; status.textContent = 'Escolha uma data.'; return; }
+  btn.disabled = true; status.style.color = '#9F9F9F'; status.textContent = 'Salvando...';
+  var editando = umAUmEditandoId_;
+  var url = '/api/cs/' + encodeURIComponent(currentCS) + '/um-a-um' + (editando ? ('/' + encodeURIComponent(editando)) : '');
+  fetchJSON_(url, {
+    method: editando ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: data, oQueFoiFalado: falado || null, combinados: combinados || null }),
+  }).then(function(){
+    umAUmEditandoId_ = null;
+    return carregarUmAUm(currentCS);
+  }).catch(function(err){
+    btn.disabled = false;
+    status.style.color = '#C0392B';
+    status.textContent = 'Erro: ' + err.message;
+  });
 }
 
 var proximosConselhosAtuais = [];
