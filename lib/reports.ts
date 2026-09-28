@@ -2583,3 +2583,57 @@ export async function confirmarAliasNpsConselho(sb: SupabaseClient, conselhoRaw:
   const { error } = await sb.rpc('confirmar_alias_nps_conselho', { p_conselho_raw: conselhoRaw, p_group_id: groupId });
   if (error) throw new Error('Erro ao confirmar alias de NPS: ' + error.message);
 }
+
+// ============ Dados operacionais dos encontros (Parte E, pedido do Vitor, 28/09/2026) ============
+// Mesmo board de NPS (nps_conselhos_items), seção À PARTE do NPS propriamente dito — nunca entra
+// no cálculo de calcularNPS: são notas de estrutura/comida do local (0-10, sem rubrica de
+// promotor/neutro/detrator) e os aspectos do local mais citados (multi-select, até 2 por
+// resposta). "Em qual local ocorreu o seu conselho?" está com a pergunta oculta no formulário
+// atual do board (confirmado ao vivo via get_board_info nesta sessão) e por isso vem sempre vazia
+// nos dados reais — porLocal degrada pra um único grupo "Não informado" até o time voltar a
+// preencher essa pergunta, sem quebrar nada.
+export type NpsOperacionalResumo = {
+  totalRespostasComEstrutura: number; mediaEstrutura: number | null;
+  totalRespostasComComida: number; mediaComida: number | null;
+  aspectosMaisCitados: { aspecto: string; votos: number }[];
+  porLocal: { local: string; totalRespostas: number; mediaEstrutura: number | null; mediaComida: number | null }[];
+};
+function mediaNotas(notas: (number | null | undefined)[]): number | null {
+  const validas = notas.filter((n): n is number => typeof n === 'number' && !isNaN(n));
+  return validas.length ? Math.round((validas.reduce((a, b) => a + b, 0) / validas.length) * 10) / 10 : null;
+}
+function resumirOperacionalDeLista(lista: any[]): NpsOperacionalResumo {
+  const comEstrutura = lista.filter((r) => r.nota_estrutura_local !== null && r.nota_estrutura_local !== undefined);
+  const comComida = lista.filter((r) => r.nota_comida_local !== null && r.nota_comida_local !== undefined);
+  const votosPorAspecto = new Map<string, number>();
+  lista.forEach((r) => (r.aspectos_local || []).forEach((a: string) => votosPorAspecto.set(a, (votosPorAspecto.get(a) || 0) + 1)));
+  const porLocalMap = new Map<string, any[]>();
+  lista.forEach((r) => {
+    const chave = r.local_nome || 'Não informado';
+    if (!porLocalMap.has(chave)) porLocalMap.set(chave, []);
+    porLocalMap.get(chave)!.push(r);
+  });
+  return {
+    totalRespostasComEstrutura: comEstrutura.length,
+    mediaEstrutura: mediaNotas(comEstrutura.map((r) => r.nota_estrutura_local)),
+    totalRespostasComComida: comComida.length,
+    mediaComida: mediaNotas(comComida.map((r) => r.nota_comida_local)),
+    aspectosMaisCitados: [...votosPorAspecto.entries()]
+      .map(([aspecto, votos]) => ({ aspecto, votos }))
+      .sort((a, b) => b.votos - a.votos),
+    porLocal: [...porLocalMap.entries()]
+      .map(([local, l]) => ({
+        local, totalRespostas: l.length,
+        mediaEstrutura: mediaNotas(l.map((r) => r.nota_estrutura_local)),
+        mediaComida: mediaNotas(l.map((r) => r.nota_comida_local)),
+      }))
+      .sort((a, b) => b.totalRespostas - a.totalRespostas),
+  };
+}
+export async function generateNpsOperacional(sb: SupabaseClient, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+  const dados = dadosParam || (await getDadosBrutos(sb));
+  const geral = seletorMes === 'Visão Geral';
+  const itens = (dados.npsConselhos as any[]).filter((r) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, geral));
+  return { periodo: { mes: seletorMes, ano, geral }, totalRespostas: itens.length, ...resumirOperacionalDeLista(itens) };
+}
+export type NpsOperacionalReport = Awaited<ReturnType<typeof generateNpsOperacional>>;
