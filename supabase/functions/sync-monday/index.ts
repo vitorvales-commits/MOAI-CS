@@ -140,6 +140,15 @@
 // especialista, público alvo e nº de pessoas. Ids confirmados ao vivo via get_board_info no board
 // 18415251314 nesta sessão (ver ROUNDS_COLS). Depois do deploy, uma sincronização manual completa
 // (rounds) reprocessa o histórico inteiro.
+//
+// v20 (28/09/2026 — achado ao vivo, pedido do Vitor pra corrigir junto): syncAgendaConselhos já
+// gravava data_iso sem indicar fuso horário — o texto do Monday vem no horário de Brasília, mas
+// ia direto pro timestamptz (sessão do banco em UTC), então "14:00" de Brasília virava 14h UTC
+// (que é 11h de Brasília de verdade) — todo horário exibido no dashboard ficava adiantado em 3h.
+// Só apareceu agora porque a Parte B acabou de sincronizar Início/Término de Rounds pela primeira
+// vez com a mesma técnica. dataHoraBRParaISO (era dataHoraRoundsOrNull) agora acrescenta o offset
+// "-03:00" explicitamente pros dois casos (rounds e agenda) — ver a função pra detalhe. Os dados
+// já sincronizados se autocorrigem sozinhos no próximo ciclo do cron, sem backfill manual.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -595,14 +604,22 @@ async function syncMetas() {
   return rows.length;
 }
 
-// Monday devolve o texto de uma coluna de data já no fuso da conta (Brasil) — "" quando vazio,
-// "YYYY-MM-DD" quando só data, "YYYY-MM-DD HH:MM" (sem segundos) quando tem hora — mesma
-// convenção de AGENDA_COLS.data em syncAgendaConselhos, só que aqui defensivo contra o caso
-// data-sem-hora (Início/Término do Evento de Rounds nem sempre tem hora marcada, diferente da
-// Data de conselho que sempre tem).
-function dataHoraRoundsOrNull(txt: string | null): string | null {
+// Monday devolve o texto de uma coluna de data já no fuso da conta (Brasil, UTC-3 o ano inteiro
+// desde o fim do horário de verão em 2019) — "" quando vazio, "YYYY-MM-DD" quando só data,
+// "YYYY-MM-DD HH:MM" (sem segundos) quando tem hora.
+//
+// BUG FIX (28/09/2026 — achado ao vivo enquanto sincronizava Início/Término de Rounds pela
+// primeira vez, pedido do Vitor pra corrigir também): syncAgendaConselhos (ver dataHoraBRParaISO
+// mais abaixo) gravava esse texto direto num timestamptz SEM indicar fuso — o Postgres (sessão em
+// UTC neste projeto) assume UTC, então "14:00" (14h de Brasília) virava literalmente 14h UTC no
+// banco, que é 11h de Brasília de verdade. Isso afetava TODA data com hora sincronizada por este
+// arquivo (agenda_conselhos_items.data_iso já sofria disso antes de Rounds existir), sempre 3h
+// adiantada em qualquer tela que exiba o horário. dataHoraBRParaISO agora acrescenta o offset
+// "-03:00" explicitamente, então o timestamptz grava o instante UTC correto. Auto-corrige sozinho
+// no próximo ciclo do cron (cada sync relê o board inteiro), sem precisar de backfill manual.
+function dataHoraBRParaISO(txt: string | null): string | null {
   if (!txt) return null;
-  return txt.includes(' ') ? txt.replace(' ', 'T') + ':00' : txt;
+  return txt.includes(' ') ? txt.replace(' ', 'T') + ':00-03:00' : txt;
 }
 
 async function syncRounds() {
@@ -623,8 +640,8 @@ async function syncRounds() {
         nome: item.name,
         status: colText(item.column_values, ROUNDS_COLS.status),
         cs_responsavel_raw: colText(item.column_values, ROUNDS_COLS.csResponsavel),
-        inicio: dataHoraRoundsOrNull(colText(item.column_values, ROUNDS_COLS.inicio)),
-        termino: dataHoraRoundsOrNull(colText(item.column_values, ROUNDS_COLS.termino)),
+        inicio: dataHoraBRParaISO(colText(item.column_values, ROUNDS_COLS.inicio)),
+        termino: dataHoraBRParaISO(colText(item.column_values, ROUNDS_COLS.termino)),
         local: colText(item.column_values, ROUNDS_COLS.local),
         tema: colText(item.column_values, ROUNDS_COLS.tema),
         especialista: colText(item.column_values, ROUNDS_COLS.especialista),
@@ -924,7 +941,7 @@ async function syncAgenda() {
       rows.push({
         id: Number(item.id),
         conselheiro_nome: item.name,
-        data_iso: dataTxt.replace(' ', 'T') + ':00',
+        data_iso: dataHoraBRParaISO(dataTxt),
         status: colText(item.column_values, AGENDA_COLS.status),
       });
     });
