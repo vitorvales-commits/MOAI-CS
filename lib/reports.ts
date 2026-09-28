@@ -405,6 +405,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
+    npsDestaqueAliases,
   ] = await Promise.all([
     fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
     fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
@@ -418,11 +419,14 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // Parte D (28/09/2026): NPS do board "NPS Conselhos Estratégicos 2026" — ver syncNpsConselhos
     // na Edge Function e generateNpsConselhos/calcularNPS abaixo.
     fetchAll(sb, 'nps_conselhos_items'), fetchAll(sb, 'nps_conselho_aliases'),
+    // Parte F (28/09/2026): ranking de destaque — ver resolverDestaqueMembro/generateConselhoDetalhe.
+    fetchAll(sb, 'nps_destaque_aliases'),
   ]);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
+    npsDestaqueAliases,
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -1308,6 +1312,58 @@ function montarRosterConselho(g: any, membrosPorGrupo: Map<string, any[]>): any[
   const roster = [...(membrosPorGrupo.get(g.group_id) || [])];
   if (g.repo_group_id) roster.push(...(membrosPorGrupo.get(g.repo_group_id) || []));
   return roster;
+}
+
+const STOPWORDS_NOME_ = new Set(['de', 'da', 'do', 'dos', 'das', 'e']);
+
+// Uma linha do roster pode juntar sócios ("Fulano + Beltrano | Empresa") — cada sócio vira um
+// candidato de pessoa próprio; a empresa nunca é candidata a nome de pessoa, só a companyDoMembroRoster.
+function pessoasDoMembroRoster(nomeRoster: string): string[] {
+  return nomeRoster.split('|')[0].split('+').map((p) => p.trim()).filter(Boolean);
+}
+function companyDoMembroRoster(nomeRoster: string): string | null {
+  const partes = nomeRoster.split('|');
+  return partes.length > 1 ? partes[1].trim() : null;
+}
+
+// Parte F (pedido do Vitor, 28/09/2026): resolve o texto livre de "qual empresário mais se
+// destacou" (pergunta do board de NPS) contra o roster do conselho. Alias confirmado
+// (nps_destaque_aliases) SEMPRE vence sobre qualquer tentativa automática, mesma prioridade de
+// membro_resolvido em organizarAtasDoConselho/bigDealsSemMembro.
+//
+// Duas tentativas automáticas, nessa ordem:
+// 1) nomeCasaComRoster (mesma função já usada pra ata/Big Deal) — cobre quando o destaque veio
+//    com nome completo.
+// 2) Validado ao vivo contra respostas reais desta sessão (28/09/2026): a resposta normalmente é
+//    só o PRIMEIRO NOME ("Fabiano", "Pedro"), às vezes o nome da EMPRESA do membro ("A Festiva")
+//    — a tentativa (1) nunca casa nesses casos, porque exige os DOIS primeiros tokens do nome
+//    oficial inteiro dentro de um texto de uma palavra só. Aqui casa palavra inteira do texto
+//    livre contra qualquer token de qualquer sócio listado na linha do roster, OU contra o nome
+//    da empresa (contém, nos dois sentidos). Só resolve sozinho quando exatamente UM membro do
+//    roster bate — "Pedro" repetido em dois membros, ou nenhum candidato, fica pra revisão
+//    humana (destaqueSemMembro), nunca escolhe errado sozinho.
+function resolverDestaqueMembro(nomeLivre: string, groupId: string, roster: any[], aliasesConfirmados: Map<string, string>): string | null {
+  const confirmado = aliasesConfirmados.get(`${groupId}|${nomeLivre}`);
+  if (confirmado) return confirmado;
+
+  const direta = nomeCasaComRoster(nomeLivre, roster);
+  if (direta) return direta.nome;
+
+  const alvoNorm = normalizeNome(nomeLivre);
+  if (!alvoNorm) return null;
+  const candidatos = roster.filter((m: any) => {
+    const pessoasBatem = pessoasDoMembroRoster(m.nome).some((pessoa) => {
+      const tokens = normalizeNome(pessoa).split(/\s+/).filter((t) => /\w/.test(t) && !STOPWORDS_NOME_.has(t));
+      return tokens.some((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`).test(alvoNorm));
+    });
+    if (pessoasBatem) return true;
+    const empresa = companyDoMembroRoster(m.nome);
+    if (!empresa) return false;
+    const empresaNorm = normalizeNome(empresa);
+    return empresaNorm.includes(alvoNorm) || alvoNorm.includes(empresaNorm);
+  });
+  const nomesUnicos = [...new Set(candidatos.map((c: any) => c.nome))];
+  return nomesUnicos.length === 1 ? nomesUnicos[0] : null;
 }
 
 // impacto dos conselhos: soma, por conselho (grupo ativo), os cases/matchmakings que mencionam
@@ -2353,6 +2409,33 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     nomeAta, membroResolvido: v.membroResolvido, itens: v.itens,
   }));
 
+  // Parte F (28/09/2026): ranking de destaque ("quem mais se destacou na reunião de hoje?", board
+  // de NPS) — só entram respostas já casadas com ESTE conselho (nps_conselhos_items.group_id
+  // confirmado, ver Parte D) e dentro do período em tela. Nome que não casa com o roster (nem via
+  // alias confirmado) some do ranking e vai pra destaqueSemMembro, agrupado por texto exato — mesmo
+  // espírito de bigDealsSemMembro: uma confirmação (confirmar_alias_nps_destaque) resolve de uma vez
+  // todas as ocorrências futuras daquele texto pra este conselho.
+  const npsGeralPeriodo = seletorMes === 'Visão Geral';
+  const aliasesDestaqueConfirmados = new Map<string, string>();
+  dados.npsDestaqueAliases.forEach((a: any) => aliasesDestaqueConfirmados.set(`${a.group_id}|${a.nome_destaque}`, a.membro_oficial));
+  const votosPorMembroDestaque = new Map<string, number>();
+  const votosPorNomeDestaqueSemMembro = new Map<string, number>();
+  dados.npsConselhos
+    .filter((r: any) => r.group_id === groupId && r.destaque_texto_bruto && r.destaque_texto_bruto.trim())
+    .filter((r: any) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, npsGeralPeriodo))
+    .forEach((r: any) => {
+      const nomeLivre = String(r.destaque_texto_bruto).trim();
+      const membro = resolverDestaqueMembro(nomeLivre, groupId, roster, aliasesDestaqueConfirmados);
+      if (membro) votosPorMembroDestaque.set(membro, (votosPorMembroDestaque.get(membro) || 0) + 1);
+      else votosPorNomeDestaqueSemMembro.set(nomeLivre, (votosPorNomeDestaqueSemMembro.get(nomeLivre) || 0) + 1);
+    });
+  const destaqueRanking = [...votosPorMembroDestaque.entries()]
+    .map(([membro, votos]) => ({ membro, votos }))
+    .sort((a, b) => b.votos - a.votos);
+  const destaqueSemMembro = [...votosPorNomeDestaqueSemMembro.entries()]
+    .map(([nomeDestaque, votos]) => ({ nomeDestaque, votos }))
+    .sort((a, b) => b.votos - a.votos);
+
   // evolução dos membros (Front 3, pedido do Vitor 26/09/2026): mesmo roster titular usado pela
   // lista `membros` abaixo — reaproveita atasCompletas (histórico INTEIRO, não só o período em
   // tela, pra evolução fazer sentido) e bigDealsPorMembro, já computados acima.
@@ -2437,6 +2520,8 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     encontros,
     membros,
     bigDealsSemMembro,
+    destaqueRanking,
+    destaqueSemMembro,
     acoesSugeridas,
     evolucaoMembros,
   };
@@ -2637,3 +2722,17 @@ export async function generateNpsOperacional(sb: SupabaseClient, seletorMes: str
   return { periodo: { mes: seletorMes, ano, geral }, totalRespostas: itens.length, ...resumirOperacionalDeLista(itens) };
 }
 export type NpsOperacionalReport = Awaited<ReturnType<typeof generateNpsOperacional>>;
+
+// ============ ranking de destaque por conselho (Parte F, pedido do Vitor, 28/09/2026) ============
+// O cálculo em si (destaqueRanking/destaqueSemMembro, casamento contra o roster via
+// resolverDestaqueMembro) fica dentro de generateConselhoDetalhe — mesmo lugar de
+// bigDealsSemMembro, já que os dois são "campos por conselho" da mesma tela. Só a confirmação
+// mora aqui, mesmo padrão de confirmarMembroAta: passa pela função SECURITY DEFINER
+// confirmar_alias_nps_destaque (checa is_moai_user() de novo dentro do banco, grava auditoria) e
+// invalida os caches em memória pra a correção aparecer na hora.
+export async function confirmarAliasNpsDestaque(sb: SupabaseClient, groupId: string, nomeDestaque: string, membroOficial: string): Promise<void> {
+  const { error } = await sb.rpc('confirmar_alias_nps_destaque', { p_group_id: groupId, p_nome_destaque: nomeDestaque, p_membro_oficial: membroOficial });
+  if (error) throw new Error('Erro ao confirmar alias de destaque: ' + error.message);
+  invalidarDadosBrutosCache();
+  invalidarCacheConselho(groupId);
+}

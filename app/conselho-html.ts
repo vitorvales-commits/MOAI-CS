@@ -106,6 +106,10 @@ export const CONSELHO_STYLE = `
 .resolver-status.ok{color:var(--verde);}
 .resolver-status.erro{color:var(--vermelho);}
 .resolver-confirmado{font-size:12.5px;color:var(--verde);font-weight:700;}
+.destaque-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--cinza-linha);}
+.destaque-row:last-child{border-bottom:none;}
+.destaque-nome{font-size:13px;font-weight:600;}
+.destaque-votos{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(200,154,46,0.14);color:#9a7417;white-space:nowrap;}
 
 .encontros-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;overflow:hidden;}
 .encontro-row{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--cinza-linha);font-size:13px;}
@@ -233,6 +237,16 @@ export const CONSELHO_HTML = `
   <section class="block" id="bigDealsSemMembroBlock" style="display:none;">
     <h2>Big Deal sem membro correspondente</h2>
     <div id="bigDealsSemMembro"></div>
+  </section>
+
+  <section class="block" id="destaqueBlock" style="display:none;">
+    <h2>Destaque do conselho <span class="sub">quem mais se destacou nas reuniões — pesquisa de NPS</span></h2>
+    <div id="destaqueRanking"></div>
+  </section>
+
+  <section class="block" id="destaqueSemMembroBlock" style="display:none;">
+    <h2>Destaque sem membro correspondente</h2>
+    <div id="destaqueSemMembro"></div>
   </section>
 </div>
 </div>
@@ -705,6 +719,78 @@ function confirmarMembro(idx) {
   });
 }
 
+// Parte F (pedido do Vitor 28/09/2026): mesmo mecanismo de confirmarMembro/renderBigDealsSemMembro
+// acima, só que resolvendo "quem se destacou" (pergunta do board de NPS) contra o roster deste
+// conselho. destaqueSemMembroAtual_ guarda o estado necessário pros handlers onclick.
+var destaqueSemMembroAtual_ = [];
+
+function renderDestaqueRanking(d) {
+  var bloco = document.getElementById('destaqueBlock');
+  var ranking = d.destaqueRanking || [];
+  bloco.style.display = ranking.length ? 'block' : 'none';
+  document.getElementById('destaqueRanking').innerHTML = ranking.map(function (r) {
+    return '<div class="destaque-row"><span class="destaque-nome">' + esc(r.membro) + '</span>' +
+      '<span class="destaque-votos">' + r.votos + (r.votos === 1 ? ' voto' : ' votos') + '</span></div>';
+  }).join('');
+}
+
+function renderDestaqueSemMembro(d) {
+  var bloco = document.getElementById('destaqueSemMembroBlock');
+  var grupos = d.destaqueSemMembro || [];
+  destaqueSemMembroAtual_ = grupos;
+  bloco.style.display = grupos.length ? 'block' : 'none';
+  document.getElementById('destaqueSemMembro').innerHTML = grupos.map(function (g, idx) {
+    var opcoes = '<option value="">Selecionar do roster…</option>' +
+      rosterAtual_.map(function (nome) { return '<option value="' + esc(nome) + '">' + esc(nome) + '</option>'; }).join('');
+    return '<div class="resolver-card"><div class="resolver-head">' +
+        '<span class="resolver-nome-ata">Citado como: ' + esc(g.nomeDestaque) + '</span>' +
+        '<span class="destaque-votos">' + g.votos + (g.votos === 1 ? ' voto' : ' votos') + '</span>' +
+      '</div><div class="resolver-linha">' +
+        '<select class="resolver-select" id="resolverDestaqueSelect' + idx + '">' + opcoes + '</select>' +
+        '<span style="font-size:11px;color:#9F9F9F;">ou</span>' +
+        '<input class="resolver-input" id="resolverDestaqueInput' + idx + '" type="text" placeholder="digitar nome (convidado/ex-membro)">' +
+        '<button class="resolver-btn" id="resolverDestaqueBtn' + idx + '" onclick="confirmarDestaque(' + idx + ')" type="button">Confirmar</button>' +
+      '</div><div class="resolver-status" id="resolverDestaqueStatus' + idx + '"></div></div>';
+  }).join('');
+}
+
+function confirmarDestaque(idx) {
+  var grupo = destaqueSemMembroAtual_[idx];
+  var select = document.getElementById('resolverDestaqueSelect' + idx);
+  var input = document.getElementById('resolverDestaqueInput' + idx);
+  var btn = document.getElementById('resolverDestaqueBtn' + idx);
+  var status = document.getElementById('resolverDestaqueStatus' + idx);
+  var membroOficial = (select && select.value) || (input && input.value.trim()) || '';
+  if (!membroOficial) {
+    status.textContent = 'Escolha um nome do roster ou digite um nome.';
+    status.className = 'resolver-status erro';
+    return;
+  }
+  btn.disabled = true;
+  status.textContent = 'Confirmando…';
+  status.className = 'resolver-status';
+  fetch('/api/conselho/' + encodeURIComponent(GROUP_ID) + '/confirmar-destaque', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nomeDestaque: grupo.nomeDestaque, membroOficial: membroOficial }),
+  }).then(function (res) {
+    return res.json().then(function (data) {
+      if (!res.ok) throw new Error((data && data.error) || ('Erro ' + res.status));
+      return data;
+    });
+  }).then(function () {
+    status.textContent = 'Confirmado — atualizando…';
+    status.className = 'resolver-status ok';
+    limparCacheConselhoAtual_();
+    var selMes = document.getElementById('selMesConselho'), selAno = document.getElementById('selAnoConselho');
+    carregarConselho(selMes.value, Number(selAno.value));
+  }).catch(function (err) {
+    btn.disabled = false;
+    status.textContent = 'Erro: ' + err.message;
+    status.className = 'resolver-status erro';
+  });
+}
+
 function toggleMembro(idx) {
   var body = document.getElementById('membroBody' + idx);
   var label = document.getElementById('toggleLabel' + idx);
@@ -725,6 +811,8 @@ function renderTudo_(d) {
   renderMembros(d);
   renderEvolucaoMembros(d);
   renderBigDealsSemMembro(d);
+  renderDestaqueRanking(d);
+  renderDestaqueSemMembro(d);
 }
 
 // Cache de sessão (Parte C, pedido do Vitor 25/09/2026 — reportou lentidão inclusive ao voltar pra
