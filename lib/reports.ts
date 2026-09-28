@@ -123,7 +123,21 @@ export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]>
   }));
 }
 
+// BUG FIX (28/09/2026 — desperdício menor do mesmo tipo do achado em buscarDadosBrutosSemCache):
+// generateEquipeReport busca cs_config uma vez pra si mesma, e generateCSReport busca de novo a
+// mesma coisa pra CADA CS do time (Promise.all, um por membro) — sem nenhum cache, isso era mais
+// N conexões concorrentes e redundantes na mesma tabela empilhadas em cima das outras. Cache de
+// processo de 15s (bem mais curto que o de getDadosBrutos, essa tabela muda por ação direta de
+// gestor) colapsa essas chamadas repetidas numa só; invalidado explicitamente em toda escrita que
+// mexe em cs_config (setMetaCarteira/setCSAtivo/vincularCS) pra uma ação de gestor nunca ficar
+// escondida por até 15s.
+const CS_LIST_TTL_MS = 15_000;
+let csListCache: { valor: CSConfig[]; expiraEm: number } | null = null;
+function invalidarCSListCache() {
+  csListCache = null;
+}
 export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConfig[]> {
+  if (csListCache && csListCache.expiraEm > Date.now()) return csListCache.valor;
   const { data, error } = await sb.from('cs_config').select('*').order('nome');
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
   const ativos = (data || []).map((r: any) => ({
@@ -134,7 +148,9 @@ export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConf
   // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
   // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.
   const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira'>[]).map((m) => ({ ...m, fotoUrl: FOTOS_CS[m.nome] || null, metaCarteira: null as number | null }));
-  return ativos.concat(exMembros);
+  const resultado = ativos.concat(exMembros);
+  csListCache = { valor: resultado, expiraEm: Date.now() + CS_LIST_TTL_MS };
+  return resultado;
 }
 
 export async function getVezesDestaque(sb: SupabaseClient, nome: string): Promise<number> {
@@ -209,6 +225,7 @@ export async function getCSRosterAdmin(sb: SupabaseClient): Promise<CSRosterAdmi
 export async function setMetaCarteira(sb: SupabaseClient, nome: string, meta: number | null): Promise<number | null> {
   const { data, error } = await sb.rpc('set_meta_carteira', { p_nome: nome, p_meta: meta });
   if (error) throw new Error('Erro ao salvar meta de carteira: ' + error.message);
+  invalidarCSListCache();
   return data as number | null;
 }
 // set_cs_ativo (SECURITY DEFINER) checa is_gestor() de novo dentro do banco e grava auditoria —
@@ -217,6 +234,7 @@ export async function setMetaCarteira(sb: SupabaseClient, nome: string, meta: nu
 export async function setCSAtivo(sb: SupabaseClient, nome: string, ativo: boolean): Promise<boolean> {
   const { data, error } = await sb.rpc('set_cs_ativo', { p_nome: nome, p_ativo: ativo });
   if (error) throw new Error('Erro ao alterar status do CS: ' + error.message);
+  invalidarCSListCache();
   return data as boolean;
 }
 
@@ -279,6 +297,7 @@ export async function vincularCS(
     p_monday_user_id: params.mondayUserId,
   });
   if (error) throw new Error('Erro ao vincular CS: ' + error.message);
+  invalidarCSListCache();
 }
 
 // B4 (pedido do Vitor, 25/09/2026): confirma o membro certo pra um nome de ata que não casou com
@@ -446,28 +465,59 @@ const DADOS_BRUTOS_TTL_MS = 60_000;
 // mesmo tipo tanto no caminho de cache-hit quanto no de busca real, e tipar o cache com o alias
 // DadosBrutos (declarado a partir do retorno de getDadosBrutos) criaria referência circular —
 // daqui o cache é tipado a partir DESTA função interna, sem circularidade.
+// Roda várias funções que retornam Promise com no máximo `limite` em voo ao mesmo tempo,
+// preservando a ordem dos resultados — usada por buscarDadosBrutosSemCache (ver nota logo abaixo,
+// achado real de 28/09/2026: 20 conexões simultâneas de uma ÚNICA carga de tela é uma fatia grande
+// demais do pool pequeno deste projeto).
+async function comConcorrenciaLimitada<T>(tarefas: (() => Promise<T>)[], limite: number): Promise<T[]> {
+  const resultados: T[] = new Array(tarefas.length);
+  let proximoIndice = 0;
+  async function worker() {
+    while (true) {
+      const indice = proximoIndice++;
+      if (indice >= tarefas.length) return;
+      resultados[indice] = await tarefas[indice]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limite, tarefas.length) }, worker));
+  return resultados;
+}
+const MAX_CONCORRENCIA_DADOS_BRUTOS = 5;
+
+// BUG FIX (28/09/2026 — segunda causa raiz do travamento da home do gestor, depois do timeout+
+// retry em fetchAll): esta função buscava as ~20 tabelas TODAS de uma vez via Promise.all — toda
+// carga de tela que depende de getDadosBrutos (home do gestor, agenda, equipe, conselho,
+// home-resumo, cs) dispara 20 requisições simultâneas contra o PostgREST. Confirmado no Supabase:
+// este projeto está no tier menor (max_connections=60, pool interno do PostgREST bem menor que
+// isso) — 20 conexões de uma tacada só, vindas de UMA carga de tela, já é uma fatia grande do
+// pool sozinha; some mais de uma pessoa com a tela aberta ao mesmo tempo, ou o ciclo de sync do
+// Monday (a cada 5 min) competindo pelo mesmo pool, e o esgotamento vira quase garantido — não um
+// evento raro —, o que explica por que o timeout+retry sozinhos (que só esperam alguns segundos
+// antes de tentar de novo) não bastavam: a essa altura o pico de 20 conexões acontece de novo,
+// retry ou não. Agora roda no máximo 5 buscas por vez (comConcorrenciaLimitada) — mesmas 20
+// tabelas, mesmo resultado final, só não todas ao mesmo tempo.
 async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
     npsDestaqueAliases,
-  ] = await Promise.all([
-    fetchAll(sb, 'churn_items'), fetchAll(sb, 'upsell_downsell_items'), fetchAll(sb, 'reports_semanais_items'),
-    fetchAll(sb, 'metas_subitens'), fetchAll(sb, 'rounds_items'), fetchAll(sb, 'feedback_items'), fetchAll(sb, 'cases_items'),
-    fetchAll(sb, 'matchmakings_items'), fetchAll(sb, 'conselhos_grupos'), fetchAll(sb, 'conselhos_membros'),
-    fetchAll(sb, 'conselhos_status_mensal'), fetchAll(sb, 'agenda_conselhos_items'), fetchAll(sb, 'historico_conselhos_items'),
-    fetchAll(sb, 'atas_conselho_extraido'),
+  ] = await comConcorrenciaLimitada<any[]>([
+    () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
+    () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
+    () => fetchAll(sb, 'matchmakings_items'), () => fetchAll(sb, 'conselhos_grupos'), () => fetchAll(sb, 'conselhos_membros'),
+    () => fetchAll(sb, 'conselhos_status_mensal'), () => fetchAll(sb, 'agenda_conselhos_items'), () => fetchAll(sb, 'historico_conselhos_items'),
+    () => fetchAll(sb, 'atas_conselho_extraido'),
     // Sem foto_base64 (~200KB por conselheiro, ~6MB no total): a imagem em si é servida à parte
     // por /conselheiro-foto/[id], com cache no navegador — aqui só precisa saber quem TEM foto.
-    fetchAll(sb, 'conselhos_status_historico'), fetchAll(sb, 'conselheiros_fotos', 'conselheiro_nome,monday_item_id'),
-    fetchAll(sb, 'atas_conselho_bigdeal'), fetchAll(sb, 'conselheiros'),
+    () => fetchAll(sb, 'conselhos_status_historico'), () => fetchAll(sb, 'conselheiros_fotos', 'conselheiro_nome,monday_item_id'),
+    () => fetchAll(sb, 'atas_conselho_bigdeal'), () => fetchAll(sb, 'conselheiros'),
     // Parte D (28/09/2026): NPS do board "NPS Conselhos Estratégicos 2026" — ver syncNpsConselhos
     // na Edge Function e generateNpsConselhos/calcularNPS abaixo.
-    fetchAll(sb, 'nps_conselhos_items'), fetchAll(sb, 'nps_conselho_aliases'),
+    () => fetchAll(sb, 'nps_conselhos_items'), () => fetchAll(sb, 'nps_conselho_aliases'),
     // Parte F (28/09/2026): ranking de destaque — ver resolverDestaqueMembro/generateConselhoDetalhe.
-    fetchAll(sb, 'nps_destaque_aliases'),
-  ]);
+    () => fetchAll(sb, 'nps_destaque_aliases'),
+  ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
