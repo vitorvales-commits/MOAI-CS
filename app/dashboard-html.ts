@@ -563,10 +563,18 @@ function corConfirmacao(qtd){
 function iniciais(nome){ nome=String(nome||'').trim(); if(!nome) return '?'; var p=nome.split(/\\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 
 var MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+// BUG FIX (28/09/2026 — achado junto com a correção de fuso da Parte B): esta função extraía os
+// dígitos literais do ISO por regex, ignorando o offset de fuso — só "funcionava" porque
+// data_iso vinha gravado sem indicar fuso nenhum (14h de Brasília salva como se fosse 14h UTC).
+// Agora que sync-monday grava o instante UTC correto (offset -03:00 explícito, ver
+// dataHoraBRParaISO na Edge Function), interpretar o ISO como instante de verdade — new Date(iso)
+// — e ler getDate()/getHours() (hora LOCAL do navegador) é o jeito certo: quem abre o dashboard
+// está no Brasil, então essas horas locais já saem em horário de Brasília, sem regex nenhuma.
+// Mesmo princípio que dataHoraBR já usa em app/conselho-html.ts.
 function parseDataIsoLocal_(iso){
-  var m = String(iso||'').match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})/);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[4]), Number(m[5]));
+  if (!iso) return null;
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
 }
 function formatarDataConselho(iso){
   var d = parseDataIsoLocal_(iso);
