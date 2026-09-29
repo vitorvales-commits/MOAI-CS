@@ -207,6 +207,12 @@ export async function editarUmAUm(sb: SupabaseClient, id: string, data: string, 
   const { error } = await sb.rpc('editar_um_a_um', { p_id: id, p_data: data, p_o_que_foi_falado: oQueFoiFalado, p_combinados: combinados });
   if (error) throw new Error('Erro ao editar registro de 1:1: ' + error.message);
 }
+// excluir_um_a_um (SECURITY DEFINER) checa is_gestor() de novo dentro do banco — só gestor
+// apaga um registro de 1:1. RPC já aplicada em produção (migração add_excluir_um_a_um_rpc).
+export async function excluirUmAUm(sb: SupabaseClient, id: string): Promise<void> {
+  const { error } = await sb.rpc('excluir_um_a_um', { p_id: id });
+  if (error) throw new Error('Erro ao excluir registro de 1:1: ' + error.message);
+}
 
 // ============ controle de perfis (aba do gestor) ============
 // Roster ADMIN (ativos e inativos juntos, pra tela de toggle) — diferente de getCSListCompleto

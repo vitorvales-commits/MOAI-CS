@@ -393,6 +393,8 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .umaum-card-campo b { color:#1A1A1A; font-weight:700; display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
 .umaum-card-editar { font-size:11px; font-weight:700; color:#5D5D5D; background:none; border:0.75pt solid #D8D5D5; border-radius:999px; padding:5px 12px; cursor:pointer; }
 .umaum-card-editar:hover { background:#F5F5F5; }
+.umaum-card-excluir { font-size:11px; font-weight:700; color:#C0392B; background:none; border:0.75pt solid #EBC6C0; border-radius:999px; padding:5px 12px; cursor:pointer; margin-left:6px; }
+.umaum-card-excluir:hover { background:#FBEEEC; }
 
 /* ===== agenda visual (Parte C, 28/09/2026) ===== */
 .agenda-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
@@ -1678,7 +1680,7 @@ function listaUmAUmHtml_(){
   return umAUmAtual_.map(function(r){
     return '<div class="umaum-card">' +
       '<div class="umaum-card-head"><span class="umaum-card-data">' + dataBRUmAUm_(r.data) + '</span>' +
-        '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\\'' + r.id + '\\')">Editar</button>' : '') + '</span></div>' +
+        '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\\'' + r.id + '\\')">Editar</button> <button class="umaum-card-excluir" onclick="excluirUmAUmClick(\\'' + r.id + '\\')">Excluir</button>' : '') + '</span></div>' +
       (r.oQueFoiFalado ? '<div class="umaum-card-campo"><b>O que foi falado</b>' + escUmAUm_(r.oQueFoiFalado) + '</div>' : '') +
       (r.combinados ? '<div class="umaum-card-campo"><b>Combinados</b>' + escUmAUm_(r.combinados) + '</div>' : '') +
     '</div>';
@@ -1697,6 +1699,16 @@ function editarUmAUmClick(id){
 function cancelarEdicaoUmAUm(){
   umAUmEditandoId_ = null;
   renderAbaUmAUm();
+}
+function excluirUmAUmClick(id){
+  if (!window.confirm('Excluir este registro de 1:1? Essa ação não pode ser desfeita.')) return;
+  var url = '/api/cs/' + encodeURIComponent(currentCS) + '/um-a-um/' + encodeURIComponent(id);
+  fetchJSON_(url, { method: 'DELETE' }).then(function(){
+    if (umAUmEditandoId_ === id) umAUmEditandoId_ = null;
+    return carregarUmAUm(currentCS);
+  }).catch(function(err){
+    window.alert('Erro ao excluir: ' + err.message);
+  });
 }
 function salvarUmAUm(){
   var data = document.getElementById('umaumData').value;
