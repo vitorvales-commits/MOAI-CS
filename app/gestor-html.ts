@@ -198,6 +198,21 @@ export const GESTOR_STYLE = `
 .gestor-empty{padding:24px;color:var(--cinza-apoio);font-size:13px;}
 .gestor-erro{padding:24px;color:var(--vermelho);font-size:13px;}
 
+/* consulta rápida (pergunta em linguagem natural sobre metas, sem IA — lib/consulta.ts) */
+.consulta-painel{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:24px;margin:28px 0 0;}
+.consulta-titulo{font-size:15px;font-weight:700;margin:0 0 4px;}
+.consulta-sub{font-size:12.5px;color:var(--cinza-texto);margin:0 0 16px;}
+.consulta-form{display:flex;gap:10px;}
+.consulta-form input{flex:1;min-width:0;padding:12px 16px;border-radius:12px;border:1px solid var(--cinza-borda);font-size:14px;font-family:'Inter',sans-serif;}
+.consulta-form button{padding:0 22px;border-radius:12px;border:none;background:var(--preto-tinta);color:var(--branco);font-weight:600;font-size:13px;cursor:pointer;flex-shrink:0;}
+.consulta-form button:disabled{opacity:0.5;cursor:not-allowed;}
+.consulta-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.consulta-chip{background:none;border:1px dashed var(--cinza-borda);color:var(--cinza-texto);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
+.consulta-chip:hover{background:var(--cinza-superficie);}
+.consulta-chip-recente{border-style:solid;}
+.consulta-resposta{margin-top:16px;padding:16px 18px;background:var(--cinza-fundo);border-radius:14px;border-left:4px solid var(--dourado);white-space:pre-wrap;font-size:13.5px;line-height:1.6;color:var(--preto-tinta);}
+@media (max-width:640px){.consulta-form{flex-direction:column;}}
+
 /* notinha clicável de pontuação/critério (Parte C, pedido do Vitor 25/09/2026) */
 .info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--cinza-superficie);color:var(--cinza-texto);font-size:10px;font-weight:800;border:none;cursor:pointer;margin-left:6px;flex-shrink:0;font-family:'Inter',sans-serif;line-height:1;padding:0;}
 .info-btn:hover{background:var(--cinza-linha);}
@@ -250,6 +265,22 @@ export const GESTOR_HTML = `
       <span class="pill">Acesso restrito a gestores</span>
     </div>
   </header>
+
+  <section class="consulta-painel" id="consultaPainel">
+    <h2 class="consulta-titulo">Consulta rápida</h2>
+    <p class="consulta-sub">Pergunte em português sobre metas do time ou de um CS. A resposta usa os mesmos dados e regras de cálculo do resto do painel, sem custo de IA por pergunta.</p>
+    <div class="consulta-form">
+      <input type="text" id="consultaInput" maxlength="300" placeholder="Ex.: quais metas o Rodrigo bateu e não bateu?">
+      <button id="consultaBtn" type="button">Consultar</button>
+    </div>
+    <div class="consulta-chips" id="consultaChipsExemplo">
+      <button class="consulta-chip" type="button" data-pergunta="Quais metas o Rodrigo bateu e não bateu">Quais metas o Rodrigo bateu e não bateu</button>
+      <button class="consulta-chip" type="button" data-pergunta="O que a Luana não bateu em agosto">O que a Luana não bateu em agosto</button>
+      <button class="consulta-chip" type="button" data-pergunta="Metas do time neste mês">Metas do time neste mês</button>
+    </div>
+    <div class="consulta-chips" id="consultaChipsRecentes"></div>
+    <div id="consultaRespostaWrap"></div>
+  </section>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="visaoGeral">Visão geral</button>
@@ -434,6 +465,7 @@ var ENDPOINT_CONFIG = '/api/config';
 var ENDPOINT_GESTOR_CONFIG = '/api/gestor/config';
 var ENDPOINT_CS_USUARIOS = '/api/gestor/cs-usuarios';
 var ENDPOINT_ADVERTENCIA_TIPOS = '/api/gestor/advertencia-tipos';
+var ENDPOINT_CONSULTA = '/api/consulta';
 
 // ============ notinha clicável (Parte C, pedido do Vitor 25/09/2026) ============
 // Modal genérico reaproveitado em dois lugares: detalhamento item a item de uma pontuação
@@ -1136,6 +1168,89 @@ function renderNaoVinculados(lista) {
     });
   });
 }
+
+// ============ consulta rápida (Parte E, pedido do Vitor 29/09/2026) ============
+// Painel isolado do resto da tela: tudo roda dentro de initConsulta_, com try/catch em volta —
+// este arquivo é um <script> inline só, executado de cima pra baixo; sem o try/catch, um erro
+// aqui (ex.: elemento faltando por alguma edição futura) pararia a execução ANTES de
+// carregarVisaoGeral() na linha de baixo, quebrando a tela inteira por causa de um painel à parte
+// (já aconteceu uma vez com um erro de sintaxe no template inteiro — ver nota do LEIA_ME).
+// Mantém só as últimas 5 perguntas da sessão em memória (sem localStorage, como pedido).
+var CONSULTA_RECENTES_ = [];
+
+function consultaNormalizarEspacos_(s) { return (s || '').replace(/\\s+/g, ' ').trim(); }
+
+function consultaRenderRecentes_() {
+  var wrap = document.getElementById('consultaChipsRecentes');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  CONSULTA_RECENTES_.forEach(function (p) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'consulta-chip consulta-chip-recente';
+    btn.textContent = p;
+    btn.addEventListener('click', function () { consultaExecutar_(p); });
+    wrap.appendChild(btn);
+  });
+}
+
+function consultaRegistrarRecente_(pergunta) {
+  CONSULTA_RECENTES_ = CONSULTA_RECENTES_.filter(function (p) { return p !== pergunta; });
+  CONSULTA_RECENTES_.unshift(pergunta);
+  if (CONSULTA_RECENTES_.length > 5) CONSULTA_RECENTES_.length = 5;
+  consultaRenderRecentes_();
+}
+
+function consultaExecutar_(pergunta) {
+  pergunta = consultaNormalizarEspacos_(pergunta);
+  var input = document.getElementById('consultaInput');
+  var btn = document.getElementById('consultaBtn');
+  var respostaWrap = document.getElementById('consultaRespostaWrap');
+  if (!pergunta || !input || !btn || !respostaWrap) return;
+  input.value = pergunta;
+  btn.disabled = true;
+  var rotuloAnterior = btn.textContent;
+  btn.textContent = 'Consultando…';
+  respostaWrap.innerHTML = '';
+  fetchJSON_(ENDPOINT_CONSULTA, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pergunta: pergunta }),
+  }).then(function (data) {
+    // textContent, nunca innerHTML: a resposta cita nomes vindos do Monday, texto livre não
+    // sanitizado — nunca deve ser interpretado como HTML.
+    var div = document.createElement('div');
+    div.className = 'consulta-resposta';
+    div.textContent = data.resposta || 'Sem resposta.';
+    respostaWrap.appendChild(div);
+    consultaRegistrarRecente_(pergunta);
+  }).catch(function (err) {
+    var div = document.createElement('div');
+    div.className = 'gestor-erro';
+    div.textContent = 'Erro ao consultar: ' + err.message;
+    respostaWrap.appendChild(div);
+  }).then(function () {
+    btn.disabled = false;
+    btn.textContent = rotuloAnterior;
+  });
+}
+
+(function initConsulta_() {
+  try {
+    var painel = document.getElementById('consultaPainel');
+    var input = document.getElementById('consultaInput');
+    var btn = document.getElementById('consultaBtn');
+    if (!painel || !input || !btn) return;
+    btn.addEventListener('click', function () { consultaExecutar_(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); consultaExecutar_(input.value); }
+    });
+    painel.querySelectorAll('#consultaChipsExemplo .consulta-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () { consultaExecutar_(chip.dataset.pergunta); });
+    });
+  } catch (err) {
+    var respostaWrap = document.getElementById('consultaRespostaWrap');
+    if (respostaWrap) respostaWrap.innerHTML = '<div class="gestor-erro">A consulta rápida não carregou.</div>';
+  }
+})();
 
 carregarVisaoGeral();
 `;
