@@ -1640,7 +1640,7 @@ function listaUmAUmHtml_(){
   return umAUmAtual_.map(function(r){
     return '<div class="umaum-card">' +
       '<div class="umaum-card-head"><span class="umaum-card-data">' + dataBRUmAUm_(r.data) + '</span>' +
-        '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\'' + r.id + '\')">Editar</button>' : '') + '</span></div>' +
+        '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\\'' + r.id + '\\')">Editar</button>' : '') + '</span></div>' +
       (r.oQueFoiFalado ? '<div class="umaum-card-campo"><b>O que foi falado</b>' + escUmAUm_(r.oQueFoiFalado) + '</div>' : '') +
       (r.combinados ? '<div class="umaum-card-campo"><b>Combinados</b>' + escUmAUm_(r.combinados) + '</div>' : '') +
     '</div>';
