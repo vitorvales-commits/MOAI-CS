@@ -1,0 +1,53 @@
+:- encoding(utf8).
+% ============================================================================
+% dados.pl
+% Modelo de dados de metas, indicadores da home e recordes — sistema "metas do
+% gestor" entregue em 29/09/2026 via Claude Code. Fonte: migrações
+% supabase/migrations/20260929_metas_gestor_indicadores_home_recordes.sql,
+% 20260929_metas_gestor_carga_carteira.sql, 20260929_metas_cs_mensal_completo_fn.sql
+% e 20260929_metas_gestor_rpcs_security_definer.sql. Só registra o que foi
+% diretamente verificado nesta sessão (SQL direto no banco, não só lido no
+% código). Estado geral da aplicação em handoff/aplicacao.pl, consulta em
+% linguagem natural em handoff/consulta_metas.pl, pendências em
+% handoff/pendencias.pl.
+% ============================================================================
+
+:- discontiguous tabela/2, funcao/2, rpc/2, comportamento/2, decisao_consciente/2,
+   divergencia_encontrada/2, bug_encontrado_e_corrigido/2.
+
+% ---- tabelas ----
+tabela(indicadores_catalogo, "chave (pk, texto), rotulo, unidade, direcao ('min'/'max'), fonte, agregacao_time. Seed único a partir dos indicadores distintos em metas_subitens, com validação de contagem batendo (mesmo número de indicadores distintos nas duas fontes) antes de considerar a migração correta. Só policy de SELECT (is_moai_user()); sem policy de escrita — escrita só via seed, não há RPC de escrita para o catálogo em si.").
+tabela(config_home_indicadores, "indicador (fk chave), visivel boolean, ordem integer, exibir_recorde boolean, atualizado_por, atualizado_em. Controla quais indicadores aparecem na home e na página do CS, em que ordem, e se mostram o selo de recorde. Escrita só via configurar_home_indicadores.").
+tabela(metas_definidas, "indicador, mes (date, sempre dia 1), escopo ('time'/'cs'), cs_nome (null quando escopo=time), valor, atualizado_por, atualizado_em. Unique (indicador, mes, escopo, coalesce(cs_nome,'')). Meta de time é uma linha independente da meta de cada CS — nunca é soma nem média das metas individuais (comportamento(meta_time_nao_e_soma)). Escrita só via definir_metas_lote/copiar_metas_mes.").
+tabela(recordes_manuais, "indicador, escopo, cs_nome, valor, mes_referencia, observacao, atualizado_por, atualizado_em. Guarda recordes anteriores ao histórico sincronizado (ex.: um resultado de 2020 que não está nas tabelas espelhadas do Monday) para poder competir com o recorde calculado em recorde_efetivo. Escrita só via definir_recorde_manual.").
+
+% ---- funções de leitura ----
+funcao(resolver_meta/4, "resolver_meta(indicador, escopo, cs_nome, mes) — valor explícito definido para o mês, senão o valor do mês anterior mais recente que tenha definição (vigência mensal com herança), senão null. Devolve também mes_origem, pro front-end distinguir herdado de definido no próprio mês.").
+funcao(metas_resolvidas_periodo/2, "metas_resolvidas_periodo(mes_inicio, mes_fim) — resolver_meta em lote pra todas as chaves (indicador, escopo, cs_nome) que já tiveram alguma definição, cruzado com generate_series de meses. Usada pela matriz do gestor (app/api/gestor/metas) e por lib/reports.ts (metasResolvidas em buscarDadosBrutosSemCache).").
+funcao(historico_indicador/3, "historico_indicador(indicador, escopo, cs_nome) — série mensal de realizado, uma linha por mês. Ignora explicitamente linhas cujo mes_grupo_titulo não converte em data (where mes_grupo_para_data(...) is not null) — confirmado lendo o corpo da função para cases e rounds, mesmo padrão nos demais indicadores. Sem filtro de pertencimento ao time quando escopo=time: conta cada linha uma vez, decisão consciente (decisao_consciente(historico_sem_filtro_time)).").
+funcao(recorde_efetivo/3, "recorde_efetivo(indicador, escopo, cs_nome) — melhor valor (direction-aware) entre o que os meses fechados de historico_indicador mostram e o que está em recordes_manuais. Só meses fechados (mes < mês corrente) contam pro recorde calculado; o mês corrente nunca vira recorde 'batido' antes de fechar.").
+funcao(metas_time_mensal/1, "metas_time_mensal(mes) — pra cada indicador do catálogo: meta resolvida do time, realizado do time, status (bateu/não bateu/sem_meta), percentual, e recorde (em_recorde, recorde_valor, recorde_mes, recorde_distancia). Usada por /api/gestor/visao-geral (já existente) e pela intenção recordes_time em lib/consulta.ts.").
+funcao(metas_cs_mensal_completo/2, "metas_cs_mensal_completo(cs, mes) — mesma composição de metas_time_mensal, mas pra um CS específico. Função separada (não metas_time_mensal com escopo variável) de propósito: evita fazer 13 chamadas RPC extras (uma por CS) dentro do relatório de time, que já tem histórico documentado de esgotamento de pool de conexão em buscarDadosBrutosSemCache. Consumida por app/api/cs/[nome]/route.ts, só quando !geral.").
+
+% ---- RPCs de escrita (gestor) ----
+rpc(definir_metas_lote/2, "definir_metas_lote(mes, itens jsonb) — grava/atualiza em lote (upsert por indicador+mes+escopo+cs_nome). Valida indicador existe no catálogo, escopo in (time,cs), cs existe quando escopo=cs, valor numérico não negativo. Uma linha de auditoria por chamada, não uma por item (confirmado: lote de 7 itens gerou 1 linha).").
+rpc(copiar_metas_mes/2, "copiar_metas_mes(de, para) — copia todas as metas de um mês pro outro com ON CONFLICT DO NOTHING (nunca sobrescreve o que já foi definido no destino). Confirmado ao vivo: 45 linhas copiadas de julho pra um mês de teste vazio, sem tocar em nada que já existisse.").
+rpc(configurar_home_indicadores/1, "configurar_home_indicadores(itens jsonb) — grava visivel/ordem/exibir_recorde de todos os indicadores de uma vez (upsert por indicador). Uma linha de auditoria por chamada.").
+rpc(definir_recorde_manual/6, "definir_recorde_manual(indicador, escopo, cs, valor, mes, obs) — upsert em recordes_manuais por (indicador, escopo, coalesce(cs_nome,'')).").
+
+comportamento(meta_time_nao_e_soma, "Regra arquitetural: a meta do time é uma linha própria em metas_definidas (escopo=time), definida independentemente das metas de cada CS. Nunca calculada como soma/média das metas individuais — é isso que justifica metas_time_mensal existir separado de uma agregação client-side.").
+comportamento(direcao_metrica, "churn, revenue_churn, downsell, suspensoes e critico são limite máximo (bate quando realizado <= meta); os demais indicadores do catálogo são meta mínima (bate quando realizado >= meta). Mesma regra usada em handoff/consulta_metas.pl para a intenção metas, replicada em DIRECAO_METRICA dentro de lib/consulta.ts pra intenção recordes_time (metas_time_mensal não devolve direção, só o catálogo tem essa coluna).").
+comportamento(alcancado_monday_sobrevive, "metas_subitens.alcancado (autodeclarado no Monday) continua sendo a única fonte pro campo 'alcançado' exibido na consulta rápida por CS — metas_definidas não tem equivalente e não há outro lugar pra registrar esse autodeclarado ainda. O corte de metas_subitens feito nesta sessão é só pra resolução de META (valor alvo); a leitura do autodeclarado do mês exato continua.").
+comportamento(carteira_fora_do_agregado_time, "O indicador carteira aparece no catálogo (pra a matriz do gestor poder definir meta de carteira também), mas seu realizado é calculado em TypeScript (contagem de conselhos por apelido, lib/reports.ts) e não tem equivalente em historico_indicador/metas_time_mensal. metas_cs_base já excluía carteira de propósito (comentário no próprio SQL); a intenção recordes_time em lib/consulta.ts replica esse filtro descartando a linha carteira da resposta.").
+
+bug_encontrado_e_corrigido(rpcs_sem_security_definer, "As 4 RPCs de escrita (definir_metas_lote, copiar_metas_mes, configurar_home_indicadores, definir_recorde_manual) foram criadas na migração original sem 'security definer'. Como as 3 tabelas novas só têm policy de SELECT, qualquer chamada real como authenticated (inclusive um gestor de verdade) falhava com 'permission denied for table metas_definidas' antes mesmo de chegar na checagem de gestor dentro da function — bug 100% silencioso no editor SQL, porque lá a sessão roda como owner do banco e ignora RLS/GRANT. Só apareceu simulando de verdade set role authenticated + request.jwt.claims. Corrigido em supabase/migrations/20260929_metas_gestor_rpcs_security_definer.sql (commit 941b3a0) e reconfirmado ao vivo depois da correção: gestor grava normalmente, lote de 7 itens gera 1 linha de auditoria, usuário não vinculado continua rejeitado com 'not authorized', insert direto na tabela continua bloqueado mesmo pra gestor.").
+
+divergencia_encontrada(cases_49_vs_50, "O pedido original afirmava que a home mostrava 50 cases enquanto o espelho tinha 49 linhas pra Setembro 2026. Contagem direta (group by mes_grupo_titulo) mostrou que o espelho tem exatamente 50 linhas pra esse grupo, e as 50 mapeiam pra membros conhecidos do time (mesma lógica de contarCasesUnicosTime). Não havia divergência nenhuma no momento da verificação — documentado como achado (a instrução de 'investigar antes de confiar' foi seguida), não como bug corrigido.").
+divergencia_encontrada(heranca_muda_rodrigo_setembro, "A meta_cs_base reescrita pra usar resolver_meta passou a herdar meta de churn (1, definida em julho/agosto) e downsell (0, idem) pro Rodrigo em setembro 2026, que antes ficavam sem meta (metas_subitens tinha o campo em branco em setembro, não zerado). Isso muda o resultado do teste de aceite literal do pedido ('Rodrigo deve aparecer com 5 de 5 em setembro') pra um resultado diferente, incluindo health_base (meta herdada de 20, sem dado em setembro, não bate pela regra pré-existente de coalesce a 0). Verificado que Rodrigo realmente tinha esses valores definidos em julho/agosto e só não redefinidos em setembro — não há sentinela de 'remover meta' no schema novo, então em branco significa 'não redefinido ainda', não 'sem meta'. Isso é a herança funcionando exatamente como pedido, não um bug; documentado aqui em vez de revertido ou escondido.").
+divergencia_encontrada(health_base_direcao_inconsistente, "indicadores_catalogo.direcao para health_base é 'min' (quanto maior, melhor), mas lib/reports.ts:generateCSReport monta healthDaBase com tipoMeta: 'max' hardcoded (pré-existente, não alterado nesta sessão) — usado só pro selo visual do card do CS, não pro cálculo de bateu/não bateu da consulta rápida ou da matriz de metas, que leem direcao do catálogo. Inconsistência pré-existente entre exibição (max) e resolução de meta (min); não corrigida porque estava fora do escopo pedido (números da home não podem mudar) e afeta só estilo do badge, não o valor mostrado.").
+
+commit('2026-09-29', '81abba1').
+commit('2026-09-29', '50440cf').
+commit('2026-09-29', '15afbca').
+commit('2026-09-29', '07c0d8a').
+commit('2026-09-29', '941b3a0').

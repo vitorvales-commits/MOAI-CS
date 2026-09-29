@@ -1,0 +1,33 @@
+:- encoding(utf8).
+% ============================================================================
+% pendencias.pl
+% Lista consolidada do que ainda falta validar ou fazer, juntando os
+% teste_pendente/pendencia_conhecida espalhados pelos outros arquivos de
+% handoff/ com os itens específicos da entrega de 29/09/2026 (metas do
+% gestor). Criado nesta sessão porque a lista estava crescendo espalhada por
+% handoff/consulta_metas.pl e handoff/aplicacao.pl sem um lugar único pra
+% conferir tudo de uma vez.
+% ============================================================================
+
+:- discontiguous pendente/2, feito_e_verificado/2.
+
+% ---- feito e verificado nesta sessão (não é pendência, é registro do que já foi conferido) ----
+feito_e_verificado(rpcs_security_definer, "As 4 RPCs de escrita de metas do gestor gravam corretamente simulando um authenticated real (set role authenticated + request.jwt.claims, não só o editor SQL): lote de 7 itens gera 1 linha de auditoria, usuário não vinculado é rejeitado com 'not authorized', insert direto na tabela continua bloqueado mesmo pra gestor. Ver bug_encontrado_e_corrigido(rpcs_sem_security_definer) em handoff/dados.pl.").
+feito_e_verificado(tsc_build_testes, "npx tsc --noEmit, npx next build e tests/consulta.test.ts rodam limpos depois de toda a aba Metas e destaques e da intenção recordes_time.").
+feito_e_verificado(historico_ignora_data_nula, "Confirmado lendo o corpo de historico_indicador: where mes_grupo_para_data(...) is not null em cases e rounds (mesmo padrão nos demais) — linha cujo mes_grupo_titulo não converte em data nunca entra no histórico nem pode virar recorde.").
+feito_e_verificado(advisor_pos_migracao, "get_advisors (security) rodado depois de todas as migrações desta sessão: nenhum achado novo específico das tabelas/RPCs de metas do gestor além do padrão já esperado do projeto (funções SECURITY DEFINER executáveis por authenticated, que é o padrão de toda RPC de escrita aqui — ver convencao(escrita_unica) em handoff/aplicacao.pl).").
+
+% ---- pendente de verificação manual (preview/produção, navegador de verdade) ----
+pendente(metas_gestor_preview_gestor, "Clicar de verdade na aba Metas e destaques como gestor: abrir a matriz de um mês com heranças (ex.: setembro 2026), editar uma célula e salvar, usar 'copiar mês anterior' num mês vazio e confirmar que não sobrescreve nada, alternar visível/ordem/recorde na lista de indicadores da home, cadastrar um recorde manual e ver aparecer na lista.").
+pendente(metas_gestor_preview_restricao, "Confirmar em preview que CS comum e conta sem vínculo em cs_usuarios recebem 403 nas 4 rotas /api/gestor/metas*, /api/gestor/indicadores-home, /api/gestor/recordes-manuais, e que a aba Metas e destaques nem aparece (a lógica de isGestor existe e foi revisada no código, não foi exercitada com sessão real de CS comum).").
+pendente(metas_gestor_visual, "Teste visual desktop e mobile da matriz (rolagem horizontal da tabela em telas estreitas, coluna Time fixa) não foi feito — sem acesso a browser nesta sessão.").
+pendente(recordes_time_preview, "Perguntar 'o time bateu a meta de rounds esse mês' e 'quais recordes foram batidos' de verdade no painel de consulta rápida — testes automatizados com RPC simulada passam, RPC real (metas_time_mensal) foi validada só via SQL direto.").
+pendente(preview_gestor_consulta_metas, "Herdado de handoff/consulta_metas.pl: pergunta 'quais metas o Rodrigo bateu' em preview/produção — atenção que a resposta mudou depois da herança (ver divergencia_encontrada(heranca_muda_rodrigo_setembro) em handoff/dados.pl), não é mais literalmente '5 de 5'.").
+pendente(cs_comum_sem_vinculo, "Herdado de handoff/consulta_metas.pl: mesma verificação de 403/painel ausente, mas pro painel de consulta rápida (não pra aba Metas e destaques, que é item separado acima).").
+
+% ---- divergências e achados que qualquer sessão futura deveria saber antes de mexer nisso ----
+pendente(divergencias_conhecidas, "Ver handoff/dados.pl: divergencia_encontrada(cases_49_vs_50) (não era bug), divergencia_encontrada(heranca_muda_rodrigo_setembro) (comportamento correto, mas muda o resultado do teste de aceite literal do pedido original) e divergencia_encontrada(health_base_direcao_inconsistente) (pré-existente, só afeta um badge visual, não corrigida por estar fora do escopo).").
+
+% ---- pendências herdadas de sessões/documentos anteriores, ainda abertas ----
+pendente(dependencias_cve, "Next.js 14.2.35 com CVEs sem correção na linha 14 — ver handoff/seguranca.pl.").
+pendente(rate_limit_borda, "Sem limite por IP nas rotas — precisa de regra manual no Vercel Firewall, fora do escopo de acesso desta sessão.").

@@ -16,6 +16,7 @@ modulo(visao_gestor, "Visão de gestor (app/gestor-html.ts, servida por app/gest
 modulo(sync_monday, "Edge Function supabase/functions/sync-monday espelha os boards do Monday.com pro Postgres via pg_cron a cada 5 minutos. Segredo rotacionado em 29/09/2026 (handoff/seguranca.pl); cuidado documentado ali sobre nunca implantar essa função a partir de uma cópia local desatualizada.").
 modulo(um_a_um_advertencias_foto, "Registro de 1:1 gestor-CS, sistema de advertência e foto de perfil com recorte — existentes desde o commit e5b415f (29/09/2026), não auditados nesta sessão além de confirmar via advisor que as novas RPCs (aplicar_advertencia, marcar_status_um_a_um, set_cs_foto etc.) seguem o mesmo padrão de checagem is_gestor/dono no corpo.").
 modulo(consulta_rapida_metas, "Consulta em linguagem natural sobre metas, dentro da visão de gestor. Detalhe completo em handoff/consulta_metas.pl.").
+modulo(metas_do_gestor, "Metas por CS e por time com vigência mensal e herança, indicadores configuráveis da home (visível/ordem/recorde) e recordes (calculados + manuais pra histórico anterior à sincronização). Aba 'Metas e destaques' em app/gestor-html.ts (matriz de metas, lista de indicadores da home, formulário de recordes manuais), 4 RPCs de escrita restritas a gestor, home/página do CS/consulta rápida todas lendo a resolução nova. Detalhe completo em handoff/dados.pl.").
 
 convencao(escrita_unica, "Toda escrita de negócio passa por função SECURITY DEFINER com checagem de is_gestor/dono/is_moai_user no corpo e trilha em access_audit_log com resource preenchido (rate limit de 60/min, 600/h) — ver handoff/seguranca.pl, principio(escrita_unica) e principio(rate_limit_por_auditoria).").
 convencao(auth_rota, "Toda rota de API chama requireMoaiUser() (lib/auth.ts) antes de tocar em qualquer dado; rotas restritas a gestor conferem isGestor explicitamente e respondem 403 genérico pro resto — nunca confiam em campo vindo do cliente.").
@@ -24,7 +25,10 @@ convencao(handoff_pl, "Arquivos .pl em handoff/ são a memória entre sessões: 
 
 doc_relacionado(seguranca, "handoff/seguranca.pl — modelo de segurança em produção: camadas de autenticação/autorização, RLS, rate limit, vulnerabilidades corrigidas e residuais.").
 doc_relacionado(consulta_metas, "handoff/consulta_metas.pl — consulta rápida de metas na visão de gestor.").
+doc_relacionado(dados, "handoff/dados.pl — modelo de dados de metas do gestor: tabelas, funções de resolução/herança/recorde, RPCs de escrita, divergências encontradas entre o pedido e o código real.").
+doc_relacionado(pendencias, "handoff/pendencias.pl — lista consolidada do que ainda falta validar ou fazer, entre todas as entregas desta sessão.").
 
 pendencia_conhecida(dependencias_cve, "Next.js 14.2.35 com CVEs sem correção na linha 14 — ver handoff/seguranca.pl, vulnerabilidade(dependencias_cve, alta, aberta, ...).").
 pendencia_conhecida(rate_limit_borda, "Sem limite por IP nas rotas — precisa de regra manual no Vercel Firewall, fora do escopo de acesso desta sessão (moai7). Ver handoff/seguranca.pl.").
 pendencia_conhecida(preview_gestor_consulta, "Consulta rápida não foi clicada de verdade em preview/produção nesta sessão — ver teste_pendente em handoff/consulta_metas.pl.").
+pendencia_conhecida(metas_gestor_checklist, "Aba Metas e destaques validada por tsc/next build/RPC direto no banco (inclusive simulando authenticated real, não só o editor SQL), mas não clicada em preview como gestor (matriz, hide/show/reorder, copiar mês) nem testada visualmente em mobile — ver handoff/pendencias.pl.").
