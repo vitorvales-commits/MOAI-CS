@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { interpretar, responderMetas, processarPergunta, type LinhaMeta } from '../lib/consulta.ts';
 
+async function main() {
 const roster = [
   { nome: 'Rodrigo', nome_completo: 'Rodrigo Queiroz Campos' },
   { nome: 'Luana', nome_completo: 'Luana Sampaio Alves' },
@@ -43,4 +44,28 @@ assert.equal(respostaDesconhecida.intencao, 'nenhuma');
 assert.ok(!/[-–—]/.test(respostaDesconhecida.resposta), 'resposta padrão não pode conter traço');
 assert.match(respostaDesconhecida.resposta, /metas/);
 
+// Recorde/meta do time: usa metas_time_mensal (agregado), não consultar_metas_cs com cs nulo,
+// e tem prioridade sobre a intenção "metas" quando a pergunta fala do time/equipe ou de recorde.
+const linhasTime = [
+  { indicador: 'rounds', mes: '2026-09-01', meta: 6, meta_mes_origem: '2026-07-01', realizado: 8, fonte: 'calculado', status: 'bateu', percentual: 133, em_recorde: true, recorde_valor: 7, recorde_mes: '2026-07-01', recorde_distancia: 1 },
+  { indicador: 'churn', mes: '2026-09-01', meta: 1, meta_mes_origem: '2026-09-01', realizado: 2, fonte: 'calculado', status: 'nao_bateu', percentual: 200, em_recorde: false, recorde_valor: null, recorde_mes: null, recorde_distancia: null },
+  { indicador: 'carteira', mes: '2026-09-01', meta: null, meta_mes_origem: null, realizado: null, fonte: 'sem_dado', status: 'sem_meta', percentual: null, em_recorde: false, recorde_valor: null, recorde_mes: null, recorde_distancia: null },
+];
+let rpcChamada = '';
+const supabaseFalsoTime = { rpc: async (nome: string, _args: unknown) => { rpcChamada = nome; return { data: linhasTime, error: null }; } } as any;
+const respostaTimeResult = await processarPergunta(supabaseFalsoTime, 'o time bateu a meta de rounds esse mês?', roster, hoje);
+assert.equal(respostaTimeResult.intencao, 'recordes_time');
+assert.equal(rpcChamada, 'metas_time_mensal');
+assert.equal(respostaTimeResult.resource, 'time|2026-09-01');
+assert.match(respostaTimeResult.resposta, /1 de 2 metas batidas/);
+assert.match(respostaTimeResult.resposta, /recorde anterior de 7/);
+assert.ok(!/[-–—]/.test(respostaTimeResult.resposta), 'resposta de time não pode conter traço');
+assert.ok(!/carteira/i.test(respostaTimeResult.resposta), 'carteira não entra no agregado do time');
+
+const respostaRecorde = await processarPergunta(supabaseFalsoTime, 'quais recordes foram batidos em setembro de 2026?', roster, hoje);
+assert.equal(respostaRecorde.intencao, 'recordes_time');
+
 console.log('OK');
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

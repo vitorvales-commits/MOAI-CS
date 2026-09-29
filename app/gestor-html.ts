@@ -238,6 +238,23 @@ export const GESTOR_STYLE = `
 
 footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinza-linha);font-size:11.5px;color:var(--cinza-apoio);}
 
+/* matriz de metas (Parte G, 29/09/2026) */
+#tabelaMatrizMetas{border-collapse:separate;border-spacing:0;}
+#tabelaMatrizMetas th, #tabelaMatrizMetas td{white-space:nowrap;}
+#tabelaMatrizMetas thead th:first-child, #tabelaMatrizMetas tbody td:first-child{
+  position:sticky;left:0;background:var(--branco);z-index:1;text-align:left;font-weight:600;
+}
+.matriz-input{width:64px;padding:6px 8px;border-radius:8px;border:1px solid var(--cinza-borda);font-size:12.5px;font-family:'Inter',sans-serif;text-align:center;}
+.matriz-input.herdado{border-style:dashed;color:var(--cinza-apoio);background:var(--cinza-fundo);}
+.matriz-input.alterado{border-color:var(--dourado);background:rgba(200,154,46,0.08);}
+.matriz-input.invalido{border-color:var(--vermelho);}
+.matriz-col-time{background:rgba(200,154,46,0.06);}
+#btnSalvarMatriz{padding:11px 22px;border-radius:12px;border:none;background:var(--preto-tinta);color:var(--branco);font-weight:600;font-size:13px;cursor:pointer;}
+#btnSalvarMatriz:disabled{opacity:0.4;cursor:not-allowed;}
+.ordem-setas{display:inline-flex;gap:4px;}
+.ordem-seta{background:none;border:1px solid var(--cinza-borda);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;line-height:1;color:var(--preto-tinta);}
+.ordem-seta:disabled{opacity:0.3;cursor:not-allowed;}
+
 @media (max-width:640px){
   .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
   .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
@@ -285,6 +302,7 @@ export const GESTOR_HTML = `
   <div class="tabs">
     <button class="tab-btn active" data-tab="visaoGeral">Visão geral</button>
     <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
+    <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
   </div>
 
   <div class="tab-panel active" id="tab-visaoGeral">
@@ -428,6 +446,61 @@ export const GESTOR_HTML = `
     </div>
   </div>
 
+  <div class="tab-panel" id="tab-metasDestaques">
+    <section class="block" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>Matriz de metas</h2>
+          <p>Meta por indicador, um mês de cada vez. A coluna Time é independente da soma das colunas de CS — cada uma vale por si (ex.: um round com vários CS conta 1 pro time, não a soma).</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <select class="pill-select" id="selMesMatriz"></select>
+          <select class="pill-select" id="selAnoMatriz"><option>2026</option><option>2027</option></select>
+          <label class="toggle-inline"><input type="checkbox" id="chkMostrarOcultosMatriz"><span>Mostrar ocultos</span></label>
+          <button class="btn-remover" id="btnCopiarMesAnterior" style="color:var(--preto-tinta);">Copiar do mês anterior</button>
+        </div>
+      </div>
+      <p class="erro-msg" id="avisoMesPassadoMatriz" style="color:var(--dourado);display:none;">Este é um mês passado — alterar a meta muda a pontuação retroativa já calculada, e fica registrado na auditoria.</p>
+      <p class="erro-msg" id="erroMatriz"></p>
+      <div class="table-wrap"><div class="table-scroll">
+        <table id="tabelaMatrizMetas"><thead><tr id="matrizHead"></tr></thead><tbody id="matrizBody"><tr><td class="gestor-empty">Carregando…</td></tr></tbody></table>
+      </div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+        <span id="statusMatriz" style="font-size:12px;color:var(--cinza-apoio);"></span>
+        <button id="btnSalvarMatriz" disabled>Salvar alterações</button>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Indicadores da home</h2><p>Quais cards aparecem nos cards de time da home, em que ordem, e se mostram o selo de recorde. Não afeta a página individual do CS nem a Visão da área.</p></div>
+      <p class="erro-msg" id="erroIndicadoresHome"></p>
+      <div class="table-wrap"><div class="table-scroll">
+        <table><thead><tr><th>Indicador</th><th class="num">Visível</th><th class="num">Ordem</th><th class="num">Recorde</th></tr></thead>
+          <tbody id="listaIndicadoresHome"><tr><td class="gestor-empty" colspan="4">Carregando…</td></tr></tbody>
+        </table>
+      </div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Recordes anteriores ao histórico</h2><p>Pro recorde de antes da sincronização começar (ex.: um mês excepcional em 2025). Opcional — sem isso, o recorde considera só o histórico espelhado.</p></div>
+      <div class="perfis-card">
+        <div class="form-inline" style="flex-wrap:wrap;">
+          <select id="recIndicador" style="flex:1;min-width:160px;"></select>
+          <select id="recEscopo" style="flex:1;min-width:110px;"><option value="time">Time</option><option value="cs">Um CS</option></select>
+          <select id="recCS" style="flex:1;min-width:140px;display:none;"></select>
+          <input type="number" id="recValor" placeholder="Valor" style="flex:1;min-width:90px;">
+          <input type="month" id="recMes" style="flex:1;min-width:140px;">
+        </div>
+        <div class="form-inline">
+          <input type="text" id="recObs" placeholder="Observação (opcional)" style="flex:2;">
+          <button id="btnSalvarRecordeManual">Salvar</button>
+        </div>
+        <p class="erro-msg" id="erroRecordeManual"></p>
+        <div id="listaRecordesManuais"></div>
+      </div>
+    </section>
+  </div>
+
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
 </div>
 </div>
@@ -523,6 +596,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
+    if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
   });
 });
 
@@ -1251,6 +1325,265 @@ function consultaExecutar_(pergunta) {
     if (respostaWrap) respostaWrap.innerHTML = '<div class="gestor-erro">A consulta rápida não carregou.</div>';
   }
 })();
+
+// ============ Metas e destaques (Parte G, pedido do Vitor 29/09/2026) ============
+// Carregado só na primeira vez que a aba é aberta (mesmo padrão preguiçoso de Controle de
+// Perfis) — matriz de metas, indicadores da home e recordes manuais, nessa ordem.
+var metasDestaquesCarregado = false;
+var ENDPOINT_METAS = '/api/gestor/metas';
+var ENDPOINT_METAS_COPIAR = '/api/gestor/metas/copiar';
+var ENDPOINT_INDICADORES_HOME = '/api/gestor/indicadores-home';
+var ENDPOINT_RECORDES_MANUAIS = '/api/gestor/recordes-manuais';
+var MESES_ABREV_MATRIZ = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+var MATRIZ_DADOS = null;
+var MATRIZ_ALTERACOES = {};
+
+function matrizChave_(indicador, escopo, csNome) { return indicador + '|' + escopo + '|' + (csNome || ''); }
+function formatarMesAnoCurto_(iso) {
+  if (!iso) return '';
+  var p = iso.split('-');
+  return MESES_ABREV_MATRIZ[Number(p[1]) - 1] + '/' + p[0];
+}
+function matrizMesAtual_() {
+  var mesNome = document.getElementById('selMesMatriz').value;
+  var ano = document.getElementById('selAnoMatriz').value;
+  var idx = MESES_GESTOR.indexOf(mesNome);
+  if (idx === -1 || !ano) return null;
+  return ano + '-' + String(idx + 1).padStart(2, '0') + '-01';
+}
+function popularSeletorMesMatriz_() {
+  var selMes = document.getElementById('selMesMatriz');
+  MESES_GESTOR.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
+  selMes.value = (mesAtual === 'Visão Geral') ? MESES_GESTOR[agoraGestor.getMonth()] : mesAtual;
+  document.getElementById('selAnoMatriz').value = String(anoAtual);
+}
+
+function carregarMatriz() {
+  var mes = matrizMesAtual_();
+  if (!mes) return;
+  document.getElementById('erroMatriz').textContent = '';
+  document.getElementById('matrizBody').innerHTML = '<tr><td class="gestor-empty">Carregando…</td></tr>';
+  var hojeMes = new Date(); hojeMes.setDate(1); hojeMes.setHours(0, 0, 0, 0);
+  var mesData = new Date(mes + 'T00:00:00');
+  document.getElementById('avisoMesPassadoMatriz').style.display = (mesData < hojeMes) ? 'block' : 'none';
+  fetchJSON_(ENDPOINT_METAS + '?mes=' + encodeURIComponent(mes)).then(function (data) {
+    MATRIZ_DADOS = data;
+    MATRIZ_ALTERACOES = {};
+    atualizarStatusMatriz_();
+    renderMatrizTabela_();
+    popularSelectRecordeIndicador_();
+    popularSelectRecordeCS_();
+  }).catch(function (err) {
+    document.getElementById('matrizBody').innerHTML = '<tr><td class="gestor-erro">Erro ao carregar: ' + err.message + '</td></tr>';
+  });
+}
+
+function matrizCelulaHtml_(indicador, escopo, csNome, resolvidoIndex, mesAtualMatriz) {
+  var chave = matrizChave_(indicador, escopo, csNome);
+  var resolvido = resolvidoIndex[chave];
+  var valor = (resolvido && resolvido.valor !== null && resolvido.valor !== undefined) ? resolvido.valor : '';
+  var herdado = !!(resolvido && resolvido.mes_origem && resolvido.mes_origem !== mesAtualMatriz);
+  var titulo = herdado ? ' title="Herdado de ' + formatarMesAnoCurto_(resolvido.mes_origem) + '"' : '';
+  return '<input type="number" min="0" class="matriz-input' + (herdado ? ' herdado' : '') + '" data-chave="' + chave + '" data-indicador="' + indicador + '" data-escopo="' + escopo + '" data-cs="' + (csNome || '') + '" value="' + valor + '"' + titulo + '>';
+}
+
+function renderMatrizTabela_() {
+  if (!MATRIZ_DADOS) return;
+  var mostrarOcultos = document.getElementById('chkMostrarOcultosMatriz').checked;
+  var indicadores = MATRIZ_DADOS.catalogo.filter(function (c) { return mostrarOcultos || c.visivel; });
+  var csAtivos = MATRIZ_DADOS.csAtivos;
+  var mesAtualMatriz = MATRIZ_DADOS.mes;
+
+  var head = '<th>Indicador</th>';
+  csAtivos.forEach(function (cs) { head += '<th class="num">' + cs.nome + '</th>'; });
+  head += '<th class="num matriz-col-time">Time</th>';
+  document.getElementById('matrizHead').innerHTML = head;
+
+  var resolvidoIndex = {};
+  MATRIZ_DADOS.resolvidas.forEach(function (r) { resolvidoIndex[matrizChave_(r.indicador, r.escopo, r.cs_nome)] = r; });
+
+  var corpo = indicadores.map(function (ind) {
+    var linha = '<tr><td>' + ind.rotulo + '</td>';
+    csAtivos.forEach(function (cs) {
+      linha += '<td class="num">' + matrizCelulaHtml_(ind.chave, 'cs', cs.nome, resolvidoIndex, mesAtualMatriz) + '</td>';
+    });
+    linha += '<td class="num matriz-col-time">' + matrizCelulaHtml_(ind.chave, 'time', null, resolvidoIndex, mesAtualMatriz) + '</td>';
+    return linha + '</tr>';
+  }).join('');
+  document.getElementById('matrizBody').innerHTML = corpo || '<tr><td class="gestor-empty">Nenhum indicador.</td></tr>';
+
+  document.querySelectorAll('.matriz-input').forEach(function (input) {
+    input.addEventListener('input', function () { onMatrizInputMudou_(input); });
+  });
+}
+
+function onMatrizInputMudou_(input) {
+  var chave = input.dataset.chave;
+  var raw = input.value.trim();
+  input.classList.remove('invalido');
+  if (raw === '') { delete MATRIZ_ALTERACOES[chave]; input.classList.remove('alterado'); atualizarStatusMatriz_(); return; }
+  var num = Number(raw);
+  if (!isFinite(num) || num < 0) { input.classList.add('invalido'); return; }
+  MATRIZ_ALTERACOES[chave] = { indicador: input.dataset.indicador, escopo: input.dataset.escopo, csNome: input.dataset.cs || null, valor: num };
+  input.classList.add('alterado');
+  input.classList.remove('herdado');
+  atualizarStatusMatriz_();
+}
+
+function atualizarStatusMatriz_() {
+  var qtd = Object.keys(MATRIZ_ALTERACOES).length;
+  document.getElementById('statusMatriz').textContent = qtd ? (qtd + ' alteração(ões) não salva(s)') : '';
+  document.getElementById('btnSalvarMatriz').disabled = qtd === 0;
+}
+
+function salvarMatriz_() {
+  var mes = matrizMesAtual_();
+  var itens = Object.keys(MATRIZ_ALTERACOES).map(function (k) { return MATRIZ_ALTERACOES[k]; });
+  if (!mes || !itens.length) return;
+  document.getElementById('btnSalvarMatriz').disabled = true;
+  document.getElementById('erroMatriz').textContent = '';
+  fetchJSON_(ENDPOINT_METAS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mes: mes, itens: itens }) })
+    .then(function () { carregarMatriz(); })
+    .catch(function (err) { document.getElementById('erroMatriz').textContent = 'Erro ao salvar: ' + err.message; document.getElementById('btnSalvarMatriz').disabled = false; });
+}
+
+function copiarMesAnterior_() {
+  var para = matrizMesAtual_();
+  if (!para) return;
+  var partes = para.split('-');
+  var d = new Date(Number(partes[0]), Number(partes[1]) - 1, 1);
+  d.setMonth(d.getMonth() - 1);
+  var de = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+  document.getElementById('erroMatriz').textContent = '';
+  fetchJSON_(ENDPOINT_METAS_COPIAR, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ de: de, para: para }) })
+    .then(function () { carregarMatriz(); })
+    .catch(function (err) { document.getElementById('erroMatriz').textContent = 'Erro ao copiar do mês anterior: ' + err.message; });
+}
+
+// ---- indicadores da home ----
+var INDICADORES_HOME_DADOS = [];
+function carregarIndicadoresHome() {
+  document.getElementById('erroIndicadoresHome').textContent = '';
+  document.getElementById('listaIndicadoresHome').innerHTML = '<tr><td class="gestor-empty" colspan="4">Carregando…</td></tr>';
+  fetchJSON_(ENDPOINT_INDICADORES_HOME).then(function (data) {
+    INDICADORES_HOME_DADOS = data.itens || [];
+    renderIndicadoresHomeTabela_();
+  }).catch(function (err) {
+    document.getElementById('listaIndicadoresHome').innerHTML = '<tr><td class="gestor-erro" colspan="4">Erro ao carregar: ' + err.message + '</td></tr>';
+  });
+}
+function renderIndicadoresHomeTabela_() {
+  var lista = INDICADORES_HOME_DADOS.slice().sort(function (a, b) { return a.ordem - b.ordem; });
+  document.getElementById('listaIndicadoresHome').innerHTML = lista.map(function (it, idx) {
+    return '<tr>' +
+      '<td>' + it.rotulo + '</td>' +
+      '<td class="num"><label class="switch"><input type="checkbox" class="chk-visivel-home" data-idx="' + idx + '"' + (it.visivel ? ' checked' : '') + '><span class="switch-track"></span></label></td>' +
+      '<td class="num"><span class="ordem-setas"><button class="ordem-seta btn-subir-home" data-idx="' + idx + '"' + (idx === 0 ? ' disabled' : '') + ' type="button">▲</button><button class="ordem-seta btn-descer-home" data-idx="' + idx + '"' + (idx === lista.length - 1 ? ' disabled' : '') + ' type="button">▼</button></span></td>' +
+      '<td class="num"><label class="switch"><input type="checkbox" class="chk-recorde-home" data-idx="' + idx + '"' + (it.exibirRecorde ? ' checked' : '') + '><span class="switch-track"></span></label></td>' +
+      '</tr>';
+  }).join('');
+
+  document.querySelectorAll('.chk-visivel-home').forEach(function (chk) {
+    chk.addEventListener('change', function () { lista[Number(chk.dataset.idx)].visivel = chk.checked; salvarIndicadoresHome_(lista); });
+  });
+  document.querySelectorAll('.chk-recorde-home').forEach(function (chk) {
+    chk.addEventListener('change', function () { lista[Number(chk.dataset.idx)].exibirRecorde = chk.checked; salvarIndicadoresHome_(lista); });
+  });
+  document.querySelectorAll('.btn-subir-home').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var idx = Number(btn.dataset.idx);
+      if (idx === 0) return;
+      var tmp = lista[idx].ordem; lista[idx].ordem = lista[idx - 1].ordem; lista[idx - 1].ordem = tmp;
+      salvarIndicadoresHome_(lista);
+    });
+  });
+  document.querySelectorAll('.btn-descer-home').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var idx = Number(btn.dataset.idx);
+      if (idx === lista.length - 1) return;
+      var tmp = lista[idx].ordem; lista[idx].ordem = lista[idx + 1].ordem; lista[idx + 1].ordem = tmp;
+      salvarIndicadoresHome_(lista);
+    });
+  });
+}
+function salvarIndicadoresHome_(lista) {
+  document.getElementById('erroIndicadoresHome').textContent = '';
+  fetchJSON_(ENDPOINT_INDICADORES_HOME, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itens: lista }) })
+    .then(function () { carregarIndicadoresHome(); })
+    .catch(function (err) { document.getElementById('erroIndicadoresHome').textContent = 'Erro ao salvar: ' + err.message; carregarIndicadoresHome(); });
+}
+
+// ---- recordes anteriores ao histórico ----
+function popularSelectRecordeIndicador_() {
+  var sel = document.getElementById('recIndicador');
+  sel.innerHTML = '';
+  (MATRIZ_DADOS ? MATRIZ_DADOS.catalogo : []).forEach(function (c) {
+    var o = document.createElement('option'); o.value = c.chave; o.textContent = c.rotulo; sel.appendChild(o);
+  });
+}
+function popularSelectRecordeCS_() {
+  var sel = document.getElementById('recCS');
+  sel.innerHTML = '';
+  (MATRIZ_DADOS ? MATRIZ_DADOS.csAtivos : []).forEach(function (cs) {
+    var o = document.createElement('option'); o.value = cs.nome; o.textContent = cs.nome; sel.appendChild(o);
+  });
+}
+function matrizRotuloIndicador_(chave) {
+  var item = (MATRIZ_DADOS ? MATRIZ_DADOS.catalogo : []).filter(function (c) { return c.chave === chave; })[0];
+  return item ? item.rotulo : chave;
+}
+function carregarRecordesManuais() {
+  document.getElementById('listaRecordesManuais').innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  fetchJSON_(ENDPOINT_RECORDES_MANUAIS).then(function (data) { renderRecordesManuais_(data.recordes || []); })
+    .catch(function (err) { document.getElementById('listaRecordesManuais').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>'; });
+}
+function renderRecordesManuais_(lista) {
+  if (!lista.length) { document.getElementById('listaRecordesManuais').innerHTML = '<div class="gestor-empty">Nenhum recorde manual cadastrado.</div>'; return; }
+  document.getElementById('listaRecordesManuais').innerHTML = lista.map(function (r) {
+    var alvo = r.escopo === 'time' ? 'Time' : r.cs_nome;
+    return '<div class="lista-item"><div><div class="lista-item-nome">' + matrizRotuloIndicador_(r.indicador) + ' · ' + alvo + '</div>' +
+      '<div class="lista-item-sub">' + r.valor + ' em ' + formatarMesAnoCurto_(r.mes_referencia) + (r.observacao ? ' · ' + r.observacao : '') + '</div></div></div>';
+  }).join('');
+}
+function salvarRecordeManual_() {
+  var indicador = document.getElementById('recIndicador').value;
+  var escopo = document.getElementById('recEscopo').value;
+  var cs = escopo === 'cs' ? document.getElementById('recCS').value : null;
+  var valor = Number(document.getElementById('recValor').value);
+  var mesInput = document.getElementById('recMes').value;
+  var obs = document.getElementById('recObs').value.trim();
+  var erroEl = document.getElementById('erroRecordeManual');
+  erroEl.textContent = '';
+  if (!indicador || !isFinite(valor) || valor < 0 || !mesInput) { erroEl.textContent = 'Preencha indicador, valor e mês.'; return; }
+  fetchJSON_(ENDPOINT_RECORDES_MANUAIS, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ indicador: indicador, escopo: escopo, cs: cs, valor: valor, mes: mesInput + '-01', obs: obs }),
+  }).then(function () {
+    document.getElementById('recValor').value = ''; document.getElementById('recMes').value = ''; document.getElementById('recObs').value = '';
+    carregarRecordesManuais();
+  }).catch(function (err) { erroEl.textContent = 'Erro: ' + err.message; });
+}
+
+function inicializarMetasDestaques() {
+  try {
+    popularSeletorMesMatriz_();
+    document.getElementById('selMesMatriz').addEventListener('change', carregarMatriz);
+    document.getElementById('selAnoMatriz').addEventListener('change', carregarMatriz);
+    document.getElementById('chkMostrarOcultosMatriz').addEventListener('change', renderMatrizTabela_);
+    document.getElementById('btnSalvarMatriz').addEventListener('click', salvarMatriz_);
+    document.getElementById('btnCopiarMesAnterior').addEventListener('click', copiarMesAnterior_);
+    document.getElementById('recEscopo').addEventListener('change', function () {
+      document.getElementById('recCS').style.display = this.value === 'cs' ? '' : 'none';
+    });
+    document.getElementById('btnSalvarRecordeManual').addEventListener('click', salvarRecordeManual_);
+    carregarMatriz();
+    carregarIndicadoresHome();
+    carregarRecordesManuais();
+  } catch (err) {
+    console.error('Erro ao iniciar Metas e destaques:', err);
+  }
+}
 
 carregarVisaoGeral();
 `;

@@ -222,7 +222,92 @@ async function responderMetasIntencao(
   };
 }
 
+// ---- meta e recorde do time (Parte G, 29/09/2026) ----
+// Perguntas sobre o time como um todo ("o time bateu a meta de rounds", "quais recordes foram
+// batidos") usam metas_time_mensal em vez de consultar_metas_cs com cs nulo, porque essa última
+// devolve a quebra por CS, não o agregado do time (que não é soma das metas individuais).
+
+export interface LinhaTimeMeta {
+  indicador: string;
+  mes: string;
+  meta: number | null;
+  meta_mes_origem: string | null;
+  realizado: number | null;
+  fonte: 'calculado' | 'sem_dado';
+  status: 'bateu' | 'nao_bateu' | 'sem_meta';
+  percentual: number | null;
+  em_recorde: boolean;
+  recorde_valor: number | null;
+  recorde_mes: string | null;
+  recorde_distancia: number | null;
+}
+
+const DIRECAO_METRICA: Record<string, 'min' | 'max'> = {
+  churn: 'max',
+  revenue_churn: 'max',
+  downsell: 'max',
+  suspensoes: 'max',
+  critico: 'max',
+};
+
+function direcaoDe(indicador: string): 'min' | 'max' {
+  return DIRECAO_METRICA[indicador] ?? 'min';
+}
+
+function descreverLinhaTime(l: LinhaTimeMeta): string {
+  const alvo = direcaoDe(l.indicador) === 'max' ? `limite de ${fmt(l.meta)}` : `meta de ${fmt(l.meta)}`;
+  return `${rotulo(l.indicador)} (${fmt(l.realizado)} contra ${alvo})`;
+}
+
+function descreverRecordeLinha(l: LinhaTimeMeta): string {
+  const base = `${rotulo(l.indicador)}, com ${fmt(l.realizado)}`;
+  if (l.recorde_valor === null || l.recorde_valor === undefined) return base;
+  const origem = l.recorde_mes ? ` em ${rotuloMes(l.recorde_mes)}` : '';
+  return `${base}, superando o recorde anterior de ${fmt(l.recorde_valor)}${origem}`;
+}
+
+function respostaTime(linhas: LinhaTimeMeta[], mes: string, filtro: Filtro): string {
+  const comMeta = linhas.filter((l) => l.status !== 'sem_meta');
+  const bateu = comMeta.filter((l) => l.status === 'bateu');
+  const nao = comMeta.filter((l) => l.status === 'nao_bateu');
+  const recordes = linhas.filter((l) => l.em_recorde);
+
+  const partes: string[] = [];
+  partes.push(`Time em ${rotuloMes(mes)}: ${bateu.length} de ${comMeta.length} metas batidas.`);
+  if (filtro !== 'nao_bateu') {
+    partes.push(bateu.length ? `Bateu ${juntar(bateu.map(descreverLinhaTime))}.` : 'Não bateu nenhuma meta.');
+  }
+  if (filtro !== 'bateu') {
+    partes.push(nao.length ? `Não bateu ${juntar(nao.map(descreverLinhaTime))}.` : 'Nenhuma meta ficou abaixo do esperado.');
+  }
+  partes.push(recordes.length ? `Novo recorde em ${juntar(recordes.map(descreverRecordeLinha))}.` : 'Nenhum recorde novo neste mês.');
+  return partes.join(' ');
+}
+
+function reconheceRecordesTime(pergunta: string): boolean {
+  const p = normalizar(pergunta);
+  return /recorde/.test(p) || /(\bo time\b|\ba equipe\b|\bdo time\b|\bda equipe\b|\btime inteiro\b)/.test(p);
+}
+
+async function responderRecordesTimeIntencao(
+  supabase: SupabaseClient,
+  pergunta: string,
+  _roster: CsRef[],
+  hoje: Date = new Date(),
+): Promise<RespostaIntencao> {
+  const mes = interpretarMes(pergunta, hoje);
+  const filtro = interpretarFiltro(pergunta);
+  const { data, error } = await supabase.rpc('metas_time_mensal', { p_mes: mes });
+  if (error) throw error;
+  const linhas = ((data ?? []) as LinhaTimeMeta[]).filter((l) => l.indicador !== 'carteira');
+  if (!linhas.length) {
+    return { resposta: `Não há indicadores cadastrados para o time em ${rotuloMes(mes)}.`, resource: `time|${mes}` };
+  }
+  return { resposta: respostaTime(linhas, mes, filtro), resource: `time|${mes}` };
+}
+
 const INTENCOES: IntencaoDef[] = [
+  { nome: 'recordes_time', reconhece: reconheceRecordesTime, responder: responderRecordesTimeIntencao },
   { nome: 'metas', reconhece: reconheceMetas, responder: responderMetasIntencao },
 ];
 
