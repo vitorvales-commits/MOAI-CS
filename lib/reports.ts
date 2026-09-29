@@ -635,12 +635,19 @@ async function fetchMetasResolvidas(sb: SupabaseClient): Promise<MetaResolvidaRo
   return (data || []) as MetaResolvidaRow[];
 }
 
+export type ConfigHomeIndicadorRow = { indicador: string; visivel: boolean; ordem: number; exibir_recorde: boolean };
+async function fetchConfigHomeIndicadores(sb: SupabaseClient): Promise<ConfigHomeIndicadorRow[]> {
+  const { data, error } = await sb.from('config_home_indicadores').select('indicador, visivel, ordem, exibir_recorde').order('ordem');
+  if (error) throw new Error('Erro ao buscar config_home_indicadores: ' + error.message);
+  return (data || []) as ConfigHomeIndicadorRow[];
+}
+
 async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases, metasResolvidas,
+    npsDestaqueAliases, metasResolvidas, configHomeIndicadores,
   ] = await comConcorrenciaLimitada<any[]>([
     () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
     () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
@@ -659,12 +666,14 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // Parte G (29/09/2026): meta (alvo) vem daqui, com herança — metas_subitens (acima) continua
     // sendo a única fonte do "alcançado" autodeclarado no Monday, ver parseMetas.
     () => fetchMetasResolvidas(sb),
+    () => fetchConfigHomeIndicadores(sb),
   ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
     npsDestaqueAliases, metasResolvidas: metasResolvidas as unknown as MetaResolvidaRow[],
+    configHomeIndicadores: configHomeIndicadores as unknown as ConfigHomeIndicadorRow[],
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -1538,9 +1547,31 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   try { gradeConselhos = montarGradeConselhos(dados, seletorMes, ano); }
   catch (e: any) { gradeConselhosErro = e?.message || String(e); console.error('[gradeConselhos]', e); }
 
+  // Recorde do time (Parte G, 29/09/2026) — só faz sentido pra um mês concreto, nunca "Visão
+  // Geral" (não dá pra "bater recorde" de um ano inteiro somado). metas_time_mensal já traz
+  // meta/realizado/status/recorde calculados no banco (mesma regra de agregacao_time do catálogo).
+  const INDICADOR_PARA_CHAVE_TS: Record<string, string> = {
+    churn: 'churn', revenue_churn: 'revenueChurn', cases: 'casesSucesso', matchmakings: 'matchmakings',
+    rounds: 'rounds', upsell: 'upsell', downsell: 'downsell', indicacoes: 'indicacoes', health_base: 'healthDaBase',
+  };
+  const recordes: Record<string, { emRecorde: boolean; recordeValor: number | null; recordeMes: string | null }> = {};
+  if (!geral) {
+    const { data: linhasMetasTime, error: errMetasTime } = await sb.rpc('metas_time_mensal', { p_mes: mesInicio });
+    if (errMetasTime) throw new Error('Erro ao buscar metas_time_mensal: ' + errMetasTime.message);
+    (linhasMetasTime || []).forEach((l: any) => {
+      const chaveTs = INDICADOR_PARA_CHAVE_TS[l.indicador];
+      if (!chaveTs) return;
+      recordes[chaveTs] = { emRecorde: !!l.em_recorde, recordeValor: l.recorde_valor, recordeMes: l.recorde_mes };
+    });
+  }
+
   return {
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     membrosIncluidos: relatorios.map((r) => r.cs.nome),
+    // Cards da home (Parte G, 29/09/2026): visibilidade/ordem vêm de config_home_indicadores, não
+    // mais fixas no template — ver app/dashboard-html.ts. exibirRecorde controla o selo Recorde.
+    configHomeIndicadores: dados.configHomeIndicadores,
+    recordes,
     indicadores: {
       churn: somaInd('churn'), revenueChurn: somaInd('revenueChurn'),
       // casesSucesso/rounds/upsell/downsell: meta continua somando a de cada CS normalmente
@@ -1755,6 +1786,11 @@ export async function generateHomeResumoCS(sb: SupabaseClient, seletorMes: strin
   return {
     periodo: equipe.periodo,
     indicadoresTime: equipe.indicadores,
+    // Parte G (29/09/2026): mesma visibilidade/ordem/recorde dos cards de time que a home de
+    // gestor usa — o CS comum vê os mesmos indicadores (números borrados conforme /api/config,
+    // nunca o nome de ninguém), só sem o ranking nomeado completo.
+    configHomeIndicadores: equipe.configHomeIndicadores,
+    recordes: equipe.recordes,
     top3: equipe.csTop,
     minhaPosicao,
     meuScore: meuScoreEntry ? meuScoreEntry.score : null,

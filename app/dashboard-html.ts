@@ -170,6 +170,8 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .kpi-value-block { width:100%; }
 .kpi-realizado { font-size: 44px; line-height:1; }
 .kpi-sub { font-size: 11.5px; color:#9F9F9F; margin-top:8px; }
+.kpi-recorde-badge { display:inline-flex; align-items:center; gap:3px; border-radius:99px; padding:3px 9px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; background:rgba(251,191,36,0.16); color:#fbbf24; margin-left:6px; white-space:nowrap; }
+.kpi-recorde-linha { font-size:10.5px; color:#fbbf24; margin-top:4px; }
 .c-g{color:#6ee7b7;}.c-y{color:#fbbf24;}.c-r{color:#f87171;}.c-gray{color:#807E7E;}
 /* Parte B (25/09/2026): linha de contexto do time dentro do card individual, blur configurável pelo gestor */
 .kpi-time-linha { font-size: 11px; color:#7A7878; margin-top:7px; }
@@ -1067,7 +1069,13 @@ function calcIndicador(ind){
 // linha própria embaixo do valor individual, com a parte numérica borrada por CSS quando
 // blurTime=true (configuracoes_globais.revelar_indicadores_equipe desligado). O "M" (m-fill-liquid
 // acima) nunca reflete o time, sempre o progresso REAL do indicador individual — nunca borrado.
-function kpiCard(label, ind, unidade, timeInd, blurTime){
+// Parte G (29/09/2026): "ago/2026" a partir de um ISO 'YYYY-MM-DD' — usado só no selo de recorde.
+function formatarMesAbrevAno(iso){
+  if (!iso) return '';
+  var partes = iso.split('-');
+  return MESES_ABREV[Number(partes[1])-1] + '/' + partes[0];
+}
+function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   var c = calcIndicador(ind);
   var valorMostrado = (ind.alcancado===null||ind.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado);
   var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
@@ -1078,9 +1086,14 @@ function kpiCard(label, ind, unidade, timeInd, blurTime){
     var valorTime = (timeInd.alcancado===null||timeInd.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+timeInd.alcancado.toLocaleString('pt-BR') : timeInd.alcancado);
     timeHtml = '<div class="kpi-time-linha'+(blurTime?' kpi-blur':'')+'">Time: <span class="kpi-time-valor">'+valorTime+'</span></div>';
   }
-  return '<div class="kpi"><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span></div>' +
+  // Selo de recorde (Parte G, 29/09/2026): só quando o indicador está batendo o recorde efetivo
+  // dos meses fechados (ou o manual, se melhor) — recorde_efetivo/metas_time_mensal no banco.
+  var recordeBadge = (recorde && recorde.emRecorde) ? '<span class="kpi-recorde-badge">Recorde</span>' : '';
+  var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
+    ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
+  return '<div class="kpi"><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+'</div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+'</div></div></div>';
 }
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
@@ -1227,14 +1240,24 @@ function gtdCard(ind){
     '<div class="gtd-card-sub">Média das 9 etapas de acompanhamento (confirmação, jornada, encaminhamentos, matchmaking, upsell...) nos conselhos do ciclo atual. Clique em um conselho na aba Conselhos pra ver o detalhe etapa a etapa.</div>' +
   '</div>';
 }
+// Parte G (29/09/2026): selo de recorde individual — recordesIndividuais vem junto de /api/cs/[nome]
+// (metas_cs_mensal_completo), null em "Visão Geral" (recorde só faz sentido pra um mês concreto).
+function recordeIndividualMapa_(data){
+  var mapa = {};
+  (data.recordesIndividuais || []).forEach(function(l){
+    mapa[l.indicador] = { emRecorde: l.em_recorde, recordeValor: l.recorde_valor, recordeMes: l.recorde_mes };
+  });
+  return mapa;
+}
 function renderIndicadores(data, resumo){
   var ind = data.indicadores;
   var t = resumo ? resumo.indicadoresTime : null;
   var blur = modoRestritoCS && !configRevelarIndicadoresTime;
+  var rec = recordeIndividualMapa_(data);
   document.getElementById('indicadores').innerHTML =
-    '<div class="grid3">'+kpiCard('Churn', ind.churn, null, t&&t.churn, blur)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$', t&&t.revenueChurn, blur)+kpiCard('Cases de Sucesso', ind.casesSucesso, null, t&&t.casesSucesso, blur)+'</div>' +
-    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings, null, t&&t.matchmakings, blur)+kpiCard('Rounds', ind.rounds, null, t&&t.rounds, blur)+kpiCard('Indicações', ind.indicacoes, null, t&&t.indicacoes, blur)+'</div>' +
-    '<div class="grid3">'+kpiCard('Health da Base', ind.healthDaBase, null, t&&t.healthDaBase, blur)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur)+'</div>' +
+    '<div class="grid3">'+kpiCard('Churn', ind.churn, null, t&&t.churn, blur, rec.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$', t&&t.revenueChurn, blur, rec.revenue_churn)+kpiCard('Cases de Sucesso', ind.casesSucesso, null, t&&t.casesSucesso, blur, rec.cases)+'</div>' +
+    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings, null, t&&t.matchmakings, blur, rec.matchmakings)+kpiCard('Rounds', ind.rounds, null, t&&t.rounds, blur, rec.rounds)+kpiCard('Indicações', ind.indicacoes, null, t&&t.indicacoes, blur, rec.indicacoes)+'</div>' +
+    '<div class="grid3">'+kpiCard('Health da Base', ind.healthDaBase, null, t&&t.healthDaBase, blur, rec.health_base)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur, rec.upsell)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur, rec.downsell)+'</div>' +
     gtdCard(ind.cumprimentoGtd);
 }
 function renderSemanal(data){
@@ -2355,14 +2378,45 @@ function renderEquipeSecao_(id, fn){
     if (el) el.innerHTML = '<div class="empty-state">Erro ao exibir esta seção: ' + (e && e.message ? e.message : e) + '</div>';
   }
 }
+// Parte G (29/09/2026): cards da home vêm de config_home_indicadores (visível/ordem definidos
+// pelo gestor na Matriz de metas), não mais fixos. Mapa só de rótulo/unidade/chave em
+// data.indicadores — indicadores sem cálculo pra equipe hoje (carteira, presenca, suspensoes,
+// critico) ficam de fora de propósito, mesmo que um dia sejam marcados visíveis por engano.
+var INDICADOR_HOME_INFO = {
+  churn: { label: 'Churn', unidade: null, chave: 'churn' },
+  revenue_churn: { label: 'Revenue Churn', unidade: 'R$', chave: 'revenueChurn' },
+  cases: { label: 'Cases de Sucesso', unidade: null, chave: 'casesSucesso' },
+  matchmakings: { label: 'Matchmakings', unidade: null, chave: 'matchmakings' },
+  rounds: { label: 'Rounds', unidade: null, chave: 'rounds' },
+  health_base: { label: 'Health da Base (média)', unidade: null, chave: 'healthDaBase' },
+  indicacoes: { label: 'Indicações', unidade: null, chave: 'indicacoes' },
+  upsell: { label: 'Upsell', unidade: null, chave: 'upsell' },
+  downsell: { label: 'Downsell', unidade: null, chave: 'downsell' },
+};
+// Limites conhecidos do histórico espelhado (conferido direto no banco em 29/09/2026) — o recorde
+// só é calculado dentro dessa janela; antes dela, o gestor pode registrar um recorde manual na
+// tela de Metas e destaques.
+function renderLegendaJanelaHistorico(){
+  return '<div class="legenda-janela-historico" style="font-size:10.5px;color:#6E6C6C;margin-top:14px;line-height:1.6;">'+
+    'Recorde calculado só dentro do histórico espelhado: cases desde julho de 2025, indicações desde janeiro de 2026, '+
+    'matchmakings desde abril de 2026, rounds e churn desde maio de 2026. Fora dessa janela, use o recorde manual na tela do gestor.'+
+    '</div>';
+}
 function renderEquipe(data){
   modoGeralAtual = !!data.periodo.geral;
   renderEquipeSecao_('equipeIndicadores', function(){
     var ind = data.indicadores;
-    document.getElementById('equipeIndicadores').innerHTML =
-      '<div class="grid3">'+kpiCard('Churn', ind.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$')+kpiCard('Cases de Sucesso', ind.casesSucesso)+'</div>' +
-      '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings)+kpiCard('Rounds', ind.rounds)+kpiCard('Health da Base (média)', ind.healthDaBase)+'</div>' +
-      renderChurnOrfao(data.churnOrfao);
+    var cfgHome = (data.configHomeIndicadores || []).filter(function(c){ return c.visivel && INDICADOR_HOME_INFO[c.indicador] && ind[INDICADOR_HOME_INFO[c.indicador].chave]; })
+      .sort(function(a,b){ return a.ordem - b.ordem; });
+    var cards = cfgHome.map(function(c){
+      var info = INDICADOR_HOME_INFO[c.indicador];
+      var recordeInfo = c.exibir_recorde && data.recordes ? data.recordes[info.chave] : null;
+      return kpiCard(info.label, ind[info.chave], info.unidade, null, false, recordeInfo);
+    });
+    var linhasHtml = '';
+    for (var i = 0; i < cards.length; i += 3) { linhasHtml += '<div class="grid3">' + cards.slice(i, i + 3).join('') + '</div>'; }
+    if (!cards.length) linhasHtml = '<div class="empty-state">Nenhum indicador visível na home — configure em Controle de Perfis, Metas e destaques.</div>';
+    document.getElementById('equipeIndicadores').innerHTML = linhasHtml + renderChurnOrfao(data.churnOrfao) + (modoGeralAtual ? '' : renderLegendaJanelaHistorico());
     animarMFills(document.getElementById('equipeIndicadores'));
   });
 
