@@ -5,8 +5,8 @@
 // nada vindo do client.
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
-import { generateConselhoDetalhe } from '@/lib/reports';
-import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
+import { generateConselhoDetalhe, getDadosBrutos } from '@/lib/reports';
+import { requireMoaiUser, requireOwnConselhoOrGestor, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +20,13 @@ export async function GET(req: NextRequest, { params }: { params: { grupo: strin
     return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
   }
   try {
-    const { supabase } = await requireMoaiUser();
-    const data = await generateConselhoDetalhe(supabase, grupo, mes, ano);
+    const { supabase, isGestor, csNome } = await requireMoaiUser();
+    const dados = await getDadosBrutos(supabase);
+    const grupoRow = dados.conselhosGrupos.find((g: any) => g.group_id === grupo && !g.is_repo);
+    if (!grupoRow) return NextResponse.json({ error: `Conselho "${grupo}" não encontrado` }, { status: 404 });
+    // Mesmo furo do /api/case/[id] — Parte A não cobriu conselho de outro CS.
+    await requireOwnConselhoOrGestor(supabase, isGestor, csNome, grupoRow.titulo);
+    const data = await generateConselhoDetalhe(supabase, grupo, mes, ano, dados);
     return NextResponse.json(data);
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);

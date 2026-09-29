@@ -34,13 +34,13 @@ export function normalizeNome(s: any): string {
 // partir das tabelas brutas a cada request). syncStatusUsuarios (Edge Function) agora compara
 // nome_completo contra o nome real do Monday pra esse monday_user_id e avisa no log quando
 // divergir — não corrige sozinho, só alerta (nome_completo é editado à mão).
-function nomeBateColunaPessoa(textoColuna: string | null, nomeCompletoCS: string | null): boolean {
+export function nomeBateColunaPessoa(textoColuna: string | null, nomeCompletoCS: string | null): boolean {
   if (!textoColuna || !nomeCompletoCS) return false;
   const alvo = normalizeNome(nomeCompletoCS);
   return textoColuna.split(',').map((s) => normalizeNome(s)).includes(alvo);
 }
 
-function tituloContemApelido(titulo: string, apelido: string | null): boolean {
+export function tituloContemApelido(titulo: string, apelido: string | null): boolean {
   if (!titulo || !apelido) return false;
   return normalizeNome(titulo).includes('(' + normalizeNome(apelido) + ')');
 }

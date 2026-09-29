@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from './supabase/server';
+import { nomeBateColunaPessoa, tituloContemApelido } from './reports';
 
 const ALLOWED_EMAIL_DOMAIN = '@moaiclubedelideres.com';
 
@@ -72,6 +73,41 @@ export async function requireMoaiUser(): Promise<{ supabase: SupabaseClient; ema
   if (gestorError) throw new Error('Erro ao checar papel de gestor: ' + gestorError.message);
   if (csNomeError) throw new Error('Erro ao checar vínculo de CS: ' + csNomeError.message);
   return { supabase, email: user.email, isGestor: !!isGestor, csNome: csNome || null };
+}
+
+// Mesma regra de dono já aplicada em /api/cs/[nome] e /api/destaque/[nome] (Parte A, 25/09/2026:
+// isGestor/csNome de requireMoaiUser), só que pra casos e conselhos, onde não dá pra comparar
+// csNome direto — precisa casar cs_raw/título de grupo contra nome_completo/apelidoConselho do
+// dono, igual generateCSReport já faz internamente (nomeBateColunaPessoa/tituloContemApelido).
+async function getMeuCsConfig(supabase: SupabaseClient, csNome: string | null) {
+  if (!csNome) return null;
+  const { data, error } = await supabase
+    .from('cs_config')
+    .select('nome_completo, apelido_conselho')
+    .eq('nome', csNome)
+    .maybeSingle();
+  if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
+  return data;
+}
+
+export async function requireOwnCaseOrGestor(
+  supabase: SupabaseClient, isGestor: boolean, csNome: string | null, csRaw: string | null,
+): Promise<void> {
+  if (isGestor) return;
+  const cfg = await getMeuCsConfig(supabase, csNome);
+  if (!cfg || !nomeBateColunaPessoa(csRaw, cfg.nome_completo)) {
+    throw new AuthError(403, 'Você só pode acessar casos do seu próprio CS.');
+  }
+}
+
+export async function requireOwnConselhoOrGestor(
+  supabase: SupabaseClient, isGestor: boolean, csNome: string | null, tituloGrupo: string,
+): Promise<void> {
+  if (isGestor) return;
+  const cfg = await getMeuCsConfig(supabase, csNome);
+  if (!cfg || !tituloContemApelido(tituloGrupo, cfg.apelido_conselho)) {
+    throw new AuthError(403, 'Você só pode acessar o(s) conselho(s) do seu próprio CS.');
+  }
 }
 
 export function authErrorResponse(e: unknown) {

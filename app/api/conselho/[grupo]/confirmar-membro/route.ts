@@ -4,15 +4,19 @@
 // confirmar_membro_ata — grava o apelido em atas_membro_aliases e atualiza TODAS as linhas
 // existentes daquele group_id+nome_ata nas duas tabelas de ata, não só a ocorrência clicada.
 import { NextRequest, NextResponse } from 'next/server';
-import { confirmarMembroAta } from '@/lib/reports';
-import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
+import { confirmarMembroAta, getDadosBrutos } from '@/lib/reports';
+import { requireMoaiUser, requireOwnConselhoOrGestor, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest, { params }: { params: { grupo: string } }) {
   const grupo = decodeURIComponent(params.grupo);
   try {
-    const { supabase } = await requireMoaiUser();
+    const { supabase, isGestor, csNome } = await requireMoaiUser();
+    const dados = await getDadosBrutos(supabase);
+    const grupoRow = dados.conselhosGrupos.find((g: any) => g.group_id === grupo && !g.is_repo);
+    if (!grupoRow) return NextResponse.json({ error: `Conselho "${grupo}" não encontrado` }, { status: 404 });
+    await requireOwnConselhoOrGestor(supabase, isGestor, csNome, grupoRow.titulo);
     const body = await req.json();
     const nomeAta = String(body?.nomeAta || '').trim();
     const membroOficial = String(body?.membroOficial || '').trim();

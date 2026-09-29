@@ -166,11 +166,13 @@ const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Segredo compartilhado só entre o pg_cron (que roda dentro do próprio projeto Supabase) e esta
-// função — nunca exposto ao Next.js/Vercel nem a nenhum código client-side. Continua hardcoded
-// aqui (ver nota v7 no topo do arquivo pro porquê de não ter migrado pra Deno.env desta vez) —
-// mesmo valor que o pg_cron manda no header X-Sync-Secret (migração `harden_sync_monday_cron_headers`).
-const SYNC_FUNCTION_SECRET = 'UwUdNblkJeUkhscpzguyVxIW-BzUJnDoGGYlos618Dc';
+// v18 (29/09/2026 — pentest): o valor antigo desta constante ficava hardcoded aqui, e este
+// arquivo é versionado num repositório GitHub público — ou seja, o segredo estava exposto pra
+// qualquer pessoa na internet (ver nota v7 acima, que já documentava a pendência). Rotacionado e
+// migrado pra Deno.env: o valor novo só existe nos secrets do projeto Supabase (nunca no git) e
+// no header X-Sync-Secret que o pg_cron manda (migração `rotate_sync_monday_cron_secret`) e que
+// /api/sync-agora lê de process.env.SYNC_FUNCTION_SECRET no Vercel.
+const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 
 const BOARDS = {
   METAS: '18408969048',
