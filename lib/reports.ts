@@ -624,12 +624,23 @@ const MAX_CONCORRENCIA_DADOS_BRUTOS = 5;
 // antes de tentar de novo) não bastavam: a essa altura o pico de 20 conexões acontece de novo,
 // retry ou não. Agora roda no máximo 5 buscas por vez (comConcorrenciaLimitada) — mesmas 20
 // tabelas, mesmo resultado final, só não todas ao mesmo tempo.
+// Meta resolvida (com herança) por mês/escopo/CS — Parte G (pedido do Vitor, 29/09/2026: metas
+// definidas pelo gestor no dash). Intervalo 2026-01 a 2027-12: mesmas duas opções de ano do
+// seletor no front (dashboard-html.ts/gestor-html.ts só oferecem 2026/2027), folga suficiente sem
+// buscar um intervalo sem limite — poucas centenas de linhas mesmo assim.
+export type MetaResolvidaRow = { mes: string; escopo: 'time' | 'cs'; cs_nome: string | null; indicador: string; valor: number | null; mes_origem: string | null };
+async function fetchMetasResolvidas(sb: SupabaseClient): Promise<MetaResolvidaRow[]> {
+  const { data, error } = await sb.rpc('metas_resolvidas_periodo', { p_mes_inicio: '2026-01-01', p_mes_fim: '2027-12-31' });
+  if (error) throw new Error('Erro ao buscar metas_resolvidas_periodo: ' + error.message);
+  return (data || []) as MetaResolvidaRow[];
+}
+
 async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
   const [
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases,
+    npsDestaqueAliases, metasResolvidas,
   ] = await comConcorrenciaLimitada<any[]>([
     () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
     () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
@@ -645,12 +656,15 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     () => fetchAll(sb, 'nps_conselhos_items'), () => fetchAll(sb, 'nps_conselho_aliases'),
     // Parte F (28/09/2026): ranking de destaque — ver resolverDestaqueMembro/generateConselhoDetalhe.
     () => fetchAll(sb, 'nps_destaque_aliases'),
+    // Parte G (29/09/2026): meta (alvo) vem daqui, com herança — metas_subitens (acima) continua
+    // sendo a única fonte do "alcançado" autodeclarado no Monday, ver parseMetas.
+    () => fetchMetasResolvidas(sb),
   ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases,
+    npsDestaqueAliases, metasResolvidas: metasResolvidas as unknown as MetaResolvidaRow[],
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -861,24 +875,56 @@ function historicoDoCS(cicloAtual: any[], nomeCS: string) {
 
 // ============ parsers ============
 
-function parseMetas(metasRows: any[], nomeCS: string, mes: string, ano: number, geral: boolean) {
-  const rowsFiltradas = geral ? filtrarAnoSeguro(metasRows) : filtrarPorMesSeguro(metasRows, mes);
+// Rótulo exibido de cada indicador (chave curta em indicadores_catalogo/metas_definidas -> o
+// mesmo texto que este arquivo sempre usou como chave de `metas[...]`, ex. metas['Cases de
+// Sucesso']) — duplica indicadores_catalogo.rotulo de propósito: evitar mais uma consulta só pra
+// isso, já que o conjunto é fixo (catálogo sem tela de criação). Se um rótulo mudar no banco,
+// mudar aqui também (ver handoff/dados.pl).
+const ROTULO_INDICADOR_METAS: Record<string, string> = {
+  cases: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
+  indicacoes: 'Indicações', upsell: 'Upsell', downsell: 'Downsell',
+  churn: 'Churn', revenue_churn: 'Revenue Churn', health_base: 'Health da Base',
+};
+
+// Parte G (29/09/2026 — metas definidas pelo gestor no dash): meta (alvo) e "alcançado"
+// (autodeclarado no Monday) agora vêm de fontes diferentes. Meta vem de metasResolvidasRows
+// (metas_resolvidas_periodo, já com herança aplicada — nenhuma leitura de META consulta
+// metas_subitens a partir daqui). Alcançado continua vindo de metas_subitens: é um relato daquele
+// mês específico, sem herança, e não há ainda outro lugar pra esse dado desde que o board de
+// Metas do Monday virou legado só pra definição de meta (decisão do Vitor).
+function parseMetas(metasSubitensRows: any[], metasResolvidasRows: MetaResolvidaRow[], nomeCS: string, mes: string, ano: number, geral: boolean) {
+  const rowsFiltradas = geral ? filtrarAnoSeguro(metasSubitensRows) : filtrarPorMesSeguro(metasSubitensRows, mes);
   const doCS = rowsFiltradas.filter((r) => normalizeNome(r.cs_nome) === normalizeNome(nomeCS));
-  const acc: Record<string, { metaSum: number; metaN: number; alcSum: number; alcN: number }> = {};
+  const accAlc: Record<string, { alcSum: number; alcN: number }> = {};
   doCS.forEach((r) => {
     const chave = String(r.item_metrica || '').replace(/[^\p{L}\s]/gu, '').trim().replace(/\s+/g, ' ');
-    if (!acc[chave]) acc[chave] = { metaSum: 0, metaN: 0, alcSum: 0, alcN: 0 };
-    if (r.meta !== null && r.meta !== undefined) { acc[chave].metaSum += Number(r.meta); acc[chave].metaN++; }
-    if (r.alcancado !== null && r.alcancado !== undefined) { acc[chave].alcSum += Number(r.alcancado); acc[chave].alcN++; }
+    if (!accAlc[chave]) accAlc[chave] = { alcSum: 0, alcN: 0 };
+    if (r.alcancado !== null && r.alcancado !== undefined) { accAlc[chave].alcSum += Number(r.alcancado); accAlc[chave].alcN++; }
   });
+
+  const { mesInicio, mesFim } = periodoDatas(geral ? 'Visão Geral' : mes, ano);
+  const accMeta: Record<string, { metaSum: number; metaN: number }> = {};
+  metasResolvidasRows.forEach((r) => {
+    if (r.escopo !== 'cs' || normalizeNome(r.cs_nome || '') !== normalizeNome(nomeCS)) return;
+    if (r.valor === null || r.valor === undefined) return;
+    if (r.mes < mesInicio || r.mes > mesFim) return;
+    const label = ROTULO_INDICADOR_METAS[r.indicador];
+    if (!label) return;
+    if (!accMeta[label]) accMeta[label] = { metaSum: 0, metaN: 0 };
+    accMeta[label].metaSum += Number(r.valor);
+    accMeta[label].metaN++;
+  });
+
+  const labels = new Set([...Object.keys(accAlc), ...Object.keys(accMeta)]);
   const out: Record<string, { meta: number | null; metaMedia: number | null; alcancadoSoma: number | null; alcancadoMedia: number | null }> = {};
-  Object.keys(acc).forEach((k) => {
-    const a = acc[k];
+  labels.forEach((k) => {
+    const alc = accAlc[k];
+    const meta = accMeta[k];
     out[k] = {
-      meta: a.metaN > 0 ? a.metaSum : null,
-      metaMedia: a.metaN > 0 ? Math.round(a.metaSum / a.metaN) : null,
-      alcancadoSoma: a.alcN > 0 ? a.alcSum : null,
-      alcancadoMedia: a.alcN > 0 ? Math.round(a.alcSum / a.alcN) : null,
+      meta: meta && meta.metaN > 0 ? meta.metaSum : null,
+      metaMedia: meta && meta.metaN > 0 ? Math.round(meta.metaSum / meta.metaN) : null,
+      alcancadoSoma: alc && alc.alcN > 0 ? alc.alcSum : null,
+      alcancadoMedia: alc && alc.alcN > 0 ? Math.round(alc.alcSum / alc.alcN) : null,
     };
   });
   return out;
@@ -1199,6 +1245,20 @@ export function metaCarteiraEfetiva(metaCarteira: number | null | undefined, max
   return { meta: maxConselhosTime > 0 ? maxConselhosTime : null, semMetaPropria: true };
 }
 
+// Parte G (29/09/2026): a meta de carteira migrou de cs_config.meta_carteira (coluna única,
+// estática) pra metas_definidas (indicador='carteira', escopo='cs', com herança mensal) —
+// resolve aqui a partir de dados.metasResolvidas pro mês certo. Fallback pro valor antigo de
+// cs_config (cfg.metaCarteira, já carregado por getCSListCompleto/ParaAgregados) só se não houver
+// nenhuma linha em metas_definidas pra esse CS — nunca deveria acontecer pra quem já tinha
+// meta_carteira preenchida (migrada na carga inicial), mas cobre o caso de um CS novo cadastrado
+// depois desta migração, antes de alguém definir a meta dele na matriz.
+function carteiraMetaResolvida(dados: DadosBrutos, csNome: string, mesAlvo: string, fallback: number | null): number | null {
+  const linhas = dados.metasResolvidas.filter((r) =>
+    r.escopo === 'cs' && r.indicador === 'carteira' && normalizeNome(r.cs_nome || '') === normalizeNome(csNome) && r.mes === mesAlvo);
+  if (linhas.length === 0 || linhas[0].valor === null || linhas[0].valor === undefined) return fallback;
+  return Number(linhas[0].valor);
+}
+
 function calcularScoreCS(indicadores: any, numConselhos: number, metaCarteira: number | null): number | null {
   let somaPeso = 0, somaPonderada = 0;
   Object.keys(PESOS_SCORE_CS).forEach((chave) => {
@@ -1275,7 +1335,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const agendaMap = buildAgendaMap(dados.agenda);
   const temUserId = cfg.userId !== null && cfg.userId !== undefined;
 
-  const metas = parseMetas(dados.metas, cfg.nome, seletorMes, ano, geral);
+  const metas = parseMetas(dados.metas, dados.metasResolvidas, cfg.nome, seletorMes, ano, geral);
   const churn = parseChurn(dados.churn, cfg.nome, mesInicio, mesFim);
   const casesRegistrados = parseCases(dados.cases, cfg.nomeCompleto, seletorMes, ano, geral);
   const casesCalc = casesRegistrados.length;
@@ -1333,7 +1393,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     indicadores: {
       churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd', manual: churnR.manual, calculado: churnR.calculado },
-      revenueChurn: { meta: null, alcancado: churn.revenueChurn, unidade: 'R$', detalheProdutos: churn.detalheProdutos },
+      revenueChurn: { meta: metas['Revenue Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churn.revenueChurn, unidade: 'R$', detalheProdutos: churn.detalheProdutos },
       casesSucesso: { meta: metas['Cases de Sucesso']?.meta ?? null, tipoMeta: 'min', alcancado: casesR.valor, fonte: casesR.fonte, unidade: 'qtd', manual: casesR.manual, calculado: casesR.calculado },
       matchmakings: { meta: metas['Matchmakings']?.meta ?? null, tipoMeta: 'min', alcancado: mmR.valor, fonte: mmR.fonte, unidade: 'qtd', manual: mmR.manual, calculado: mmR.calculado },
       rounds: { meta: metas['Rounds']?.meta ?? null, tipoMeta: 'min', alcancado: roundsR.valor, fonte: roundsR.fonte, unidade: 'qtd', manual: roundsR.manual, calculado: roundsR.calculado },
@@ -1364,24 +1424,48 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // Metas) e calculado (contagem real nas tabelas) — decisão do Vitor: aba Indicadores (totais da
   // equipe) passa a somar sempre ind.calculado, nunca o blend. ind.calculado é null só pra
   // indicadores sem contrapartida manual (ex. revenueChurn), aí cai pra ind.alcancado (que já É o
-  // calculado puro nesses casos, não muda nada pra eles). Só afeta esta soma da equipe — os
-  // relatórios individuais de CS e a visão do gestor continuam expondo os três valores
+  // calculado puro nesses casos, não muda nada pra eles). Só afeta o ALCANÇADO desta soma da
+  // equipe — os relatórios individuais de CS e a visão do gestor continuam expondo os três valores
   // (manual/calculado/vencedor) como já faziam, sem mudança.
+  //
+  // Parte G (29/09/2026 — metas definidas pelo gestor): a META do time deixou de ser a soma das
+  // metas individuais (exemplo do Vitor: 4 CS no mesmo round, 1 round individual cada, 1 round de
+  // time — a soma dava 4, errado). Agora vem de metas_definidas com escopo=time, independente,
+  // via dados.metasResolvidas — nunca mais somada a partir de relatorios[].indicadores[chave].meta.
+  // O ALCANÇADO não muda: continua exatamente a mesma conta de sempre (linha abaixo).
+  const CHAVE_TS_PARA_INDICADOR: Record<string, string> = {
+    churn: 'churn', revenueChurn: 'revenue_churn', casesSucesso: 'cases', matchmakings: 'matchmakings',
+    rounds: 'rounds', upsell: 'upsell', downsell: 'downsell', indicacoes: 'indicacoes', healthDaBase: 'health_base',
+  };
+  function metaTimeResolvida(chaveTs: string): number | null {
+    const indicador = CHAVE_TS_PARA_INDICADOR[chaveTs];
+    if (!indicador) return null;
+    let soma = 0, n = 0;
+    dados.metasResolvidas.forEach((r) => {
+      if (r.escopo !== 'time' || r.indicador !== indicador) return;
+      if (r.valor === null || r.valor === undefined) return;
+      if (r.mes < mesInicio || r.mes > mesFim) return;
+      soma += Number(r.valor); n++;
+    });
+    return n > 0 ? soma : null;
+  }
   function somaInd(chave: string) {
-    let meta = 0, temMeta = false, alcancado = 0;
+    let alcancado = 0;
     relatorios.forEach((r) => {
       const ind: any = (r.indicadores as any)[chave];
-      if (ind.meta !== null && ind.meta !== undefined) { meta += ind.meta; temMeta = true; }
       const valor = ind.calculado !== null && ind.calculado !== undefined ? ind.calculado : ind.alcancado;
       if (valor !== null && valor !== undefined) alcancado += valor;
     });
-    return { meta: temMeta ? meta : null, alcancado, tipoMeta: (relatorios[0]?.indicadores as any)?.[chave]?.tipoMeta || 'min', unidade: (relatorios[0]?.indicadores as any)?.[chave]?.unidade || 'qtd' };
+    return {
+      meta: metaTimeResolvida(chave), alcancado,
+      tipoMeta: (relatorios[0]?.indicadores as any)?.[chave]?.tipoMeta || 'min',
+      unidade: (relatorios[0]?.indicadores as any)?.[chave]?.unidade || 'qtd',
+    };
   }
   function mediaInd(chave: string) {
     const vals = relatorios.map((r) => (r.indicadores as any)[chave].alcancado).filter((v) => v !== null && v !== undefined);
-    const metasArr = relatorios.map((r) => (r.indicadores as any)[chave].meta).filter((v) => v !== null && v !== undefined);
     return {
-      meta: metasArr.length ? Math.round(metasArr.reduce((a, b) => a + b, 0) / metasArr.length) : null,
+      meta: metaTimeResolvida(chave),
       alcancado: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null,
       tipoMeta: 'max', unidade: '%',
     };
@@ -1415,9 +1499,11 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // csTop continua sendo só os 3 primeiros (com o detalhamento item a item da notinha clicável),
   // e a lista completa serve pra /api/home-resumo achar a posição de um CS específico sem expor
   // o restante do ranking nomeado pra quem não é gestor.
+  const mesAlvoCarteira = geral ? `${ano}-12-01` : mesInicio;
   const rankingGeralPorScore = relatorios
     .map((r) => {
-      const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(r.cs.metaCarteira, maxConselhosTime);
+      const metaCarteiraResolvida = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
+      const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(metaCarteiraResolvida, maxConselhosTime);
       return {
         nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
         score: calcularScoreCS(r.indicadores, r.conselhos.length, metaCarteira),
@@ -1742,7 +1828,7 @@ function statusRisco(ach: number | null): StatusRisco {
 
 export type VisaoGestorCS = ReturnType<typeof montarVisaoGestorCS>;
 
-function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number) {
+function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number, dados: DadosBrutos, mesAlvoCarteira: string) {
   const ind = r.indicadores as any;
   const indicadores: Record<string, { meta: number | null; calculado: number | null; manual: number | null; unidade: string; status: StatusRisco; divergencia: number | null; semMetaPropria?: boolean }> = {};
 
@@ -1760,7 +1846,8 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   const achGtd = achievementIndicador({ meta: ind.cumprimentoGtd.meta, tipoMeta: ind.cumprimentoGtd.tipoMeta, alcancado: ind.cumprimentoGtd.alcancado });
   indicadores.cumprimentoGtd = { meta: ind.cumprimentoGtd.meta, calculado: ind.cumprimentoGtd.alcancado, manual: null, unidade: '%', status: statusRisco(achGtd), divergencia: null };
 
-  const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(r.cs.metaCarteira, maxConselhosTime);
+  const metaCarteiraResolvida = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
+  const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(metaCarteiraResolvida, maxConselhosTime);
   const achCarteira = achievementIndicador({ meta: metaCarteira, tipoMeta: 'min', alcancado: r.conselhos.length });
   indicadores.numConselhos = { meta: metaCarteira, calculado: r.conselhos.length, manual: null, unidade: 'qtd', status: statusRisco(achCarteira), divergencia: null, semMetaPropria };
 
@@ -1827,7 +1914,9 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
 
   const maxConselhosTime = relatorios.reduce((max, r) => Math.max(max, r.conselhos.length), 0);
-  const porCS = relatorios.map((r) => montarVisaoGestorCS(r, maxConselhosTime));
+  const { mesInicio: mesInicioVisao, geral: geralVisao } = periodoDatas(seletorMes, ano);
+  const mesAlvoCarteiraVisao = geralVisao ? `${ano}-12-01` : mesInicioVisao;
+  const porCS = relatorios.map((r) => montarVisaoGestorCS(r, maxConselhosTime, dados, mesAlvoCarteiraVisao));
 
   const radarEquipe = RADAR_EIXOS.map((_, idx) => {
     const vals = porCS.map((c) => c.radar[idx]).filter((v) => v !== null && v !== undefined) as number[];
