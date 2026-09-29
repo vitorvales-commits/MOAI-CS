@@ -107,6 +107,18 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .jornada-eyebrow { font-size: 10.5px; font-weight: 800; color:#9F9F9F; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:14px; }
 .jornada-photo { width:130px; height:130px; border-radius:22px; object-fit:cover; background:#242424; flex-shrink:0; }
 .jornada-photo-fallback { width:130px; height:130px; border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:38px; font-weight:800; color:#fff; flex-shrink:0; }
+.jornada-photo-wrap { position:relative; width:130px; height:130px; flex-shrink:0; }
+.jornada-photo-editar { position:absolute; bottom:-6px; right:-6px; width:32px; height:32px; border-radius:50%; background:#fff; color:#1A1A1A; border:2px solid #111111; align-items:center; justify-content:center; font-size:14px; cursor:pointer; }
+.jornada-photo-editar:hover { background:#F5F5F5; }
+/* editor de foto com recorte (brainstorm 29/09/2026) — canvas simples, sem biblioteca externa */
+.foto-crop-canvas-wrap { width:280px; height:280px; border-radius:50%; overflow:hidden; margin:0 auto 18px; background:#F5F5F5; border:1px dashed #D8D5D5; cursor:grab; touch-action:none; }
+.foto-crop-canvas-wrap.arrastando { cursor:grabbing; }
+.foto-crop-canvas-wrap canvas { width:100%; height:100%; display:block; }
+.foto-crop-picker { margin-bottom:18px; }
+.foto-crop-zoom-row { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.foto-crop-zoom-row input[type=range] { flex:1; }
+.foto-crop-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center; }
+.foto-crop-status { font-size:12px; color:#9F9F9F; }
 .jornada-nome { font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size: 46px; line-height:1.05; letter-spacing:-1px; color:#fff; margin-bottom:12px; }
 .jornada-sub { font-size: 13.5px; color:#B7B5B5; margin-bottom:4px; }
 .jornada-meta { font-size: 11px; color:#7A7878; margin-top:16px; }
@@ -388,6 +400,8 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .umaum-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
 .umaum-card-data { font-size:13px; font-weight:800; color:#1A1A1A; }
 .umaum-card-gestor { font-size:11px; color:#9F9F9F; }
+.umaum-status-pill { font-size:10px; font-weight:800; padding:4px 11px; border-radius:999px; color:#fff; white-space:nowrap; }
+.umaum-status-select { font-family:'Inter',sans-serif; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:999px; border:1.25pt solid; background:#fff; cursor:pointer; }
 .umaum-card-campo { font-size:12.5px; color:#5D5D5D; line-height:1.6; margin-bottom:8px; }
 .umaum-card-campo:last-child { margin-bottom:0; }
 .umaum-card-campo b { color:#1A1A1A; font-weight:700; display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
@@ -395,6 +409,12 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .umaum-card-editar:hover { background:#F5F5F5; }
 .umaum-card-excluir { font-size:11px; font-weight:700; color:#C0392B; background:none; border:0.75pt solid #EBC6C0; border-radius:999px; padding:5px 12px; cursor:pointer; margin-left:6px; }
 .umaum-card-excluir:hover { background:#FBEEEC; }
+.advertencia-resumo { display:inline-flex; flex-direction:column; align-items:flex-start; gap:2px; margin-bottom:20px; padding:14px 20px; border-radius:16px; background:#F5F5F5; border:0.75pt solid #D8D5D5; }
+.advertencia-resumo-num { font-family:'Bricolage Grotesque',sans-serif; font-size:32px; font-weight:800; color:#1A1A1A; line-height:1; }
+.advertencia-resumo-label { font-size:11.5px; color:#807E7E; margin-top:4px; }
+.advertencia-resumo.destaque { background:#FBEEEC; border-color:#EBC6C0; }
+.advertencia-resumo.destaque .advertencia-resumo-num { color:#C0433D; }
+.advertencia-resumo.destaque .advertencia-resumo-label { color:#C0433D; font-weight:700; }
 
 /* ===== agenda visual (Parte C, 28/09/2026) ===== */
 .agenda-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
@@ -559,9 +579,12 @@ select.pickmes:hover { border-color:#1A1A1A; }
 <div id="screenPessoa">
   <div class="jornada-hero">
     <div class="jornada-hero-inner">
-      <div class="jornada-photo skel" id="pessoaFotoSkel" style="display:none;"></div>
-      <img class="jornada-photo" id="pessoaFoto" style="display:none;">
-      <div class="jornada-photo-fallback" id="pessoaFotoFallback" style="display:none;"></div>
+      <div class="jornada-photo-wrap">
+        <div class="jornada-photo skel" id="pessoaFotoSkel" style="display:none;"></div>
+        <img class="jornada-photo" id="pessoaFoto" style="display:none;">
+        <div class="jornada-photo-fallback" id="pessoaFotoFallback" style="display:none;"></div>
+        <button class="jornada-photo-editar" id="pessoaFotoEditarBtn" type="button" onclick="abrirEditorFotoCS()" style="display:none;" title="Trocar foto">✎</button>
+      </div>
       <div>
         <div class="jornada-eyebrow">Jornada individual</div>
         <div class="jornada-nome" id="pessoaNome"></div>
@@ -590,6 +613,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div class="tab" onclick="showTab('semanal',event)">Cases de Sucesso</div>
     <div class="tab" onclick="showTab('conselhos',event)">Conselhos</div>
     <div class="tab" onclick="showTab('umaum',event)">1:1</div>
+    <div class="tab" onclick="showTab('advertencias',event)">Advertências</div>
     <div class="tab" onclick="showTab('feedbacks',event)">Feedbacks</div>
   </div>
   <div class="pessoa-conteudo">
@@ -597,6 +621,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div id="semanal" class="panel"></div>
     <div id="conselhos" class="panel"></div>
     <div id="umaum" class="panel"></div>
+    <div id="advertencias" class="panel"></div>
     <div id="feedbacks" class="panel"></div>
   </div>
 </div>
@@ -904,6 +929,8 @@ function abrirPessoa(nome){
   document.getElementById('pessoaUltimoUmAUm').innerHTML = '';
   document.getElementById('umaum').innerHTML = '<div class="empty-state">Carregando...</div>';
   carregarUmAUm(nome);
+  document.getElementById('advertencias').innerHTML = '<div class="empty-state">Carregando...</div>';
+  carregarAdvertencias(nome);
 }
 function atualizarBadgeDestaque(nome){
   google.script.run.withSuccessHandler(function(vezes){
@@ -1119,6 +1146,8 @@ function renderJornadaHero(data){
   var fotoImg = document.getElementById('pessoaFoto'), fotoFallback = document.getElementById('pessoaFotoFallback');
   if (data.cs.fotoUrl) { fotoImg.src = data.cs.fotoUrl; fotoImg.style.display='block'; fotoFallback.style.display='none'; }
   else { fotoFallback.style.background = corPara(data.cs.nomeCompleto); fotoFallback.textContent = iniciais(data.cs.nomeCompleto); fotoFallback.style.display='flex'; fotoImg.style.display='none'; }
+  // Botão de trocar foto (brainstorm 29/09/2026): visível só pro gestor ou pro próprio CS dono do perfil.
+  document.getElementById('pessoaFotoEditarBtn').style.display = (souGestor || data.cs.nome === meuCSNome) ? 'flex' : 'none';
   document.getElementById('pessoaNome').textContent = data.cs.nomeCompleto;
   document.getElementById('pessoaSub').textContent = 'Customer Success · Conselho ' + data.cs.apelidoConselho;
   var periodoTxt = data.periodo.geral ? 'Visão Geral · ' + data.periodo.ano : data.periodo.mes + '/' + data.periodo.ano;
@@ -1675,11 +1704,34 @@ function formularioUmAUmHtml_(){
       '<span class="destaque-form-status" id="umaumStatus"></span>' +
     '</div></div>';
 }
+// Status do 1:1 (brainstorm 29/09/2026): pendente/cumprido/não cumprido — decidido em bater
+// simples, um status por registro (não por item dentro de "combinados"). Só gestor muda, via
+// <select> no card; CS comum vê como pílula fixa.
+var UMAUM_STATUS_LABEL_ = { pendente:'Pendente', cumprido:'Cumprido', nao_cumprido:'Não cumprido' };
+var UMAUM_STATUS_COR_ = { pendente:'#9F9F9F', cumprido:'#3D8B5F', nao_cumprido:'#C0433D' };
+function umaumStatusHtml_(r){
+  var status = r.status || 'pendente';
+  if (!souGestor) {
+    return '<span class="umaum-status-pill" style="background:'+(UMAUM_STATUS_COR_[status]||'#9F9F9F')+';">'+(UMAUM_STATUS_LABEL_[status]||status)+'</span>';
+  }
+  return '<select class="umaum-status-select" style="border-color:'+(UMAUM_STATUS_COR_[status]||'#9F9F9F')+';color:'+(UMAUM_STATUS_COR_[status]||'#9F9F9F')+';" onchange="mudarStatusUmAUm(\\'' + r.id + '\\', this.value)">' +
+    ['pendente','cumprido','nao_cumprido'].map(function(s){
+      return '<option value="'+s+'"'+(s===status?' selected':'')+'>'+UMAUM_STATUS_LABEL_[s]+'</option>';
+    }).join('') +
+  '</select>';
+}
+function mudarStatusUmAUm(id, status){
+  var url = '/api/cs/' + encodeURIComponent(currentCS) + '/um-a-um/' + encodeURIComponent(id) + '/status';
+  fetchJSON_(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) })
+    .then(function(){ return carregarUmAUm(currentCS); })
+    .catch(function(err){ window.alert('Erro ao marcar status: ' + err.message); renderAbaUmAUm(); });
+}
 function listaUmAUmHtml_(){
   if (!umAUmAtual_.length) return '<div class="empty-state">Nenhum registro de 1:1 ainda.</div>';
   return umAUmAtual_.map(function(r){
     return '<div class="umaum-card">' +
       '<div class="umaum-card-head"><span class="umaum-card-data">' + dataBRUmAUm_(r.data) + '</span>' +
+        umaumStatusHtml_(r) +
         '<span class="umaum-card-gestor">' + escUmAUm_(r.gestorEmail) + (souGestor ? ' <button class="umaum-card-editar" onclick="editarUmAUmClick(\\'' + r.id + '\\')">Editar</button> <button class="umaum-card-excluir" onclick="excluirUmAUmClick(\\'' + r.id + '\\')">Excluir</button>' : '') + '</span></div>' +
       (r.oQueFoiFalado ? '<div class="umaum-card-campo"><b>O que foi falado</b>' + escUmAUm_(r.oQueFoiFalado) + '</div>' : '') +
       (r.combinados ? '<div class="umaum-card-campo"><b>Combinados</b>' + escUmAUm_(r.combinados) + '</div>' : '') +
@@ -1732,6 +1784,117 @@ function salvarUmAUm(){
     status.style.color = '#C0392B';
     status.textContent = 'Erro: ' + err.message;
   });
+}
+
+// ============ advertências (brainstorm 29/09/2026) ============
+// Separado do healthscore/destaque de propósito (decisão explícita do Vitor) — só um indicador
+// visual à parte. Visível igual pro gestor e pro próprio CS (mesma filosofia do 1:1), carregado
+// à parte via /api/cs/[nome]/advertencias. Limite de 3 pontos pra destaque visual é fixo por
+// enquanto, sem gatilho automático nenhum.
+var advertenciasAtual_ = [];
+var advertenciaPontuacaoAtiva_ = 0;
+var advertenciaTiposCatalogo_ = [];
+var advertenciaEditandoId_ = null;
+var LIMIAR_ADVERTENCIA_DESTAQUE_ = 3;
+
+function dataHoraBRAdvertencia_(iso){
+  if (!iso) return '';
+  var d = new Date(iso);
+  return isNaN(d.getTime()) ? '' : String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+function carregarAdvertencias(nome){
+  return fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '/advertencias').then(function(d){
+    if (currentCS !== nome) return;
+    advertenciasAtual_ = d.registros || [];
+    advertenciaPontuacaoAtiva_ = d.pontuacaoAtiva || 0;
+    if (souGestor) return carregarAdvertenciaTiposCatalogo_().then(function(){ if (currentCS === nome) renderAbaAdvertencias(); });
+    renderAbaAdvertencias();
+  }).catch(function(err){
+    if (currentCS !== nome) return;
+    document.getElementById('advertencias').innerHTML = '<div class="empty-state">Erro ao carregar advertências: ' + escUmAUm_(err.message) + '</div>';
+  });
+}
+function carregarAdvertenciaTiposCatalogo_(){
+  return fetchJSON_('/api/gestor/advertencia-tipos').then(function(d){
+    advertenciaTiposCatalogo_ = (d.tipos || []).filter(function(t){ return t.ativo; });
+  }).catch(function(){ advertenciaTiposCatalogo_ = []; });
+}
+function advertenciaResumoHtml_(){
+  var destaque = advertenciaPontuacaoAtiva_ > LIMIAR_ADVERTENCIA_DESTAQUE_;
+  return '<div class="advertencia-resumo' + (destaque ? ' destaque' : '') + '">' +
+    '<div class="advertencia-resumo-num">' + advertenciaPontuacaoAtiva_ + '</div>' +
+    '<div class="advertencia-resumo-label">ponto(s) ativo(s)' + (destaque ? ' — acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ : '') + '</div>' +
+  '</div>';
+}
+function advertenciaFormularioHtml_(){
+  if (!souGestor) return '';
+  var tipos = advertenciaTiposCatalogo_ || [];
+  if (!tipos.length) return '<div class="umaum-form-card"><div class="destaque-form-label">Nenhum tipo de advertência ativo no catálogo — cadastre em Controle de Perfis.</div></div>';
+  return '<div class="umaum-form-card">' +
+    '<div class="destaque-form-label" style="margin-bottom:14px;">Aplicar advertência</div>' +
+    '<div class="umaum-form-row"><label>Tipo<select id="advertenciaTipoSelect">' +
+      tipos.map(function(t){ return '<option value="'+t.id+'">'+escUmAUm_(t.nome)+' ('+t.pontos+' pt, '+t.validadeMeses+'m)</option>'; }).join('') +
+    '</select></label></div>' +
+    '<div class="umaum-form-row"><label style="flex:1 1 100%;">Observação (opcional)<textarea id="advertenciaObservacao" placeholder="Contexto..."></textarea></label></div>' +
+    '<div class="umaum-form-actions">' +
+      '<button class="destaque-form-btn" id="advertenciaAplicarBtn" onclick="aplicarAdvertenciaClick()">Aplicar</button>' +
+      '<span class="destaque-form-status" id="advertenciaStatus"></span>' +
+    '</div></div>';
+}
+function advertenciaListaHtml_(){
+  if (!advertenciasAtual_.length) return '<div class="empty-state">Nenhuma advertência registrada.</div>';
+  return advertenciasAtual_.map(function(r){
+    var editando = advertenciaEditandoId_ === r.id;
+    return '<div class="umaum-card">' +
+      '<div class="umaum-card-head"><span class="umaum-card-data">' + escUmAUm_(r.tipoNome) + '</span>' +
+        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + ' pt' + (r.pontos!==1?'s':'') + (r.ativa ? '' : ' · expirada') + '</span>' +
+        '<span class="umaum-card-gestor">' + escUmAUm_(r.aplicadoPor) + ' · ' + dataHoraBRAdvertencia_(r.aplicadoEm) +
+          (souGestor ? ' <button class="umaum-card-editar" onclick="advertenciaEditarClick(\\'' + r.id + '\\')">Editar</button> <button class="umaum-card-excluir" onclick="advertenciaExcluirClick(\\'' + r.id + '\\')">Excluir</button>' : '') +
+        '</span></div>' +
+      (editando ?
+        '<div class="umaum-form-row"><label style="flex:1 1 100%;">Observação<textarea id="advertenciaObservacaoEdit">' + escUmAUm_(r.observacao || '') + '</textarea></label></div>' +
+        '<div class="umaum-form-actions"><button class="destaque-form-btn" onclick="advertenciaSalvarObservacaoClick(\\'' + r.id + '\\')">Salvar</button>' +
+          '<button class="destaque-form-btn" style="background:#3A3A3A;color:#fff;" onclick="advertenciaCancelarEdicaoClick()">Cancelar</button></div>'
+        : (r.observacao ? '<div class="umaum-card-campo"><b>Observação</b>' + escUmAUm_(r.observacao) + '</div>' : '')) +
+    '</div>';
+  }).join('');
+}
+function renderAbaAdvertencias(){
+  var el = document.getElementById('advertencias');
+  el.innerHTML = advertenciaResumoHtml_() + advertenciaFormularioHtml_() + advertenciaListaHtml_();
+}
+function aplicarAdvertenciaClick(){
+  var tipoId = document.getElementById('advertenciaTipoSelect').value;
+  var observacao = document.getElementById('advertenciaObservacao').value.trim();
+  var btn = document.getElementById('advertenciaAplicarBtn');
+  var status = document.getElementById('advertenciaStatus');
+  btn.disabled = true; status.style.color = '#9F9F9F'; status.textContent = 'Aplicando...';
+  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipoId: tipoId, observacao: observacao || null }),
+  }).then(function(){
+    return carregarAdvertencias(currentCS);
+  }).catch(function(err){
+    btn.disabled = false; status.style.color = '#C0392B'; status.textContent = 'Erro: ' + err.message;
+  });
+}
+function advertenciaEditarClick(id){ advertenciaEditandoId_ = id; renderAbaAdvertencias(); }
+function advertenciaCancelarEdicaoClick(){ advertenciaEditandoId_ = null; renderAbaAdvertencias(); }
+function advertenciaSalvarObservacaoClick(id){
+  var observacao = document.getElementById('advertenciaObservacaoEdit').value.trim();
+  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias/' + encodeURIComponent(id), {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ observacao: observacao || null }),
+  }).then(function(){
+    advertenciaEditandoId_ = null;
+    return carregarAdvertencias(currentCS);
+  }).catch(function(err){ window.alert('Erro ao salvar: ' + err.message); });
+}
+function advertenciaExcluirClick(id){
+  if (!window.confirm('Excluir esta advertência aplicada? Essa ação não pode ser desfeita.')) return;
+  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias/' + encodeURIComponent(id), { method: 'DELETE' })
+    .then(function(){ return carregarAdvertencias(currentCS); })
+    .catch(function(err){ window.alert('Erro ao excluir: ' + err.message); });
 }
 
 // ============ agenda visual (Parte C, 28/09/2026) ============
@@ -2485,6 +2648,154 @@ function showTab(id, e){
   document.getElementById(id).classList.add('active');
   e.target.classList.add('active');
 }
+
+// ============ foto de perfil com recorte (brainstorm 29/09/2026) ============
+// Canvas simples, sem biblioteca externa (mesma filosofia zero-dependência do resto do arquivo):
+// escolhe uma imagem, arrasta pra reposicionar, régua pra dar zoom, salva um recorte quadrado de
+// 480×480 (resolução interna do canvas já é 480×480 — o círculo é só recorte visual via CSS no
+// wrapper, o que é salvo é o quadrado inteiro). Botão só aparece pro próprio CS ou pro gestor
+// (ver renderJornadaHero). Foto customizada tem prioridade sobre a estática em qualquer lugar do
+// app que mostra foto de CS — resolvido no servidor (resolverFotoUrl em lib/reports.ts), nada
+// disso precisa ser replicado aqui.
+var FOTO_CROP_TAM_ = 480;
+var fotoCropImg_ = null;
+var fotoCropOffsetX_ = 0, fotoCropOffsetY_ = 0;
+var fotoCropZoom_ = 1;
+var fotoCropBaseScale_ = 1;
+var fotoCropArrastando_ = false;
+var fotoCropUltimoX_ = 0, fotoCropUltimoY_ = 0;
+
+function abrirEditorFotoCS(){
+  fotoCropImg_ = null;
+  fotoCropOffsetX_ = 0; fotoCropOffsetY_ = 0; fotoCropZoom_ = 1;
+  document.getElementById('fotoCropInput').value = '';
+  document.getElementById('fotoCropZoomRange').value = '1';
+  document.getElementById('fotoCropZoomRange').disabled = true;
+  document.getElementById('fotoCropSalvarBtn').disabled = true;
+  document.getElementById('fotoCropStatus').textContent = '';
+  var ctx = document.getElementById('fotoCropCanvas').getContext('2d');
+  ctx.clearRect(0, 0, FOTO_CROP_TAM_, FOTO_CROP_TAM_);
+  document.getElementById('fotoCropModalOverlay').classList.add('ativo');
+}
+function fecharEditorFotoCS(){
+  document.getElementById('fotoCropModalOverlay').classList.remove('ativo');
+}
+function fotoCropArquivoSelecionado_(e){
+  var arquivo = e.target.files && e.target.files[0];
+  if (!arquivo) return;
+  var status = document.getElementById('fotoCropStatus');
+  var leitor = new FileReader();
+  leitor.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      fotoCropImg_ = img;
+      fotoCropBaseScale_ = Math.max(FOTO_CROP_TAM_ / img.width, FOTO_CROP_TAM_ / img.height);
+      fotoCropZoom_ = 1;
+      fotoCropOffsetX_ = 0; fotoCropOffsetY_ = 0;
+      document.getElementById('fotoCropZoomRange').value = '1';
+      document.getElementById('fotoCropZoomRange').disabled = false;
+      document.getElementById('fotoCropSalvarBtn').disabled = false;
+      status.textContent = '';
+      fotoCropDesenhar_();
+    };
+    img.onerror = function(){ status.style.color = '#C0392B'; status.textContent = 'Não foi possível abrir essa imagem.'; };
+    img.src = leitor.result;
+  };
+  leitor.readAsDataURL(arquivo);
+}
+function fotoCropClampOffsets_(){
+  if (!fotoCropImg_) return;
+  var s = fotoCropBaseScale_ * fotoCropZoom_;
+  var maxX = Math.max(0, (fotoCropImg_.width * s - FOTO_CROP_TAM_) / 2);
+  var maxY = Math.max(0, (fotoCropImg_.height * s - FOTO_CROP_TAM_) / 2);
+  fotoCropOffsetX_ = Math.max(-maxX, Math.min(maxX, fotoCropOffsetX_));
+  fotoCropOffsetY_ = Math.max(-maxY, Math.min(maxY, fotoCropOffsetY_));
+}
+function fotoCropDesenhar_(){
+  var canvas = document.getElementById('fotoCropCanvas');
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, FOTO_CROP_TAM_, FOTO_CROP_TAM_);
+  if (!fotoCropImg_) return;
+  fotoCropClampOffsets_();
+  var s = fotoCropBaseScale_ * fotoCropZoom_;
+  var w = fotoCropImg_.width * s, h = fotoCropImg_.height * s;
+  var cx = FOTO_CROP_TAM_/2 + fotoCropOffsetX_, cy = FOTO_CROP_TAM_/2 + fotoCropOffsetY_;
+  ctx.drawImage(fotoCropImg_, cx - w/2, cy - h/2, w, h);
+}
+function fotoCropZoomMudou_(){
+  fotoCropZoom_ = Number(document.getElementById('fotoCropZoomRange').value) || 1;
+  fotoCropDesenhar_();
+}
+function fotoCropPontoEvento_(e){
+  var t = (e.touches && e.touches[0]) || e;
+  return { x: t.clientX, y: t.clientY };
+}
+function fotoCropPointerDown_(e){
+  if (!fotoCropImg_) return;
+  e.preventDefault();
+  fotoCropArrastando_ = true;
+  document.getElementById('fotoCropCanvasWrap').classList.add('arrastando');
+  var p = fotoCropPontoEvento_(e);
+  fotoCropUltimoX_ = p.x; fotoCropUltimoY_ = p.y;
+}
+function fotoCropPointerMove_(e){
+  if (!fotoCropArrastando_) return;
+  e.preventDefault();
+  var p = fotoCropPontoEvento_(e);
+  var rect = document.getElementById('fotoCropCanvas').getBoundingClientRect();
+  var escala = FOTO_CROP_TAM_ / rect.width; // canvas interno é maior que o display (280px) — converte delta de tela pra px de canvas
+  fotoCropOffsetX_ += (p.x - fotoCropUltimoX_) * escala;
+  fotoCropOffsetY_ += (p.y - fotoCropUltimoY_) * escala;
+  fotoCropUltimoX_ = p.x; fotoCropUltimoY_ = p.y;
+  fotoCropDesenhar_();
+}
+function fotoCropPointerUp_(){
+  fotoCropArrastando_ = false;
+  document.getElementById('fotoCropCanvasWrap').classList.remove('arrastando');
+}
+(function iniciarFotoCropEventos_(){
+  var wrap = document.getElementById('fotoCropCanvasWrap');
+  wrap.addEventListener('mousedown', fotoCropPointerDown_);
+  window.addEventListener('mousemove', fotoCropPointerMove_);
+  window.addEventListener('mouseup', fotoCropPointerUp_);
+  wrap.addEventListener('touchstart', fotoCropPointerDown_, { passive:false });
+  wrap.addEventListener('touchmove', fotoCropPointerMove_, { passive:false });
+  wrap.addEventListener('touchend', fotoCropPointerUp_);
+})();
+function fotoCsUrlComCacheBust_(nome){ return '/cs-foto/' + encodeURIComponent(nome) + '?v=' + Date.now(); }
+function salvarFotoCS(){
+  if (!fotoCropImg_) return;
+  var btn = document.getElementById('fotoCropSalvarBtn');
+  var status = document.getElementById('fotoCropStatus');
+  btn.disabled = true; status.style.color = '#9F9F9F'; status.textContent = 'Salvando...';
+  var dataUri = document.getElementById('fotoCropCanvas').toDataURL('image/jpeg', 0.85);
+  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/foto', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fotoBase64: dataUri }),
+  }).then(function(){
+    fecharEditorFotoCS();
+    var fotoImg = document.getElementById('pessoaFoto'), fotoFallback = document.getElementById('pessoaFotoFallback');
+    fotoImg.src = fotoCsUrlComCacheBust_(currentCS);
+    fotoImg.style.display = 'block';
+    fotoFallback.style.display = 'none';
+  }).catch(function(err){
+    btn.disabled = false; status.style.color = '#C0392B'; status.textContent = 'Erro: ' + err.message;
+  });
+}
+function removerFotoCSClick(){
+  if (!window.confirm('Remover a foto customizada? Volta pra foto padrão (ou iniciais).')) return;
+  var status = document.getElementById('fotoCropStatus');
+  status.style.color = '#9F9F9F'; status.textContent = 'Removendo...';
+  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/foto', { method: 'DELETE' }).then(function(){
+    fecharEditorFotoCS();
+    // Volta pro fallback estático/iniciais resolvido no servidor — recarrega o perfil em vez de
+    // tentar replicar FOTOS_CS aqui (única fonte de verdade fica em lib/reports.ts).
+    if (modoRestritoCS) carregarRelatorioRestrito(currentCS, currentMes, currentAno);
+    else carregarRelatorio(currentCS, currentMes, currentAno);
+  }).catch(function(err){
+    status.style.color = '#C0392B'; status.textContent = 'Erro: ' + err.message;
+  });
+}
 </script>
 <div class="case-modal-overlay" id="caseModalOverlay" onclick="if(event.target===this) fecharCaseModal()">
   <div class="case-modal">
@@ -2496,6 +2807,25 @@ function showTab(id, e){
   <div class="case-modal">
     <div class="case-modal-close" onclick="fecharConselhoModal()">✕</div>
     <div id="conselhoModalBody"></div>
+  </div>
+</div>
+<div class="case-modal-overlay" id="fotoCropModalOverlay" onclick="if(event.target===this) fecharEditorFotoCS()">
+  <div class="case-modal" style="max-width:420px;">
+    <div class="case-modal-close" onclick="fecharEditorFotoCS()">✕</div>
+    <div class="case-modal-header"><div><div class="case-modal-nome">Trocar foto</div></div></div>
+    <div class="foto-crop-picker"><input type="file" id="fotoCropInput" accept="image/*" onchange="fotoCropArquivoSelecionado_(event)"></div>
+    <div class="foto-crop-canvas-wrap" id="fotoCropCanvasWrap"><canvas id="fotoCropCanvas" width="480" height="480"></canvas></div>
+    <div class="foto-crop-zoom-row">
+      <span style="font-size:11px;color:#9F9F9F;">Zoom</span>
+      <input type="range" id="fotoCropZoomRange" min="1" max="3" step="0.01" value="1" oninput="fotoCropZoomMudou_()" disabled>
+    </div>
+    <div class="foto-crop-actions">
+      <button class="destaque-form-btn" style="background:#3A3A3A;color:#fff;" onclick="removerFotoCSClick()">Remover foto atual</button>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span class="foto-crop-status" id="fotoCropStatus"></span>
+        <button class="destaque-form-btn" id="fotoCropSalvarBtn" onclick="salvarFotoCS()" disabled>Salvar</button>
+      </div>
+    </div>
   </div>
 </div>
 

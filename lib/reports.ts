@@ -113,13 +113,31 @@ function shuffle<T>(arr: T[]): T[] {
 
 export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null };
 
+// Foto customizada (cs_fotos, brainstorm 29/09/2026) tem prioridade sobre FOTOS_CS estático —
+// mesmo padrão de conselheiros_fotos/conselheiro-foto: só busca cs_nome aqui (nunca o
+// foto_base64 pesado junto da listagem), e resolve fotoUrl pra uma URL de rota dedicada
+// (/cs-foto/:nome, fora de /api de propósito, ver esse route.ts), nunca embutindo o data URI
+// inline no payload JSON.
+async function getCsFotosCustomizadasSet(sb: SupabaseClient): Promise<Set<string>> {
+  const { data, error } = await sb.from('cs_fotos').select('cs_nome');
+  if (error) throw new Error('Erro ao buscar cs_fotos: ' + error.message);
+  return new Set((data || []).map((r: any) => r.cs_nome));
+}
+function resolverFotoUrl(nome: string, comFotoCustomizada: Set<string>): string | null {
+  if (comFotoCustomizada.has(nome)) return '/cs-foto/' + encodeURIComponent(nome);
+  return FOTOS_CS[nome] || null;
+}
+
 export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]> {
-  const { data, error } = await sb.from('cs_config').select('*').eq('ativo', true).order('nome');
+  const [{ data, error }, comFotoCustomizada] = await Promise.all([
+    sb.from('cs_config').select('*').eq('ativo', true).order('nome'),
+    getCsFotosCustomizadasSet(sb),
+  ]);
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
   return (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: FOTOS_CS[r.nome] || null, metaCarteira: r.meta_carteira ?? null,
+    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null,
   }));
 }
 
@@ -138,16 +156,19 @@ function invalidarCSListCache() {
 }
 export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConfig[]> {
   if (csListCache && csListCache.expiraEm > Date.now()) return csListCache.valor;
-  const { data, error } = await sb.from('cs_config').select('*').order('nome');
+  const [{ data, error }, comFotoCustomizada] = await Promise.all([
+    sb.from('cs_config').select('*').order('nome'),
+    getCsFotosCustomizadasSet(sb),
+  ]);
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: FOTOS_CS[r.nome] || null, metaCarteira: r.meta_carteira ?? null,
+    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null,
   }));
   // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
   // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.
-  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira'>[]).map((m) => ({ ...m, fotoUrl: FOTOS_CS[m.nome] || null, metaCarteira: null as number | null }));
+  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira'>[]).map((m) => ({ ...m, fotoUrl: resolverFotoUrl(m.nome, comFotoCustomizada), metaCarteira: null as number | null }));
   const resultado = ativos.concat(exMembros);
   csListCache = { valor: resultado, expiraEm: Date.now() + CS_LIST_TTL_MS };
   return resultado;
@@ -171,6 +192,7 @@ export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: 
 // Visível igual pro gestor e pro próprio CS (sem separar visão) — quem decide se o e-mail logado
 // pode ver os 1:1 de um `cs_nome` é a rota de API (mesmo padrão de generateCSReport: isGestor ou
 // nome === csNome), não a RLS aqui (que só libera SELECT geral pra qualquer moai user).
+export type UmAUmStatus = 'pendente' | 'cumprido' | 'nao_cumprido';
 export type UmAUmRegistro = {
   id: string;
   csNome: string;
@@ -179,6 +201,7 @@ export type UmAUmRegistro = {
   oQueFoiFalado: string | null;
   combinados: string | null;
   criadoEm: string;
+  status: UmAUmStatus;
 };
 function mapUmAUmRow(r: any): UmAUmRegistro {
   return {
@@ -189,6 +212,7 @@ function mapUmAUmRow(r: any): UmAUmRegistro {
     oQueFoiFalado: r.o_que_foi_falado,
     combinados: r.combinados,
     criadoEm: r.criado_em,
+    status: (r.status || 'pendente') as UmAUmStatus,
   };
 }
 export async function listarUmAUm(sb: SupabaseClient, csNome: string): Promise<UmAUmRegistro[]> {
@@ -212,6 +236,85 @@ export async function editarUmAUm(sb: SupabaseClient, id: string, data: string, 
 export async function excluirUmAUm(sb: SupabaseClient, id: string): Promise<void> {
   const { error } = await sb.rpc('excluir_um_a_um', { p_id: id });
   if (error) throw new Error('Erro ao excluir registro de 1:1: ' + error.message);
+}
+// Status do 1:1 (brainstorm 29/09/2026): decisão de manter simples — um status por registro
+// (não por item dentro de "combinados", que continua sendo um texto só). Só gestor muda o
+// status, decidido separado de editarUmAUm (não precisa reabrir o formulário de edição pra
+// marcar cumprido/não cumprido). marcar_status_um_a_um (SECURITY DEFINER) checa is_gestor() de
+// novo dentro do banco e valida o valor do status.
+export async function marcarStatusUmAUm(sb: SupabaseClient, id: string, status: UmAUmStatus): Promise<void> {
+  const { error } = await sb.rpc('marcar_status_um_a_um', { p_id: id, p_status: status });
+  if (error) throw new Error('Erro ao marcar status do 1:1: ' + error.message);
+}
+
+// ============ sistema de advertência (brainstorm 29/09/2026) ============
+// Separado do healthscore/destaque de propósito (decisão explícita do Vitor) — não entra em
+// nenhum cálculo de generateEquipeReport/generateVisaoGestor, é só um indicador visual à parte
+// no perfil do CS. Dois níveis: catálogo (advertencia_tipos, gerenciado pelo gestor em Controle
+// de Perfis) e aplicação (advertencias_aplicadas, um tipo aplicado a um CS num momento, com
+// pontos/validade CONGELADOS na aplicação — mudar o catálogo depois não altera aplicações já
+// feitas). Toda escrita passa por RPC SECURITY DEFINER (mesmo padrão do resto do arquivo),
+// checando is_gestor() de novo dentro do banco.
+export type AdvertenciaTipo = { id: string; nome: string; pontos: number; validadeMeses: number; ativo: boolean };
+function mapAdvertenciaTipoRow(r: any): AdvertenciaTipo {
+  return { id: r.id, nome: r.nome, pontos: r.pontos, validadeMeses: r.validade_meses, ativo: !!r.ativo };
+}
+export async function listarAdvertenciaTipos(sb: SupabaseClient): Promise<AdvertenciaTipo[]> {
+  const { data, error } = await sb.from('advertencia_tipos').select('*').order('nome');
+  if (error) throw new Error('Erro ao buscar catálogo de advertência: ' + error.message);
+  return (data || []).map(mapAdvertenciaTipoRow);
+}
+export async function criarAdvertenciaTipo(sb: SupabaseClient, nome: string, pontos: number, validadeMeses: number): Promise<string> {
+  const { data: id, error } = await sb.rpc('criar_advertencia_tipo', { p_nome: nome, p_pontos: pontos, p_validade_meses: validadeMeses });
+  if (error) throw new Error('Erro ao criar tipo de advertência: ' + error.message);
+  return id as string;
+}
+// p_ativo cobre tanto edição normal quanto desativar sem apagar (ativo=false só tira do
+// formulário de aplicar — histórico de quem já recebeu aquele tipo continua intacto porque a
+// aplicação guarda cópia congelada de nome/pontos/validade, não uma referência viva ao tipo).
+export async function editarAdvertenciaTipo(sb: SupabaseClient, id: string, nome: string, pontos: number, validadeMeses: number, ativo: boolean): Promise<void> {
+  const { error } = await sb.rpc('editar_advertencia_tipo', { p_id: id, p_nome: nome, p_pontos: pontos, p_validade_meses: validadeMeses, p_ativo: ativo });
+  if (error) throw new Error('Erro ao editar tipo de advertência: ' + error.message);
+}
+
+export type AdvertenciaAplicada = {
+  id: string; csNome: string; tipoId: string | null; tipoNome: string; pontos: number; validadeMeses: number;
+  observacao: string | null; aplicadoPor: string; aplicadoEm: string; ativa: boolean;
+};
+function mapAdvertenciaAplicadaRow(r: any): AdvertenciaAplicada {
+  const aplicadoEm = new Date(r.aplicado_em);
+  const expiraEm = new Date(aplicadoEm);
+  expiraEm.setMonth(expiraEm.getMonth() + r.validade_meses);
+  return {
+    id: r.id, csNome: r.cs_nome, tipoId: r.tipo_id, tipoNome: r.tipo_nome,
+    pontos: r.pontos, validadeMeses: r.validade_meses, observacao: r.observacao,
+    aplicadoPor: r.aplicado_por, aplicadoEm: r.aplicado_em,
+    ativa: expiraEm.getTime() > Date.now(),
+  };
+}
+export type AdvertenciasCS = { registros: AdvertenciaAplicada[]; pontuacaoAtiva: number };
+// Pontuação ativa = soma dos pontos de advertências cuja validade (congelada na aplicação)
+// ainda não expirou — limite fixo de 3 pontos pra destaque visual decidido no front (sem
+// gatilho automático nenhum aqui, decisão explícita do Vitor de deixar só indicador por ora).
+export async function listarAdvertenciasCS(sb: SupabaseClient, csNome: string): Promise<AdvertenciasCS> {
+  const { data, error } = await sb.from('advertencias_aplicadas').select('*').eq('cs_nome', csNome).order('aplicado_em', { ascending: false });
+  if (error) throw new Error('Erro ao buscar advertências: ' + error.message);
+  const registros = (data || []).map(mapAdvertenciaAplicadaRow);
+  const pontuacaoAtiva = registros.filter((r) => r.ativa).reduce((soma, r) => soma + r.pontos, 0);
+  return { registros, pontuacaoAtiva };
+}
+export async function aplicarAdvertencia(sb: SupabaseClient, csNome: string, tipoId: string, observacao: string | null): Promise<string> {
+  const { data: id, error } = await sb.rpc('aplicar_advertencia', { p_cs_nome: csNome, p_tipo_id: tipoId, p_observacao: observacao });
+  if (error) throw new Error('Erro ao aplicar advertência: ' + error.message);
+  return id as string;
+}
+export async function editarAdvertenciaAplicada(sb: SupabaseClient, id: string, observacao: string | null): Promise<void> {
+  const { error } = await sb.rpc('editar_advertencia_aplicada', { p_id: id, p_observacao: observacao });
+  if (error) throw new Error('Erro ao editar advertência: ' + error.message);
+}
+export async function excluirAdvertenciaAplicada(sb: SupabaseClient, id: string): Promise<void> {
+  const { error } = await sb.rpc('excluir_advertencia_aplicada', { p_id: id });
+  if (error) throw new Error('Erro ao excluir advertência: ' + error.message);
 }
 
 // ============ controle de perfis (aba do gestor) ============
@@ -242,6 +345,25 @@ export async function setCSAtivo(sb: SupabaseClient, nome: string, ativo: boolea
   if (error) throw new Error('Erro ao alterar status do CS: ' + error.message);
   invalidarCSListCache();
   return data as boolean;
+}
+
+// Foto de perfil com recorte (brainstorm 29/09/2026): antes não existia upload nenhum, a foto de
+// cada CS era só o arquivo estático fixo em FOTOS_CS. set_cs_foto/remover_cs_foto (SECURITY
+// DEFINER) liberam tanto o gestor quanto o próprio CS (meu_cs() = cs_nome, com coalesce(...,
+// false) — sem isso, um e-mail sem vínculo em cs_usuarios faz meu_cs() voltar null, e a
+// comparação com NULL não dispara a exceção do "if not (...)" em PL/pgSQL; achado e corrigido
+// direto em produção antes de fechar essa entrega). p_foto_base64 é um data URI completo
+// (data:image/...;base64,...), mesmo formato de conselheiros_fotos.foto_base64, servido de volta
+// por /cs-foto/:nome (nunca embutido inline no payload JSON — ver resolverFotoUrl acima).
+export async function setCsFoto(sb: SupabaseClient, csNome: string, fotoBase64DataUri: string): Promise<void> {
+  const { error } = await sb.rpc('set_cs_foto', { p_cs_nome: csNome, p_foto_base64: fotoBase64DataUri });
+  if (error) throw new Error('Erro ao salvar foto: ' + error.message);
+  invalidarCSListCache();
+}
+export async function removerCsFoto(sb: SupabaseClient, csNome: string): Promise<void> {
+  const { error } = await sb.rpc('remover_cs_foto', { p_cs_nome: csNome });
+  if (error) throw new Error('Erro ao remover foto: ' + error.message);
+  invalidarCSListCache();
 }
 
 // Parte A (pedido do Vitor, 25-26/09/2026): CS novo (ex.: Amanda) fica invisível até alguém rodar

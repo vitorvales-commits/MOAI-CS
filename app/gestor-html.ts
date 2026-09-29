@@ -378,6 +378,18 @@ export const GESTOR_HTML = `
         <div id="listaCS"></div>
       </div>
       <div class="perfis-card">
+        <h3>Catálogo de advertência</h3>
+        <p class="sync-desc">Nome, pontos e validade de cada tipo. Desativar tira do formulário de aplicar em "Advertências" no perfil do CS, mas mantém o histórico de quem já recebeu (a aplicação guarda uma cópia congelada, não muda com edição no catálogo).</p>
+        <div class="form-inline" style="flex-wrap:wrap;">
+          <input type="text" id="advTipoNome" placeholder="Nome do tipo" style="flex:2;min-width:140px;">
+          <input type="number" id="advTipoPontos" placeholder="Pontos" min="0" style="flex:1;min-width:80px;">
+          <input type="number" id="advTipoValidade" placeholder="Validade (meses)" min="1" style="flex:1;min-width:120px;">
+          <button onclick="criarAdvertenciaTipoClick()">Adicionar</button>
+        </div>
+        <p class="erro-msg" id="erroAdvTipo"></p>
+        <div id="listaAdvTipos"></div>
+      </div>
+      <div class="perfis-card">
         <h3 id="tituloNaoVinculados">Detectados, ainda não vinculados</h3>
         <p class="sync-desc">Nomes de CS encontrados nos dados do Monday (conselheiros, rounds, cases, upsell/downsell, churn) que ainda não têm perfil em "CS ativos". Clique em "Vincular" para criar o perfil.</p>
         <div id="listaNaoVinculados"></div>
@@ -421,6 +433,7 @@ var ENDPOINT_VINCULAR_CS = '/api/gestor/vincular-cs';
 var ENDPOINT_CONFIG = '/api/config';
 var ENDPOINT_GESTOR_CONFIG = '/api/gestor/config';
 var ENDPOINT_CS_USUARIOS = '/api/gestor/cs-usuarios';
+var ENDPOINT_ADVERTENCIA_TIPOS = '/api/gestor/advertencia-tipos';
 
 // ============ notinha clicável (Parte C, pedido do Vitor 25/09/2026) ============
 // Modal genérico reaproveitado em dois lugares: detalhamento item a item de uma pontuação
@@ -477,7 +490,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); }
+    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
   });
 });
 
@@ -894,6 +907,99 @@ function renderCSRoster(lista) {
   });
   var sel = document.getElementById('selectCSParaVincular');
   if (sel) sel.innerHTML = lista.map(function (c) { return '<option value="' + c.nome + '">' + c.nome + ' (' + c.nomeCompleto + ')</option>'; }).join('');
+}
+
+// ============ controle de perfis: catálogo de advertência (brainstorm 29/09/2026) ============
+// Nome/pontos/validade de cada tipo. Desativar (switch) tira do formulário de "aplicar" no
+// perfil do CS mas mantém o histórico intacto (aplicação guarda cópia congelada, não referência
+// viva ao tipo — ver aplicar_advertencia em lib/reports.ts).
+var ADV_TIPOS_ATUAL_ = [];
+function carregarAdvertenciaTipos() {
+  fetchJSON_(ENDPOINT_ADVERTENCIA_TIPOS).then(function (data) { renderAdvertenciaTipos(data.tipos || []); })
+    .catch(function (err) {
+      document.getElementById('listaAdvTipos').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
+    });
+}
+function renderAdvertenciaTipos(lista) {
+  ADV_TIPOS_ATUAL_ = lista;
+  var el = document.getElementById('listaAdvTipos');
+  if (!lista.length) { el.innerHTML = '<div class="gestor-empty">Nenhum tipo cadastrado ainda.</div>'; return; }
+  el.innerHTML = lista.map(function (t, i) {
+    var checked = t.ativo ? 'checked' : '';
+    return '<div class="pendente-item"><div class="pendente-row">'
+      + '<div><div class="lista-item-nome">' + t.nome + '</div><div class="lista-item-sub">' + t.pontos + ' ponto(s) · validade ' + t.validadeMeses + ' mês(es)' + (t.ativo ? '' : ' · inativo') + '</div></div>'
+      + '<div class="lista-item-acoes">'
+      + '<button class="btn-vincular-toggle" data-idx="' + i + '">Editar</button>'
+      + '<label class="switch"><input type="checkbox" ' + checked + ' data-idx="' + i + '"><span class="switch-track"></span></label>'
+      + '</div></div>'
+      + '<div class="pendente-form" id="advTipoForm' + i + '" style="display:none">'
+      + '<div class="form-inline"><input type="text" placeholder="Nome" data-field="nome" value="' + t.nome + '"></div>'
+      + '<div class="form-inline"><input type="number" placeholder="Pontos" min="0" data-field="pontos" value="' + t.pontos + '" style="flex:1;"><input type="number" placeholder="Validade (meses)" min="1" data-field="validadeMeses" value="' + t.validadeMeses + '" style="flex:1;"></div>'
+      + '<p class="erro-msg" id="erroAdvTipoEdit' + i + '"></p>'
+      + '<div class="form-inline"><button class="btn-salvar-vinculo" data-idx="' + i + '">Salvar</button><button class="btn-cancelar-vinculo" data-idx="' + i + '">Cancelar</button></div>'
+      + '</div></div>';
+  }).join('');
+
+  el.querySelectorAll('.btn-vincular-toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var form = document.getElementById('advTipoForm' + b.dataset.idx);
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    });
+  });
+  el.querySelectorAll('input[type=checkbox]').forEach(function (chk) {
+    chk.addEventListener('change', function () {
+      var t = ADV_TIPOS_ATUAL_[Number(chk.dataset.idx)];
+      var novoAtivo = chk.checked;
+      fetchJSON_(ENDPOINT_ADVERTENCIA_TIPOS + '/' + encodeURIComponent(t.id), {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: t.nome, pontos: t.pontos, validadeMeses: t.validadeMeses, ativo: novoAtivo }),
+      }).then(function () { carregarAdvertenciaTipos(); })
+        .catch(function (err) { chk.checked = !novoAtivo; window.alert('Não foi possível alterar: ' + err.message); });
+    });
+  });
+  el.querySelectorAll('.btn-salvar-vinculo').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var idx = Number(b.dataset.idx);
+      var t = ADV_TIPOS_ATUAL_[idx];
+      var form = document.getElementById('advTipoForm' + idx);
+      var nome = form.querySelector('[data-field=nome]').value.trim();
+      var pontos = Number(form.querySelector('[data-field=pontos]').value);
+      var validadeMeses = Number(form.querySelector('[data-field=validadeMeses]').value);
+      var erroEl = document.getElementById('erroAdvTipoEdit' + idx);
+      erroEl.textContent = '';
+      if (!nome) { erroEl.textContent = 'Nome obrigatório.'; return; }
+      if (!(pontos >= 0)) { erroEl.textContent = 'Pontos inválidos.'; return; }
+      if (!(validadeMeses > 0)) { erroEl.textContent = 'Validade inválida.'; return; }
+      fetchJSON_(ENDPOINT_ADVERTENCIA_TIPOS + '/' + encodeURIComponent(t.id), {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: nome, pontos: pontos, validadeMeses: validadeMeses, ativo: t.ativo }),
+      }).then(function () { carregarAdvertenciaTipos(); })
+        .catch(function (err) { erroEl.textContent = err.message; });
+    });
+  });
+  el.querySelectorAll('.btn-cancelar-vinculo').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById('advTipoForm' + b.dataset.idx).style.display = 'none';
+    });
+  });
+}
+function criarAdvertenciaTipoClick() {
+  var nomeEl = document.getElementById('advTipoNome'), pontosEl = document.getElementById('advTipoPontos'), validadeEl = document.getElementById('advTipoValidade');
+  var erroEl = document.getElementById('erroAdvTipo');
+  erroEl.textContent = '';
+  var nome = nomeEl.value.trim();
+  var pontos = Number(pontosEl.value);
+  var validadeMeses = Number(validadeEl.value);
+  if (!nome) { erroEl.textContent = 'Informe um nome.'; return; }
+  if (!(pontos >= 0)) { erroEl.textContent = 'Pontos inválidos.'; return; }
+  if (!(validadeMeses > 0)) { erroEl.textContent = 'Validade inválida.'; return; }
+  fetchJSON_(ENDPOINT_ADVERTENCIA_TIPOS, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: nome, pontos: pontos, validadeMeses: validadeMeses }),
+  }).then(function () {
+    nomeEl.value = ''; pontosEl.value = ''; validadeEl.value = '';
+    carregarAdvertenciaTipos();
+  }).catch(function (err) { erroEl.textContent = err.message; });
 }
 
 // ============ controle de perfis: acesso de login por CS (Parte A, 25/09/2026) ============
