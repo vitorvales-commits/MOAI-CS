@@ -15,11 +15,47 @@ function tituloPeriodo(dados: RelatorioMensal): string {
   return dados.periodo.geral ? `Visão Geral · ${dados.periodo.ano}` : `${dados.periodo.mes} de ${dados.periodo.ano}`;
 }
 
+type EixoNps = 'conselheiro' | 'conselho' | 'cs';
+
+// Achado ao vivo em 29/09/2026: a pergunta por trás de nota_conselho ("espaço, organização e
+// estrutura do Conselho de hoje") parou de ser respondida no formulário a partir de agosto/2026
+// (confirmado via get_board_info) — não é bug de sync. O relatório sempre abria nessa nota como
+// número principal do hero, então um mês com dado ótimo nos outros dois eixos (ex. conselheiro
+// +93 em Setembro, 178 respostas) aparecia como "—", como se o relatório tivesse quebrado. Em vez
+// de fixar qual eixo é o principal, escolhe sozinho o que tiver mais respostas no mês — empate a
+// favor de conselheiro, historicamente o mais completo — e se sobreviver o dia em que a pergunta
+// do conselho voltar a ser respondida com mais força, escolhe ela de novo sem precisar mexer em
+// código.
+function escolherEixoNpsPrincipal(nps: RelatorioMensal['nps']): EixoNps {
+  const totais: Record<EixoNps, number> = {
+    conselheiro: nps.geral.conselheiro.total,
+    conselho: nps.geral.conselho.total,
+    cs: nps.geral.csCombinado.total,
+  };
+  let melhor: EixoNps = 'conselheiro';
+  (['conselheiro', 'conselho', 'cs'] as EixoNps[]).forEach((eixo) => {
+    if (totais[eixo] > totais[melhor]) melhor = eixo;
+  });
+  return melhor;
+}
+
+const EIXO_RESULTADO: Record<EixoNps, (nps: RelatorioMensal['nps']) => { promotores: number; neutros: number; detratores: number; total: number; score: number | null }> = {
+  conselheiro: (nps) => nps.geral.conselheiro,
+  conselho: (nps) => nps.geral.conselho,
+  cs: (nps) => nps.geral.csCombinado,
+};
+const EIXO_LABEL: Record<EixoNps, string> = { conselheiro: 'NPS do conselheiro', conselho: 'NPS do conselho', cs: 'NPS do CS (combinado)' };
+
 export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
   const dadosJson = JSON.stringify(dados).replace(/</g, '\\u003c');
   const periodoTexto = tituloPeriodo(dados);
-  const scoreConselho = dados.nps.geral.conselho.score;
-  const scoreTexto = scoreConselho === null ? '—' : (scoreConselho > 0 ? '+' : '') + scoreConselho;
+  const eixoPrincipal = escolherEixoNpsPrincipal(dados.nps);
+  const resultadoPrincipal = EIXO_RESULTADO[eixoPrincipal](dados.nps);
+  const heroSemDados = resultadoPrincipal.total === 0;
+  const scoreTexto = heroSemDados ? 'Sem dados' : (resultadoPrincipal.score! > 0 ? '+' : '') + resultadoPrincipal.score;
+  const heroLabel = heroSemDados
+    ? `${EIXO_LABEL[eixoPrincipal]} — nenhuma resposta neste período`
+    : `${EIXO_LABEL[eixoPrincipal]} — ${resultadoPrincipal.promotores} promotor(es), ${resultadoPrincipal.neutros} neutro(s), ${resultadoPrincipal.detratores} detrator(es)`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -100,7 +136,6 @@ export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
   .const-ring{ fill:none; stroke:var(--card-border); stroke-width:1; }
   .const-tooltip{ position:fixed; pointer-events:none; z-index:200; background:#0E0E0E; border:1px solid var(--card-border); border-radius:12px; padding:12px 14px; font-size:12.5px; max-width:240px; line-height:1.5; opacity:0; transform:translate(-50%,-120%) scale(0.95); transition:opacity 180ms ease, transform 180ms ease; box-shadow:0 20px 40px rgba(0,0,0,0.5); }
   .const-tooltip.show{ opacity:1; transform:translate(-50%,-130%) scale(1); }
-  .const-tooltip .name{ font-weight:700; margin-bottom:2px; }
   .const-tooltip .score{ color:var(--teal); font-weight:800; }
   .const-legend{ display:flex; gap:18px; justify-content:center; margin-top:24px; flex-wrap:wrap;}
   .leg-item{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-dim); }
@@ -199,7 +234,7 @@ export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
   </div>
   <div class="hero-result reveal in">
     <div class="result-number">${esc(scoreTexto)}</div>
-    <div class="result-label">NPS do conselho — ${dados.nps.geral.conselho.promotores} promotor(es), ${dados.nps.geral.conselho.neutros} neutro(s), ${dados.nps.geral.conselho.detratores} detrator(es)</div>
+    <div class="result-label">${esc(heroLabel)}</div>
   </div>
 </section>
 
@@ -211,10 +246,11 @@ export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
   </div>
 
   <div class="dim-toggle reveal" id="dimToggle">
-    <button class="dim-btn active" data-dim="conselho" type="button">Conselho</button>
-    <button class="dim-btn" data-dim="conselheiro" type="button">Conselheiro</button>
-    <button class="dim-btn" data-dim="cs" type="button">CS</button>
+    <button class="dim-btn${eixoPrincipal === 'conselho' ? ' active' : ''}" data-dim="conselho" type="button">Conselho</button>
+    <button class="dim-btn${eixoPrincipal === 'conselheiro' ? ' active' : ''}" data-dim="conselheiro" type="button">Conselheiro</button>
+    <button class="dim-btn${eixoPrincipal === 'cs' ? ' active' : ''}" data-dim="cs" type="button">CS</button>
   </div>
+  <div class="cs-toggle-note" id="eixoVazioNote" style="display:none;"></div>
 
   <div class="nps-wrap reveal">
     <div>
@@ -260,7 +296,7 @@ export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
   <h3 style="font-size:1.1rem; font-weight:700;" class="reveal">Aspectos do local mais citados</h3>
   <div class="aspecto-list reveal" id="aspectoList"></div>
 
-  ${dados.operacional.porLocal.length ? `<h3 style="margin-top:48px; font-size:1.1rem; font-weight:700;" class="reveal">Por local</h3><div class="local-list reveal" id="localList"></div>` : ''}
+  ${dados.operacional.porLocal.length > 1 ? `<h3 style="margin-top:48px; font-size:1.1rem; font-weight:700;" class="reveal">Por local</h3><div class="local-list reveal" id="localList"></div>` : ''}
 </section>
 
 <section id="destaque">
@@ -287,6 +323,7 @@ export function gerarRelatorioMensalHtml(dados: RelatorioMensal): string {
 
 <script>
 const DADOS = ${dadosJson};
+const EIXO_PRINCIPAL = ${JSON.stringify(eixoPrincipal)};
 
 function fmtScore(s){ return s===null||s===undefined ? '—' : (s>0?'+':'')+s; }
 function fmtNota(n){ return n===null||n===undefined ? '—' : (Math.round(n*10)/10).toLocaleString('pt-BR'); }
@@ -323,15 +360,24 @@ document.querySelectorAll('section').forEach(sec=>{
 });
 
 // ---------- NPS score cards ----------
+// Card principal segue o mesmo eixo escolhido pro hero (EIXO_PRINCIPAL) — em vez de sempre
+// destacar "conselho", que pode estar zerado no mês (ver escolherEixoNpsPrincipal).
 function renderNpsStats(){
   const g = DADOS.nps.geral;
   const wrap = document.getElementById('npsStats');
+  const eixos = {
+    conselheiro: { resultado: g.conselheiro, label: 'NPS conselheiro' },
+    conselho: { resultado: g.conselho, label: 'NPS do conselho' },
+    cs: { resultado: g.csCombinado, label: 'NPS CS (combinado)' },
+  };
+  const principal = eixos[EIXO_PRINCIPAL];
+  const outros = ['conselheiro','conselho','cs'].filter(function(e){ return e !== EIXO_PRINCIPAL; }).map(function(e){ return eixos[e]; });
   wrap.innerHTML =
-    '<div class="nps-score-row"><div class="nps-score">' + fmtScore(g.conselho.score) + '</div>' +
-    '<div class="nps-score-label">NPS do conselho — ' + g.conselho.total + ' resposta(s)</div></div>' +
+    '<div class="nps-score-row"><div class="nps-score">' + fmtScore(principal.resultado.score) + '</div>' +
+    '<div class="nps-score-label">' + principal.label + ' — ' + principal.resultado.total + ' resposta(s)</div></div>' +
     '<div class="nps-sub-stats">' +
-      '<div class="nps-sub-cell"><div class="n">' + fmtScore(g.conselheiro.score) + '</div><div class="l">NPS conselheiro</div></div>' +
-      '<div class="nps-sub-cell"><div class="n">' + fmtScore(g.csCombinado.score) + '</div><div class="l">NPS CS (combinado)</div></div>' +
+      '<div class="nps-sub-cell"><div class="n">' + fmtScore(outros[0].resultado.score) + '</div><div class="l">' + outros[0].label + '</div></div>' +
+      '<div class="nps-sub-cell"><div class="n">' + fmtScore(outros[1].resultado.score) + '</div><div class="l">' + outros[1].label + '</div></div>' +
       '<div class="nps-sub-cell"><div class="n">' + fmtScore(g.csHoje.score) + '</div><div class="l">NPS CS — no Conselho de hoje</div></div>' +
       '<div class="nps-sub-cell"><div class="n">' + fmtScore(g.csMes.score) + '</div><div class="l">NPS CS — no mês (' + g.csMes.total + ' resposta(s))</div></div>' +
     '</div>' +
@@ -487,8 +533,7 @@ function renderConstellation(eixo){
     node.style.transitionDelay = (Math.min(i,60)*20)+'ms';
 
     const showTip = (evX,evY)=>{
-      tooltip.innerHTML = '<div class="name">' + (p.respondente||'Anônimo').replace(/</g,'&lt;') + '</div>' +
-        '<div class="score">Nota ' + nota + '</div>' +
+      tooltip.innerHTML = '<div class="score">Nota ' + nota + '</div>' +
         (p.conselho ? '<div style="margin-top:4px;color:#ADAEA5;">' + p.conselho.replace(/</g,'&lt;') + (p.produto?' · '+p.produto.replace(/</g,'&lt;'):'') + '</div>' : '');
       tooltip.style.left = evX + 'px'; tooltip.style.top = evY + 'px';
       tooltip.classList.add('show');
@@ -513,7 +558,21 @@ function renderConstellation(eixo){
     document.querySelectorAll('.const-node').forEach((n,i)=>{ setTimeout(()=>n.classList.add('show'), Math.min(i,60)*20); });
   });
 }
-renderConstellation('conselho');
+// Nota que aparece quando o eixo escolhido (inicial ou clicado manualmente) não tem nenhuma
+// resposta no mês — evita que uma pergunta que saiu do formulário (ex. nota_conselho desde
+// agosto/2026) pareça relatório quebrado em vez do que é de fato.
+function totalDoEixo(eixo){ return eixo === 'cs' ? DADOS.nps.geral.csCombinado.total : DADOS.nps.geral[eixo].total; }
+function atualizarNotaEixoVazio(eixo){
+  const nota = document.getElementById('eixoVazioNote');
+  if (totalDoEixo(eixo) === 0) {
+    nota.textContent = 'Nenhuma resposta pra esta nota neste período — provavelmente a pergunta saiu do formulário, não que o relatório quebrou.';
+    nota.style.display = 'block';
+  } else {
+    nota.style.display = 'none';
+  }
+}
+renderConstellation(EIXO_PRINCIPAL);
+atualizarNotaEixoVazio(EIXO_PRINCIPAL);
 
 document.getElementById('dimToggle').addEventListener('click', (e)=>{
   const btn = e.target.closest('.dim-btn');
@@ -521,6 +580,7 @@ document.getElementById('dimToggle').addEventListener('click', (e)=>{
   document.querySelectorAll('.dim-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderConstellation(btn.dataset.dim);
+  atualizarNotaEixoVazio(btn.dataset.dim);
 });
 </script>
 </body>

@@ -2907,10 +2907,15 @@ export async function generateRelatorioMensal(sb: SupabaseClient, seletorMes: st
     const parsed = parseTituloConselho(g.titulo);
     if (parsed) { csPorGroupId.set(g.group_id, parsed.cs); conselhoPorGroupId.set(g.group_id, parsed.contato); }
   });
+  // Sem `respondente` de propósito (diferente do resto do dashboard, que usa nome normalmente):
+  // este é o único relatório pensado pra sair como arquivo autônomo (Parte G) e o HTML baixado
+  // embute o JSON inteiro — qualquer um que abrir o arquivo vê o payload bruto, não só o que a
+  // tela desenha. Cruzar "fulano deu nota baixa pro conselheiro/CS fulano" por nome, num arquivo
+  // sem controle de acesso depois de baixado, é um risco maior que o valor de mostrar o nome — o
+  // conselho, produto e CS continuam aparecendo, os cortes e a constelação não perdem nada.
   const pontos = (dados.npsConselhos as any[])
     .filter((r) => periodoNpsMatch(r.mes_grupo_titulo, seletorMes, ano, geral))
     .map((r) => ({
-      respondente: r.respondente_nome as string,
       conselheiroNota: r.nota_conselheiro as number | null,
       conselhoNota: r.nota_conselho as number | null,
       csNota: notaCsCombinada(r),
