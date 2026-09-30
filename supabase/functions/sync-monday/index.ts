@@ -160,6 +160,11 @@
 // upsert — uma confirmação do Vitor nunca é desfeita pelo próximo ciclo do cron).
 // nps_conselhos_items.group_id só reflete alias CONFIRMADO; sugestão sozinha nunca vaza pra
 // cortes "por CS". confirmar_alias_nps_conselho (RPC, gestor-only) é quem confirma.
+//
+// v22 (30/09/2026 — onda 1 do churn): syncChurn passa a trazer motivo, log de criação, grupo,
+// nome/empresa do membro e os textos do formulário de saída. Parte categórica em churn_items,
+// parte identificável em churn_detalhes (RLS só gestor). CPF, CNPJ e anexos do board de churn
+// nunca são pedidos (ver CHURN_COLS_PROIBIDAS). Migração: supabase/migrations/20260930_churn_onda1.sql.
 // ============================================================================
 
 const MONDAY_API_TOKEN = Deno.env.get('MONDAY_API_TOKEN');
@@ -209,7 +214,30 @@ const CASES_COLS_DETALHE = {
   segmento: 'short_text20lz1za1', desafio: 'long_text36vg2ash', sugestao: 'long_textbgozc3el',
   decisao: 'long_texthukofl8i', resultado: 'long_textqu1an24s', impacto: 'ratingqc3dcemw', ondeAconteceu: 'color_mm2na1nq',
 };
-const CHURN_COLS = { quemEhSeuCs: 'single_select7xxqn59', produto: 'single_selectnwxipe5', data: 'date_mm3p6naz' };
+// v22 (30/09/2026 — onda 1 do churn): além de CS/produto/data, o sync passa a trazer o motivo
+// (categórico, vai pra churn_items) e os textos do formulário + nome e empresa do membro (vão pra
+// churn_detalhes, tabela que só gestor lê). Ids confirmados ao vivo via API do Monday no board
+// 10008640053 nesta sessão. CPF (short_text4w9ft9pn), CNPJ (short_textln136606) e os anexos
+// (file_mm48thg5) NUNCA são pedidos na query — CHURN_COLS_PROIBIDAS existe só pra
+// assertColunasPermitidas travar o sync se alguém um dia acrescentar um desses ids aqui por engano.
+const CHURN_COLS = {
+  quemEhSeuCs: 'single_select7xxqn59', produto: 'single_selectnwxipe5', data: 'date_mm3p6naz',
+  motivo: 'single_selectgq22v0z', empresa: 'texto8', explicacao: 'long_textj92ozmdm',
+  expectativa: 'long_textqwstlkek', sugestao: 'long_textlui4jr2b', notaRetorno: 'numbers9q9x823',
+};
+const CHURN_COLS_PROIBIDAS = ['short_text4w9ft9pn', 'short_textln136606', 'file_mm48thg5'];
+// Rótulos do dropdown "Por qual motivo você está saindo da rede?" -> chave estável. A chave é o
+// que fica no banco; o rótulo de exibição mora em lib/churn.ts. Rótulo novo que aparecer no
+// Monday vira uma chave derivada do próprio texto (nunca some nem cai em nao_informado calado).
+const CHURN_MOTIVO_CHAVES: [string, string][] = [
+  ['motivos financeiros', 'financeiro'],
+  ['falta de tempo', 'falta_de_tempo'],
+  ['ausencia de brasilia', 'ausencia_de_brasilia'],
+  ['insatisfacao', 'insatisfacao'],
+  ['questoes internas da empresa', 'questoes_internas_empresa'],
+  ['questoes pessoais', 'questoes_pessoais'],
+  ['nao desejo informar', 'nao_desejo_informar'],
+];
 // Parte B (pedido do Vitor, 28/09/2026): datas e detalhes do evento — ids confirmados ao vivo via
 // get_board_info no board 18415251314 ("Rounds") nesta sessão, não copiados de documentação
 // antiga. Pré-requisito direto da agenda visual (Parte C): sem inicio/termino não dá pra colocar
@@ -581,15 +609,61 @@ function resolverRepoGroupIdPorNome(
 
 // ============ sync por board ============
 
+function assertColunasPermitidas(colIds: string[], proibidas: string[]) {
+  const achadas = colIds.filter((c) => proibidas.includes(c));
+  if (achadas.length) throw new Error(`coluna proibida na query de sync: ${achadas.join(',')}`);
+}
+
+function normalizarMotivoChurn(rotulo: string | null): string {
+  const norm = normalizarTexto(rotulo || '');
+  if (!norm) return 'nao_informado';
+  const achado = CHURN_MOTIVO_CHAVES.find(([prefixo]) => norm.startsWith(prefixo));
+  if (achado) return achado[1];
+  return norm.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'nao_informado';
+}
+
+// nota de 0 a 10; qualquer coisa fora disso (ou não numérica) vira nula em vez de poluir médias
+function notaRetornoOrNull(txt: string | null): number | null {
+  const n = numOrNull(txt);
+  return n === null || !Number.isFinite(n) || n < 0 || n > 10 ? null : n;
+}
+
+function textoOrNull(txt: string | null): string | null {
+  const t = (txt || '').trim();
+  return t ? t : null;
+}
+
+// v22: lê o board inteiro (fetchAllItemsFlat pagina por next_items_page até o fim, sem limite
+// fixo), grava a parte categórica em churn_items e a parte identificável em churn_detalhes.
+// created_at do item é o mesmo instante da coluna "Log de criação" (pulse_log_mkzb6mg2), já em
+// ISO, sem precisar interpretar o texto formatado da coluna. cs_categoria não vem daqui: o
+// trigger trg_churn_items_derivar no banco deriva a partir de cs_config e churn_cs_classificacao.
+// prune de churn_items leva churn_detalhes junto (on delete cascade).
 async function syncChurn() {
-  const items = await fetchAllItemsFlat(BOARDS.CHURN, [CHURN_COLS.quemEhSeuCs, CHURN_COLS.produto, CHURN_COLS.data]);
+  const colIds = Object.values(CHURN_COLS);
+  assertColunasPermitidas(colIds, CHURN_COLS_PROIBIDAS);
+  const items = await fetchAllItemsFlat(BOARDS.CHURN, colIds, 'name created_at group{id}');
   const rows = items.map((it) => ({
     id: Number(it.id),
     quem_e_seu_cs: colText(it.column_values, CHURN_COLS.quemEhSeuCs),
     produto: colText(it.column_values, CHURN_COLS.produto),
     data: dateOrNull(colText(it.column_values, CHURN_COLS.data)),
+    motivo_principal: normalizarMotivoChurn(colText(it.column_values, CHURN_COLS.motivo)),
+    created_at_monday: it.created_at || null,
+    board_group_id: it.group?.id || null,
+  }));
+  const detalhes = items.map((it) => ({
+    churn_id: Number(it.id),
+    membro_nome: textoOrNull(it.name),
+    empresa: textoOrNull(colText(it.column_values, CHURN_COLS.empresa)),
+    explicacao: textoOrNull(colText(it.column_values, CHURN_COLS.explicacao)),
+    expectativa_nao_atendida: textoOrNull(colText(it.column_values, CHURN_COLS.expectativa)),
+    sugestao_melhoria: textoOrNull(colText(it.column_values, CHURN_COLS.sugestao)),
+    nota_retorno: notaRetornoOrNull(colText(it.column_values, CHURN_COLS.notaRetorno)),
+    synced_at: new Date().toISOString(),
   }));
   await upsert('churn_items', rows);
+  await upsert('churn_detalhes', detalhes, 'churn_id');
   await pruneOrfaos('churn_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
