@@ -255,12 +255,49 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .ordem-seta{background:none;border:1px solid var(--cinza-borda);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;line-height:1;color:var(--preto-tinta);}
 .ordem-seta:disabled{opacity:0.3;cursor:not-allowed;}
 
+/* churn (onda 1, 30/09/2026) — gráfico vem pronto do servidor (graficoChurnSVG em lib/churn.ts) */
+.churn-filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.churn-filtros label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--cinza-texto);}
+.churn-filtros select{max-width:240px;}
+.churn-descricao{font-size:12.5px;color:var(--cinza-apoio);margin:0 0 14px;}
+.churn-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:22px 22px 16px;}
+.churn-resumo{display:flex;gap:28px;flex-wrap:wrap;margin-bottom:10px;}
+.churn-resumo b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:30px;line-height:1.1;}
+.churn-resumo span{font-size:12px;color:var(--cinza-apoio);}
+.churn-legenda{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--cinza-texto);margin-top:10px;}
+.churn-legenda span.item{display:inline-flex;align-items:center;gap:6px;}
+.churn-grafico .churn-seg:hover path{opacity:0.82;}
+.churn-grafico .churn-col:hover rect{fill:rgba(0,0,0,0.03);}
+#churnGrafico{overflow-x:auto;}
+.churn-tabela-wrap{margin-top:16px;}
+.churn-status{font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;background:var(--cinza-superficie);color:var(--cinza-texto);white-space:nowrap;}
+.churn-status.ia{background:rgba(200,154,46,0.15);color:var(--dourado);}
+.churn-status.salva{background:rgba(26,26,26,0.08);color:var(--preto-tinta);}
+.churn-status.publicada{background:rgba(61,139,95,0.14);color:var(--verde);}
+.churn-aviso{font-size:12.5px;line-height:1.55;border-radius:12px;padding:10px 14px;margin-bottom:12px;background:rgba(200,154,46,0.08);border:1px solid rgba(200,154,46,0.45);}
+.churn-aviso button{background:none;border:none;padding:0;margin-left:6px;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--preto-tinta);}
+#churnTexto{width:100%;min-height:260px;padding:14px 16px;border-radius:14px;border:1px solid var(--cinza-borda);font-family:'Inter',sans-serif;font-size:13.5px;line-height:1.65;resize:vertical;color:var(--preto-tinta);}
+#churnTexto:focus{outline:none;border-color:var(--preto-tinta);}
+.churn-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center;}
+.churn-acoes button,.churn-acoes a{padding:11px 18px;border-radius:12px;font-weight:600;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;text-decoration:none;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);}
+.churn-acoes button.primario{background:var(--preto-tinta);color:var(--branco);border-color:var(--preto-tinta);}
+.churn-acoes button:disabled{opacity:0.45;cursor:not-allowed;}
+.churn-meta{font-size:11.5px;color:var(--cinza-apoio);margin:8px 0 0;line-height:1.5;}
+.churn-tabela th{text-align:left;}
+
 @media (max-width:640px){
   .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
   .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
   .form-inline{flex-direction:column;}
   .kanban-grid{grid-template-columns:1fr;}
   .rede-stats{flex-direction:column;align-items:stretch;}
+  .tabs{overflow-x:auto;}
+  .tab-btn{margin-right:16px;white-space:nowrap;}
+  .churn-card{padding:16px 12px 12px;}
+  #churnGrafico svg{min-width:560px;}
+  .churn-filtros label{width:100%;justify-content:space-between;}
+  .churn-filtros select{max-width:62%;}
+  .churn-acoes button,.churn-acoes a{flex:1 1 45%;text-align:center;}
 }
 `;
 
@@ -303,6 +340,7 @@ export const GESTOR_HTML = `
     <button class="tab-btn active" data-tab="visaoGeral">Visão geral</button>
     <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
     <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
+    <button class="tab-btn" data-tab="churn">Churn</button>
   </div>
 
   <div class="tab-panel active" id="tab-visaoGeral">
@@ -501,6 +539,57 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
+  <div class="tab-panel" id="tab-churn">
+    <section class="block" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>Churn por motivo</h2>
+          <p>Quantos membros saíram e por quê, pelo motivo declarado no formulário de saída do Monday. A data do churn é a data informada no formulário ou, na falta dela, o dia em que o item foi criado.</p>
+        </div>
+        <div class="toggle-group" id="churnGranularidade">
+          <button class="toggle-btn active" type="button" data-gran="mes">Por mês</button>
+          <button class="toggle-btn" type="button" data-gran="semana">Por semana</button>
+        </div>
+      </div>
+      <div class="churn-filtros">
+        <label>Mês de referência <select class="pill-select" id="churnRef"></select></label>
+        <label>CS <select class="pill-select" id="churnCs"><option value="">Todos</option></select></label>
+        <label>Produto <select class="pill-select" id="churnProduto"><option value="">Todos</option></select></label>
+      </div>
+      <p class="churn-descricao" id="churnDescricao"></p>
+      <div class="churn-card">
+        <div class="churn-resumo" id="churnResumo"></div>
+        <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
+        <div class="churn-legenda" id="churnLegenda"></div>
+      </div>
+      <div class="table-wrap churn-tabela-wrap"><div class="table-scroll" id="churnTabela"></div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head">
+        <div>
+          <h2>Análise do churn</h2>
+          <p>A IA escreve um rascunho a partir dos números e dos textos anonimizados deste recorte, você edita e salva. O relatório usa somente o texto salvo por você.</p>
+        </div>
+        <span class="churn-status" id="churnStatus">Sem análise</span>
+      </div>
+      <div class="churn-card">
+        <div class="churn-aviso" id="churnAvisoDesatualizada" style="display:none">Entraram ou saíram churns deste recorte depois que esta análise foi gerada ou salva. Vale revisar o texto antes de emitir o relatório.</div>
+        <div class="churn-aviso" id="churnAvisoRascunho" style="display:none">Este é o rascunho mais recente da IA e ainda não foi salvo.<button type="button" id="churnBtnVoltarSalvo">Voltar ao texto salvo</button></div>
+        <div class="churn-aviso" id="churnAvisoIA" style="display:none"></div>
+        <textarea id="churnTexto" placeholder="Escreva aqui por que os membros deste recorte deram churn, ou gere um rascunho com a IA e edite."></textarea>
+        <div class="churn-acoes">
+          <button type="button" id="churnBtnGerar">Gerar rascunho com IA</button>
+          <button type="button" class="primario" id="churnBtnSalvar">Salvar análise</button>
+          <button type="button" id="churnBtnPublicar">Publicar</button>
+          <a id="churnBtnRelatorio" href="#" target="_blank" rel="noopener">Emitir relatório</a>
+        </div>
+        <p class="erro-msg" id="churnErro" style="margin:10px 0 0;"></p>
+        <p class="churn-meta" id="churnMeta"></p>
+      </div>
+    </section>
+  </div>
+
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
 </div>
 </div>
@@ -597,6 +686,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
     if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
+    if (btn.dataset.tab === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
   });
 });
 
@@ -1585,5 +1675,267 @@ function inicializarMetasDestaques() {
   }
 }
 
+// ============ churn (onda 1, 30/09/2026) ============
+// Série, gráfico SVG, tabela, opções de filtro e análise salva chegam prontos de /api/gestor/churn
+// (lib/churn.ts); aqui só ficam os filtros, o estado do editor e as chamadas de gerar, salvar e
+// publicar. Três estados do painel de análise: sem análise, rascunho da IA ainda não salvo, e
+// análise salva (ou publicada). O relatório usa sempre o texto salvo, nunca o do editor.
+var ENDPOINT_CHURN = '/api/gestor/churn';
+var churnCarregado = false;
+var churnEstado_ = { granularidade: 'mes', ref: '', cs: '', produto: '', categoria: '' };
+var churnDados_ = null;
+var churnTextoBase_ = '';
+var churnOpcoesMontadas_ = false;
+var churnConfirmarGerar_ = false;
+var CHURN_MESES_ = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+function churnEsc_(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function churnDataHora_(iso) {
+  try { return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return iso; }
+}
+function churnParams_() {
+  var p = new URLSearchParams({ granularidade: churnEstado_.granularidade, ref: churnEstado_.ref });
+  if (churnEstado_.cs) p.set('cs', churnEstado_.cs);
+  if (churnEstado_.produto) p.set('produto', churnEstado_.produto);
+  if (churnEstado_.categoria) p.set('categoria', churnEstado_.categoria);
+  return p.toString();
+}
+function churnCorpo_(extra) {
+  var o = {
+    granularidade: churnEstado_.granularidade, ref: churnEstado_.ref,
+    cs: churnEstado_.cs || null, produto: churnEstado_.produto || null, categoria: churnEstado_.categoria || null,
+  };
+  Object.keys(extra || {}).forEach(function (k) { o[k] = extra[k]; });
+  return JSON.stringify(o);
+}
+
+function churnPopularRef_() {
+  var sel = document.getElementById('churnRef');
+  var hoje = new Date();
+  var ano = hoje.getFullYear(), mes = hoje.getMonth() + 1, html = '';
+  for (var i = 0; i < 24; i++) {
+    var valor = ano + '-' + (mes < 10 ? '0' + mes : String(mes));
+    html += '<option value="' + valor + '">' + CHURN_MESES_[mes - 1] + ' de ' + ano + '</option>';
+    mes--;
+    if (mes === 0) { mes = 12; ano--; }
+  }
+  sel.innerHTML = html;
+  churnEstado_.ref = sel.value;
+}
+
+function churnPopularOpcoes_(op) {
+  if (churnOpcoesMontadas_ || !op) return;
+  churnOpcoesMontadas_ = true;
+  var html = '<option value="">Todos</option><optgroup label="Por categoria">';
+  op.categorias.forEach(function (c) {
+    var existe = op.cs.some(function (x) { return x.categoria === c.chave; });
+    if (existe) html += '<option value="cat:' + c.chave + '">' + churnEsc_(c.rotulo) + '</option>';
+  });
+  html += '</optgroup>';
+  op.categorias.forEach(function (c) {
+    var doGrupo = op.cs.filter(function (x) { return x.categoria === c.chave; });
+    if (!doGrupo.length) return;
+    html += '<optgroup label="' + churnEsc_(c.rotulo) + '">' + doGrupo.map(function (x) {
+      return '<option value="cs:' + churnEsc_(x.valor) + '">' + churnEsc_(x.valor) + ' (' + x.qtd + ')</option>';
+    }).join('') + '</optgroup>';
+  });
+  document.getElementById('churnCs').innerHTML = html;
+  document.getElementById('churnProduto').innerHTML = '<option value="">Todos</option>' + op.produtos.map(function (p) {
+    return '<option value="' + churnEsc_(p.valor) + '">' + churnEsc_(p.rotulo) + ' (' + p.qtd + ')</option>';
+  }).join('');
+}
+
+function carregarChurn() {
+  document.getElementById('churnErro').textContent = '';
+  document.getElementById('churnGrafico').innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  return fetchJSON_(ENDPOINT_CHURN + '?' + churnParams_()).then(function (data) {
+    churnDados_ = data;
+    churnPopularOpcoes_(data.opcoes);
+    renderChurn_(data);
+  }).catch(function (err) {
+    document.getElementById('churnGrafico').innerHTML = '<div class="gestor-erro">Erro ao carregar o churn: ' + churnEsc_(err.message) + '</div>';
+  });
+}
+
+function renderChurn_(data) {
+  document.getElementById('churnDescricao').textContent = 'Recorte: ' + data.descricao + '.';
+  var maior = null;
+  data.legenda.forEach(function (m) { if (!maior || m.qtd > maior.qtd) maior = m; });
+  document.getElementById('churnResumo').innerHTML =
+    '<div><b>' + data.total + '</b><span>churns no recorte</span></div>' +
+    (maior ? '<div><b>' + churnEsc_(String(maior.pct).replace('.', ',')) + '%</b><span>' + churnEsc_(maior.rotulo) + ', motivo mais citado</span></div>' : '');
+  document.getElementById('churnGrafico').innerHTML = data.total
+    ? data.graficoSvg
+    : '<div class="gestor-empty">Nenhum churn neste recorte. Troque o mês de referência ou os filtros.</div>';
+  document.getElementById('churnLegenda').innerHTML = data.total ? data.legenda.map(function (m) {
+    return '<span class="item">' + m.amostra + churnEsc_(m.rotulo) + '</span>';
+  }).join('') : '';
+  document.getElementById('churnTabela').innerHTML = data.tabelaHtml || '';
+  document.getElementById('churnTabela').parentNode.style.display = data.tabelaHtml ? '' : 'none';
+  document.getElementById('churnBtnRelatorio').href = '/gestor/churn/relatorio?' + data.query;
+  renderAnaliseChurn_(data.analise, data.iaDisponivel, data.total);
+}
+
+function churnEstadoAnalise_(a) {
+  if (!a) return 'vazia';
+  var iaMaisNova = a.textoIa && a.geradoEm && (!a.editadoEm || Date.parse(a.geradoEm) > Date.parse(a.editadoEm));
+  if (a.textoIa && (!a.textoGestor || iaMaisNova)) return 'ia';
+  if (!a.textoGestor) return 'vazia';
+  return a.status === 'publicada' ? 'publicada' : 'salva';
+}
+
+function renderAnaliseChurn_(a, iaOk, total) {
+  var estado = churnEstadoAnalise_(a);
+  var rotulos = { vazia: 'Sem análise', ia: 'Rascunho da IA, não salvo', salva: 'Análise salva', publicada: 'Análise publicada' };
+  var st = document.getElementById('churnStatus');
+  st.textContent = rotulos[estado];
+  st.className = 'churn-status' + (estado === 'vazia' ? '' : ' ' + estado);
+
+  var texto = estado === 'ia' ? a.textoIa : ((a && a.textoGestor) || '');
+  document.getElementById('churnTexto').value = texto;
+  // rascunho da IA conta como alteração ainda não salva: nada da IA vira análise sem o gestor salvar
+  churnTextoBase_ = estado === 'ia' ? '' : texto;
+  churnConfirmarGerar_ = false;
+
+  document.getElementById('churnAvisoRascunho').style.display = (estado === 'ia' && a.textoGestor) ? '' : 'none';
+  document.getElementById('churnAvisoDesatualizada').style.display = (a && a.desatualizada) ? '' : 'none';
+  var avisoIA = document.getElementById('churnAvisoIA');
+  var btnGerar = document.getElementById('churnBtnGerar');
+  if (!iaOk) {
+    avisoIA.style.display = '';
+    avisoIA.textContent = 'A geração por IA ainda não está configurada neste ambiente. Você pode escrever e salvar a análise manualmente.';
+    btnGerar.disabled = true;
+  } else {
+    avisoIA.style.display = 'none';
+    btnGerar.disabled = !total;
+  }
+  btnGerar.textContent = 'Gerar rascunho com IA';
+
+  var partes = [];
+  if (a && a.geradoEm) partes.push('Rascunho da IA gerado em ' + churnDataHora_(a.geradoEm) + (a.modeloIa ? ' com ' + a.modeloIa : ''));
+  if (a && a.textoGestor && a.editadoEm) partes.push('Última alteração por ' + a.editadoPor + ' em ' + churnDataHora_(a.editadoEm));
+  document.getElementById('churnMeta').textContent = partes.length ? partes.join('. ') + '.' : '';
+  churnAtualizarBotoes_();
+}
+
+function churnAlterado_() {
+  return document.getElementById('churnTexto').value.trim() !== churnTextoBase_.trim();
+}
+function churnAtualizarBotoes_() {
+  var a = churnDados_ && churnDados_.analise;
+  var temTexto = !!document.getElementById('churnTexto').value.trim();
+  var alterado = churnAlterado_();
+  document.getElementById('churnBtnSalvar').disabled = !temTexto || !alterado;
+  document.getElementById('churnBtnPublicar').disabled = alterado || !a || !a.textoGestor || a.status === 'publicada';
+  document.getElementById('churnBtnPublicar').textContent = a && a.status === 'publicada' && !alterado ? 'Publicada' : 'Publicar';
+}
+
+function churnGerar_() {
+  var erro = document.getElementById('churnErro');
+  erro.textContent = '';
+  if (churnAlterado_() && document.getElementById('churnTexto').value.trim() && !churnConfirmarGerar_) {
+    churnConfirmarGerar_ = true;
+    erro.textContent = 'Você tem alterações não salvas no editor. Clique de novo em Gerar rascunho para substituí-las pelo novo rascunho.';
+    return;
+  }
+  var btn = document.getElementById('churnBtnGerar');
+  btn.disabled = true;
+  btn.textContent = 'Gerando rascunho…';
+  fetchJSON_(ENDPOINT_CHURN + '/analise/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: churnCorpo_({}) })
+    .then(function () { return carregarChurn(); })
+    .catch(function (err) {
+      erro.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Gerar rascunho com IA';
+    });
+}
+
+function churnSalvar_() {
+  var erro = document.getElementById('churnErro');
+  erro.textContent = '';
+  var btn = document.getElementById('churnBtnSalvar');
+  btn.disabled = true;
+  fetchJSON_(ENDPOINT_CHURN + '/analise', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: churnCorpo_({ acao: 'salvar', texto: document.getElementById('churnTexto').value }),
+  }).then(function (r) {
+    churnDados_.analise = r.analise;
+    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.total);
+  }).catch(function (err) {
+    erro.textContent = err.message;
+    churnAtualizarBotoes_();
+  });
+}
+
+function churnPublicar_() {
+  var erro = document.getElementById('churnErro');
+  erro.textContent = '';
+  document.getElementById('churnBtnPublicar').disabled = true;
+  fetchJSON_(ENDPOINT_CHURN + '/analise', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: churnCorpo_({ acao: 'publicar' }),
+  }).then(function (r) {
+    churnDados_.analise = r.analise;
+    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.total);
+  }).catch(function (err) {
+    erro.textContent = err.message;
+    churnAtualizarBotoes_();
+  });
+}
+
+function inicializarChurn() {
+  try {
+    churnPopularRef_();
+    document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        churnEstado_.granularidade = b.dataset.gran;
+        carregarChurn();
+      });
+    });
+    document.getElementById('churnRef').addEventListener('change', function () { churnEstado_.ref = this.value; carregarChurn(); });
+    document.getElementById('churnCs').addEventListener('change', function () {
+      var v = this.value;
+      churnEstado_.cs = v.indexOf('cs:') === 0 ? v.slice(3) : '';
+      churnEstado_.categoria = v.indexOf('cat:') === 0 ? v.slice(4) : '';
+      carregarChurn();
+    });
+    document.getElementById('churnProduto').addEventListener('change', function () { churnEstado_.produto = this.value; carregarChurn(); });
+    document.getElementById('churnTexto').addEventListener('input', function () { churnConfirmarGerar_ = false; churnAtualizarBotoes_(); });
+    document.getElementById('churnBtnGerar').addEventListener('click', churnGerar_);
+    document.getElementById('churnBtnSalvar').addEventListener('click', churnSalvar_);
+    document.getElementById('churnBtnPublicar').addEventListener('click', churnPublicar_);
+    document.getElementById('churnBtnVoltarSalvo').addEventListener('click', function () {
+      var a = churnDados_ && churnDados_.analise;
+      if (!a || !a.textoGestor) return;
+      document.getElementById('churnTexto').value = a.textoGestor;
+      churnTextoBase_ = a.textoGestor;
+      document.getElementById('churnAvisoRascunho').style.display = 'none';
+      var st = document.getElementById('churnStatus');
+      st.textContent = a.status === 'publicada' ? 'Análise publicada' : 'Análise salva';
+      st.className = 'churn-status ' + (a.status === 'publicada' ? 'publicada' : 'salva');
+      churnAtualizarBotoes_();
+    });
+    document.getElementById('churnBtnRelatorio').addEventListener('click', function () {
+      if (churnAlterado_()) {
+        document.getElementById('churnErro').textContent = 'O relatório usa o texto salvo. Salve a análise para incluir as alterações do editor.';
+      }
+    });
+    carregarChurn();
+  } catch (err) {
+    console.error('Erro ao iniciar Churn:', err);
+  }
+}
+
 carregarVisaoGeral();
+
+// link direto /gestor#churn (usado pelo "Voltar ao painel" do relatório de churn)
+if (window.location.hash === '#churn') {
+  var btnAbaChurn_ = document.querySelector('.tab-btn[data-tab="churn"]');
+  if (btnAbaChurn_) btnAbaChurn_.click();
+}
 `;
