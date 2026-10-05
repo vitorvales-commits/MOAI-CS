@@ -295,6 +295,28 @@ const FEEDBACK_COLS = {
     { id: 'multi_select2i0l1l28', categoria: 'Abertura a feedbacks' },
   ],
 };
+// Pulso de CS (05/10/2026): a partir de outubro de 2026 o mesmo board (18412032453, "NPS time CS")
+// recebe um formulário único e mensal no lugar da avaliação entre pares. Ids confirmados ao vivo via
+// get_board_info nesta sessão. As colunas antigas continuam no board como histórico e seguem em
+// feedback_items. Item de pulso vai só para pulso_cs_items, nunca para feedback_items.
+const PULSO_COLS = {
+  recomendacao: 'single_selectb4e2e8e',
+  clareza: 'single_selectnplmm5m',
+  gargalos: 'multi_select4jj71hpl',
+  melhorar: 'short_textevra41s2',
+  comecarPararContinuar: 'short_textt2tcskqm',
+  destaqueColaboracao: 'single_selectk23k963',
+  feedbackPessoas: 'long_text4sqv7qb5',
+  temaApoio: 'short_textovdjx4pr',
+  liderancaSaber: 'short_textdryxvk9l',
+  feedbackLideranca: 'long_textvo70fkvt',
+};
+// Grupos do board que já são do Pulso, mesmo que o item ainda esteja sem resposta.
+const PULSO_GRUPOS = ['OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+function ehItemDePulso(grupoTitulo: string, cv: { id: string; text: string | null }[]): boolean {
+  if (PULSO_GRUPOS.includes((grupoTitulo || '').trim().toUpperCase())) return true;
+  return [PULSO_COLS.recomendacao, PULSO_COLS.clareza, PULSO_COLS.feedbackPessoas].some((id) => !!colText(cv, id));
+}
 // Parte D (pedido do Vitor, 28/09/2026): ids confirmados ao vivo via get_board_info no board
 // 18393367198 ("NPS Conselhos Estratégicos 2026") nesta sessão. short_textwixr2i8s (CPF) fica de
 // fora de propósito — nunca aparece aqui, nem pra ser lido e descartado depois; a query GraphQL
@@ -782,15 +804,41 @@ async function syncRounds() {
 
 async function syncFeedback() {
   const groups = await fetchGroups(BOARDS.FEEDBACK);
-  const colsIds = [FEEDBACK_COLS.positivo, FEEDBACK_COLS.construtivo, ...FEEDBACK_COLS.votos.map((v) => v.id)];
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:50){items{id name column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const colsIds = [
+    FEEDBACK_COLS.positivo, FEEDBACK_COLS.construtivo, ...FEEDBACK_COLS.votos.map((v) => v.id),
+    ...Object.values(PULSO_COLS),
+  ];
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:50){items{id name created_at column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.FEEDBACK], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
+  const pulso: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
     (g.items_page?.items || []).forEach((item: any) => {
+      const cv = item.column_values;
+      if (ehItemDePulso(g.title, cv)) {
+        const gargalosTxt = colText(cv, PULSO_COLS.gargalos) || '';
+        pulso.push({
+          id: Number(item.id),
+          board_group_id: g.id,
+          mes_grupo_titulo: g.title,
+          respondente_nome: item.name,
+          nota_recomendacao: numOrNull(colText(cv, PULSO_COLS.recomendacao)),
+          nota_clareza: numOrNull(colText(cv, PULSO_COLS.clareza)),
+          gargalos: gargalosTxt ? gargalosTxt.split(',').map((x: string) => x.trim()).filter(Boolean) : [],
+          melhorar_texto: colText(cv, PULSO_COLS.melhorar),
+          comecar_parar_continuar: colText(cv, PULSO_COLS.comecarPararContinuar),
+          destaque_colaboracao: colText(cv, PULSO_COLS.destaqueColaboracao),
+          feedback_pessoas_texto: colText(cv, PULSO_COLS.feedbackPessoas),
+          tema_apoio_texto: colText(cv, PULSO_COLS.temaApoio),
+          lideranca_saber_texto: colText(cv, PULSO_COLS.liderancaSaber),
+          feedback_lideranca_texto: colText(cv, PULSO_COLS.feedbackLideranca),
+          criado_em_monday: item.created_at || null,
+        });
+        return;
+      }
       const votos: Record<string, string[]> = {};
       FEEDBACK_COLS.votos.forEach((v) => {
-        const texto = colText(item.column_values, v.id) || '';
+        const texto = colText(cv, v.id) || '';
         votos[v.categoria] = texto ? texto.split(',').map((s: string) => s.trim()) : [];
       });
       rows.push({
@@ -798,15 +846,17 @@ async function syncFeedback() {
         board_group_id: g.id,
         mes_grupo_titulo: g.title,
         avaliador_nome: item.name,
-        positivo_texto: colText(item.column_values, FEEDBACK_COLS.positivo),
-        construtivo_texto: colText(item.column_values, FEEDBACK_COLS.construtivo),
+        positivo_texto: colText(cv, FEEDBACK_COLS.positivo),
+        construtivo_texto: colText(cv, FEEDBACK_COLS.construtivo),
         votos,
       });
     });
   });
   await upsert('feedback_items', rows);
   await pruneOrfaos('feedback_items', new Set(rows.map((r) => r.id)));
-  return rows.length;
+  await upsert('pulso_cs_items', pulso);
+  await pruneOrfaos('pulso_cs_items', new Set(pulso.map((r) => r.id)));
+  return rows.length + pulso.length;
 }
 
 async function syncCases() {
