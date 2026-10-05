@@ -1205,6 +1205,10 @@ function renderDestaques(data){
   if (fb && fb.positivos && fb.positivos.length) {
     var texto = fb.positivos[0];
     destaqueFb = texto.length > 90 ? texto.slice(0,90) + '…' : texto;
+  } else if (data.pulso && data.pulso.falas && data.pulso.falas.length) {
+    // Pulso de CS (05/10/2026): a partir de outubro a fala vem do pulso.
+    var textoPulso = data.pulso.falas[0];
+    destaqueFb = textoPulso.length > 90 ? textoPulso.slice(0,90) + '…' : textoPulso;
   }
 
   document.getElementById('destaquesGrid').innerHTML =
@@ -1615,6 +1619,8 @@ function carregarImpactoPeriodoModal(groupId){
 var MAX_QUOTES_VISIVEIS = 4;
 function renderFeedback(data){
   var fb = data.feedback;
+  var pulso = data.pulso || null;
+  var modo = pulso ? pulso.modo : 'legado';
   var vezesAtual = data.cs.vezesDestaque || 0;
   var html = '<div class="destaque-form-card">' +
     '<div class="destaque-form-label">'+ICONS.trophy+'CS Destaque</div>' +
@@ -1623,10 +1629,44 @@ function renderFeedback(data){
     '<button class="destaque-form-btn" id="destaqueSalvarBtn" onclick="salvarVezesDestaque()">Salvar</button>' +
     '<span class="destaque-form-status" id="destaqueStatus"></span>' +
   '</div>';
+  // Pulso de CS (05/10/2026): de outubro de 2026 em diante vale o pulso. Até setembro vale a avaliação
+  // entre pares antiga. Visão Geral mostra as duas, cada uma na sua seção.
+  if (modo === 'pulso' || modo === 'ambos') html += feedbackPulsoHtml_(pulso);
+  if (modo === 'ambos') html += '<div class="fb-line-wrap" style="margin-top:30px;"><span style="color:#807E7E">Histórico anterior ao Pulso, até setembro</span><div class="fb-line"></div></div>';
+  if (modo === 'legado' || modo === 'ambos') html += feedbackLegadoHtml_(fb);
+  document.getElementById('feedbacks').innerHTML = html;
+  setTimeout(function(){ document.querySelectorAll('.voto-row-bar-fill').forEach(function(el){ el.style.width = el.getAttribute('data-w')+'%'; }); }, 50);
+}
+
+// Pulso de CS: o que os colegas escreveram sobre este CS e quantos o indicaram como destaque em
+// colaboração. Nada identifica quem respondeu, e a autoavaliação já vem excluída pelo banco.
+function feedbackPulsoHtml_(p){
+  var h = '<p class="fb-intro">Pulso de CS · respostas anônimas do time · '+(p ? p.respostas : 0)+' resposta(s) neste período. As observações abaixo são as falas originais dos colegas sobre este CS, embaralhadas para preservar o anonimato.</p>';
+  if (!p) return h + '<div class="empty-state" style="padding:20px;">O Pulso de CS não está disponível para este período.</div>';
+  if (p.erro) return h + '<div class="empty-state" style="padding:20px;">Não foi possível carregar o Pulso de CS: '+escHtml_(p.erro)+'</div>';
+  if (p.respostas === 0) {
+    return h + '<div class="no-feedback"><div class="no-feedback-title">Sem respostas do Pulso neste período</div><div class="no-feedback-sub">As respostas aparecem aqui assim que o formulário mensal do Pulso de CS for preenchido pelo time.</div></div>';
+  }
+  h += '<div class="votos-bar-card"><div class="dark-label">'+ICONS.trophy+'Reconhecimento no Pulso</div>' +
+    '<div class="voto-row"><div class="voto-row-label">Colegas que deixaram uma observação sobre este CS</div><div class="voto-row-num num">'+p.avaliadores+'</div></div>' +
+    '<div class="voto-row"><div class="voto-row-label">Colegas que o indicaram como destaque em colaboração e apoio ao time</div><div class="voto-row-num num">'+p.destaques+'</div></div>' +
+  '</div>';
+  h += '<div class="fb-line-wrap"><span style="color:#3D8B5F">'+ICONS.check+'O que o time disse</span><div class="fb-line"></div></div>';
+  if (!p.falas || p.falas.length === 0) {
+    h += '<div class="empty-state" style="padding:20px;">Nenhum colega deixou observação sobre este CS neste período.</div>';
+  } else {
+    p.falas.slice(0, MAX_QUOTES_VISIVEIS * 2).forEach(function(f){ h += '<div class="quote-block"><span class="quote-mark">"</span><div class="quote-text" style="white-space:pre-line;">'+escHtml_(f)+'</div></div>'; });
+    if (p.falas.length > MAX_QUOTES_VISIVEIS * 2) h += '<div class="fb-mais">+ '+(p.falas.length-MAX_QUOTES_VISIVEIS*2)+' outra(s) observação(ões) neste período.</div>';
+  }
+  return h;
+}
+
+function feedbackLegadoHtml_(fb){
+  var html = '';
   html += '<p class="fb-intro">Avaliação de pares · anônima · '+fb.avaliadores+' avaliador(es) neste ciclo. As observações abaixo são as falas originais dos colegas, selecionadas e embaralhadas para preservar o anonimato.</p>';
   if (fb.avaliadores === 0 && fb.positivos.length === 0 && fb.construtivos.length === 0) {
     html += '<div class="no-feedback"><div class="no-feedback-title">Sem feedbacks neste ciclo</div><div class="no-feedback-sub">Este CS não aparece na rodada deste período — nem como avaliador, nem como avaliado.</div></div>';
-    document.getElementById('feedbacks').innerHTML = html; return;
+    return html;
   }
   var maxVoto = Math.max.apply(null, fb.votos.map(function(v){return v.qtd;}).concat([1]));
   html += '<div class="votos-bar-card"><div class="dark-label">'+ICONS.trophy+'Reconhecimentos por votação</div>';
@@ -1648,8 +1688,7 @@ function renderFeedback(data){
     fb.construtivos.slice(0, MAX_QUOTES_VISIVEIS).forEach(function(c){ html += '<div class="quote-block"><span class="quote-mark">"</span><div class="quote-text">'+c+'</div></div>'; });
     if (fb.construtivos.length > MAX_QUOTES_VISIVEIS) html += '<div class="fb-mais">+ '+(fb.construtivos.length-MAX_QUOTES_VISIVEIS)+' outra(s) observação(ões) na mesma linha.</div>';
   }
-  document.getElementById('feedbacks').innerHTML = html;
-  setTimeout(function(){ document.querySelectorAll('.voto-row-bar-fill').forEach(function(el){ el.style.width = el.getAttribute('data-w')+'%'; }); }, 50);
+  return html;
 }
 function salvarVezesDestaque(){
   if (!currentCS) return;

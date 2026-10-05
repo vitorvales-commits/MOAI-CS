@@ -337,6 +337,75 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .churn-filtros select{max-width:62%;}
   .churn-acoes button,.churn-acoes a{flex:1 1 45%;text-align:center;}
 }
+
+/* Pulso de CS (05/10/2026) */
+.pulso-filtros{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:18px;}
+.pulso-aviso{font-size:12px;color:var(--cinza-texto);background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:14px;padding:12px 16px;margin-bottom:22px;line-height:1.55;max-width:760px;}
+.pulso-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:26px;}
+.pulso-tile{background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:20px;padding:22px 24px;}
+.pulso-tile-label{font-size:11px;letter-spacing:0.08em;font-weight:600;color:var(--cinza-apoio);text-transform:uppercase;margin-bottom:10px;}
+.pulso-tile-valor{font-size:40px;font-weight:700;line-height:1;color:var(--preto-tinta);}
+.pulso-tile-valor.ok{color:var(--verde);} .pulso-tile-valor.atencao{color:var(--dourado);} .pulso-tile-valor.risco{color:var(--vermelho);}
+.pulso-tile-sub{font-size:12px;color:var(--cinza-texto);margin-top:10px;line-height:1.5;}
+.pulso-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:26px;}
+.pulso-card{background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:20px;padding:22px 24px;}
+.pulso-card h3{font-size:14px;font-weight:700;margin:0 0 14px;}
+.pulso-barra-linha{display:grid;grid-template-columns:minmax(120px,1.4fr) 2fr 28px;gap:10px;align-items:center;margin-bottom:9px;font-size:12px;}
+.pulso-barra-bg{background:var(--cinza-superficie);border-radius:6px;height:8px;overflow:hidden;}
+.pulso-barra-fill{background:var(--dourado);height:100%;border-radius:6px;}
+.pulso-barra-num{font-weight:700;text-align:right;}
+.pulso-serie{width:100%;border-collapse:collapse;font-size:12px;}
+.pulso-serie th{text-align:left;font-size:11px;letter-spacing:0.06em;color:var(--cinza-apoio);font-weight:600;padding:6px 8px;border-bottom:0.75pt solid var(--cinza-borda);}
+.pulso-serie td{padding:8px;border-bottom:0.75pt solid var(--cinza-superficie);}
+.pulso-textos{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;}
+.pulso-texto-bloco{background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:20px;padding:20px 22px;}
+.pulso-texto-bloco h3{font-size:13px;font-weight:700;margin:0 0 12px;}
+.pulso-fala{font-size:12.5px;line-height:1.6;color:var(--preto-tinta);padding:10px 0;border-top:0.75pt solid var(--cinza-superficie);white-space:pre-line;}
+.pulso-fala:first-of-type{border-top:0;padding-top:0;}
+.pulso-vazio{font-size:12px;color:var(--cinza-apoio);}
+
+/* Voz do liderado (05/10/2026) */
+.voz-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px;}
+.voz-tile{background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:16px;padding:16px 18px;}
+.voz-tile-valor{font-size:30px;font-weight:700;line-height:1;}
+.voz-tile-label{font-size:11px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;color:var(--cinza-apoio);margin-top:8px;}
+.voz-insights{background:var(--preto-profundo);color:#fff;border-radius:20px;padding:24px 28px;margin-bottom:22px;}
+.voz-insights h3{font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--dourado);margin:0 0 14px;font-weight:700;}
+.voz-insight{font-size:13.5px;line-height:1.6;padding:9px 0 9px 16px;border-left:2px solid var(--dourado);margin-bottom:8px;}
+.voz-insight:last-child{margin-bottom:0;}
+.voz-temas-linha{display:grid;grid-template-columns:minmax(150px,1.3fr) 3fr 90px;gap:12px;align-items:center;padding:7px 8px;margin:0 -8px;border-radius:10px;font-size:12px;cursor:pointer;background:none;border:0;width:calc(100% + 16px);text-align:left;font-family:inherit;color:inherit;}
+.voz-temas-linha:hover,.voz-temas-linha.ativo{background:var(--cinza-fundo);}
+.voz-temas-barra{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--cinza-superficie);}
+.voz-seg-backlog{background:var(--cinza-linha);} .voz-seg-em_andamento{background:var(--dourado);} .voz-seg-realizado{background:var(--verde);} .voz-seg-rejeitado{background:var(--vermelho);}
+.voz-temas-num{font-weight:700;text-align:right;white-space:nowrap;}
+.voz-legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--cinza-texto);margin-top:12px;}
+.voz-legenda i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:middle;}
+.voz-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;margin-top:8px;}
+.voz-col{background:var(--cinza-superficie);border-radius:18px;padding:12px;min-height:120px;}
+.voz-col-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 6px 12px;}
+.voz-col-backlog .voz-col-head{color:var(--cinza-texto);} .voz-col-em_andamento .voz-col-head{color:var(--dourado);} .voz-col-realizado .voz-col-head{color:var(--verde);} .voz-col-rejeitado .voz-col-head{color:var(--vermelho);}
+.voz-col-vazio{font-size:12px;color:var(--cinza-apoio);padding:10px 6px;}
+.voz-card{background:var(--branco);border:0.75pt solid var(--cinza-borda);border-radius:14px;padding:14px 14px 12px;margin-bottom:10px;}
+.voz-card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+.voz-tag{font-size:10px;font-weight:600;letter-spacing:0.03em;padding:3px 8px;border-radius:20px;background:var(--cinza-fundo);color:var(--cinza-texto);}
+.voz-tag.origem{background:var(--preto-tinta);color:#fff;}
+.voz-tag.parar{background:#F6DEDC;color:var(--vermelho);} .voz-tag.comecar{background:#DDEFE5;color:var(--verde);}
+.voz-tag.tema{background:#F5ECD3;color:#8A6A18;}
+.voz-card-texto{font-size:12.5px;line-height:1.6;white-space:pre-line;}
+.voz-card-meta{font-size:11px;color:var(--cinza-texto);margin-top:8px;line-height:1.5;}
+.voz-card-meta b{color:var(--preto-tinta);}
+.voz-card-acoes{display:flex;gap:6px 8px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+.voz-card-acoes select{flex:1 1 130px;min-width:0;}
+.voz-btn-link{background:none;border:0;font-family:inherit;font-size:11px;font-weight:600;color:var(--cinza-texto);cursor:pointer;text-decoration:underline;padding:4px;}
+.voz-obs{margin-top:10px;}
+.voz-obs textarea{width:100%;min-height:62px;font-family:inherit;font-size:12px;border:1px solid var(--cinza-borda);border-radius:10px;padding:8px 10px;resize:vertical;}
+.voz-obs button{margin-top:6px;}
+.voz-obs-lida{margin-top:10px;font-size:11.5px;line-height:1.5;background:var(--cinza-fundo);border-radius:10px;padding:8px 10px;color:var(--cinza-texto);}
+.voz-manter{margin-bottom:22px;}
+.voz-manter li{font-size:12.5px;line-height:1.6;margin-bottom:6px;}
+.voz-erro{font-size:11px;color:var(--vermelho);margin-top:6px;}
+@media (max-width:1100px){.voz-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:640px){.voz-grid{grid-template-columns:1fr;} .voz-temas-linha{grid-template-columns:1fr;gap:6px;} .voz-temas-num{text-align:left;}}
 `;
 
 export const GESTOR_HTML = `
@@ -379,6 +448,8 @@ export const GESTOR_HTML = `
     <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
     <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
     <button class="tab-btn" data-tab="churn">Churn</button>
+    <button class="tab-btn" data-tab="pulso">Pulso de CS</button>
+    <button class="tab-btn" data-tab="voz">Voz do liderado</button>
   </div>
 
   <div class="tab-panel active" id="tab-visaoGeral">
@@ -594,6 +665,41 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
+  <div class="tab-panel" id="tab-voz">
+    <section class="block" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>Voz do liderado</h2>
+          <p>O que o time sugere, aponta e pede nas respostas abertas do Pulso de CS, organizado para o líder decidir o que fazer com cada ponto. Toda sugestão entra em backlog.</p>
+        </div>
+      </div>
+      <div class="pulso-filtros">
+        <label class="churn-campo">Período <select class="pill-select" id="vozMes"></select></label>
+        <label class="churn-campo">Tema <select class="pill-select" id="vozTema"><option value="">Todos</option></select></label>
+        <label class="churn-campo">Origem <select class="pill-select" id="vozCampo"><option value="">Todas</option></select></label>
+        <label class="churn-campo">Busca <input type="text" class="pill-select" id="vozBusca" maxlength="80" placeholder="Palavra no texto" style="min-width:180px;"></label>
+      </div>
+      <p class="pulso-aviso">As sugestões aparecem sem o nome de quem escreveu. Cada resposta aberta do Pulso vira uma ou mais sugestões, e as do campo começar, parar e continuar são separadas por frase. O que o time quer manter fica à parte, porque não pede uma ação. O status e a observação ficam registrados com a data e o gestor que decidiu.</p>
+      <div id="vozConteudo"><div class="gestor-empty">Carregando…</div></div>
+    </section>
+  </div>
+
+  <div class="tab-panel" id="tab-pulso">
+    <section class="block" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>Pulso de CS</h2>
+          <p>Formulário mensal do time de CS. Substitui, a partir de outubro de 2026, a avaliação entre pares e o NPS interno antigo.</p>
+        </div>
+      </div>
+      <div class="pulso-filtros">
+        <label class="churn-campo">Período <select class="pill-select" id="pulsoMes"></select></label>
+      </div>
+      <p class="pulso-aviso">Nenhuma resposta é identificada nesta tela. Os textos aparecem embaralhados e sem o nome de quem respondeu. O NPS interno usa a régua padrão da MOAI: notas 9 e 10 são promotores, 7 e 8 neutros e 0 a 6 detratores.</p>
+      <div id="pulsoConteudo"><div class="gestor-empty">Carregando…</div></div>
+    </section>
+  </div>
+
   <div class="tab-panel" id="tab-churn">
     <section class="block" style="margin-top:0;">
       <div class="block-head">
@@ -758,6 +864,8 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
     if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
     if (btn.dataset.tab === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
+    if (btn.dataset.tab === 'pulso' && !pulsoCarregado_) { pulsoCarregado_ = true; inicializarPulso_(); }
+    if (btn.dataset.tab === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); }
   });
 });
 
@@ -2264,6 +2372,269 @@ function inicializarChurn() {
   } catch (err) {
     console.error('Erro ao iniciar Churn:', err);
   }
+}
+
+
+// ============ Pulso de CS (05/10/2026) ============
+// Tudo que a tela mostra chega pronto de /api/gestor/pulso (lib/pulso.ts). Aqui só ficam o seletor de
+// período e o desenho. Nenhum nome de respondente existe neste payload.
+var pulsoCarregado_ = false;
+var pulsoReq_ = 0;
+var PULSO_MESES_ = ['Outubro', 'Novembro', 'Dezembro'];
+
+function pulsoEsc_(s) {
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (ch) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+  });
+}
+function pulsoClasseNps_(score) {
+  if (score === null || score === undefined) return '';
+  if (score >= 50) return 'ok';
+  if (score >= 0) return 'atencao';
+  return 'risco';
+}
+function pulsoClasseClareza_(m) {
+  if (m === null || m === undefined) return '';
+  if (m >= 8) return 'ok';
+  if (m >= 6.5) return 'atencao';
+  return 'risco';
+}
+function pulsoBarras_(lista, vazio) {
+  if (!lista || lista.length === 0) return '<div class="pulso-vazio">' + vazio + '</div>';
+  var max = Math.max.apply(null, lista.map(function (x) { return x.qtd; }).concat([1]));
+  return lista.map(function (x) {
+    return '<div class="pulso-barra-linha"><span>' + pulsoEsc_(x.rotulo) + '</span><div class="pulso-barra-bg"><div class="pulso-barra-fill" style="width:' + (x.qtd / max * 100) + '%"></div></div><span class="pulso-barra-num">' + x.qtd + '</span></div>';
+  }).join('');
+}
+function pulsoTextos_(titulo, lista) {
+  var corpo = (!lista || lista.length === 0)
+    ? '<div class="pulso-vazio">Nenhuma resposta neste período.</div>'
+    : lista.map(function (t) { return '<div class="pulso-fala">' + pulsoEsc_(t) + '</div>'; }).join('');
+  return '<div class="pulso-texto-bloco"><h3>' + pulsoEsc_(titulo) + '</h3>' + corpo + '</div>';
+}
+function renderPulso_(d) {
+  var r = d.resumo;
+  var el = document.getElementById('pulsoConteudo');
+  if (!r || r.respostas === 0) {
+    el.innerHTML = '<div class="gestor-empty">Ainda não há respostas do Pulso de CS neste período. Elas aparecem aqui depois da próxima sincronização com o Monday.</div>';
+    return;
+  }
+  var nps = r.nps;
+  var h = '<div class="pulso-tiles">';
+  h += '<div class="pulso-tile"><div class="pulso-tile-label">NPS interno</div><div class="pulso-tile-valor ' + pulsoClasseNps_(nps.score) + '">' + (nps.score === null ? 'Sem dado' : nps.score) + '</div>' +
+       '<div class="pulso-tile-sub">Recomendaria trabalhar no time de CS da MOAI. ' + nps.promotores + ' promotor(es), ' + nps.neutros + ' neutro(s) e ' + nps.detratores + ' detrator(es) em ' + nps.total + ' resposta(s).</div></div>';
+  h += '<div class="pulso-tile"><div class="pulso-tile-label">Clareza de prioridades</div><div class="pulso-tile-valor ' + pulsoClasseClareza_(r.clareza.media) + '">' + (r.clareza.media === null ? 'Sem dado' : String(r.clareza.media).replace('.', ',')) + '</div>' +
+       '<div class="pulso-tile-sub">Média de 0 a 10. ' + r.clareza.alta + ' com nota 9 ou 10, ' + r.clareza.media_faixa + ' com 7 ou 8 e ' + r.clareza.baixa + ' com nota até 6.</div></div>';
+  var adesaoTxt = d.adesao ? (d.adesao.responderam + ' de ' + d.adesao.esperados) : String(r.respostas);
+  h += '<div class="pulso-tile"><div class="pulso-tile-label">Adesão</div><div class="pulso-tile-valor">' + adesaoTxt + '</div>' +
+       '<div class="pulso-tile-sub">' + (d.adesao ? 'Pessoas que responderam contra CS ativos no período.' : 'Respostas somadas em todos os ciclos do Pulso.') + '</div></div>';
+  h += '</div>';
+
+  h += '<div class="pulso-grid2">';
+  h += '<div class="pulso-card"><h3>Maior gargalo da operação</h3>' + pulsoBarras_(r.gargalos, 'Nenhuma resposta neste período.') + '</div>';
+  h += '<div class="pulso-card"><h3>Destaque em colaboração e apoio ao time</h3>' + pulsoBarras_(r.destaques, 'Nenhuma indicação neste período.') + '</div>';
+  h += '</div>';
+
+  if (d.serie && d.serie.length > 0) {
+    h += '<div class="pulso-card" style="margin-bottom:26px;"><h3>Evolução mensal</h3><table class="pulso-serie"><thead><tr><th>Mês</th><th>Respostas</th><th>NPS interno</th><th>Clareza média</th></tr></thead><tbody>';
+    d.serie.forEach(function (s) {
+      h += '<tr><td>' + pulsoEsc_(s.mes) + '</td><td>' + s.respostas + '</td><td>' + (s.nps === null ? 'Sem dado' : s.nps) + '</td><td>' + (s.clareza === null ? 'Sem dado' : String(s.clareza).replace('.', ',')) + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  h += '<div class="pulso-textos">';
+  h += pulsoTextos_('Uma coisa a melhorar no CS no próximo mês', r.textos.melhorar);
+  h += pulsoTextos_('Começar, parar e continuar como time', r.textos.comecarPararContinuar);
+  h += pulsoTextos_('Tema em que precisam de mais apoio ou desenvolvimento', r.textos.temaApoio);
+  h += pulsoTextos_('O que a liderança precisa saber', r.textos.liderancaSaber);
+  h += pulsoTextos_('Feedback para a liderança', r.textos.feedbackLideranca);
+  h += '</div>';
+  el.innerHTML = h;
+}
+function carregarPulso_() {
+  var minha = ++pulsoReq_;
+  var mes = document.getElementById('pulsoMes').value;
+  document.getElementById('pulsoConteudo').innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  return fetchJSON_('/api/gestor/pulso?mes=' + encodeURIComponent(mes) + '&ano=' + anoAtual).then(function (d) {
+    if (minha !== pulsoReq_) return;
+    renderPulso_(d);
+  }).catch(function (err) {
+    if (minha !== pulsoReq_) return;
+    document.getElementById('pulsoConteudo').innerHTML = '<div class="gestor-erro">Erro ao carregar o Pulso de CS: ' + pulsoEsc_(err.message) + '</div>';
+  });
+}
+function inicializarPulso_() {
+  var sel = document.getElementById('pulsoMes');
+  var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; sel.appendChild(opt);
+  var meses = anoAtual > 2026 ? MESES_GESTOR : PULSO_MESES_;
+  meses.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; sel.appendChild(o); });
+  // abre no mês corrente quando ele já é um ciclo do Pulso, senão no primeiro ciclo
+  sel.value = meses.indexOf(mesAtual) !== -1 ? mesAtual : meses[0];
+  sel.addEventListener('change', carregarPulso_);
+  carregarPulso_();
+}
+
+
+// ============ Voz do liderado (05/10/2026) ============
+// Insights, temas, itens e a lista do que o time quer manter chegam prontos de /api/gestor/voz
+// (lib/voz.ts). Aqui ficam só os filtros de tela, o desenho do quadro e a troca de status, que é
+// gravada por POST e depois relida do servidor para os números e os insights nunca divergirem.
+var vozCarregado_ = false;
+var vozReq_ = 0;
+var vozDados_ = null;
+var vozTemaAtivo_ = '';
+var vozFiltrosMontados_ = false;
+var vozErroCard_ = {};
+
+function vozTextoSemAcento_(s) {
+  return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
+}
+function vozFiltrar_(itens) {
+  var campo = document.getElementById('vozCampo').value;
+  var busca = vozTextoSemAcento_(document.getElementById('vozBusca').value.trim());
+  return itens.filter(function (i) {
+    if (vozTemaAtivo_ && !i.temas.some(function (t) { return t.chave === vozTemaAtivo_; })) return false;
+    if (campo && i.campo !== campo) return false;
+    if (busca && vozTextoSemAcento_(i.texto).indexOf(busca) === -1) return false;
+    return true;
+  });
+}
+function vozCardHtml_(i) {
+  var h = '<div class="voz-card" data-id="' + pulsoEsc_(i.id) + '"><div class="voz-card-tags">';
+  h += '<span class="voz-tag origem">' + pulsoEsc_(i.campoRotulo) + '</span>';
+  if (i.tipo) h += '<span class="voz-tag ' + pulsoEsc_(i.tipo) + '">' + pulsoEsc_(i.tipoRotulo) + '</span>';
+  i.temas.forEach(function (t) { h += '<span class="voz-tag tema">' + pulsoEsc_(t.rotulo) + '</span>'; });
+  h += '<span class="voz-tag">' + pulsoEsc_(i.mes) + '</span></div>';
+  h += '<div class="voz-card-texto">' + pulsoEsc_(i.texto) + '</div>';
+  var meta = [];
+  if (i.recorrencia >= 2) meta.push('<b>Tema citado em ' + i.recorrencia + ' respostas</b>');
+  if (i.status === 'backlog' && i.diasNoBacklog !== null && i.diasNoBacklog >= 1) meta.push(i.diasNoBacklog + ' dia(s) em backlog');
+  if (i.statusAlteradoEm && i.status !== 'backlog') meta.push('Atualizado em ' + new Date(i.statusAlteradoEm).toLocaleDateString('pt-BR'));
+  if (meta.length) h += '<div class="voz-card-meta">' + meta.join(' · ') + '</div>';
+  if (i.observacao) h += '<div class="voz-obs-lida">' + pulsoEsc_(i.observacao) + '</div>';
+  h += '<div class="voz-card-acoes"><select class="pill-select" data-acao="status" aria-label="Status da sugestão">';
+  vozDados_.status.forEach(function (st) { h += '<option value="' + st.chave + '"' + (st.chave === i.status ? ' selected' : '') + '>' + pulsoEsc_(st.rotulo) + '</option>'; });
+  h += '</select><button type="button" class="voz-btn-link" data-acao="obs">' + (i.observacao ? 'Editar observação' : 'Observação') + '</button></div>';
+  h += '<div class="voz-obs" hidden><textarea maxlength="600" placeholder="Registre a decisão ou o encaminhamento">' + pulsoEsc_(i.observacao || '') + '</textarea><button type="button" class="pill-select" data-acao="salvarObs">Salvar observação</button></div>';
+  if (vozErroCard_[i.id]) h += '<div class="voz-erro">' + pulsoEsc_(vozErroCard_[i.id]) + '</div>';
+  return h + '</div>';
+}
+function renderVoz_() {
+  var d = vozDados_;
+  var el = document.getElementById('vozConteudo');
+  if (!d) return;
+  if (d.resumo.total === 0) {
+    el.innerHTML = '<div class="gestor-empty">Ainda não há sugestões neste período. Elas aparecem aqui depois que o Pulso de CS for respondido e sincronizado com o Monday.</div>';
+    return;
+  }
+  var r = d.resumo, ps = r.porStatus;
+  var h = '';
+  if (d.insights && d.insights.length) {
+    h += '<div class="voz-insights"><h3>O que o time está dizendo</h3>';
+    d.insights.forEach(function (t) { h += '<div class="voz-insight">' + pulsoEsc_(t) + '</div>'; });
+    h += '</div>';
+  }
+  h += '<div class="voz-tiles">' +
+    '<div class="voz-tile"><div class="voz-tile-valor">' + r.total + '</div><div class="voz-tile-label">Sugestões</div></div>' +
+    '<div class="voz-tile"><div class="voz-tile-valor">' + ps.backlog + '</div><div class="voz-tile-label">Em backlog</div></div>' +
+    '<div class="voz-tile"><div class="voz-tile-valor" style="color:var(--dourado)">' + ps.em_andamento + '</div><div class="voz-tile-label">Em andamento</div></div>' +
+    '<div class="voz-tile"><div class="voz-tile-valor" style="color:var(--verde)">' + ps.realizado + '</div><div class="voz-tile-label">Realizadas</div></div>' +
+    '<div class="voz-tile"><div class="voz-tile-valor" style="color:var(--vermelho)">' + ps.rejeitado + '</div><div class="voz-tile-label">Rejeitadas</div></div>' +
+    '<div class="voz-tile"><div class="voz-tile-valor">' + (r.taxaTratamento === null ? 'Sem dado' : r.taxaTratamento + '%') + '</div><div class="voz-tile-label">Com decisão</div></div>' +
+    '</div>';
+
+  var maxTema = Math.max.apply(null, d.temas.map(function (t) { return t.itens; }).concat([1]));
+  h += '<div class="pulso-card" style="margin-bottom:22px;"><h3>Temas mais citados</h3>';
+  d.temas.forEach(function (t) {
+    var seg = function (k) { return t.porStatus[k] ? '<div class="voz-seg-' + k + '" style="width:' + (t.porStatus[k] / t.itens * 100) + '%"></div>' : ''; };
+    h += '<button type="button" class="voz-temas-linha' + (vozTemaAtivo_ === t.chave ? ' ativo' : '') + '" data-acao="tema" data-tema="' + pulsoEsc_(t.chave) + '">' +
+      '<span>' + pulsoEsc_(t.rotulo) + '</span>' +
+      '<div class="voz-temas-barra" style="width:' + (t.itens / maxTema * 100) + '%">' + seg('backlog') + seg('em_andamento') + seg('realizado') + seg('rejeitado') + '</div>' +
+      '<span class="voz-temas-num">' + t.respostas + ' resposta(s)</span></button>';
+  });
+  h += '<div class="voz-legenda"><span><i class="voz-seg-backlog"></i>Backlog</span><span><i class="voz-seg-em_andamento"></i>Em andamento</span><span><i class="voz-seg-realizado"></i>Realizado</span><span><i class="voz-seg-rejeitado"></i>Rejeitado</span>' +
+    (vozTemaAtivo_ ? '<button type="button" class="voz-btn-link" data-acao="limparTema">Limpar filtro de tema</button>' : '<span>Clique em um tema para filtrar o quadro.</span>') + '</div></div>';
+
+  if (d.manter && d.manter.length) {
+    h += '<div class="pulso-card voz-manter"><h3>O que o time quer manter</h3><ul style="margin:0;padding-left:18px;">';
+    d.manter.forEach(function (m) { h += '<li>' + pulsoEsc_(m.texto) + '</li>'; });
+    h += '</ul></div>';
+  }
+
+  var visiveis = vozFiltrar_(d.itens);
+  h += '<div class="voz-grid">';
+  d.status.forEach(function (st) {
+    var daColuna = visiveis.filter(function (i) { return i.status === st.chave; });
+    h += '<div class="voz-col voz-col-' + st.chave + '"><div class="voz-col-head"><span>' + pulsoEsc_(st.rotulo) + '</span><span>' + daColuna.length + '</span></div>';
+    if (daColuna.length === 0) h += '<div class="voz-col-vazio">Nada aqui' + (visiveis.length !== d.itens.length ? ' com os filtros atuais' : '') + '.</div>';
+    daColuna.forEach(function (i) { h += vozCardHtml_(i); });
+    h += '</div>';
+  });
+  h += '</div>';
+  el.innerHTML = h;
+}
+function vozMontarFiltros_(d) {
+  if (vozFiltrosMontados_) return;
+  vozFiltrosMontados_ = true;
+  var selT = document.getElementById('vozTema');
+  d.temasDisponiveis.forEach(function (t) { var o = document.createElement('option'); o.value = t.chave; o.textContent = t.rotulo; selT.appendChild(o); });
+  var selC = document.getElementById('vozCampo');
+  d.campos.forEach(function (c) { var o = document.createElement('option'); o.value = c.chave; o.textContent = c.rotulo; selC.appendChild(o); });
+  selT.addEventListener('change', function () { vozTemaAtivo_ = selT.value; renderVoz_(); });
+  selC.addEventListener('change', renderVoz_);
+  document.getElementById('vozBusca').addEventListener('input', renderVoz_);
+}
+function carregarVoz_(silencioso) {
+  var minha = ++vozReq_;
+  var mes = document.getElementById('vozMes').value;
+  if (!silencioso) document.getElementById('vozConteudo').innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  return fetchJSON_('/api/gestor/voz?mes=' + encodeURIComponent(mes) + '&ano=' + anoAtual).then(function (d) {
+    if (minha !== vozReq_) return;
+    vozDados_ = d;
+    vozMontarFiltros_(d);
+    renderVoz_();
+  }).catch(function (err) {
+    if (minha !== vozReq_) return;
+    document.getElementById('vozConteudo').innerHTML = '<div class="gestor-erro">Erro ao carregar a Voz do liderado: ' + pulsoEsc_(err.message) + '</div>';
+  });
+}
+function vozSalvar_(id, status, observacao) {
+  var corpo = { id: id, status: status };
+  if (observacao !== undefined) corpo.observacao = observacao;
+  delete vozErroCard_[id];
+  return fetchJSON_('/api/gestor/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(function () { return carregarVoz_(true); })
+    .catch(function (err) { vozErroCard_[id] = 'Não foi possível salvar: ' + err.message; renderVoz_(); });
+}
+function inicializarVoz_() {
+  var sel = document.getElementById('vozMes');
+  var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; sel.appendChild(opt);
+  var meses = anoAtual > 2026 ? MESES_GESTOR : PULSO_MESES_;
+  meses.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; sel.appendChild(o); });
+  sel.value = 'Visão Geral';
+  sel.addEventListener('change', function () { carregarVoz_(false); });
+  var painel = document.getElementById('vozConteudo');
+  painel.addEventListener('change', function (ev) {
+    var alvo = ev.target;
+    if (!alvo || alvo.getAttribute('data-acao') !== 'status') return;
+    var card = alvo.closest('.voz-card');
+    vozSalvar_(card.getAttribute('data-id'), alvo.value);
+  });
+  painel.addEventListener('click', function (ev) {
+    var alvo = ev.target.closest('[data-acao]');
+    if (!alvo) return;
+    var acao = alvo.getAttribute('data-acao');
+    if (acao === 'tema') { vozTemaAtivo_ = vozTemaAtivo_ === alvo.getAttribute('data-tema') ? '' : alvo.getAttribute('data-tema'); document.getElementById('vozTema').value = vozTemaAtivo_; renderVoz_(); }
+    else if (acao === 'limparTema') { vozTemaAtivo_ = ''; document.getElementById('vozTema').value = ''; renderVoz_(); }
+    else if (acao === 'obs') { var o = alvo.closest('.voz-card').querySelector('.voz-obs'); o.hidden = !o.hidden; }
+    else if (acao === 'salvarObs') {
+      var card = alvo.closest('.voz-card');
+      var statusAtual = card.querySelector('select[data-acao="status"]').value;
+      vozSalvar_(card.getAttribute('data-id'), statusAtual, card.querySelector('textarea').value);
+    }
+  });
+  carregarVoz_(false);
 }
 
 carregarVisaoGeral();
