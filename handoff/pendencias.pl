@@ -35,4 +35,4 @@ pendente(rate_limit_borda, "Sem limite por IP nas rotas — precisa de regra man
 % ---- ajustes da onda 1 do churn (05/10/2026), detalhe em handoff/churn_ajustes.pl ----
 pendente(churn_campo_manual, "Remover recordes_manuais, definir_recorde_manual, /api/gestor/recordes-manuais e o formulário manual? Aguarda confirmação do Vitor (regra zero manual).").
 pendente(churn_recorde_efetivo, "Unificar os cards da home com indicador_recordes? Muda o selo Recorde de churn e downsell. Aguarda decisão do Vitor.").
-pendente(churn_cases_duplicados, "5 linhas repetidas em cases de setembro de 2026 (recorde 64 contra 59 distintos). Confirmar com o time e corrigir no Monday.").
+pendente(churn_cases_duplicados, "5 linhas repetidas em cases de setembro de 2026 (recorde 64 contra 59 distintos). O crescimento de 48 para 64 foi real, ver handoff/churn_simplificacao.pl. Confirmar as repetidas com o time.").
