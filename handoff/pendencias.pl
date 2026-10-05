@@ -31,3 +31,8 @@ pendente(divergencias_conhecidas, "Ver handoff/dados.pl: divergencia_encontrada(
 % ---- pendências herdadas de sessões/documentos anteriores, ainda abertas ----
 pendente(dependencias_cve, "Next.js 14.2.35 com CVEs sem correção na linha 14 — ver handoff/seguranca.pl.").
 pendente(rate_limit_borda, "Sem limite por IP nas rotas — precisa de regra manual no Vercel Firewall, fora do escopo de acesso desta sessão.").
+
+% ---- ajustes da onda 1 do churn (05/10/2026), detalhe em handoff/churn_ajustes.pl ----
+pendente(churn_campo_manual, "Remover recordes_manuais, definir_recorde_manual, /api/gestor/recordes-manuais e o formulário manual? Aguarda confirmação do Vitor (regra zero manual).").
+pendente(churn_recorde_efetivo, "Unificar os cards da home com indicador_recordes? Muda o selo Recorde de churn e downsell. Aguarda decisão do Vitor.").
+pendente(churn_cases_duplicados, "5 linhas repetidas em cases de setembro de 2026 (recorde 64 contra 59 distintos). Confirmar com o time e corrigir no Monday.").
