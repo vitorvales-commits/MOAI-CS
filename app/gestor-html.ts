@@ -295,20 +295,28 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .ms-op input{width:16px;height:16px;accent-color:var(--preto-tinta);flex-shrink:0;}
 .ms-op .qtd{margin-left:auto;font-size:11px;color:var(--cinza-apoio);font-weight:600;}
 .ms-sep{border-top:1px solid var(--cinza-superficie);margin:6px 0 2px;padding-top:4px;font-size:10.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--cinza-apoio);font-weight:700;}
-.churn-topo{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start;}
-.churn-topo .churn-card{margin:0;}
-.churn-com{border-style:dashed;}
-.churn-com h3{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;margin:0;}
-.churn-com-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;}
-.churn-com-pill{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--cinza-superficie);color:var(--cinza-texto);white-space:nowrap;}
-.churn-com-pill.dentro{background:rgba(200,154,46,0.15);color:var(--dourado);}
-.churn-com-num b{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;line-height:1.1;display:block;}
-.churn-com-num span{font-size:12px;color:var(--cinza-apoio);}
-.churn-com-soma{font-size:12px;color:var(--cinza-texto);margin:8px 0 10px;line-height:1.5;}
-.churn-com-lista{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;}
-.churn-com-lista span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--cinza-fundo);color:var(--cinza-texto);}
-.churn-com table{width:100%;font-size:12px;margin-top:6px;}
-.churn-com td,.churn-com th{padding:5px 4px;}
+.churn-numeros{display:flex;gap:48px;flex-wrap:wrap;margin:6px 0 4px;}
+.churn-numero b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:40px;line-height:1.05;}
+.churn-numero b.texto{font-size:26px;line-height:1.2;}
+.churn-numero .rot{display:block;font-size:13px;font-weight:600;color:var(--preto-tinta);margin-top:4px;}
+.churn-numero .def{display:block;font-size:12px;color:var(--cinza-apoio);margin-top:2px;}
+.churn-nota{font-size:12.5px;color:var(--cinza-apoio);margin:6px 0 14px;min-height:18px;}
+.churn-info{width:22px;height:22px;border-radius:50%;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--cinza-texto);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;}
+.churn-info:hover{border-color:var(--preto-tinta);}
+.churn-sem-carteira{font-size:12.5px;color:var(--cinza-texto);margin:12px 0 0;}
+.churn-sem-carteira button,.churn-link{background:none;border:none;padding:0;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--preto-tinta);}
+.churn-rodape{margin:14px 0 0;font-size:13px;color:var(--cinza-texto);}
+.churn-rodape-linha{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+.churn-rodape-det{margin-top:8px;max-width:420px;}
+.churn-rodape-det table{width:100%;font-size:12px;}
+.churn-rodape-det td,.churn-rodape-det th{padding:5px 4px;}
+.churn-lista-wrap{margin:14px 0 0;}
+.churn-lista{margin-top:10px;}
+.churn-lista h4{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;margin:16px 0 6px;}
+.churn-lista table{width:100%;font-size:12.5px;}
+.churn-lista td,.churn-lista th{padding:7px 8px;vertical-align:top;}
+.churn-lista .acoes{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:12.5px;}
+.churn-lista .acoes a{font-weight:700;color:var(--preto-tinta);}
 .rec-pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(200,154,46,0.15);color:var(--dourado);margin-left:6px;white-space:nowrap;}
 .rec-sub{display:block;font-size:11px;color:var(--cinza-apoio);font-weight:500;}
 
@@ -321,7 +329,7 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .tabs{overflow-x:auto;}
   .tab-btn{margin-right:16px;white-space:nowrap;}
   .churn-card{padding:16px 12px 12px;}
-  .churn-topo{grid-template-columns:minmax(0,1fr);}
+  .churn-numeros{gap:22px;} .churn-numero b{font-size:32px;} .churn-numero b.texto{font-size:22px;}
   .churn-campo{width:100%;justify-content:space-between;}
   .ms-pop{left:auto;right:0;min-width:min(280px,86vw);}
   #churnGrafico svg{min-width:560px;}
@@ -591,16 +599,13 @@ export const GESTOR_HTML = `
       <div class="block-head">
         <div>
           <h2>Churn por motivo</h2>
-          <p>Quantos membros saíram e por quê, pelo motivo declarado no formulário de saída do Monday. A data do churn é a data informada no formulário ou, na falta dela, o dia em que o item foi criado.</p>
-        </div>
-        <div class="toggle-group" id="churnGranularidade">
-          <button class="toggle-btn active" type="button" data-gran="mes">Por mês</button>
-          <button class="toggle-btn" type="button" data-gran="semana">Por semana</button>
+          <p>Quantos membros saíram e por quê, segundo o formulário de saída.</p>
         </div>
       </div>
       <div class="churn-filtros">
-        <label>Mês de referência <select class="pill-select" id="churnRef"></select></label>
-        <label>CS <select class="pill-select" id="churnCs"><option value="">Todos</option></select></label>
+        <label class="churn-campo">Mês <select class="pill-select" id="churnRef" title="Mês de referência"></select></label>
+        <label class="churn-campo">Base <select class="pill-select" id="churnBase"><option value="carteira_atual">Carteira atual</option><option value="toda_a_rede">Toda a rede</option></select></label>
+        <label class="churn-campo">CS <select class="pill-select" id="churnCs"><option value="">Todos</option></select></label>
         <div class="churn-campo">Produtos
           <div class="ms" id="churnProdutoWrap">
             <button type="button" class="pill-select ms-btn" id="churnProdutoBtn" aria-haspopup="true" aria-expanded="false">Carregando…</button>
@@ -610,17 +615,25 @@ export const GESTOR_HTML = `
             </div>
           </div>
         </div>
-      </div>
-      <p class="churn-descricao" id="churnDescricao"></p>
-      <div class="churn-topo">
-        <div class="churn-card">
-          <div class="churn-resumo" id="churnResumo"></div>
-          <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
-          <div class="churn-legenda" id="churnLegenda"></div>
+        <div class="toggle-group" id="churnGranularidade">
+          <button class="toggle-btn active" type="button" data-gran="mes">Por mês</button>
+          <button class="toggle-btn" type="button" data-gran="semana">Por semana</button>
         </div>
-        <div class="churn-card churn-com" id="churnComunidade" aria-live="polite"><div class="gestor-empty">Carregando…</div></div>
+        <button type="button" class="churn-info" id="churnInfo" aria-label="Como este recorte é calculado" title="Como este recorte é calculado">i</button>
       </div>
-      <div class="table-wrap churn-tabela-wrap"><div class="table-scroll" id="churnTabela"></div></div>
+      <p class="churn-descricao" id="churnDescricao" hidden></p>
+      <div class="churn-numeros" id="churnNumeros"><div class="gestor-empty">Carregando…</div></div>
+      <p class="churn-nota" id="churnNotaRecorde"></p>
+      <div class="churn-card">
+        <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
+        <div class="churn-legenda" id="churnLegenda"></div>
+        <p class="churn-sem-carteira" id="churnAvisoCarteira" hidden><span id="churnAvisoCarteiraTexto"></span> <button type="button" id="churnVerRede">Ver Toda a rede</button></p>
+      </div>
+      <div class="churn-rodape" id="churnComunidade" aria-live="polite"></div>
+      <div class="churn-lista-wrap">
+        <button type="button" class="churn-link" id="churnVerLista" aria-expanded="false">Ver os churns deste mês</button>
+        <div class="churn-lista" id="churnLista" hidden></div>
+      </div>
     </section>
 
     <section class="block">
@@ -1795,15 +1808,17 @@ function inicializarMetasDestaques() {
 // análise salva (ou publicada). O relatório usa sempre o texto salvo, nunca o do editor.
 var ENDPOINT_CHURN = '/api/gestor/churn';
 var churnCarregado = false;
-var churnEstado_ = { granularidade: 'mes', ref: '', cs: '', categoria: '', produtos: null, comunidade: false };
-var churnOpcoesProdutos_ = [];
-var churnReq_ = 0;
-var churnAgendado_ = null;
-var churnRetentouCs_ = false;
+// base: carteira_atual (CS ativos, sem a Comunidade) ou toda_a_rede. produtos nulo = todos.
+var churnEstado_ = { granularidade: 'mes', ref: '', base: 'carteira_atual', cs: '', categoria: '', produtos: null, comunidade: false };
 var churnDados_ = null;
 var churnTextoBase_ = '';
 var churnOpcoesMontadas_ = false;
 var churnConfirmarGerar_ = false;
+var churnOpcoesProdutos_ = [];
+var churnReq_ = 0;
+var churnAgendado_ = null;
+var churnRetentouCs_ = false;
+var churnOpcoesGuardadas_ = null;
 var CHURN_MESES_ = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 function churnEsc_(s) {
@@ -1814,10 +1829,12 @@ function churnEsc_(s) {
 function churnDataHora_(iso) {
   try { return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return iso; }
 }
-// Mesma seleção da API e da URL da página: produtos ausente = todos, produtos vazio = nenhum
-// marcado, comunidade=1 = Comunidade dentro da conta. Copiar o link reproduz a visão.
+// Mesma seleção da API e da URL da página: base ausente = carteira atual, produtos ausente = todos,
+// produtos vazio = nenhum marcado, comunidade=1 = Comunidade dentro (só em Toda a rede). Copiar o
+// link reproduz a visão.
 function churnParams_() {
   var p = new URLSearchParams({ granularidade: churnEstado_.granularidade, ref: churnEstado_.ref });
+  if (churnEstado_.base === 'toda_a_rede') p.set('base', 'toda_a_rede');
   if (churnEstado_.cs) p.set('cs', churnEstado_.cs);
   if (churnEstado_.categoria) p.set('categoria', churnEstado_.categoria);
   if (churnEstado_.produtos !== null) p.set('produtos', churnEstado_.produtos.join(','));
@@ -1826,7 +1843,7 @@ function churnParams_() {
 }
 function churnCorpo_(extra) {
   var o = {
-    granularidade: churnEstado_.granularidade, ref: churnEstado_.ref,
+    granularidade: churnEstado_.granularidade, ref: churnEstado_.ref, base: churnEstado_.base,
     cs: churnEstado_.cs || null, categoria: churnEstado_.categoria || null,
     produtos: churnEstado_.produtos, comunidade: churnEstado_.comunidade,
   };
@@ -1834,22 +1851,20 @@ function churnCorpo_(extra) {
   return JSON.stringify(o);
 }
 
+// Mês de referência padrão: o último mês FECHADO. O mês em andamento continua na lista, com selo.
 function churnPopularRef_() {
   var sel = document.getElementById('churnRef');
   var hoje = new Date();
   var ano = hoje.getFullYear(), mes = hoje.getMonth() + 1, html = '';
   for (var i = 0; i < 24; i++) {
     var valor = ano + '-' + (mes < 10 ? '0' + mes : String(mes));
-    html += '<option value="' + valor + '">' + CHURN_MESES_[mes - 1] + ' de ' + ano + '</option>';
+    html += '<option value="' + valor + '">' + CHURN_MESES_[mes - 1] + ' de ' + ano + (i === 0 ? ' (em andamento)' : '') + '</option>';
     mes--;
     if (mes === 0) { mes = 12; ano--; }
   }
   sel.innerHTML = html;
+  sel.selectedIndex = 1;
   churnEstado_.ref = sel.value;
-}
-
-function churnSincronizarUrl_() {
-  try { window.history.replaceState(null, '', window.location.pathname + '?' + churnParams_() + '#churn'); } catch (e) {}
 }
 function churnGarantirOpcaoRef_(valor) {
   var sel = document.getElementById('churnRef');
@@ -1863,25 +1878,30 @@ function churnGarantirOpcaoRef_(valor) {
   }
   sel.value = valor;
 }
+function churnSincronizarUrl_() {
+  try { window.history.replaceState(null, '', window.location.pathname + '?' + churnParams_() + '#churn'); } catch (e) {}
+}
 // Lê a seleção da URL (mesmos nomes da API) para que um link copiado reproduza a mesma visão.
 function churnLerUrl_() {
   var q = new URLSearchParams(window.location.search);
-  if (!q.has('granularidade') && !q.has('ref') && !q.has('produtos') && !q.has('comunidade')) return;
+  if (!q.has('granularidade') && !q.has('ref') && !q.has('produtos') && !q.has('comunidade') && !q.has('base')) return;
   if (q.get('granularidade') === 'semana') {
     churnEstado_.granularidade = 'semana';
     document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.gran === 'semana'); });
   }
   var ref = q.get('ref') || '';
   if (/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(ref)) { churnGarantirOpcaoRef_(ref); churnEstado_.ref = ref; }
+  churnEstado_.base = q.get('base') === 'toda_a_rede' ? 'toda_a_rede' : 'carteira_atual';
+  document.getElementById('churnBase').value = churnEstado_.base;
   churnEstado_.cs = q.get('cs') || '';
   churnEstado_.categoria = q.get('categoria') || '';
   churnEstado_.produtos = q.has('produtos') ? q.get('produtos').split(',').filter(function (x) { return x; }) : null;
-  churnEstado_.comunidade = q.get('comunidade') === '1';
+  churnEstado_.comunidade = churnEstado_.base === 'toda_a_rede' && q.get('comunidade') === '1';
 }
 
 function churnAtualizarRotuloProdutos_() {
   var e = churnEstado_, n = churnOpcoesProdutos_.length, txt;
-  if (e.produtos === null) txt = e.comunidade ? 'Todos, com a Comunidade' : 'Todos, Comunidade fora';
+  if (e.produtos === null) txt = e.comunidade ? 'Todos, com a Comunidade' : 'Todos, exceto Comunidade';
   else if (e.produtos.length === 0) txt = e.comunidade ? 'Somente a Comunidade' : 'Nenhum marcado';
   else txt = e.produtos.length + (n ? ' de ' + n : '') + ' produtos' + (e.comunidade ? ' e a Comunidade' : '');
   document.getElementById('churnProdutoBtn').textContent = txt;
@@ -1890,7 +1910,13 @@ function churnSincronizarChecks_() {
   var sel = churnEstado_.produtos;
   document.querySelectorAll('.chk-prod').forEach(function (c) { c.checked = sel === null ? true : sel.indexOf(c.value) !== -1; });
   var com = document.getElementById('chkComunidade');
-  if (com) com.checked = churnEstado_.comunidade;
+  if (com) {
+    // na carteira atual a Comunidade nunca entra: a opção fica visível, mas travada
+    var travada = churnEstado_.base === 'carteira_atual';
+    com.disabled = travada;
+    com.checked = travada ? false : churnEstado_.comunidade;
+    com.parentNode.title = travada ? 'Na carteira atual a Comunidade nunca entra. Troque a base para Toda a rede para incluí la.' : '';
+  }
   churnAtualizarRotuloProdutos_();
 }
 function churnAgendar_() {
@@ -1902,7 +1928,7 @@ function churnLerChecks_() {
   document.querySelectorAll('.chk-prod').forEach(function (c) { todos++; if (c.checked) marcados.push(c.value); });
   churnEstado_.produtos = marcados.length === todos ? null : marcados;
   var com = document.getElementById('chkComunidade');
-  churnEstado_.comunidade = !!(com && com.checked);
+  churnEstado_.comunidade = !!(com && com.checked && churnEstado_.base === 'toda_a_rede');
   churnAtualizarRotuloProdutos_();
   churnAgendar_();
 }
@@ -1911,19 +1937,20 @@ function churnAbrirProdutos_(abrir) {
   document.getElementById('churnProdutoBtn').setAttribute('aria-expanded', abrir ? 'true' : 'false');
 }
 
-function churnPopularOpcoes_(op) {
-  if (churnOpcoesMontadas_ || !op) return;
-  churnOpcoesMontadas_ = true;
-  // CS: só ativos por pessoa; os ex CS aparecem juntos na opção agregada Ex CS.
+// CS: só ativos por pessoa; os ex CS aparecem juntos na opção agregada Ex CS, e só em Toda a rede
+// (na carteira atual não há ex CS por definição).
+function churnMontarCs_() {
+  var op = churnOpcoesGuardadas_;
+  if (!op) return;
   var html = '<option value="">Todos</option>';
   if (op.cs.length) {
     html += '<optgroup label="CS ativos">' + op.cs.map(function (x) {
-      return '<option value="cs:' + churnEsc_(x.valor) + '">' + churnEsc_(x.valor) + ' (' + x.qtd + ')</option>';
+      return '<option value="cs:' + churnEsc_(x.valor) + '">' + churnEsc_(x.valor) + '</option>';
     }).join('') + '</optgroup>';
   }
-  if (op.categorias.length) {
+  if (churnEstado_.base === 'toda_a_rede' && op.categorias.length) {
     html += '<optgroup label="Histórico">' + op.categorias.map(function (c) {
-      return '<option value="cat:' + churnEsc_(c.chave) + '">' + churnEsc_(c.rotulo) + ' (' + c.qtd + ')</option>';
+      return '<option value="cat:' + churnEsc_(c.chave) + '">' + churnEsc_(c.rotulo) + '</option>';
     }).join('') + '</optgroup>';
   }
   var selCs = document.getElementById('churnCs');
@@ -1931,8 +1958,14 @@ function churnPopularOpcoes_(op) {
   var valorCs = churnEstado_.cs ? 'cs:' + churnEstado_.cs : (churnEstado_.categoria ? 'cat:' + churnEstado_.categoria : '');
   selCs.value = valorCs;
   if (selCs.value !== valorCs) { selCs.value = ''; churnEstado_.cs = ''; churnEstado_.categoria = ''; }
+}
 
-  // Produtos em seleção múltipla. A Comunidade vem desmarcada por padrão e continua visível no bloco ao lado.
+function churnPopularOpcoes_(op) {
+  if (churnOpcoesMontadas_ || !op) return;
+  churnOpcoesMontadas_ = true;
+  churnOpcoesGuardadas_ = op;
+  churnMontarCs_();
+  // Produtos em seleção múltipla, com Sem produto informado marcado por padrão.
   churnOpcoesProdutos_ = op.produtos.map(function (p) { return p.valor; });
   var ops = op.produtos.map(function (p) {
     return '<label class="ms-op"><input type="checkbox" class="chk-prod" value="' + churnEsc_(p.valor) + '"> ' + churnEsc_(p.rotulo) + '<span class="qtd">' + p.qtd + '</span></label>';
@@ -1942,17 +1975,6 @@ function churnPopularOpcoes_(op) {
   document.getElementById('churnProdutoOpcoes').innerHTML = ops;
   document.querySelectorAll('.chk-prod, #chkComunidade').forEach(function (c) { c.addEventListener('change', churnLerChecks_); });
   churnSincronizarChecks_();
-}
-
-function churnAmostra_(cor) {
-  var estilo = cor === 'hachura'
-    ? 'background:repeating-linear-gradient(45deg,#E9E9E9 0 3px,#9F9F9F 3px 5px);'
-    : 'background:' + cor + ';';
-  return '<span style="display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0;margin-right:6px;' + estilo + '"></span>';
-}
-function churnMesCurto_(iso) {
-  var p = String(iso).split('-');
-  return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][Number(p[1]) - 1] + '/' + p[0].slice(2);
 }
 
 function carregarChurn() {
@@ -1965,6 +1987,8 @@ function carregarChurn() {
     churnPopularOpcoes_(data.opcoes);
     renderChurn_(data);
     churnSincronizarUrl_();
+    // a lista de auditoria aberta acompanha o filtro
+    if (!document.getElementById('churnLista').hidden) churnCarregarLista_();
   }).catch(function (err) {
     if (minha !== churnReq_) return;
     // link com um CS que não é ativo: volta a Todos uma vez em vez de travar a tela
@@ -1976,62 +2000,82 @@ function carregarChurn() {
   });
 }
 
-function renderComunidade_(c, totalPrincipal) {
+function renderComunidade_(c, textos) {
   var el = document.getElementById('churnComunidade');
-  var pctTxt = String(c.pct).replace('.', ',');
-  var html = '<div class="churn-com-cab"><h3>Comunidade</h3>' +
-    (c.incluida ? '<span class="churn-com-pill dentro">Somada ao gráfico</span>' : '<span class="churn-com-pill">Fora da conta principal</span>') + '</div>' +
-    '<div class="churn-com-num"><b>' + c.total + '</b><span>churns da Comunidade no recorte, ' + pctTxt + '% dos ' + c.totalRecorte + ' churns do período</span></div>';
-  if (c.incluida) {
-    html += '<p class="churn-com-soma">A Comunidade está marcada no filtro de produtos e já compõe as barras e o total ao lado.</p>';
-  } else {
-    var fecha = (totalPrincipal + c.total === c.totalRecorte);
-    html += '<p class="churn-com-soma">Conta principal: ' + totalPrincipal + '. Comunidade: ' + c.total + '.' +
-      (fecha ? ' Juntas fecham ' + c.totalRecorte + '.' : ' A conta principal está com filtro de CS ou de produto, por isso não fecha com o total do período.') + '</p>';
+  var det = '';
+  if (c.totalMes) {
+    det = '<div class="churn-rodape-det" id="churnComunidadeDet" hidden><table><thead><tr><th>Motivo</th><th class="num">Churns</th></tr></thead><tbody>' +
+      c.porMotivo.map(function (m) {
+        return '<tr><td><span style="display:inline-flex;align-items:center;gap:8px;">' + m.amostra + churnEsc_(m.rotulo) + '</span></td><td class="num">' + m.qtd + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
   }
-  if (!c.total) {
-    html += '<p class="churn-com-soma">Nenhum churn da Comunidade neste recorte.</p>';
-  } else {
-    html += '<table class="churn-tabela"><thead><tr><th>Motivo</th><th class="num">Churns</th></tr></thead><tbody>' + c.porMotivo.map(function (m) {
-      return '<tr><td>' + churnAmostra_(m.cor) + churnEsc_(m.rotulo) + '</td><td class="num">' + m.qtd + '</td></tr>';
-    }).join('') + '</tbody></table>';
-    html += '<div class="churn-com-lista">' + c.periodos.filter(function (p) { return p.qtd > 0; }).map(function (p) {
-      return '<span title="' + churnEsc_(p.rotuloLongo) + '">' + churnEsc_(p.rotulo) + ': ' + p.qtd + '</span>';
-    }).join('') + '</div>';
+  el.innerHTML = '<div class="churn-rodape-linha"><span>' + churnEsc_(textos.linhaComunidade) + '</span>' +
+    (c.totalMes ? '<button type="button" class="churn-link" id="churnComunidadeBtn" aria-expanded="false">Ver detalhes</button>' : '') + '</div>' + det;
+  var btn = document.getElementById('churnComunidadeBtn');
+  if (btn) {
+    btn.addEventListener('click', function () {
+      var d = document.getElementById('churnComunidadeDet');
+      d.hidden = !d.hidden;
+      btn.setAttribute('aria-expanded', d.hidden ? 'false' : 'true');
+      btn.textContent = d.hidden ? 'Ver detalhes' : 'Ocultar detalhes';
+    });
   }
-  el.innerHTML = html;
 }
 
 function renderChurn_(data) {
-  document.getElementById('churnDescricao').textContent = 'Recorte: ' + data.descricao + '.';
-  var maior = null;
-  data.legenda.forEach(function (m) { if (!maior || m.qtd > maior.qtd) maior = m; });
-  var rotuloTotal = churnEstado_.comunidade ? 'churns no recorte, com a Comunidade' : 'churns na conta principal, sem a Comunidade';
-  var rec = data.recorde || {};
-  var semanal = churnEstado_.granularidade === 'semana';
-  var rv = semanal ? rec.semanal : rec.mensal;
-  var recHtml = '';
-  if (rv && rv.valor > 0) {
-    var rotRec = semanal
-      ? 'recorde semanal, semana ' + rv.semana + ' de ' + churnMesCurto_(rv.mes)
-      : 'recorde mensal, ' + churnMesCurto_(rv.mes);
-    recHtml = '<div><b>' + rv.valor + '</b><span>' + rotRec + (rv.emAndamento ? ', em andamento' : '') + '</span></div>';
-  }
-  document.getElementById('churnResumo').innerHTML =
-    '<div><b>' + data.total + '</b><span>' + rotuloTotal + '</span></div>' +
-    (maior ? '<div><b>' + churnEsc_(String(maior.pct).replace('.', ',')) + '%</b><span>' + churnEsc_(maior.rotulo) + ', motivo mais citado</span></div>' : '') +
-    recHtml;
-  document.getElementById('churnGrafico').innerHTML = data.total
+  var t = data.textos;
+  document.getElementById('churnDescricao').textContent = 'Recorte: ' + data.descricao + '. A janela do gráfico por mês tem doze meses terminando no mês de referência.';
+  document.getElementById('churnInfo').title = 'Recorte: ' + data.descricao;
+  document.getElementById('churnNumeros').innerHTML =
+    '<div class="churn-numero"><b>' + data.totalMes + '</b><span class="rot">' + churnEsc_(t.rotuloNumero) + '</span>' +
+      '<span class="def">' + churnEsc_(t.definicaoNumero) + (t.variacao ? ' ' + churnEsc_(t.variacao) + '.' : '') + '</span></div>' +
+    '<div class="churn-numero"><b class="texto">' + churnEsc_(t.motivoRotulo) + '</b><span class="rot">Motivo mais citado</span>' +
+      '<span class="def">' + (t.motivoFracao ? churnEsc_(t.motivoFracao) + ' churns do mês' : 'Nenhum churn neste mês neste filtro') + '</span></div>';
+  document.getElementById('churnNotaRecorde').textContent = t.notaRecorde || '';
+  document.getElementById('churnGrafico').innerHTML = data.temDados
     ? data.graficoSvg
     : '<div class="gestor-empty">Nenhum churn neste recorte. Troque o mês de referência ou os filtros.</div>';
-  document.getElementById('churnLegenda').innerHTML = data.total ? data.legenda.map(function (m) {
+  // no celular o gráfico rola na horizontal: abre já no fim, onde está o mês de referência
+  var graf = document.getElementById('churnGrafico');
+  graf.scrollLeft = graf.scrollWidth;
+  document.getElementById('churnLegenda').innerHTML = data.temDados ? data.legenda.map(function (m) {
     return '<span class="item">' + m.amostra + churnEsc_(m.rotulo) + '</span>';
   }).join('') : '';
-  document.getElementById('churnTabela').innerHTML = data.tabelaHtml || '';
-  document.getElementById('churnTabela').parentNode.style.display = data.tabelaHtml ? '' : 'none';
+  var aviso = document.getElementById('churnAvisoCarteira');
+  aviso.hidden = !t.avisoCarteira;
+  document.getElementById('churnAvisoCarteiraTexto').textContent = t.avisoCarteira || '';
   document.getElementById('churnBtnRelatorio').href = '/gestor/churn/relatorio?' + data.query;
-  renderComunidade_(data.comunidade, data.total);
-  renderAnaliseChurn_(data.analise, data.iaDisponivel, data.total);
+  var ver = document.getElementById('churnVerLista');
+  ver.textContent = t.linkLista;
+  renderComunidade_(data.comunidade, t);
+  renderAnaliseChurn_(data.analise, data.iaDisponivel, data.temDados ? 1 : 0);
+}
+
+// Lista de auditoria: os N churns que compõem o número do mês e, à parte, quem ficou de fora.
+function churnLinhaLista_(l, fora) {
+  return '<tr><td>' + churnEsc_(l.data) + '</td><td>' + churnEsc_(l.membro) + '</td><td>' + churnEsc_(l.empresa) + '</td><td>' +
+    churnEsc_(l.produto) + '</td><td>' + churnEsc_(l.cs) + '</td><td>' + churnEsc_(l.motivo) + '</td><td class="num">' +
+    (l.nota === null || l.nota === undefined ? '' : l.nota) + '</td>' + (fora ? '<td>' + churnEsc_(l.etiqueta) + '</td>' : '') + '</tr>';
+}
+function churnCarregarLista_() {
+  var el = document.getElementById('churnLista');
+  el.innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  fetchJSON_(ENDPOINT_CHURN + '/itens?' + churnParams_()).then(function (d) {
+    var cab = '<th>Data</th><th>Membro</th><th>Empresa</th><th>Produto</th><th>CS</th><th>Motivo</th><th class="num">Nota</th>';
+    var html = '<div class="table-wrap"><div class="table-scroll"><table class="churn-tabela"><thead><tr>' + cab + '</tr></thead><tbody>' +
+      (d.dentro.length ? d.dentro.map(function (l) { return churnLinhaLista_(l, false); }).join('') : '<tr><td colspan="7" class="gestor-empty">Nenhum churn neste filtro.</td></tr>') +
+      '</tbody></table></div></div>';
+    if (d.fora.length) {
+      html += '<h4>Fora desta base, ' + d.fora.length + (d.fora.length === 1 ? ' churn' : ' churns') + ' em ' + churnEsc_(d.rotuloMes) + '</h4>' +
+        '<div class="table-wrap"><div class="table-scroll"><table class="churn-tabela"><thead><tr>' + cab + '<th>Situação</th></tr></thead><tbody>' +
+        d.fora.map(function (l) { return churnLinhaLista_(l, true); }).join('') + '</tbody></table></div></div>';
+    }
+    html += '<div class="acoes"><a href="' + ENDPOINT_CHURN + '/itens?' + churnParams_() + '&formato=csv">Exportar em planilha</a>' +
+      '<span>' + d.dentro.length + ' na base, ' + d.fora.length + ' fora. Uso interno da gestão, com nome e empresa.</span></div>';
+    el.innerHTML = html;
+  }).catch(function (err) {
+    el.innerHTML = '<div class="gestor-erro">Erro ao carregar a lista: ' + churnEsc_(err.message) + '</div>';
+  });
 }
 
 function churnEstadoAnalise_(a) {
@@ -2118,7 +2162,7 @@ function churnSalvar_() {
     body: churnCorpo_({ acao: 'salvar', texto: document.getElementById('churnTexto').value }),
   }).then(function (r) {
     churnDados_.analise = r.analise;
-    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.total);
+    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.temDados ? 1 : 0);
   }).catch(function (err) {
     erro.textContent = err.message;
     churnAtualizarBotoes_();
@@ -2133,7 +2177,7 @@ function churnPublicar_() {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: churnCorpo_({ acao: 'publicar' }),
   }).then(function (r) {
     churnDados_.analise = r.analise;
-    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.total);
+    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.temDados ? 1 : 0);
   }).catch(function (err) {
     erro.textContent = err.message;
     churnAtualizarBotoes_();
@@ -2153,6 +2197,27 @@ function inicializarChurn() {
       });
     });
     document.getElementById('churnRef').addEventListener('change', function () { churnEstado_.ref = this.value; carregarChurn(); });
+    // Base: ao trocar, a Comunidade e o filtro de ex CS acompanham a definição da base escolhida.
+    function trocarBase_(base) {
+      churnEstado_.base = base;
+      document.getElementById('churnBase').value = base;
+      if (base === 'carteira_atual') { churnEstado_.comunidade = false; if (churnEstado_.categoria === 'cs_ex') churnEstado_.categoria = ''; }
+      churnMontarCs_();
+      churnSincronizarChecks_();
+      carregarChurn();
+    }
+    document.getElementById('churnBase').addEventListener('change', function () { trocarBase_(this.value); });
+    document.getElementById('churnVerRede').addEventListener('click', function () { trocarBase_('toda_a_rede'); });
+    document.getElementById('churnInfo').addEventListener('click', function () {
+      var d = document.getElementById('churnDescricao');
+      d.hidden = !d.hidden;
+    });
+    document.getElementById('churnVerLista').addEventListener('click', function () {
+      var el = document.getElementById('churnLista');
+      el.hidden = !el.hidden;
+      this.setAttribute('aria-expanded', el.hidden ? 'false' : 'true');
+      if (!el.hidden) churnCarregarLista_();
+    });
     document.getElementById('churnCs').addEventListener('change', function () {
       var v = this.value;
       churnEstado_.cs = v.indexOf('cs:') === 0 ? v.slice(3) : '';

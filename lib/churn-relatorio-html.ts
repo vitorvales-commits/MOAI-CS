@@ -9,21 +9,21 @@
 // não só os do recorte. A análise salva também passa pela anonimização nesse modo, porque o
 // gestor pode ter digitado um nome ao editar. A versão identificada só existe atrás do
 // interruptor, e a rota já é restrita a gestor.
-import type { Recorte, SerieChurn, ItemChurn, AnaliseChurn, ResumoComunidade, RecordeIndicador } from './churn';
+import type { Recorte, TelaChurn, TextosTela, ItemChurn, AnaliseChurn } from './churn';
 import {
   escHtml as esc, graficoChurnSVG, tabelaMotivosHTML, descreverRecorte, rotuloMesLongo, infoMotivo,
-  anonimizar, amostraCorHTML, MESES_JANELA_MENSAL, recorteParaQuery, referenciaDoGrafico,
+  anonimizar, amostraCorHTML, MESES_JANELA_MENSAL, recorteParaQuery,
 } from './churn';
 
 export interface DadosRelatorioChurn {
   recorte: Recorte;
-  serieMensal: SerieChurn;
-  serieSemanal: SerieChurn;
+  telaMensal: TelaChurn;
+  telaSemanal: TelaChurn;
+  textosMensal: TextosTela;
+  textosSemanal: TextosTela;
   itens: ItemChurn[];
   termos: string[];
   analise: AnaliseChurn | null;
-  comunidade: ResumoComunidade;
-  recordeChurn: RecordeIndicador;
   analiseDesatualizada: boolean;
   identificado: boolean;
   emitidoPor: string;
@@ -50,7 +50,9 @@ export function gerarRelatorioChurnHtml(d: DadosRelatorioChurn): string {
   const linkModo = `/gestor/churn/relatorio?${queryBase}${anon ? '&identificado=1' : ''}`;
   const notas = d.itens.map((i) => i.nota_retorno).filter((n): n is number => n !== null && n !== undefined).map(Number);
   const mediaNota = notas.length ? (notas.reduce((s, v) => s + v, 0) / notas.length).toFixed(1).replace('.', ',') : null;
-  const totalRecorte = r.granularidade === 'semana' ? d.serieSemanal.total : d.serieMensal.total;
+  const serieMensal = d.telaMensal.serie;
+  const serieSemanal = d.telaSemanal.serie;
+  const totalRecorte = r.granularidade === 'semana' ? serieSemanal.total : serieMensal.total;
 
   const avisoSemAnalise = !d.analise?.textoGestor
     ? `<div class="aviso aviso-forte"><strong>Nenhuma análise salva para este recorte.</strong> O relatório abaixo traz os números, mas a análise escrita ainda não existe. <a href="/gestor#churn">Voltar ao painel para gerar e salvar a análise</a>.</div>`
@@ -169,34 +171,29 @@ blockquote{margin:0 0 10px;padding:10px 14px;border-left:3px solid var(--dourado
 
     <div class="kpis">
       <div class="kpi"><b>${totalRecorte}</b><span>Churns no recorte da análise</span></div>
-      <div class="kpi"><b>${d.serieSemanal.total}</b><span>Churns em ${esc(rotuloMesLongo(r.referencia))}</span></div>
+      <div class="kpi"><b>${serieSemanal.total}</b><span>Churns em ${esc(rotuloMesLongo(r.referencia))}</span></div>
       <div class="kpi"><b>${mediaNota ?? 'Sem dado'}</b><span>Nota média para voltar à MOAI (${notas.length} respostas)</span></div>
     </div>
 
     <section class="secao">
-      <h2>Comunidade, fora da conta principal</h2>
-      <p class="sub">A Comunidade não tem CS. Entram aqui os churns cujo produto ou cujo campo Quem é o seu CS é Comunidade. ${r.incluirComunidade ? 'Neste relatório a Comunidade está somada ao gráfico principal.' : 'Neste relatório a Comunidade não está somada ao gráfico principal.'}</p>
-      <div class="kpis">
-        <div class="kpi"><b>${d.comunidade.total}</b><span>Churns da Comunidade em ${r.granularidade === 'semana' ? esc(rotuloMesLongo(r.referencia)) : `${MESES_JANELA_MENSAL} meses`}</span></div>
-        <div class="kpi"><b>${String(d.comunidade.pct).replace('.', ',')}%</b><span>Do total de ${d.comunidade.totalRecorte} churns do período</span></div>
-      </div>
-      ${d.comunidade.porMotivo.length ? `<div class="tabela-wrap"><table><thead><tr><th>Motivo</th><th class="num">Churns</th><th class="num">Participação</th></tr></thead><tbody>${d.comunidade.porMotivo.map((m) => `<tr><td><span style="display:inline-flex;align-items:center;gap:8px;">${amostraCorHTML(m.cor)}${esc(m.rotulo)}</span></td><td class="num">${m.qtd}</td><td class="num">${String(m.pct).replace('.', ',')}%</td></tr>`).join('')}</tbody></table></div>` : '<p class="vazio">Nenhum churn da Comunidade neste recorte.</p>'}
+      <h2>Comunidade</h2>
+      <p class="sub">A Comunidade não tem CS. Entram aqui os churns cujo produto ou cujo campo Quem é o seu CS é Comunidade. ${esc(d.textosMensal.linhaComunidade)}${d.telaMensal.comunidade.totalMes ? ' Por motivo: ' + d.telaMensal.comunidade.porMotivo.map((m) => `${esc(m.rotulo)} ${m.qtd}`).join(', ') + '.' : ''}</p>
     </section>
 
     <section class="secao">
       <h2>Churn por mês</h2>
-      <p class="sub">Últimos ${MESES_JANELA_MENSAL} meses até ${esc(rotuloMesLongo(r.referencia))}, por motivo declarado no formulário de saída.</p>
-      <div class="grafico-wrap">${graficoChurnSVG(d.serieMensal, 'relMes', referenciaDoGrafico(d.recordeChurn, 'mes'))}</div>
-      <div class="legenda">${d.serieMensal.porMotivo.map((m) => `<span class="item">${amostraCorHTML(m.cor)}${esc(m.rotulo)}</span>`).join('')}</div>
-      <div class="tabela-wrap">${tabelaMotivosHTML(d.serieMensal) || '<p class="vazio">Sem churn no período.</p>'}</div>
+      <p class="sub">Últimos ${MESES_JANELA_MENSAL} meses até ${esc(rotuloMesLongo(r.referencia))}, por motivo declarado no formulário de saída.${d.textosMensal.notaRecorde ? ' ' + esc(d.textosMensal.notaRecorde) : ''}</p>
+      <div class="grafico-wrap">${graficoChurnSVG(serieMensal, 'relMes', `${d.telaMensal.referencia}-01`)}</div>
+      <div class="legenda">${serieMensal.porMotivo.map((m) => `<span class="item">${amostraCorHTML(m.cor)}${esc(m.rotulo)}</span>`).join('')}</div>
+      <div class="tabela-wrap">${tabelaMotivosHTML(serieMensal) || '<p class="vazio">Sem churn no período.</p>'}</div>
     </section>
 
     <section class="secao">
       <h2>Churn por semana em ${esc(rotuloMesLongo(r.referencia))}</h2>
-      <p class="sub">Semana 1 vai do dia 1 ao 7, semana 2 do 8 ao 14, semana 3 do 15 ao 21, semana 4 do 22 ao 28 e semana 5 do dia 29 em diante.</p>
-      <div class="grafico-wrap">${graficoChurnSVG(d.serieSemanal, 'relSem', referenciaDoGrafico(d.recordeChurn, 'semana'))}</div>
-      <div class="legenda">${d.serieSemanal.porMotivo.map((m) => `<span class="item">${amostraCorHTML(m.cor)}${esc(m.rotulo)}</span>`).join('')}</div>
-      <div class="tabela-wrap">${tabelaMotivosHTML(d.serieSemanal) || '<p class="vazio">Sem churn no mês.</p>'}</div>
+      <p class="sub">Semana 1 vai do dia 1 ao 7, semana 2 do 8 ao 14, semana 3 do 15 ao 21, semana 4 do 22 ao 28 e semana 5 do dia 29 em diante.${d.textosSemanal.notaRecorde ? ' ' + esc(d.textosSemanal.notaRecorde) : ''}</p>
+      <div class="grafico-wrap">${graficoChurnSVG(serieSemanal, 'relSem')}</div>
+      <div class="legenda">${serieSemanal.porMotivo.map((m) => `<span class="item">${amostraCorHTML(m.cor)}${esc(m.rotulo)}</span>`).join('')}</div>
+      <div class="tabela-wrap">${tabelaMotivosHTML(serieSemanal) || '<p class="vazio">Sem churn no mês.</p>'}</div>
     </section>
 
     <section class="secao quebra-ok">

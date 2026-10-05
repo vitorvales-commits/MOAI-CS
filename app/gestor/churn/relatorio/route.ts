@@ -6,8 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import {
-  parseRecorte, RecorteInvalido, buscarSerie, buscarItens, buscarTermosIdentificaveis, buscarAnalise, buscarHashRecorte,
-  buscarComunidade, buscarRecordeChurn, validarCsAtivo,
+  parseRecorte, RecorteInvalido, buscarItens, buscarTermosIdentificaveis, buscarAnalise, buscarHashRecorte,
+  buscarTela, textosTela, validarCsAtivo,
 } from '@/lib/churn';
 import { gerarRelatorioChurnHtml } from '@/lib/churn-relatorio-html';
 
@@ -29,15 +29,13 @@ export async function GET(req: NextRequest) {
     const recorte = parseRecorte(url.searchParams);
     const identificado = url.searchParams.get('identificado') === '1';
     await validarCsAtivo(supabase, recorte);
-    const [serieMensal, serieSemanal, itens, termos, analise, hashAtual, comunidade, recordeChurn] = await Promise.all([
-      buscarSerie(supabase, recorte, 'mes'),
-      buscarSerie(supabase, recorte, 'semana'),
-      buscarItens(supabase, recorte),
+    const [telaMensal, telaSemanal, itens, termos, analise, hashAtual] = await Promise.all([
+      buscarTela(supabase, recorte, 'mes'),
+      buscarTela(supabase, recorte, 'semana'),
+      buscarItens(supabase, recorte, { apenasDentro: true }),
       buscarTermosIdentificaveis(supabase),
       buscarAnalise(supabase, recorte),
       buscarHashRecorte(supabase, recorte),
-      buscarComunidade(supabase, recorte),
-      buscarRecordeChurn(supabase, recorte),
     ]);
     await supabase.rpc('log_access', {
       p_action: identificado ? 'relatorio_churn_identificado' : 'relatorio_churn',
@@ -45,7 +43,9 @@ export async function GET(req: NextRequest) {
       p_resource: `${recorte.granularidade}|${recorte.inicio}|${recorte.fim}`,
     });
     const html = gerarRelatorioChurnHtml({
-      recorte, serieMensal, serieSemanal, itens, termos, analise, comunidade, recordeChurn,
+      recorte, telaMensal, telaSemanal, itens, termos, analise,
+      textosMensal: textosTela(telaMensal, { ...recorte, granularidade: 'mes' }),
+      textosSemanal: textosTela(telaSemanal, { ...recorte, granularidade: 'semana' }),
       analiseDesatualizada: !!analise?.baseHash && analise.baseHash !== hashAtual,
       identificado, emitidoPor: email,
     });

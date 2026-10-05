@@ -939,15 +939,21 @@ function parseMetas(metasSubitensRows: any[], metasResolvidasRows: MetaResolvida
   return out;
 }
 
-function parseChurn(churnRows: any[], nomeCS: string, mesInicio: string, mesFim: string) {
+export function parseChurn(churnRows: any[], nomeCS: string, mesInicio: string, mesFim: string) {
   let churnCount = 0, revenueChurn = 0;
   const detalheProdutos: Record<string, number> = {};
   churnRows.forEach((r) => {
     const cs = r.quem_e_seu_cs;
     if (!cs || CHURN_EXCLUIR.includes(cs) || normalizeNome(cs) !== normalizeNome(nomeCS)) return;
+    // Contagem de churn (Carteira atual, simplificação de 05/10/2026): mesma definição da tela de
+    // churn (data_referencia = data do Monday, senão o dia de criação) e a Comunidade nunca entra,
+    // pois ela não tem CS, mesmo quando o membro está sob um CS ativo.
+    const dataRef = r.data_referencia || r.data;
+    if (dataRef && dataRef >= mesInicio && dataRef <= mesFim && !r.eh_comunidade) churnCount++;
+    // Revenue churn segue exatamente como era (só a coluna data, sem filtro de Comunidade): fora do
+    // escopo da simplificação.
     const dataStr = r.data;
     if (!dataStr || dataStr < mesInicio || dataStr > mesFim) return;
-    churnCount++;
     const preco = PRODUCT_PRICES[r.produto];
     if (preco) { revenueChurn += preco; detalheProdutos[r.produto] = (detalheProdutos[r.produto] || 0) + 1; }
   });
@@ -1526,6 +1532,15 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
 
+  // Churn do time = Carteira atual, lido da MESMA base da tela de churn (churn_base no banco). Se a
+  // RPC falhar, cai na soma dos CS, que usa a mesma definição em TypeScript (parseChurn).
+  let churnCarteiraTime: number | null = null;
+  {
+    const { data: totalCarteira, error: errCarteira } = await sb.rpc('churn_total_carteira', { p_inicio: mesInicio, p_fim: mesFim });
+    if (!errCarteira && typeof totalCarteira === 'number') churnCarteiraTime = totalCarteira;
+    else console.warn('[generateEquipeReport] churn_total_carteira falhou, usando a soma dos CS:', errCarteira?.message);
+  }
+
   // BUG FIX (26/09/2026): contagem única pro total do time — ver contarCasesUnicosTime e vizinhas,
   // logo acima de parseUpsellDownsell. Usa nome_completo (não o nome curto de nomesConhecidos
   // acima, que é o campo usado por churn) porque cs_raw/cs_responsavel_raw desses três boards são
@@ -1573,7 +1588,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     configHomeIndicadores: dados.configHomeIndicadores,
     recordes,
     indicadores: {
-      churn: somaInd('churn'), revenueChurn: somaInd('revenueChurn'),
+      churn: churnCarteiraTime === null ? somaInd('churn') : { ...somaInd('churn'), alcancado: churnCarteiraTime },
+      revenueChurn: somaInd('revenueChurn'),
       // casesSucesso/rounds/upsell/downsell: meta continua somando a de cada CS normalmente
       // (somaInd), só o `alcancado` troca pra contagem única de linha (ver BUG FIX 26/09/2026
       // acima) — nunca soma o `calculado` já creditado a cada CS do registro compartilhado.
