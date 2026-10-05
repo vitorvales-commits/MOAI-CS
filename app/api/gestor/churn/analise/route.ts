@@ -1,12 +1,12 @@
 // POST /api/gestor/churn/analise — salva ou publica a análise de churn de um recorte (onda 1,
-// 30/09/2026). Corpo: { acao: 'salvar', granularidade, ref, cs?, produto?, categoria?, texto }
+// 30/09/2026). Corpo: { acao: 'salvar', granularidade, ref, cs?, produtos?, comunidade?, categoria?, texto }
 // ou { acao: 'publicar', granularidade, ref, ..., id }. Toda a escrita passa pelas RPCs
 // salvar_churn_analise / publicar_churn_analise (SECURITY DEFINER, checam is_gestor no corpo e
 // registram em access_audit_log via log_access). Salvar sempre devolve a análise a rascunho; só
 // o texto salvo pelo gestor (texto_gestor) chega ao relatório, nunca o texto da IA direto.
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
-import { parseRecorte, RecorteInvalido, argsRecorteEscrita, buscarAnalise, buscarHashRecorte } from '@/lib/churn';
+import { parseRecorte, RecorteInvalido, argsRecorteEscrita, buscarAnalise, buscarHashRecorte, validarCsAtivo } from '@/lib/churn';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,13 +25,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Requisição inválida.' }, { status: 400 });
     }
     const recorte = parseRecorte(body || {});
+    await validarCsAtivo(supabase, recorte);
 
     if (body?.acao === 'salvar') {
       const texto = typeof body.texto === 'string' ? body.texto.trim() : '';
       if (!texto || texto.length > TEXTO_MAX) {
         return NextResponse.json({ error: 'Escreva a análise antes de salvar (até 30 mil caracteres).' }, { status: 400 });
       }
-      const { error } = await supabase.rpc('salvar_churn_analise', { ...argsRecorteEscrita(recorte), p_texto_gestor: texto });
+      const baseHash = await buscarHashRecorte(supabase, recorte);
+      const { error } = await supabase.rpc('salvar_churn_analise', { ...argsRecorteEscrita(recorte), p_texto_gestor: texto, p_base_hash: baseHash });
       if (error) throw new Error('salvar_churn_analise: ' + error.message);
     } else if (body?.acao === 'publicar') {
       const atual = await buscarAnalise(supabase, recorte);

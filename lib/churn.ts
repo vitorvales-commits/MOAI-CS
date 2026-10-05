@@ -25,7 +25,18 @@ export const CATEGORIAS_CS: { chave: CategoriaCs; rotulo: string }[] = [
 
 // Janela da visão mensal: 12 meses terminando no mês de referência.
 export const MESES_JANELA_MENSAL = 12;
+// Valor antigo do filtro de produto único; segue aceito na URL e vira a chave nova.
 export const PRODUTO_SEM_VALOR = '__sem_produto__';
+export const PRODUTO_SEM_INFORMACAO = 'sem_produto_informado';
+// Ordem fixa das opções do filtro; produto novo que apareça no Monday entra depois, em ordem alfabética.
+export const PRODUTOS_ORDEM = ['Fast Track', 'Executivo', 'C-Level', 'C-Level +', 'High End', 'Alavanca', PRODUTO_SEM_INFORMACAO];
+const MAX_PRODUTOS_FILTRO = 20;
+
+// A chave é o valor canônico de churn_items.produto_normalizado; o rótulo é o que se escreve na tela.
+export function rotuloProduto(chave: string): string {
+  if (chave === PRODUTO_SEM_INFORMACAO) return 'Sem produto informado';
+  return chave.replace(/-/g, ' ');
+}
 
 export interface Recorte {
   granularidade: Granularidade;
@@ -33,7 +44,10 @@ export interface Recorte {
   inicio: string; // AAAA-MM-DD
   fim: string; // AAAA-MM-DD
   cs: string | null;
-  produto: string | null;
+  // Produtos marcados, sem a Comunidade. Nulo significa todos os produtos (padrão).
+  produtos: string[] | null;
+  // A Comunidade vem fora da conta por padrão e aparece à parte no bloco Comunidade.
+  incluirComunidade: boolean;
   csCategoria: CategoriaCs | null;
 }
 
@@ -51,6 +65,35 @@ function mesAtualBrasilia(): string {
   const mes = partes.find((p) => p.type === 'month')!.value;
   return `${ano}-${mes}`;
 }
+function lerProdutos(entrada: URLSearchParams | Record<string, unknown>): { produtos: string[] | null; comunidade: boolean } {
+  let bruto: unknown;
+  if (entrada instanceof URLSearchParams) bruto = entrada.has('produtos') ? entrada.get('produtos') : undefined;
+  else bruto = entrada['produtos'];
+  let comunidade = false;
+  const flag = entrada instanceof URLSearchParams ? entrada.get('comunidade') : entrada['comunidade'];
+  if (flag === '1' || flag === 1 || flag === true || flag === 'true') comunidade = true;
+
+  let lista: unknown[] | null = null;
+  if (Array.isArray(bruto)) lista = bruto;
+  else if (typeof bruto === 'string') lista = bruto.split(',');
+  else {
+    // compatibilidade com o filtro antigo de produto único
+    const legado = textoFiltro(entrada instanceof URLSearchParams ? entrada.get('produto') : entrada['produto']);
+    if (legado) lista = [legado];
+  }
+  if (lista === null) return { produtos: null, comunidade };
+
+  const vistos = new Set<string>();
+  for (const item of lista) {
+    const t = textoFiltro(item, 60);
+    if (!t) continue;
+    if (t.toLowerCase() === 'comunidade') { comunidade = true; continue; }
+    vistos.add(t === PRODUTO_SEM_VALOR ? PRODUTO_SEM_INFORMACAO : t);
+  }
+  if (vistos.size > MAX_PRODUTOS_FILTRO) throw new RecorteInvalido('Produtos demais no filtro.');
+  return { produtos: [...vistos], comunidade };
+}
+
 function textoFiltro(v: unknown, max = 80): string | null {
   if (typeof v !== 'string') return null;
   const t = v.trim();
@@ -79,24 +122,40 @@ export function parseRecorte(entrada: URLSearchParams | Record<string, unknown>)
   const catBruta = textoFiltro(get('categoria'), 30);
   if (catBruta && !CATEGORIAS_CS.some((c) => c.chave === catBruta)) throw new RecorteInvalido('Categoria de CS inválida.');
   const { inicio, fim } = intervaloDaGranularidade(granularidade, referencia);
+  const { produtos, comunidade } = lerProdutos(entrada);
   return {
     granularidade, referencia, inicio, fim,
     cs: textoFiltro(get('cs')),
-    produto: textoFiltro(get('produto')),
+    produtos,
+    incluirComunidade: comunidade,
     csCategoria: (catBruta as CategoriaCs) || null,
   };
 }
 
+// Mesma seleção em forma de URL: a cópia do link reproduz a visão e o relatório herda o estado.
+// produtos ausente = todos; produtos vazio = nenhum marcado; comunidade=1 = Comunidade na conta.
 export function recorteParaQuery(r: Recorte): string {
   const p = new URLSearchParams({ granularidade: r.granularidade, ref: r.referencia });
   if (r.cs) p.set('cs', r.cs);
-  if (r.produto) p.set('produto', r.produto);
+  if (r.produtos !== null) p.set('produtos', r.produtos.join(','));
+  if (r.incluirComunidade) p.set('comunidade', '1');
   if (r.csCategoria) p.set('categoria', r.csCategoria);
   return p.toString();
 }
 
-function argsFiltro(r: Pick<Recorte, 'inicio' | 'fim' | 'cs' | 'produto' | 'csCategoria'>) {
-  return { p_inicio: r.inicio, p_fim: r.fim, p_cs: r.cs, p_produto: r.produto, p_cs_categoria: r.csCategoria };
+// Chave que identifica a seleção de produtos em churn_analises.filtro_produto. Nula só para o recorte
+// antigo (todos os produtos e Comunidade dentro), que é o que a coluna nula já significava.
+export function chaveProdutos(r: Pick<Recorte, 'produtos' | 'incluirComunidade'>): string | null {
+  if (r.produtos === null) return r.incluirComunidade ? null : 'todos_exceto_comunidade';
+  const base = [...r.produtos].sort().join('|') || 'nenhum';
+  return r.incluirComunidade ? `${base}|comunidade` : base;
+}
+
+function argsFiltro(r: Pick<Recorte, 'inicio' | 'fim' | 'cs' | 'produtos' | 'incluirComunidade' | 'csCategoria'>) {
+  return {
+    p_inicio: r.inicio, p_fim: r.fim, p_cs: r.cs, p_cs_categoria: r.csCategoria,
+    p_produtos: r.produtos, p_incluir_comunidade: r.incluirComunidade,
+  };
 }
 
 // ============ rótulos ============
@@ -113,15 +172,20 @@ function dataBR(iso: string): string {
   return `${d}/${m}/${a}`;
 }
 
+// Texto do recorte em linguagem clara, dizendo o que está dentro e o que está fora da conta.
 export function descreverRecorte(r: Recorte): string {
   const periodo = r.granularidade === 'semana'
     ? `semanas de ${rotuloMesLongo(r.referencia)}`
     : `${MESES_JANELA_MENSAL} meses de ${dataBR(r.inicio)} a ${dataBR(r.fim)}`;
-  const filtros: string[] = [];
-  if (r.cs) filtros.push(`CS ${r.cs}`);
-  if (r.csCategoria) filtros.push(CATEGORIAS_CS.find((c) => c.chave === r.csCategoria)!.rotulo);
-  if (r.produto) filtros.push(r.produto === PRODUTO_SEM_VALOR ? 'produto não informado' : `produto ${r.produto}`);
-  return filtros.length ? `${periodo}, filtrado por ${filtros.join(', ')}` : `${periodo}, todos os CS e produtos`;
+  const partes: string[] = [];
+  if (r.cs) partes.push(`CS ${r.cs}`);
+  else if (r.csCategoria) partes.push(r.csCategoria === 'cs_ex' ? 'Ex CS' : CATEGORIAS_CS.find((c) => c.chave === r.csCategoria)!.rotulo);
+  else partes.push('todos os CS');
+  if (r.produtos === null) partes.push('todos os produtos');
+  else if (r.produtos.length === 0) partes.push('nenhum produto marcado');
+  else partes.push(`produtos ${r.produtos.map(rotuloProduto).join(', ')}`);
+  partes.push(r.incluirComunidade ? 'Comunidade incluída na conta' : 'Comunidade fora da conta, apresentada à parte');
+  return `${periodo}, ${partes.join(', ')}`;
 }
 
 // Paleta dos motivos: seis primeiros slots da paleta categórica de referência, validada com o
@@ -230,10 +294,11 @@ function passoEixo(max: number) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
 }
 
-export function graficoChurnSVG(serie: SerieChurn, idPrefixo = 'churn'): string {
+export function graficoChurnSVG(serie: SerieChurn, idPrefixo = 'churn', referencia: ReferenciaRecorde | null = null): string {
   const W = 720, H = 280, padL = 34, padR = 8, padT = 22, padB = 30;
   const n = serie.periodos.length || 1;
-  const maxTotal = Math.max(1, ...serie.periodos.map((p) => p.total));
+  // a linha de recorte entra na escala, senão um recorde acima das barras ficaria fora do quadro
+  const maxTotal = Math.max(1, referencia?.valor ?? 0, ...serie.periodos.map((p) => p.total));
   const passo = passoEixo(maxTotal);
   const topo = Math.ceil(maxTotal / passo) * passo;
   const areaH = H - padT - padB;
@@ -281,12 +346,22 @@ export function graficoChurnSVG(serie: SerieChurn, idPrefixo = 'churn'): string 
     barras += `<text x="${cx.toFixed(1)}" y="${H - 10}" font-size="10.5" fill="#5D5D5D" text-anchor="middle" font-family="Inter,sans-serif">${esc(p.rotulo)}</text>`;
   });
 
+  // Linha tracejada no valor do recorde, com selo de mês e valor. Vem por cima das barras e abaixo
+  // do rótulo, com contorno branco no texto para continuar legível sobre qualquer cor.
+  let linhaRecorde = '';
+  if (referencia) {
+    const yr = y(referencia.valor).toFixed(1);
+    linhaRecorde = `<g class="churn-recorde"><title>${esc(referencia.texto)}</title>`
+      + `<line x1="${padL}" x2="${W - padR}" y1="${yr}" y2="${yr}" stroke="#1A1A1A" stroke-width="1.4" stroke-dasharray="6 4"/>`
+      + `<text x="${W - padR}" y="${(y(referencia.valor) - 5).toFixed(1)}" font-size="10.5" font-weight="700" fill="#1A1A1A" text-anchor="end" font-family="Inter,sans-serif" stroke="#FFFFFF" stroke-width="3" paint-order="stroke">${esc(referencia.texto)}</text></g>`;
+  }
+
   const titulo = serie.granularidade === 'semana' ? 'Churn por semana do mês, por motivo' : 'Churn por mês, por motivo';
-  return `<svg class="churn-grafico" role="img" aria-label="${esc(titulo)}, total ${serie.total}" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;max-width:100%;height:auto;">`
+  return `<svg class="churn-grafico" role="img" aria-label="${esc(titulo)}, total ${serie.total}${referencia ? ', ' + esc(referencia.texto) : ''}" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;max-width:100%;height:auto;">`
     + `<defs><pattern id="${hachuraId}" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="6" height="6" fill="#E9E9E9"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9F9F9F" stroke-width="2"/></pattern></defs>`
     + grade
     + `<line x1="${padL}" x2="${W - padR}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#C6C4C4" stroke-width="1"/>`
-    + barras + '</svg>';
+    + barras + linhaRecorde + '</svg>';
 }
 
 // Legenda e tabela em HTML (a legenda é sempre presente com 2 ou mais séries; a tabela é a via
@@ -309,26 +384,158 @@ export function tabelaMotivosHTML(serie: SerieChurn): string {
 
 // ============ opções de filtro ============
 
-export async function buscarOpcoesFiltro(supabase: SupabaseClient) {
-  const { data, error } = await supabase.from('churn_items').select('quem_e_seu_cs, cs_categoria, produto');
+export interface OpcoesFiltro {
+  // Só CS ativos. Ex CS nunca aparecem por pessoa, só na opção agregada em `categorias`.
+  cs: { valor: string; qtd: number }[];
+  categorias: { chave: CategoriaCs; rotulo: string; qtd: number }[];
+  // Produtos reais do Monday (sem a Comunidade), na ordem fixa, e a Comunidade à parte.
+  produtos: { valor: string; rotulo: string; qtd: number }[];
+  comunidade: { valor: string; rotulo: string; qtd: number };
+}
+
+export async function buscarOpcoesFiltro(supabase: SupabaseClient): Promise<OpcoesFiltro> {
+  const [{ data, error }, { data: ativos, error: erroAtivos }] = await Promise.all([
+    supabase.from('churn_items').select('quem_e_seu_cs, cs_categoria, produto_normalizado, eh_comunidade'),
+    supabase.from('cs_config').select('nome').eq('ativo', true),
+  ]);
   if (error) throw new Error('opções de churn: ' + error.message);
-  const cs = new Map<string, { valor: string; categoria: string; qtd: number }>();
+  if (erroAtivos) throw new Error('cs ativos: ' + erroAtivos.message);
+  const nomesAtivos = new Set(((ativos || []) as { nome: string }[]).map((c) => c.nome.toLowerCase()));
+  const cs = new Map<string, number>();
   const produtos = new Map<string, number>();
+  let comunidade = 0;
+  let exCs = 0;
   for (const r of (data || []) as any[]) {
-    if (r.quem_e_seu_cs) {
-      const atual = cs.get(r.quem_e_seu_cs) || { valor: r.quem_e_seu_cs, categoria: r.cs_categoria, qtd: 0 };
-      atual.qtd++;
-      cs.set(r.quem_e_seu_cs, atual);
+    if (r.cs_categoria === 'cs_ex') exCs++;
+    if (r.quem_e_seu_cs && nomesAtivos.has(String(r.quem_e_seu_cs).toLowerCase())) {
+      cs.set(r.quem_e_seu_cs, (cs.get(r.quem_e_seu_cs) || 0) + 1);
     }
-    const p = r.produto || PRODUTO_SEM_VALOR;
-    produtos.set(p, (produtos.get(p) || 0) + 1);
+    if (r.eh_comunidade) { comunidade++; continue; }
+    produtos.set(r.produto_normalizado, (produtos.get(r.produto_normalizado) || 0) + 1);
   }
+  const ordem = (k: string) => { const i = PRODUTOS_ORDEM.indexOf(k); return i === -1 ? 999 : i; };
+  const chavesProduto = [...new Set([...PRODUTOS_ORDEM, ...produtos.keys()])].sort((a, b) => ordem(a) - ordem(b) || a.localeCompare(b));
   return {
-    cs: [...cs.values()].sort((a, b) => a.categoria.localeCompare(b.categoria) || a.valor.localeCompare(b.valor)),
-    produtos: [...produtos.entries()].map(([valor, qtd]) => ({ valor, rotulo: valor === PRODUTO_SEM_VALOR ? 'Produto não informado' : valor, qtd }))
-      .sort((a, b) => b.qtd - a.qtd),
-    categorias: CATEGORIAS_CS,
+    cs: [...cs.entries()].map(([valor, qtd]) => ({ valor, qtd })).sort((a, b) => a.valor.localeCompare(b.valor)),
+    categorias: exCs ? [{ chave: 'cs_ex' as CategoriaCs, rotulo: 'Ex CS', qtd: exCs }] : [],
+    produtos: chavesProduto.map((valor) => ({ valor, rotulo: rotuloProduto(valor), qtd: produtos.get(valor) || 0 })),
+    comunidade: { valor: 'Comunidade', rotulo: 'Comunidade', qtd: comunidade },
   };
+}
+
+// Recusa filtro por pessoa que não seja CS ativo. Ex CS só existem como a categoria agregada.
+export async function validarCsAtivo(supabase: SupabaseClient, r: Recorte): Promise<void> {
+  if (!r.cs) return;
+  const { data, error } = await supabase.from('cs_config').select('nome').eq('ativo', true);
+  if (error) throw new Error('cs ativos: ' + error.message);
+  const ok = ((data || []) as { nome: string }[]).some((c) => c.nome.toLowerCase() === r.cs!.toLowerCase());
+  if (!ok) throw new RecorteInvalido('Escolha um CS ativo. O histórico de ex CS está na opção agregada Ex CS.');
+}
+
+// ============ bloco Comunidade (fora da conta principal, sempre visível) ============
+
+export interface ResumoComunidade {
+  incluida: boolean;
+  total: number;
+  totalRecorte: number;
+  pct: number;
+  periodos: { rotulo: string; rotuloLongo: string; qtd: number }[];
+  porMotivo: { chave: string; rotulo: string; cor: string; qtd: number; pct: number }[];
+}
+
+export async function buscarComunidade(supabase: SupabaseClient, r: Recorte): Promise<ResumoComunidade> {
+  // mesmo intervalo do gráfico, independente do filtro de produto e de CS
+  const { data, error } = await supabase.rpc('churn_comunidade_resumo', {
+    p_granularidade: r.granularidade, p_inicio: r.inicio, p_fim: r.fim,
+  });
+  if (error) throw new Error('churn_comunidade_resumo: ' + error.message);
+  const periodos = new Map<string, { rotulo: string; rotuloLongo: string; qtd: number }>();
+  const motivos: Record<string, number> = {};
+  let totalRecorte = 0;
+  for (const row of (data || []) as any[]) {
+    totalRecorte = row.total_recorte ?? totalRecorte;
+    const chave = `${row.periodo_inicio}|${row.semana ?? ''}`;
+    if (!periodos.has(chave)) {
+      const [a, m] = String(row.periodo_inicio).split('-').map(Number);
+      periodos.set(chave, {
+        rotulo: row.semana ? `Semana ${row.semana}` : `${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`,
+        rotuloLongo: row.semana ? `Semana ${row.semana} (${dataBR(row.periodo_inicio)} a ${dataBR(row.periodo_fim)})` : rotuloMesLongo(`${a}-${pad2(m)}`),
+        qtd: 0,
+      });
+    }
+    if (row.motivo && row.qtd > 0) {
+      periodos.get(chave)!.qtd += row.qtd;
+      motivos[row.motivo] = (motivos[row.motivo] || 0) + row.qtd;
+    }
+  }
+  const total = Object.values(motivos).reduce((s, v) => s + v, 0);
+  return {
+    incluida: r.incluirComunidade, total, totalRecorte,
+    pct: totalRecorte ? Math.round((total / totalRecorte) * 1000) / 10 : 0,
+    periodos: [...periodos.values()],
+    porMotivo: ordenarMotivos(motivos, total),
+  };
+}
+
+// ============ recordes calculados (mecanismo único: indicador_recordes no banco) ============
+
+export interface RecordeIndicador {
+  indicador: string;
+  rotulo?: string;
+  meta: number | null;
+  mensal: { valor: number; mes: string; emAndamento: boolean; empates: number } | null;
+  semanal: { valor: number; mes: string; semana: number; emAndamento: boolean } | null;
+  valorMesCorrente: number | null;
+  diferenca: number | null;
+  historicoDesde: string | null;
+  calculadoEm: string | null;
+}
+
+function mapearRecorde(l: any): RecordeIndicador {
+  const num = (v: any) => (v === null || v === undefined ? null : Number(v));
+  return {
+    indicador: l.indicador, rotulo: l.rotulo, meta: num(l.meta),
+    mensal: l.recorde_mensal_valor === null || l.recorde_mensal_valor === undefined ? null
+      : { valor: Number(l.recorde_mensal_valor), mes: l.recorde_mensal_mes, emAndamento: !!l.recorde_mensal_em_andamento, empates: l.meses_no_recorde ?? 1 },
+    semanal: l.recorde_semanal_valor === null || l.recorde_semanal_valor === undefined ? null
+      : { valor: Number(l.recorde_semanal_valor), mes: l.recorde_semanal_mes, semana: l.recorde_semanal_semana, emAndamento: !!l.recorde_semanal_em_andamento },
+    valorMesCorrente: num(l.valor_mes_corrente), diferenca: num(l.diferenca_mensal),
+    historicoDesde: l.historico_desde ?? null, calculadoEm: l.calculado_em ?? null,
+  };
+}
+
+// Recorde de churn no MESMO recorte do gráfico (CS, categoria, produtos e Comunidade), calculado
+// sobre o histórico inteiro, nunca sobre a janela exibida.
+export async function buscarRecordeChurn(supabase: SupabaseClient, r: Recorte): Promise<RecordeIndicador> {
+  const { data, error } = await supabase.rpc('indicador_recordes', {
+    p_indicador: 'churn', p_cs: r.cs, p_motivo: null,
+    p_produtos: r.produtos, p_incluir_comunidade: r.incluirComunidade, p_cs_categoria: r.csCategoria,
+  });
+  if (error) throw new Error('indicador_recordes: ' + error.message);
+  return mapearRecorde(((data || []) as any[])[0] || { indicador: 'churn' });
+}
+
+export async function buscarPainelRecordes(supabase: SupabaseClient, cs: string | null): Promise<RecordeIndicador[]> {
+  const { data, error } = await supabase.rpc('recordes_painel', { p_cs: cs });
+  if (error) throw new Error('recordes_painel: ' + error.message);
+  return ((data || []) as any[]).map(mapearRecorde);
+}
+
+// Linha de referência do gráfico: mensal no modo por mês, semanal no modo por semana do mês.
+export interface ReferenciaRecorde { valor: number; texto: string }
+export function referenciaDoGrafico(rec: RecordeIndicador | null, granularidade: Granularidade): ReferenciaRecorde | null {
+  if (!rec) return null;
+  if (granularidade === 'semana') {
+    if (!rec.semanal || rec.semanal.valor <= 0) return null;
+    const s = rec.semanal;
+    return { valor: s.valor, texto: `Recorde semanal ${s.valor}, semana ${s.semana} de ${rotuloMesCurto(s.mes)}${s.emAndamento ? ', em andamento' : ''}` };
+  }
+  if (!rec.mensal || rec.mensal.valor <= 0) return null;
+  return { valor: rec.mensal.valor, texto: `Recorde ${rec.mensal.valor} em ${rotuloMesCurto(rec.mensal.mes)}${rec.mensal.emAndamento ? ', em andamento' : ''}` };
+}
+export function rotuloMesCurto(isoData: string): string {
+  const [a, m] = isoData.split('-').map(Number);
+  return `${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`;
 }
 
 // ============ análise salva ============
@@ -350,7 +557,8 @@ export async function buscarAnalise(supabase: SupabaseClient, r: Recorte): Promi
     .select('id, status, texto_ia, texto_gestor, base_hash, modelo_ia, gerado_em, editado_por, editado_em')
     .eq('periodo_tipo', r.granularidade).eq('data_inicio', r.inicio).eq('data_fim', r.fim);
   q = r.cs ? q.eq('filtro_cs', r.cs) : q.is('filtro_cs', null);
-  q = r.produto ? q.eq('filtro_produto', r.produto) : q.is('filtro_produto', null);
+  const chaveProd = chaveProdutos(r);
+  q = chaveProd ? q.eq('filtro_produto', chaveProd) : q.is('filtro_produto', null);
   q = r.csCategoria ? q.eq('filtro_cs_categoria', r.csCategoria) : q.is('filtro_cs_categoria', null);
   const { data, error } = await q.maybeSingle();
   if (error) throw new Error('churn_analises: ' + error.message);
@@ -370,7 +578,7 @@ export async function buscarHashRecorte(supabase: SupabaseClient, r: Recorte): P
 export function argsRecorteEscrita(r: Recorte) {
   return {
     p_periodo_tipo: r.granularidade, p_inicio: r.inicio, p_fim: r.fim,
-    p_filtro_cs: r.cs, p_filtro_produto: r.produto, p_filtro_cs_categoria: r.csCategoria,
+    p_filtro_cs: r.cs, p_filtro_produto: chaveProdutos(r), p_filtro_cs_categoria: r.csCategoria,
   };
 }
 

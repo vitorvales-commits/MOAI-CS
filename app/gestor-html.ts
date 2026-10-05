@@ -284,6 +284,33 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .churn-acoes button:disabled{opacity:0.45;cursor:not-allowed;}
 .churn-meta{font-size:11.5px;color:var(--cinza-apoio);margin:8px 0 0;line-height:1.5;}
 .churn-tabela th{text-align:left;}
+.churn-campo{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--cinza-texto);}
+.ms{position:relative;}
+.ms-btn{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ms-pop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;min-width:250px;max-height:340px;overflow-y:auto;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:16px;padding:10px 12px;box-shadow:0 12px 32px rgba(26,26,26,0.12);}
+.ms-pop[hidden]{display:none;}
+.ms-acoes{display:flex;gap:14px;padding:2px 2px 8px;border-bottom:1px solid var(--cinza-superficie);margin-bottom:6px;}
+.ms-acoes button{background:none;border:none;padding:0;font:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--preto-tinta);}
+.ms-op{display:flex;align-items:center;gap:8px;padding:7px 2px;font-size:13px;font-weight:500;color:var(--preto-tinta);cursor:pointer;}
+.ms-op input{width:16px;height:16px;accent-color:var(--preto-tinta);flex-shrink:0;}
+.ms-op .qtd{margin-left:auto;font-size:11px;color:var(--cinza-apoio);font-weight:600;}
+.ms-sep{border-top:1px solid var(--cinza-superficie);margin:6px 0 2px;padding-top:4px;font-size:10.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--cinza-apoio);font-weight:700;}
+.churn-topo{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start;}
+.churn-topo .churn-card{margin:0;}
+.churn-com{border-style:dashed;}
+.churn-com h3{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;margin:0;}
+.churn-com-cab{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;}
+.churn-com-pill{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--cinza-superficie);color:var(--cinza-texto);white-space:nowrap;}
+.churn-com-pill.dentro{background:rgba(200,154,46,0.15);color:var(--dourado);}
+.churn-com-num b{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;line-height:1.1;display:block;}
+.churn-com-num span{font-size:12px;color:var(--cinza-apoio);}
+.churn-com-soma{font-size:12px;color:var(--cinza-texto);margin:8px 0 10px;line-height:1.5;}
+.churn-com-lista{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;}
+.churn-com-lista span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--cinza-fundo);color:var(--cinza-texto);}
+.churn-com table{width:100%;font-size:12px;margin-top:6px;}
+.churn-com td,.churn-com th{padding:5px 4px;}
+.rec-pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(200,154,46,0.15);color:var(--dourado);margin-left:6px;white-space:nowrap;}
+.rec-sub{display:block;font-size:11px;color:var(--cinza-apoio);font-weight:500;}
 
 @media (max-width:640px){
   .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
@@ -294,6 +321,9 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .tabs{overflow-x:auto;}
   .tab-btn{margin-right:16px;white-space:nowrap;}
   .churn-card{padding:16px 12px 12px;}
+  .churn-topo{grid-template-columns:minmax(0,1fr);}
+  .churn-campo{width:100%;justify-content:space-between;}
+  .ms-pop{left:auto;right:0;min-width:min(280px,86vw);}
   #churnGrafico svg{min-width:560px;}
   .churn-filtros label{width:100%;justify-content:space-between;}
   .churn-filtros select{max-width:62%;}
@@ -520,6 +550,23 @@ export const GESTOR_HTML = `
     </section>
 
     <section class="block">
+      <div class="block-head">
+        <div>
+          <h2>Recordes calculados</h2>
+          <p>Todo recorde sai do histórico inteiro do Monday e se atualiza a cada sincronização. Nada aqui é digitado. Para churn e downsell, recorde significa o maior valor já registrado em um mês. O mês corrente conta e leva o selo em andamento até fechar.</p>
+        </div>
+        <label class="churn-campo">Visão <select class="pill-select" id="recVisao"><option value="">Time</option></select></label>
+      </div>
+      <div class="table-wrap"><div class="table-scroll">
+        <table class="churn-tabela"><thead><tr><th>Indicador</th><th class="num">Mês atual</th><th class="num">Meta</th><th>Recorde mensal</th><th>Diferença</th><th>Recorde semanal</th><th>Série desde</th></tr></thead>
+          <tbody id="listaRecordesCalculados"><tr><td class="gestor-empty" colspan="7">Carregando…</td></tr></tbody>
+        </table>
+      </div></div>
+      <p class="churn-meta" id="recordesMeta"></p>
+      <p class="erro-msg" id="erroRecordesCalculados"></p>
+    </section>
+
+    <section class="block">
       <div class="block-head"><h2>Recordes anteriores ao histórico</h2><p>Pro recorde de antes da sincronização começar (ex.: um mês excepcional em 2025). Opcional — sem isso, o recorde considera só o histórico espelhado.</p></div>
       <div class="perfis-card">
         <div class="form-inline" style="flex-wrap:wrap;">
@@ -554,13 +601,24 @@ export const GESTOR_HTML = `
       <div class="churn-filtros">
         <label>Mês de referência <select class="pill-select" id="churnRef"></select></label>
         <label>CS <select class="pill-select" id="churnCs"><option value="">Todos</option></select></label>
-        <label>Produto <select class="pill-select" id="churnProduto"><option value="">Todos</option></select></label>
+        <div class="churn-campo">Produtos
+          <div class="ms" id="churnProdutoWrap">
+            <button type="button" class="pill-select ms-btn" id="churnProdutoBtn" aria-haspopup="true" aria-expanded="false">Carregando…</button>
+            <div class="ms-pop" id="churnProdutoPop" role="group" aria-label="Produtos" hidden>
+              <div class="ms-acoes"><button type="button" id="churnProdutoTodos">Selecionar todos</button><button type="button" id="churnProdutoLimpar">Limpar</button></div>
+              <div id="churnProdutoOpcoes"></div>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="churn-descricao" id="churnDescricao"></p>
-      <div class="churn-card">
-        <div class="churn-resumo" id="churnResumo"></div>
-        <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
-        <div class="churn-legenda" id="churnLegenda"></div>
+      <div class="churn-topo">
+        <div class="churn-card">
+          <div class="churn-resumo" id="churnResumo"></div>
+          <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
+          <div class="churn-legenda" id="churnLegenda"></div>
+        </div>
+        <div class="churn-card churn-com" id="churnComunidade" aria-live="polite"><div class="gestor-empty">Carregando…</div></div>
       </div>
       <div class="table-wrap churn-tabela-wrap"><div class="table-scroll" id="churnTabela"></div></div>
     </section>
@@ -1655,8 +1713,63 @@ function salvarRecordeManual_() {
   }).catch(function (err) { erroEl.textContent = 'Erro: ' + err.message; });
 }
 
+// ---- recordes calculados (mecanismo único no banco, nenhum valor digitado) ----
+var recordesVisaoMontada_ = false;
+function recNum_(v) {
+  return v === null || v === undefined ? '' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+}
+function carregarRecordesCalculados(cs) {
+  var corpo = document.getElementById('listaRecordesCalculados');
+  document.getElementById('erroRecordesCalculados').textContent = '';
+  corpo.innerHTML = '<tr><td class="gestor-empty" colspan="7">Carregando…</td></tr>';
+  fetchJSON_('/api/gestor/recordes' + (cs ? '?cs=' + encodeURIComponent(cs) : '')).then(function (data) {
+    if (!recordesVisaoMontada_) {
+      recordesVisaoMontada_ = true;
+      var sel = document.getElementById('recVisao');
+      sel.innerHTML = '<option value="">Time</option>' + (data.csAtivos || []).map(function (n) {
+        return '<option value="' + churnEsc_(n) + '">' + churnEsc_(n) + '</option>';
+      }).join('');
+      sel.addEventListener('change', function () { carregarRecordesCalculados(this.value); });
+    }
+    renderRecordesCalculados_(data);
+  }).catch(function (err) {
+    corpo.innerHTML = '<tr><td class="gestor-erro" colspan="7">Erro ao carregar: ' + churnEsc_(err.message) + '</td></tr>';
+  });
+}
+function renderRecordesCalculados_(data) {
+  var ultimo = null;
+  document.getElementById('listaRecordesCalculados').innerHTML = (data.indicadores || []).map(function (i) {
+    if (i.calculadoEm) ultimo = i.calculadoEm;
+    var rec = i.mensal
+      ? '<b>' + recNum_(i.mensal.valor) + '</b> em ' + formatarMesAnoCurto_(i.mensal.mes) +
+        (i.mensal.emAndamento ? '<span class="rec-pill">em andamento</span>' : '') +
+        (i.mensal.empates > 1 ? '<span class="rec-sub">empatado em ' + i.mensal.empates + ' meses</span>' : '')
+      : 'Sem histórico';
+    var dif = '';
+    if (i.diferenca !== null && i.diferenca !== undefined) {
+      dif = i.diferenca === 0 ? 'Igual ao recorde'
+        : (i.diferenca < 0 ? recNum_(Math.abs(i.diferenca)) + ' abaixo' : recNum_(i.diferenca) + ' acima');
+    } else if (i.mensal) {
+      dif = 'Base do mês ainda pequena';
+    }
+    var sem = i.semanal
+      ? '<b>' + recNum_(i.semanal.valor) + '</b>, semana ' + i.semanal.semana + ' de ' + formatarMesAnoCurto_(i.semanal.mes) +
+        (i.semanal.emAndamento ? '<span class="rec-pill">em andamento</span>' : '')
+      : 'Sem data por semana';
+    return '<tr><td>' + churnEsc_(i.rotulo || i.indicador) + '</td>' +
+      '<td class="num">' + (i.valorMesCorrente === null || i.valorMesCorrente === undefined ? 'Sem base' : recNum_(i.valorMesCorrente)) + '</td>' +
+      '<td class="num">' + (i.meta === null || i.meta === undefined ? 'Sem meta' : recNum_(i.meta)) + '</td>' +
+      '<td>' + rec + '</td><td>' + dif + '</td><td>' + sem + '</td>' +
+      '<td>' + (i.historicoDesde ? formatarMesAnoCurto_(i.historicoDesde) : '') + '</td></tr>';
+  }).join('');
+  document.getElementById('recordesMeta').textContent = ultimo
+    ? 'Calculado em ' + churnDataHora_(ultimo) + ' sobre o histórico inteiro que o Monday entrega, e recalculado a cada abertura desta tela. A coluna Série desde mostra onde cada série começa. Matchmakings dos reports semanais são o total autodeclarado e aparecem só como referência.'
+    : '';
+}
+
 function inicializarMetasDestaques() {
   try {
+    carregarRecordesCalculados('');
     popularSeletorMesMatriz_();
     document.getElementById('selMesMatriz').addEventListener('change', carregarMatriz);
     document.getElementById('selAnoMatriz').addEventListener('change', carregarMatriz);
@@ -1682,7 +1795,11 @@ function inicializarMetasDestaques() {
 // análise salva (ou publicada). O relatório usa sempre o texto salvo, nunca o do editor.
 var ENDPOINT_CHURN = '/api/gestor/churn';
 var churnCarregado = false;
-var churnEstado_ = { granularidade: 'mes', ref: '', cs: '', produto: '', categoria: '' };
+var churnEstado_ = { granularidade: 'mes', ref: '', cs: '', categoria: '', produtos: null, comunidade: false };
+var churnOpcoesProdutos_ = [];
+var churnReq_ = 0;
+var churnAgendado_ = null;
+var churnRetentouCs_ = false;
 var churnDados_ = null;
 var churnTextoBase_ = '';
 var churnOpcoesMontadas_ = false;
@@ -1697,17 +1814,21 @@ function churnEsc_(s) {
 function churnDataHora_(iso) {
   try { return new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return iso; }
 }
+// Mesma seleção da API e da URL da página: produtos ausente = todos, produtos vazio = nenhum
+// marcado, comunidade=1 = Comunidade dentro da conta. Copiar o link reproduz a visão.
 function churnParams_() {
   var p = new URLSearchParams({ granularidade: churnEstado_.granularidade, ref: churnEstado_.ref });
   if (churnEstado_.cs) p.set('cs', churnEstado_.cs);
-  if (churnEstado_.produto) p.set('produto', churnEstado_.produto);
   if (churnEstado_.categoria) p.set('categoria', churnEstado_.categoria);
+  if (churnEstado_.produtos !== null) p.set('produtos', churnEstado_.produtos.join(','));
+  if (churnEstado_.comunidade) p.set('comunidade', '1');
   return p.toString();
 }
 function churnCorpo_(extra) {
   var o = {
     granularidade: churnEstado_.granularidade, ref: churnEstado_.ref,
-    cs: churnEstado_.cs || null, produto: churnEstado_.produto || null, categoria: churnEstado_.categoria || null,
+    cs: churnEstado_.cs || null, categoria: churnEstado_.categoria || null,
+    produtos: churnEstado_.produtos, comunidade: churnEstado_.comunidade,
   };
   Object.keys(extra || {}).forEach(function (k) { o[k] = extra[k]; });
   return JSON.stringify(o);
@@ -1727,47 +1848,179 @@ function churnPopularRef_() {
   churnEstado_.ref = sel.value;
 }
 
+function churnSincronizarUrl_() {
+  try { window.history.replaceState(null, '', window.location.pathname + '?' + churnParams_() + '#churn'); } catch (e) {}
+}
+function churnGarantirOpcaoRef_(valor) {
+  var sel = document.getElementById('churnRef');
+  var existe = false;
+  for (var i = 0; i < sel.options.length; i++) { if (sel.options[i].value === valor) existe = true; }
+  if (!existe) {
+    var o = document.createElement('option');
+    o.value = valor;
+    o.textContent = CHURN_MESES_[Number(valor.slice(5, 7)) - 1] + ' de ' + valor.slice(0, 4);
+    sel.appendChild(o);
+  }
+  sel.value = valor;
+}
+// Lê a seleção da URL (mesmos nomes da API) para que um link copiado reproduza a mesma visão.
+function churnLerUrl_() {
+  var q = new URLSearchParams(window.location.search);
+  if (!q.has('granularidade') && !q.has('ref') && !q.has('produtos') && !q.has('comunidade')) return;
+  if (q.get('granularidade') === 'semana') {
+    churnEstado_.granularidade = 'semana';
+    document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.gran === 'semana'); });
+  }
+  var ref = q.get('ref') || '';
+  if (/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(ref)) { churnGarantirOpcaoRef_(ref); churnEstado_.ref = ref; }
+  churnEstado_.cs = q.get('cs') || '';
+  churnEstado_.categoria = q.get('categoria') || '';
+  churnEstado_.produtos = q.has('produtos') ? q.get('produtos').split(',').filter(function (x) { return x; }) : null;
+  churnEstado_.comunidade = q.get('comunidade') === '1';
+}
+
+function churnAtualizarRotuloProdutos_() {
+  var e = churnEstado_, n = churnOpcoesProdutos_.length, txt;
+  if (e.produtos === null) txt = e.comunidade ? 'Todos, com a Comunidade' : 'Todos, Comunidade fora';
+  else if (e.produtos.length === 0) txt = e.comunidade ? 'Somente a Comunidade' : 'Nenhum marcado';
+  else txt = e.produtos.length + (n ? ' de ' + n : '') + ' produtos' + (e.comunidade ? ' e a Comunidade' : '');
+  document.getElementById('churnProdutoBtn').textContent = txt;
+}
+function churnSincronizarChecks_() {
+  var sel = churnEstado_.produtos;
+  document.querySelectorAll('.chk-prod').forEach(function (c) { c.checked = sel === null ? true : sel.indexOf(c.value) !== -1; });
+  var com = document.getElementById('chkComunidade');
+  if (com) com.checked = churnEstado_.comunidade;
+  churnAtualizarRotuloProdutos_();
+}
+function churnAgendar_() {
+  if (churnAgendado_) clearTimeout(churnAgendado_);
+  churnAgendado_ = setTimeout(function () { churnAgendado_ = null; carregarChurn(); }, 300);
+}
+function churnLerChecks_() {
+  var marcados = [], todos = 0;
+  document.querySelectorAll('.chk-prod').forEach(function (c) { todos++; if (c.checked) marcados.push(c.value); });
+  churnEstado_.produtos = marcados.length === todos ? null : marcados;
+  var com = document.getElementById('chkComunidade');
+  churnEstado_.comunidade = !!(com && com.checked);
+  churnAtualizarRotuloProdutos_();
+  churnAgendar_();
+}
+function churnAbrirProdutos_(abrir) {
+  document.getElementById('churnProdutoPop').hidden = !abrir;
+  document.getElementById('churnProdutoBtn').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+}
+
 function churnPopularOpcoes_(op) {
   if (churnOpcoesMontadas_ || !op) return;
   churnOpcoesMontadas_ = true;
-  var html = '<option value="">Todos</option><optgroup label="Por categoria">';
-  op.categorias.forEach(function (c) {
-    var existe = op.cs.some(function (x) { return x.categoria === c.chave; });
-    if (existe) html += '<option value="cat:' + c.chave + '">' + churnEsc_(c.rotulo) + '</option>';
-  });
-  html += '</optgroup>';
-  op.categorias.forEach(function (c) {
-    var doGrupo = op.cs.filter(function (x) { return x.categoria === c.chave; });
-    if (!doGrupo.length) return;
-    html += '<optgroup label="' + churnEsc_(c.rotulo) + '">' + doGrupo.map(function (x) {
+  // CS: só ativos por pessoa; os ex CS aparecem juntos na opção agregada Ex CS.
+  var html = '<option value="">Todos</option>';
+  if (op.cs.length) {
+    html += '<optgroup label="CS ativos">' + op.cs.map(function (x) {
       return '<option value="cs:' + churnEsc_(x.valor) + '">' + churnEsc_(x.valor) + ' (' + x.qtd + ')</option>';
     }).join('') + '</optgroup>';
-  });
-  document.getElementById('churnCs').innerHTML = html;
-  document.getElementById('churnProduto').innerHTML = '<option value="">Todos</option>' + op.produtos.map(function (p) {
-    return '<option value="' + churnEsc_(p.valor) + '">' + churnEsc_(p.rotulo) + ' (' + p.qtd + ')</option>';
+  }
+  if (op.categorias.length) {
+    html += '<optgroup label="Histórico">' + op.categorias.map(function (c) {
+      return '<option value="cat:' + churnEsc_(c.chave) + '">' + churnEsc_(c.rotulo) + ' (' + c.qtd + ')</option>';
+    }).join('') + '</optgroup>';
+  }
+  var selCs = document.getElementById('churnCs');
+  selCs.innerHTML = html;
+  var valorCs = churnEstado_.cs ? 'cs:' + churnEstado_.cs : (churnEstado_.categoria ? 'cat:' + churnEstado_.categoria : '');
+  selCs.value = valorCs;
+  if (selCs.value !== valorCs) { selCs.value = ''; churnEstado_.cs = ''; churnEstado_.categoria = ''; }
+
+  // Produtos em seleção múltipla. A Comunidade vem desmarcada por padrão e continua visível no bloco ao lado.
+  churnOpcoesProdutos_ = op.produtos.map(function (p) { return p.valor; });
+  var ops = op.produtos.map(function (p) {
+    return '<label class="ms-op"><input type="checkbox" class="chk-prod" value="' + churnEsc_(p.valor) + '"> ' + churnEsc_(p.rotulo) + '<span class="qtd">' + p.qtd + '</span></label>';
   }).join('');
+  ops += '<div class="ms-sep">Fora da conta por padrão</div>' +
+    '<label class="ms-op"><input type="checkbox" id="chkComunidade"> ' + churnEsc_(op.comunidade.rotulo) + '<span class="qtd">' + op.comunidade.qtd + '</span></label>';
+  document.getElementById('churnProdutoOpcoes').innerHTML = ops;
+  document.querySelectorAll('.chk-prod, #chkComunidade').forEach(function (c) { c.addEventListener('change', churnLerChecks_); });
+  churnSincronizarChecks_();
+}
+
+function churnAmostra_(cor) {
+  var estilo = cor === 'hachura'
+    ? 'background:repeating-linear-gradient(45deg,#E9E9E9 0 3px,#9F9F9F 3px 5px);'
+    : 'background:' + cor + ';';
+  return '<span style="display:inline-block;width:10px;height:10px;border-radius:3px;flex-shrink:0;margin-right:6px;' + estilo + '"></span>';
+}
+function churnMesCurto_(iso) {
+  var p = String(iso).split('-');
+  return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][Number(p[1]) - 1] + '/' + p[0].slice(2);
 }
 
 function carregarChurn() {
+  var minha = ++churnReq_;
   document.getElementById('churnErro').textContent = '';
   document.getElementById('churnGrafico').innerHTML = '<div class="gestor-empty">Carregando…</div>';
   return fetchJSON_(ENDPOINT_CHURN + '?' + churnParams_()).then(function (data) {
+    if (minha !== churnReq_) return;
     churnDados_ = data;
     churnPopularOpcoes_(data.opcoes);
     renderChurn_(data);
+    churnSincronizarUrl_();
   }).catch(function (err) {
+    if (minha !== churnReq_) return;
+    // link com um CS que não é ativo: volta a Todos uma vez em vez de travar a tela
+    if (churnEstado_.cs && !churnRetentouCs_ && /CS ativo/.test(err.message || '')) {
+      churnRetentouCs_ = true; churnEstado_.cs = ''; churnEstado_.categoria = '';
+      return carregarChurn();
+    }
     document.getElementById('churnGrafico').innerHTML = '<div class="gestor-erro">Erro ao carregar o churn: ' + churnEsc_(err.message) + '</div>';
   });
+}
+
+function renderComunidade_(c, totalPrincipal) {
+  var el = document.getElementById('churnComunidade');
+  var pctTxt = String(c.pct).replace('.', ',');
+  var html = '<div class="churn-com-cab"><h3>Comunidade</h3>' +
+    (c.incluida ? '<span class="churn-com-pill dentro">Somada ao gráfico</span>' : '<span class="churn-com-pill">Fora da conta principal</span>') + '</div>' +
+    '<div class="churn-com-num"><b>' + c.total + '</b><span>churns da Comunidade no recorte, ' + pctTxt + '% dos ' + c.totalRecorte + ' churns do período</span></div>';
+  if (c.incluida) {
+    html += '<p class="churn-com-soma">A Comunidade está marcada no filtro de produtos e já compõe as barras e o total ao lado.</p>';
+  } else {
+    var fecha = (totalPrincipal + c.total === c.totalRecorte);
+    html += '<p class="churn-com-soma">Conta principal: ' + totalPrincipal + '. Comunidade: ' + c.total + '.' +
+      (fecha ? ' Juntas fecham ' + c.totalRecorte + '.' : ' A conta principal está com filtro de CS ou de produto, por isso não fecha com o total do período.') + '</p>';
+  }
+  if (!c.total) {
+    html += '<p class="churn-com-soma">Nenhum churn da Comunidade neste recorte.</p>';
+  } else {
+    html += '<table class="churn-tabela"><thead><tr><th>Motivo</th><th class="num">Churns</th></tr></thead><tbody>' + c.porMotivo.map(function (m) {
+      return '<tr><td>' + churnAmostra_(m.cor) + churnEsc_(m.rotulo) + '</td><td class="num">' + m.qtd + '</td></tr>';
+    }).join('') + '</tbody></table>';
+    html += '<div class="churn-com-lista">' + c.periodos.filter(function (p) { return p.qtd > 0; }).map(function (p) {
+      return '<span title="' + churnEsc_(p.rotuloLongo) + '">' + churnEsc_(p.rotulo) + ': ' + p.qtd + '</span>';
+    }).join('') + '</div>';
+  }
+  el.innerHTML = html;
 }
 
 function renderChurn_(data) {
   document.getElementById('churnDescricao').textContent = 'Recorte: ' + data.descricao + '.';
   var maior = null;
   data.legenda.forEach(function (m) { if (!maior || m.qtd > maior.qtd) maior = m; });
+  var rotuloTotal = churnEstado_.comunidade ? 'churns no recorte, com a Comunidade' : 'churns na conta principal, sem a Comunidade';
+  var rec = data.recorde || {};
+  var semanal = churnEstado_.granularidade === 'semana';
+  var rv = semanal ? rec.semanal : rec.mensal;
+  var recHtml = '';
+  if (rv && rv.valor > 0) {
+    var rotRec = semanal
+      ? 'recorde semanal, semana ' + rv.semana + ' de ' + churnMesCurto_(rv.mes)
+      : 'recorde mensal, ' + churnMesCurto_(rv.mes);
+    recHtml = '<div><b>' + rv.valor + '</b><span>' + rotRec + (rv.emAndamento ? ', em andamento' : '') + '</span></div>';
+  }
   document.getElementById('churnResumo').innerHTML =
-    '<div><b>' + data.total + '</b><span>churns no recorte</span></div>' +
-    (maior ? '<div><b>' + churnEsc_(String(maior.pct).replace('.', ',')) + '%</b><span>' + churnEsc_(maior.rotulo) + ', motivo mais citado</span></div>' : '');
+    '<div><b>' + data.total + '</b><span>' + rotuloTotal + '</span></div>' +
+    (maior ? '<div><b>' + churnEsc_(String(maior.pct).replace('.', ',')) + '%</b><span>' + churnEsc_(maior.rotulo) + ', motivo mais citado</span></div>' : '') +
+    recHtml;
   document.getElementById('churnGrafico').innerHTML = data.total
     ? data.graficoSvg
     : '<div class="gestor-empty">Nenhum churn neste recorte. Troque o mês de referência ou os filtros.</div>';
@@ -1777,6 +2030,7 @@ function renderChurn_(data) {
   document.getElementById('churnTabela').innerHTML = data.tabelaHtml || '';
   document.getElementById('churnTabela').parentNode.style.display = data.tabelaHtml ? '' : 'none';
   document.getElementById('churnBtnRelatorio').href = '/gestor/churn/relatorio?' + data.query;
+  renderComunidade_(data.comunidade, data.total);
   renderAnaliseChurn_(data.analise, data.iaDisponivel, data.total);
 }
 
@@ -1889,6 +2143,7 @@ function churnPublicar_() {
 function inicializarChurn() {
   try {
     churnPopularRef_();
+    churnLerUrl_();
     document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (b) {
       b.addEventListener('click', function () {
         document.querySelectorAll('#churnGranularidade .toggle-btn').forEach(function (x) { x.classList.remove('active'); });
@@ -1904,7 +2159,22 @@ function inicializarChurn() {
       churnEstado_.categoria = v.indexOf('cat:') === 0 ? v.slice(4) : '';
       carregarChurn();
     });
-    document.getElementById('churnProduto').addEventListener('change', function () { churnEstado_.produto = this.value; carregarChurn(); });
+    document.getElementById('churnProdutoBtn').addEventListener('click', function () {
+      churnAbrirProdutos_(document.getElementById('churnProdutoPop').hidden);
+    });
+    document.getElementById('churnProdutoTodos').addEventListener('click', function () {
+      churnEstado_.produtos = null; churnEstado_.comunidade = true;
+      churnSincronizarChecks_(); churnAgendar_();
+    });
+    document.getElementById('churnProdutoLimpar').addEventListener('click', function () {
+      churnEstado_.produtos = []; churnEstado_.comunidade = false;
+      churnSincronizarChecks_(); churnAgendar_();
+    });
+    document.addEventListener('click', function (ev) {
+      var wrap = document.getElementById('churnProdutoWrap');
+      if (wrap && !wrap.contains(ev.target)) churnAbrirProdutos_(false);
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') churnAbrirProdutos_(false); });
     document.getElementById('churnTexto').addEventListener('input', function () { churnConfirmarGerar_ = false; churnAtualizarBotoes_(); });
     document.getElementById('churnBtnGerar').addEventListener('click', churnGerar_);
     document.getElementById('churnBtnSalvar').addEventListener('click', churnSalvar_);
@@ -1934,7 +2204,7 @@ function inicializarChurn() {
 carregarVisaoGeral();
 
 // link direto /gestor#churn (usado pelo "Voltar ao painel" do relatório de churn)
-if (window.location.hash === '#churn') {
+if (window.location.hash === '#churn' || new URLSearchParams(window.location.search).has('granularidade')) {
   var btnAbaChurn_ = document.querySelector('.tab-btn[data-tab="churn"]');
   if (btnAbaChurn_) btnAbaChurn_.click();
 }

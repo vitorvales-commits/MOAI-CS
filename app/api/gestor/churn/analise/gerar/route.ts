@@ -1,5 +1,5 @@
 // POST /api/gestor/churn/analise/gerar — gera o rascunho da análise de churn com a API da
-// Anthropic (onda 1, 30/09/2026). Corpo: { granularidade, ref, cs?, produto?, categoria? }.
+// Anthropic (onda 1, 30/09/2026). Corpo: { granularidade, ref, cs?, produtos?, comunidade?, categoria? }.
 //
 // Ordem, de propósito:
 //   1. sessão de gestor (requireMoaiUser + isGestor), 403 para qualquer outro;
@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, authErrorResponse, AuthError } from '@/lib/auth';
 import {
   parseRecorte, RecorteInvalido, iaDisponivel, buscarSerie, buscarItens, buscarTermosIdentificaveis,
-  montarContextoIA, gerarRascunhoIA, IaRecusou, argsRecorteEscrita,
+  montarContextoIA, gerarRascunhoIA, IaRecusou, argsRecorteEscrita, buscarHashRecorte, validarCsAtivo,
 } from '@/lib/churn';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Requisição inválida.' }, { status: 400 });
     }
     const recorte = parseRecorte(body || {});
+    await validarCsAtivo(supabase, recorte);
     const resource = `${recorte.granularidade}|${recorte.inicio}|${recorte.fim}`;
 
     const { error: limiteErro } = await supabase.rpc('reservar_geracao_churn_ia', { p_resource: resource });
@@ -46,10 +47,11 @@ export async function POST(req: NextRequest) {
       throw new Error('reservar_geracao_churn_ia: ' + limiteErro.message);
     }
 
-    const [serie, itens, termos] = await Promise.all([
+    const [serie, itens, termos, baseHash] = await Promise.all([
       buscarSerie(supabase, recorte),
       buscarItens(supabase, recorte),
       buscarTermosIdentificaveis(supabase),
+      buscarHashRecorte(supabase, recorte),
     ]);
     if (!serie.total) {
       return NextResponse.json({ error: 'Não há churn neste recorte para analisar.' }, { status: 400 });
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const { texto, modelo } = await gerarRascunhoIA(montarContextoIA(recorte, serie, itens, termos));
     const { error: gravarErro } = await supabase.rpc('registrar_rascunho_churn_ia', {
-      ...argsRecorteEscrita(recorte), p_texto_ia: texto, p_modelo_ia: modelo,
+      ...argsRecorteEscrita(recorte), p_texto_ia: texto, p_modelo_ia: modelo, p_base_hash: baseHash,
     });
     if (gravarErro) throw new Error('registrar_rascunho_churn_ia: ' + gravarErro.message);
 
