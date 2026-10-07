@@ -11,7 +11,7 @@
 // alertas e a divergência continuam vindo prontos de generateVisaoGestor() em lib/reports.ts; este
 // arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
 
-import { FAIXAS_PRESENCA } from '@/lib/constants';
+import { FAIXAS_PRESENCA } from '../lib/constants.ts';
 
 export const GESTOR_STYLE = `
 :root{

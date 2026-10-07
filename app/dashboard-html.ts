@@ -12,7 +12,11 @@
 // de corrupção que já aconteceu neste arquivo com base64 grande colado à mão (ver
 // claude/migracao_vercel_supabase.md, lição sobre assets de imagem). A máscara --m-white abaixo
 // é a exceção: continua em base64 porque é usada como mask-image em CSS, não como <img>.
-import { SEMAFORO_CONFIRMADOS, AGENDA_PASSADO_COR, SEMAFORO_NEUTRO, AGENDA_DURACAO_CONSELHO_MIN } from '@/lib/constants';
+import {
+  SEMAFORO_CONFIRMADOS, AGENDA_PASSADO_COR, SEMAFORO_NEUTRO, AGENDA_DURACAO_CONSELHO_MIN,
+  REPORT_COMO_FOI_SEMANA, REPORT_STATUS_CHECKLIST, REPORT_CHECKLISTS, REPORT_VALIDADE_DIAS,
+} from '../lib/constants.ts';
+import { casaBusca } from '../lib/indicadores-base.ts';
 
 export const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="pt-br">
@@ -418,6 +422,89 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .advertencia-resumo-label { font-size:11.5px; color:#807E7E; margin-top:4px; }
 .advertencia-resumo.destaque { background:#FBEEEC; border-color:#EBC6C0; }
 .advertencia-resumo.destaque .advertencia-resumo-num { color:#C0433D; }
+/* ===== aba Report, report individual semanal (07/10/2026) ===== */
+.report-topo { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+.report-semana-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.report-semana-label { font-size:13px; font-weight:800; color:#1A1A1A; }
+.agenda-nav-btn:disabled { opacity:0.35; cursor:default; }
+.report-selo { font-size:10px; font-weight:800; padding:4px 11px; border-radius:999px; white-space:nowrap; }
+.report-selo.ok { background:#3A845A; color:#fff; }
+.report-selo.pendente { background:#E9C23B; color:#1A1A1A; }
+.report-selo.alerta { background:#E8833A; color:#1A1A1A; }
+.report-selo.neutro { background:#EEECEC; color:#5D5D5D; }
+.report-health { display:inline-flex; align-items:center; gap:10px; background:#1A1A1A; color:#fff; border-radius:16px; padding:10px 16px; }
+.report-health-label { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:#D4AF37; }
+.report-health-valor { font-family:'Bricolage Grotesque',sans-serif; font-size:22px; font-weight:800; line-height:1; }
+.report-form { display:block; }
+.report-secao { background:#fff; border:0.75pt solid #D8D5D5; border-radius:18px; padding:18px 20px; margin-bottom:16px; }
+.report-secao h3 { font-family:'Bricolage Grotesque',sans-serif; font-size:15px; font-weight:800; color:#1A1A1A; margin-bottom:12px; }
+.report-ajuda { font-size:11.5px; color:#807E7E; line-height:1.6; margin:4px 0 10px; }
+.report-erro-texto { color:#C0433D; font-weight:700; }
+.report-linha { display:flex; gap:12px; flex-wrap:wrap; }
+.report-campo { display:flex; flex-direction:column; gap:6px; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#5D5D5D; flex:1 1 160px; margin-bottom:12px; }
+.report-campo-largo { flex:1 1 100%; }
+.report-campo input, .report-campo select, .report-campo textarea { font-family:'Inter',sans-serif; font-size:13px; font-weight:500; text-transform:none; letter-spacing:0; color:#1A1A1A; background:#fff; border:0.75pt solid #C6C4C4; border-radius:10px; padding:9px 11px; width:100%; }
+.report-campo textarea { min-height:70px; resize:vertical; }
+.report-campo input:focus, .report-campo select:focus, .report-campo textarea:focus { outline:2px solid #1A1A1A; outline-offset:1px; }
+.report-campo input.invalido { border-color:#C0433D; }
+.report-erro { font-size:11px; font-weight:700; text-transform:none; letter-spacing:0; color:#C0433D; min-height:0; }
+.report-opcoes { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.report-opcao { position:relative; cursor:pointer; }
+.report-opcao input { position:absolute; opacity:0; width:1px; height:1px; }
+.report-opcao span { display:inline-block; font-size:12px; font-weight:700; padding:8px 16px; border-radius:999px; border:0.75pt solid #C6C4C4; color:#5D5D5D; background:#fff; }
+.report-opcao input:focus-visible + span { outline:2px solid #1A1A1A; outline-offset:2px; }
+.report-opcao-fluindo input:checked + span { background:#3A845A; border-color:#3A845A; color:#fff; }
+.report-opcao-atencao input:checked + span { background:#E9C23B; border-color:#E9C23B; color:#1A1A1A; }
+.report-opcao-critica input:checked + span { background:#C0433D; border-color:#C0433D; color:#fff; }
+.report-rastreio { display:flex; gap:12px; flex-wrap:wrap; }
+.report-rastreio > .report-campo { flex:1 1 220px; }
+.report-combo-wrap { position:relative; }
+.report-combo-wrap label { font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#5D5D5D; }
+.report-lista { display:none; position:absolute; left:0; right:0; top:100%; z-index:5; list-style:none; margin:4px 0 0; padding:4px; background:#fff; border:0.75pt solid #C6C4C4; border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,0.12); max-height:260px; overflow-y:auto; text-transform:none; letter-spacing:0; }
+.report-opt { display:flex; flex-direction:column; gap:1px; padding:8px 10px; border-radius:8px; cursor:pointer; }
+.report-opt.ativo, .report-opt:hover { background:#F1EFEF; }
+.report-opt-nome { font-size:13px; font-weight:600; color:#1A1A1A; }
+.report-opt-conselho { font-size:10.5px; font-weight:500; color:#807E7E; }
+.report-lista-vazia { padding:10px; font-size:12px; color:#807E7E; font-weight:500; }
+.report-contador { font-size:13px; font-weight:800; color:#1A1A1A; margin:2px 0 10px; }
+.report-chips { margin-bottom:12px; }
+.report-chip-grupo { margin-bottom:8px; }
+.report-chip-conselho { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#9F9F9F; margin-bottom:5px; }
+.report-chip { display:inline-flex; align-items:center; gap:6px; background:#FBEEEC; border:0.75pt solid #EBC6C0; color:#1A1A1A; border-radius:999px; padding:5px 6px 5px 12px; font-size:12px; font-weight:600; margin:0 6px 6px 0; }
+.report-chip button { border:none; background:#C0433D; color:#fff; width:20px; height:20px; border-radius:50%; font-size:13px; line-height:1; cursor:pointer; }
+.report-chip button:focus-visible { outline:2px solid #1A1A1A; outline-offset:1px; }
+.report-btn-sec { font-family:'Inter',sans-serif; font-size:11.5px; font-weight:700; color:#1A1A1A; background:#fff; border:0.75pt solid #C6C4C4; border-radius:999px; padding:7px 14px; cursor:pointer; margin-bottom:14px; }
+.report-btn-sec:hover { background:#F5F5F5; }
+.report-acoes { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+.report-status { font-size:12px; font-weight:700; color:#5D5D5D; }
+.report-status.ok { color:#3A845A; }
+.report-status.erro { color:#C0433D; }
+.report-leitura { background:#fff; border:0.75pt solid #D8D5D5; border-radius:18px; padding:18px 20px; margin-bottom:16px; }
+.report-atuais { list-style:none; padding:0; margin:0; }
+.report-atuais li { display:flex; flex-wrap:wrap; gap:4px 12px; align-items:baseline; padding:8px 0; border-bottom:0.75pt solid #EEECEC; }
+.report-atuais li:last-child { border-bottom:none; }
+.report-atual-nome { font-size:13px; font-weight:700; color:#1A1A1A; }
+.report-atual-conselho { font-size:11px; color:#807E7E; }
+.report-atual-tempo { font-size:11px; font-weight:700; color:#C0433D; margin-left:auto; }
+.report-grafico { margin-bottom:12px; background:#1A1A1A; border-radius:16px; padding:10px 12px; }
+.report-hist-wrap { overflow-x:auto; }
+.report-hist { width:100%; border-collapse:collapse; font-size:12px; }
+.report-hist th { text-align:left; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#9F9F9F; padding:6px 8px; border-bottom:0.75pt solid #D8D5D5; }
+.report-hist td { padding:8px; border-bottom:0.75pt solid #EEECEC; color:#1A1A1A; white-space:nowrap; }
+.report-hist .num { text-align:right; }
+.report-hist-linha { cursor:pointer; }
+.report-hist-linha:hover, .report-hist-linha:focus { background:#F7F6F6; outline:none; }
+.report-tag { font-size:9px; font-weight:800; color:#807E7E; background:#EEECEC; border-radius:999px; padding:2px 7px; margin-left:4px; }
+.report-como { font-size:10.5px; font-weight:800; padding:3px 9px; border-radius:999px; }
+.report-como-fluindo { background:#3A845A; color:#fff; }
+.report-como-atencao { background:#E9C23B; color:#1A1A1A; }
+.report-como-critica { background:#C0433D; color:#fff; }
+.report-check { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:3px; background:#D8D5D5; }
+.report-check-feito { background:#3A845A; }
+.report-check-em_andamento { background:#E9C23B; }
+.report-check-parado { background:#C0433D; }
+@media (max-width:700px){ .report-health { width:100%; justify-content:space-between; } .report-atual-tempo { margin-left:0; } }
+
 .advertencia-resumo.destaque .advertencia-resumo-label { color:#C0433D; font-weight:700; }
 
 /* ===== agenda visual (Parte C, 28/09/2026) ===== */
@@ -626,6 +713,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div class="tab" onclick="showTab('conselhos',event)">Conselhos</div>
     <div class="tab" onclick="showTab('umaum',event)">1:1</div>
     <div class="tab" onclick="showTab('advertencias',event)">Advertências</div>
+    <div class="tab" onclick="showTab('report',event)">Report</div>
     <div class="tab" onclick="showTab('feedbacks',event)">Feedbacks</div>
   </div>
   <div class="pessoa-conteudo">
@@ -634,6 +722,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
     <div id="conselhos" class="panel"></div>
     <div id="umaum" class="panel"></div>
     <div id="advertencias" class="panel"></div>
+    <div id="report" class="panel"></div>
     <div id="feedbacks" class="panel"></div>
   </div>
 </div>
@@ -960,6 +1049,8 @@ function abrirPessoa(nome){
   carregarUmAUm(nome);
   document.getElementById('advertencias').innerHTML = '<div class="empty-state">Carregando...</div>';
   carregarAdvertencias(nome);
+  reportDados_ = null;
+  carregarReport(nome);
 }
 function atualizarBadgeDestaque(nome){
   google.script.run.withSuccessHandler(function(vezes){
@@ -1107,6 +1198,7 @@ function formatarMesAbrevAno(iso){
 // membro apurado mostra "Sem apuração", nunca zero. Não há recorde calculado para ele (o histórico
 // de recorde no banco era do valor manual), então o selo de recorde é omitido.
 function valorKpiTexto_(ind, unidade){
+  if (ind.statusReport === 'sem_report') return 'Sem report';
   if (ind.semApuracao) return 'Sem apuração';
   if (ind.alcancado===null||ind.alcancado===undefined) return '—';
   if (ind.composicao) return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
@@ -1114,7 +1206,9 @@ function valorKpiTexto_(ind, unidade){
 }
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   var c = calcIndicador(ind);
-  if (ind.semApuracao) { c.pctLabel = 'Sem apuração'; c.pillLabel = 'Sem apuração'; }
+  if (ind.statusReport === 'sem_report') { c.pctLabel = 'Sem report'; c.pillLabel = 'Sem report'; }
+  else if (ind.semApuracao) { c.pctLabel = 'Sem apuração'; c.pillLabel = 'Sem apuração'; }
+  else if (ind.statusReport === 'desatualizado') { c.pillLabel = 'Desatualizado'; c.pill = 'py'; }
   if (ind.composicao) recorde = null;
   var valorMostrado = valorKpiTexto_(ind, unidade);
   var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
@@ -2810,6 +2904,358 @@ function showTab(id, e){
   document.getElementById(id).classList.add('active');
   e.target.classList.add('active');
 }
+
+// ============ report individual semanal (07/10/2026) ============
+// Aba Report da página do CS: substitui o board Reports Individuais CS do Monday a partir da data
+// de corte. Duas chamadas ao abrir: /report (semana, histórico, críticos atuais, Health) e
+// /report/membros (base do CS com o conselho de cada membro). Os críticos são escolhidos por nome
+// e a contagem é feita no servidor; o Health da Base vem pronto do servidor (calcularHealthBase).
+var REPORT_COMO_FOI_ = ${JSON.stringify(REPORT_COMO_FOI_SEMANA)};
+var REPORT_STATUS_CHECK_ = ${JSON.stringify(REPORT_STATUS_CHECKLIST)};
+var REPORT_CHECKLISTS_ = ${JSON.stringify(REPORT_CHECKLISTS)};
+var REPORT_VALIDADE_DIAS_ = ${REPORT_VALIDADE_DIAS};
+// Busca por nome: o próprio código de casaBusca (lib/indicadores-base.ts), uma regra só.
+var casaBusca_ = ${casaBusca.toString()};
+var REPORT_CAMPOS_NUM_ = ['baixo_engajamento','medio_engajamento','alto_engajamento','indicacoes','matchmakings','churns_revertidos','pedidos_churn'];
+
+var reportCS_ = null, reportSemana_ = null, reportDados_ = null, reportMembros_ = null;
+var reportSelecionados_ = {}, reportConselho_ = '__todos', reportBusca_ = '', reportAtivo_ = -1, reportReq_ = 0;
+
+function escR_(s){ return String(s === null || s === undefined ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDecR_(d){ return d === null || d === undefined ? null : (d / 10).toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }); }
+function dataCurtaR_(iso){ if (!iso) return ''; var p = String(iso).slice(0,10).split('-'); return p[2] + '/' + p[1]; }
+function somarDiasR_(iso, n){ var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0,10); }
+function rotuloSemanaR_(seg){ var fim = somarDiasR_(seg, 6); return 'Semana de ' + dataCurtaR_(seg) + ' a ' + dataCurtaR_(fim) + '/' + fim.slice(0,4); }
+
+function carregarReport(nome, semana){
+  var meu = ++reportReq_;
+  reportCS_ = nome;
+  var el = document.getElementById('report');
+  if (!reportDados_ || reportDados_.cs !== nome) el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  var urlRep = '/api/cs/' + encodeURIComponent(nome) + '/report' + (semana ? '?semana=' + encodeURIComponent(semana) : '');
+  var pMembros = (reportMembros_ && reportMembros_.cs === nome) ? Promise.resolve(reportMembros_)
+    : fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '/report/membros').then(function(d){ return { cs: nome, lista: d.membros || [] }; });
+  return Promise.all([fetchJSON_(urlRep), pMembros]).then(function(r){
+    if (meu !== reportReq_ || currentCS !== nome) return;
+    reportDados_ = r[0];
+    reportMembros_ = r[1];
+    reportSemana_ = reportDados_.semana;
+    reportSelecionados_ = {};
+    var rep = reportDados_.report;
+    if (rep && rep.origem === 'nativo') (rep.criticos || []).forEach(function(c){ reportSelecionados_[c.membro_id] = { membro_id: c.membro_id, nome: c.nome, group_id: c.group_id }; });
+    reportConselho_ = '__todos'; reportBusca_ = ''; reportAtivo_ = -1;
+    renderAbaReport();
+  }).catch(function(err){
+    if (meu !== reportReq_) return;
+    el.innerHTML = '<div class="empty-state">Erro ao carregar o report: ' + escR_(err.message) + '</div>';
+  });
+}
+
+function reportConselhos_(){
+  var mapa = {}, ordem = [];
+  (reportMembros_ ? reportMembros_.lista : []).forEach(function(m){
+    if (!mapa[m.group_id]) { mapa[m.group_id] = { group_id: m.group_id, conselho: m.conselho, total: 0 }; ordem.push(m.group_id); }
+    mapa[m.group_id].total++;
+  });
+  return ordem.map(function(g){ return mapa[g]; });
+}
+function reportNomeConselho_(groupId){
+  var lista = reportMembros_ ? reportMembros_.lista : [];
+  for (var i = 0; i < lista.length; i++) if (lista[i].group_id === groupId) return lista[i].conselho;
+  return 'Conselho fora da base atual';
+}
+function reportQtdSelecionados_(){ return Object.keys(reportSelecionados_).length; }
+function reportBase_(){ return reportMembros_ ? reportMembros_.lista.length : 0; }
+
+function reportHealthHtml_(h){
+  if (!h) return '';
+  var selo = h.statusReport === 'desatualizado' ? '<span class="report-selo alerta">Desatualizado</span>' : '';
+  var valor = h.healthBaseDecimos === null || h.healthBaseDecimos === undefined ? (h.statusReport === 'sem_report' ? 'Sem report' : 'Sem apuração') : fmtDecR_(h.healthBaseDecimos) + '%';
+  return '<div class="report-health" title="' + escR_(h.composicao || '') + '" aria-label="Health da Base: ' + escR_(h.composicao || valor) + '">' +
+    '<span class="report-health-label">Health da Base</span><span class="report-health-valor">' + escR_(valor) + '</span>' + selo + '</div>';
+}
+
+function renderAbaReport(){
+  var d = reportDados_; if (!d) return;
+  var rep = d.report;
+  var enviado = !!rep;
+  var proxima = somarDiasR_(d.semana, 7);
+  var html = '<div class="report-topo">' +
+    '<div class="report-semana-nav">' +
+      '<button type="button" class="agenda-nav-btn" data-report-acao="semana" data-semana="' + somarDiasR_(d.semana, -7) + '" aria-label="Semana anterior">&lsaquo;</button>' +
+      '<div class="report-semana-label">' + escR_(rotuloSemanaR_(d.semana)) + '</div>' +
+      '<button type="button" class="agenda-nav-btn" data-report-acao="semana" data-semana="' + proxima + '" aria-label="Próxima semana"' + (proxima > d.semanaAtual ? ' disabled' : '') + '>&rsaquo;</button>' +
+      '<span class="report-selo ' + (enviado ? 'ok' : 'pendente') + '">' + (enviado ? 'Enviado' : 'Pendente') + '</span>' +
+      (rep && rep.origem === 'monday' ? '<span class="report-selo neutro">Importado do Monday</span>' : '') +
+    '</div>' + reportHealthHtml_(d.health) + '</div>';
+
+  if (rep && rep.origem === 'monday') html += reportImportadoHtml_(rep);
+  else if (d.podeEditar) html += reportFormHtml_(rep);
+  else if (rep) html += reportLeituraHtml_(rep);
+  else html += '<div class="empty-state">Nenhum report enviado nesta semana. A edição fica aberta só para a semana atual e a anterior.</div>';
+
+  html += reportCriticosAtuaisHtml_() + reportHistoricoHtml_();
+  var el = document.getElementById('report');
+  el.innerHTML = html;
+  if (d.podeEditar && !(rep && rep.origem === 'monday')) { renderReportChips_(); renderReportLista_(false); atualizarReportContador_(); }
+}
+
+function reportValor_(rep, campo){ return rep && rep[campo] !== null && rep[campo] !== undefined ? rep[campo] : ''; }
+function reportCampoNum_(rep, campo, rotulo){
+  return '<label class="report-campo">' + rotulo + '<input type="number" min="0" step="1" inputmode="numeric" id="rep_' + campo + '" value="' + escR_(reportValor_(rep, campo)) + '"><span class="report-erro" id="rep_erro_' + campo + '"></span></label>';
+}
+function reportFormHtml_(rep){
+  var como = reportValor_(rep, 'como_foi_semana');
+  var conselhos = reportConselhos_();
+  var anterior = reportDados_.anterior;
+  var h = '<form class="report-form" id="reportForm" novalidate>';
+  h += '<section class="report-secao"><h3>Como foi sua semana</h3><div class="report-opcoes" role="radiogroup" aria-label="Como foi sua semana">' +
+    REPORT_COMO_FOI_.map(function(o){ return '<label class="report-opcao report-opcao-' + o.valor + '"><input type="radio" name="rep_como" value="' + o.valor + '"' + (como === o.valor ? ' checked' : '') + '><span>' + o.rotulo + '</span></label>'; }).join('') +
+    '</div>' +
+    '<div class="report-linha">' + reportCampoNum_(rep, 'nota_semana', 'Nota da semana, de 0 a 10').replace('min="0"', 'min="0" max="10"') + '</div>' +
+    '<label class="report-campo report-campo-largo">O que pode virar problema se a gente ignorar<textarea id="rep_risco_se_ignorar" maxlength="4000">' + escR_(reportValor_(rep, 'risco_se_ignorar')) + '</textarea></label>' +
+    '<label class="report-campo report-campo-largo">Por quê<textarea id="rep_por_que" maxlength="4000">' + escR_(reportValor_(rep, 'por_que')) + '</textarea></label></section>';
+
+  h += '<section class="report-secao"><h3>Base</h3><p class="report-ajuda">Marque pelo nome os membros críticos da sua base. O total de críticos é contado a partir dos nomes escolhidos.</p>';
+  if (!reportBase_()) {
+    h += '<div class="empty-state">Nenhum membro elegível na sua base. Confira se os seus conselhos estão vinculados a você no Monday.</div>';
+  } else {
+    h += '<div class="report-rastreio">' +
+      '<label class="report-campo">Conselho<select id="repConselho">' +
+        '<option value="__todos">Todos os meus conselhos</option>' +
+        conselhos.map(function(c){ return '<option value="' + escR_(c.group_id) + '" data-total="' + c.total + '">' + escR_(c.conselho) + '</option>'; }).join('') +
+      '</select></label>' +
+      '<div class="report-campo report-combo-wrap"><label for="repBusca">Membro</label>' +
+        '<input type="text" id="repBusca" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="repLista" autocomplete="off" placeholder="Digite parte do nome">' +
+        '<ul id="repLista" class="report-lista" role="listbox" aria-label="Membros da base"></ul></div>' +
+    '</div>' +
+    '<div class="report-contador" id="repContador" aria-live="polite"></div>' +
+    '<div class="report-chips" id="repChips"></div>' +
+    (anterior && (anterior.criticos || []).length ? '<button type="button" class="report-btn-sec" data-report-acao="copiar">Copiar críticos da semana anterior</button>' : '') +
+    '<div class="report-linha">' + reportCampoNum_(rep, 'baixo_engajamento', 'Baixo engajamento') + reportCampoNum_(rep, 'medio_engajamento', 'Médio engajamento') + reportCampoNum_(rep, 'alto_engajamento', 'Alto engajamento') + '</div>' +
+    '<div class="report-ajuda" id="repNaoClassificados"></div>';
+  }
+  h += '</section>';
+
+  h += '<section class="report-secao"><h3>Resultados da semana</h3><div class="report-linha">' +
+    reportCampoNum_(rep, 'indicacoes', 'Indicações coletadas') + reportCampoNum_(rep, 'matchmakings', 'Matchmakings realizados') +
+    reportCampoNum_(rep, 'churns_revertidos', 'Churns revertidos') + reportCampoNum_(rep, 'pedidos_churn', 'Pedidos de churn') + '</div></section>';
+
+  h += '<section class="report-secao"><h3>Rotina</h3>' + REPORT_CHECKLISTS_.map(function(c){
+    var v = reportValor_(rep, c.campo);
+    return '<label class="report-campo report-campo-largo">' + escR_(c.rotulo) + '<select id="rep_' + c.campo + '"><option value="">Não informado</option>' +
+      REPORT_STATUS_CHECK_.map(function(s){ return '<option value="' + s.valor + '"' + (v === s.valor ? ' selected' : '') + '>' + s.rotulo + '</option>'; }).join('') + '</select></label>';
+  }).join('') + '</section>';
+
+  h += '<div class="report-acoes"><button type="submit" class="destaque-form-btn" id="repSalvar">' + (rep ? 'Salvar alterações' : 'Enviar report') + '</button>' +
+    '<span class="report-status" id="repStatus" role="status" aria-live="polite"></span></div></form>';
+  return h;
+}
+
+function reportLeituraHtml_(rep){
+  var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === rep.como_foi_semana; })[0];
+  var crit = rep.criticos || [];
+  return '<div class="report-leitura">' +
+    '<div class="umaum-card-campo"><b>Como foi a semana</b>' + escR_(como ? como.rotulo : 'Não informado') + (rep.nota_semana !== null && rep.nota_semana !== undefined ? ', nota ' + rep.nota_semana : '') + '</div>' +
+    (rep.risco_se_ignorar ? '<div class="umaum-card-campo"><b>O que pode virar problema</b>' + escR_(rep.risco_se_ignorar) + '</div>' : '') +
+    (rep.por_que ? '<div class="umaum-card-campo"><b>Por quê</b>' + escR_(rep.por_que) + '</div>' : '') +
+    '<div class="umaum-card-campo"><b>Críticos</b>' + (crit.length ? crit.map(function(c){ return escR_(c.nome); }).join(', ') : 'Nenhum') + ' (' + rep.criticos_total + ' de ' + rep.base_total + ')</div>' +
+  '</div>';
+}
+function reportImportadoHtml_(rep){
+  var pct = rep.base_total ? fmtDecR_(Math.floor((rep.criticos_total * 2000 + rep.base_total) / (2 * rep.base_total))) : null;
+  return '<div class="report-leitura"><p class="report-ajuda">Report importado do board do Monday. Os críticos foram digitados como número, sem nomes; a base é a declarada pelo CS no board.' +
+    (reportDados_.podeEditar ? ' Enviar um report nativo nesta semana substitui o importado.' : '') + '</p>' +
+    '<div class="umaum-card-campo"><b>Críticos declarados</b>' + (rep.criticos_total === null ? 'Não informado' : rep.criticos_total + ' de ' + rep.base_total + (pct ? ' (' + pct + '%)' : '')) + '</div>' +
+    (reportDados_.podeEditar ? '<button type="button" class="report-btn-sec" data-report-acao="substituir">Enviar report nativo desta semana</button>' : '') +
+  '</div>';
+}
+
+function reportCriticosAtuaisHtml_(){
+  var lista = reportDados_.criticosAtuais || [];
+  if (!lista.length) return '';
+  return '<section class="report-secao"><h3>Críticos atuais</h3><ul class="report-atuais">' + lista.map(function(c){
+    var semanas = c.semanas_consecutivas || 1;
+    return '<li><span class="report-atual-nome">' + escR_(c.nome) + '</span><span class="report-atual-conselho">' + escR_(reportNomeConselho_(c.group_id)) + '</span>' +
+      '<span class="report-atual-tempo">' + (semanas === 1 ? 'há 1 semana' : 'há ' + semanas + ' semanas') + (c.critico_desde ? ', desde ' + dataCurtaR_(c.critico_desde) : '') + '</span></li>';
+  }).join('') + '</ul></section>';
+}
+
+function reportHistoricoHtml_(){
+  var hist = reportDados_.historico || [];
+  if (!hist.length) return '<section class="report-secao"><h3>Histórico</h3><div class="empty-state">Nenhum report registrado ainda.</div></section>';
+  var pontos = hist.slice().reverse().filter(function(r){ return r.percentualDecimos !== null && r.percentualDecimos !== undefined; })
+    .map(function(r){ return { v: r.percentualDecimos / 10, lbl: dataCurtaR_(r.semana_inicio) }; });
+  var rotCheck = { feito:'Feito', em_andamento:'Em andamento', parado:'Parado' };
+  var linhas = hist.map(function(r){
+    var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === r.como_foi_semana; })[0];
+    var checks = REPORT_CHECKLISTS_.map(function(c){ var v = r[c.campo]; return '<span class="report-check report-check-' + (v || 'nulo') + '" title="' + escR_(c.rotulo + ': ' + (rotCheck[v] || 'Não informado')) + '"></span>'; }).join('');
+    return '<tr data-report-acao="semana" data-semana="' + r.semana_inicio + '" tabindex="0" class="report-hist-linha">' +
+      '<td>' + dataCurtaR_(r.semana_inicio) + (r.origem === 'monday' ? ' <span class="report-tag">Monday</span>' : '') + '</td>' +
+      '<td>' + (como ? '<span class="report-como report-como-' + como.valor + '">' + como.rotulo + '</span>' : 'Não informado') + '</td>' +
+      '<td class="num">' + (r.percentualDecimos === null || r.percentualDecimos === undefined ? 'Sem apuração' : fmtDecR_(r.percentualDecimos) + '%') + '</td>' +
+      '<td class="num">' + (r.healthDecimos === null || r.healthDecimos === undefined ? 'Sem apuração' : fmtDecR_(r.healthDecimos) + '%') + '</td>' +
+      '<td>' + checks + '</td></tr>';
+  }).join('');
+  return '<section class="report-secao"><h3>Histórico</h3>' +
+    (pontos.length >= 2 ? '<div class="report-grafico" role="img" aria-label="Percentual de críticos por semana">' + lineChart(pontos, '#C0433D') + '</div>' : '') +
+    '<div class="report-hist-wrap"><table class="report-hist"><thead><tr><th>Semana</th><th>Como foi</th><th class="num">Críticos</th><th class="num">Health da Base</th><th>Rotina</th></tr></thead><tbody>' + linhas + '</tbody></table></div></section>';
+}
+
+// ---- rastreio de críticos: menu dependente com busca ----
+function reportResultados_(){
+  var lista = reportMembros_ ? reportMembros_.lista : [];
+  return lista.filter(function(m){
+    if (reportConselho_ !== '__todos' && m.group_id !== reportConselho_) return false;
+    if (reportSelecionados_[m.membro_id]) return false;
+    return casaBusca_(reportBusca_, m.nome);
+  }).slice(0, 60);
+}
+function renderReportLista_(aberta){
+  var ul = document.getElementById('repLista'), inp = document.getElementById('repBusca');
+  if (!ul || !inp) return;
+  var res = reportResultados_();
+  if (reportAtivo_ >= res.length) reportAtivo_ = res.length - 1;
+  inp.setAttribute('aria-expanded', aberta ? 'true' : 'false');
+  ul.style.display = aberta ? 'block' : 'none';
+  if (!aberta) { inp.removeAttribute('aria-activedescendant'); return; }
+  if (!res.length) { ul.innerHTML = '<li class="report-lista-vazia" role="option" aria-disabled="true">' + (reportConselho_ !== '__todos' && !reportBusca_ ? 'Nenhum membro disponível neste conselho.' : 'Nenhum membro encontrado.') + '</li>'; inp.removeAttribute('aria-activedescendant'); return; }
+  ul.innerHTML = res.map(function(m, i){
+    return '<li role="option" id="repOpt' + i + '" data-membro="' + m.membro_id + '" class="report-opt' + (i === reportAtivo_ ? ' ativo' : '') + '" aria-selected="' + (i === reportAtivo_) + '">' +
+      '<span class="report-opt-nome">' + escR_(m.nome) + '</span><span class="report-opt-conselho">' + escR_(m.conselho) + '</span></li>';
+  }).join('');
+  if (reportAtivo_ >= 0) { inp.setAttribute('aria-activedescendant', 'repOpt' + reportAtivo_); var at = document.getElementById('repOpt' + reportAtivo_); if (at && at.scrollIntoView) at.scrollIntoView({ block: 'nearest' }); }
+  else inp.removeAttribute('aria-activedescendant');
+}
+function reportAdicionar_(membroId){
+  var lista = reportMembros_ ? reportMembros_.lista : [];
+  for (var i = 0; i < lista.length; i++) if (String(lista[i].membro_id) === String(membroId)) { reportSelecionados_[lista[i].membro_id] = lista[i]; break; }
+  reportBusca_ = ''; reportAtivo_ = -1;
+  var inp = document.getElementById('repBusca'); if (inp) { inp.value = ''; inp.focus(); }
+  renderReportChips_(); renderReportLista_(true); atualizarReportContador_();
+}
+function renderReportChips_(){
+  var el = document.getElementById('repChips'); if (!el) return;
+  var porConselho = {}, ordem = [];
+  Object.keys(reportSelecionados_).forEach(function(k){
+    var m = reportSelecionados_[k]; var g = m.group_id || '';
+    if (!porConselho[g]) { porConselho[g] = []; ordem.push(g); }
+    porConselho[g].push(m);
+  });
+  if (!ordem.length) { el.innerHTML = '<div class="report-ajuda">Nenhum crítico marcado nesta semana.</div>'; return; }
+  el.innerHTML = ordem.map(function(g){
+    return '<div class="report-chip-grupo"><div class="report-chip-conselho">' + escR_(reportNomeConselho_(g)) + '</div>' +
+      porConselho[g].sort(function(a,b){ return a.nome.localeCompare(b.nome); }).map(function(m){
+        return '<span class="report-chip">' + escR_(m.nome) + '<button type="button" data-report-acao="remover" data-membro="' + m.membro_id + '" aria-label="Remover ' + escR_(m.nome) + '">&times;</button></span>';
+      }).join('') + '</div>';
+  }).join('');
+}
+function atualizarReportContador_(){
+  var el = document.getElementById('repContador'); if (!el) return;
+  var n = reportQtdSelecionados_(), base = reportBase_();
+  var pct = base ? fmtDecR_(Math.floor((n * 2000 + base) / (2 * base))) : null;
+  el.textContent = n + (n === 1 ? ' crítico' : ' críticos') + ' de ' + base + ' membros' + (pct ? ', ' + pct + '%' : '');
+  var sel = document.getElementById('repConselho');
+  if (sel) Array.prototype.forEach.call(sel.options, function(o){
+    if (o.value === '__todos') return;
+    var marcados = Object.keys(reportSelecionados_).filter(function(k){ return reportSelecionados_[k].group_id === o.value; }).length;
+    o.textContent = reportNomeConselho_(o.value) + (marcados ? ' (' + marcados + ' marcado' + (marcados === 1 ? '' : 's') + ')' : '');
+  });
+  var nc = document.getElementById('repNaoClassificados');
+  if (nc) {
+    var soma = n; ['baixo_engajamento','medio_engajamento','alto_engajamento'].forEach(function(c){ var v = parseInt((document.getElementById('rep_' + c) || {}).value, 10); if (!isNaN(v)) soma += v; });
+    nc.textContent = soma > base ? 'Críticos mais baixo, médio e alto engajamento somam ' + soma + ', acima da base de ' + base + ' membros.' : 'Não classificados: ' + (base - soma) + ' membros.';
+    nc.className = 'report-ajuda' + (soma > base ? ' report-erro-texto' : '');
+  }
+}
+
+function reportColetar_(){
+  var dados = {}; var erros = {};
+  var como = document.querySelector('input[name="rep_como"]:checked');
+  dados.como_foi_semana = como ? como.value : '';
+  ['risco_se_ignorar','por_que'].forEach(function(c){ dados[c] = (document.getElementById('rep_' + c) || {}).value || ''; });
+  ['nota_semana'].concat(REPORT_CAMPOS_NUM_).forEach(function(c){
+    var el = document.getElementById('rep_' + c); if (!el) return;
+    var v = String(el.value || '').trim(); dados[c] = v;
+    if (v !== '' && !/^[0-9]+$/.test(v)) erros[c] = 'Use um número inteiro, sem sinal.';
+    else if (c === 'nota_semana' && v !== '' && Number(v) > 10) erros[c] = 'A nota vai de 0 a 10.';
+  });
+  REPORT_CHECKLISTS_.forEach(function(c){ dados[c.campo] = (document.getElementById('rep_' + c.campo) || {}).value || ''; });
+  var soma = reportQtdSelecionados_(); ['baixo_engajamento','medio_engajamento','alto_engajamento'].forEach(function(c){ if (/^[0-9]+$/.test(dados[c] || '')) soma += Number(dados[c]); });
+  if (soma > reportBase_()) erros.alto_engajamento = 'Críticos mais os três níveis passam da base de ' + reportBase_() + ' membros.';
+  return { dados: dados, erros: erros };
+}
+function salvarReport(){
+  var c = reportColetar_();
+  document.querySelectorAll('#report .report-erro').forEach(function(e){ e.textContent = ''; });
+  document.querySelectorAll('#report input.invalido').forEach(function(e){ e.classList.remove('invalido'); });
+  var status = document.getElementById('repStatus');
+  var chaves = Object.keys(c.erros);
+  if (chaves.length) {
+    chaves.forEach(function(k){ var e = document.getElementById('rep_erro_' + k); if (e) e.textContent = c.erros[k]; var i = document.getElementById('rep_' + k); if (i) { i.classList.add('invalido'); i.setAttribute('aria-invalid', 'true'); } });
+    status.className = 'report-status erro'; status.textContent = 'Corrija os campos destacados.';
+    var primeiro = document.getElementById('rep_' + chaves[0]); if (primeiro) primeiro.focus();
+    return;
+  }
+  var btn = document.getElementById('repSalvar'); btn.disabled = true;
+  status.className = 'report-status'; status.textContent = 'Enviando...';
+  var nome = reportCS_, semana = reportSemana_;
+  fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '/report', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ semana: semana, dados: c.dados, criticos: Object.keys(reportSelecionados_).map(Number) }),
+  }).then(function(){
+    return carregarReport(nome, semana).then(function(){
+      var s = document.getElementById('repStatus'); if (s) { s.className = 'report-status ok'; s.textContent = 'Report salvo.'; }
+    });
+  }).catch(function(err){
+    btn.disabled = false; status.className = 'report-status erro'; status.textContent = 'Não foi possível salvar: ' + err.message;
+  });
+}
+
+// Delegação de eventos da aba (sem onclick com texto montado em string).
+function instalarEventosReport_(){
+  var raiz = document.getElementById('report'); if (!raiz || raiz.getAttribute('data-eventos')) return;
+  raiz.setAttribute('data-eventos', '1');
+  raiz.addEventListener('click', function(ev){
+    var alvo = ev.target.closest ? ev.target.closest('[data-report-acao],[data-membro]') : null;
+    if (!alvo) return;
+    var acao = alvo.getAttribute('data-report-acao');
+    if (acao === 'semana') { if (!alvo.disabled) carregarReport(reportCS_, alvo.getAttribute('data-semana')); return; }
+    if (acao === 'remover') { delete reportSelecionados_[alvo.getAttribute('data-membro')]; renderReportChips_(); renderReportLista_(false); atualizarReportContador_(); return; }
+    if (acao === 'copiar') {
+      var ant = reportDados_.anterior; var ids = {}; (reportMembros_.lista || []).forEach(function(m){ ids[m.membro_id] = m; });
+      (ant.criticos || []).forEach(function(c){ if (ids[c.membro_id]) reportSelecionados_[c.membro_id] = ids[c.membro_id]; });
+      renderReportChips_(); atualizarReportContador_();
+      var s = document.getElementById('repStatus'); if (s) { s.className = 'report-status'; s.textContent = 'Críticos da semana anterior pré selecionados. Revise e envie para gravar.'; }
+      return;
+    }
+    if (acao === 'substituir') { reportDados_.report = null; reportSelecionados_ = {}; renderAbaReport(); return; }
+    if (alvo.classList.contains('report-opt')) { ev.preventDefault(); reportAdicionar_(alvo.getAttribute('data-membro')); }
+  });
+  raiz.addEventListener('mousedown', function(ev){ if (ev.target.closest && ev.target.closest('.report-opt')) ev.preventDefault(); });
+  raiz.addEventListener('keydown', function(ev){
+    var linha = ev.target.closest ? ev.target.closest('tr.report-hist-linha') : null;
+    if (linha && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); carregarReport(reportCS_, linha.getAttribute('data-semana')); return; }
+    if (ev.target.id !== 'repBusca') return;
+    var res = reportResultados_();
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); reportAtivo_ = Math.min(res.length - 1, reportAtivo_ + 1); renderReportLista_(true); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); reportAtivo_ = Math.max(0, reportAtivo_ - 1); renderReportLista_(true); }
+    else if (ev.key === 'Enter') { ev.preventDefault(); var esc = res[reportAtivo_ >= 0 ? reportAtivo_ : 0]; if (esc) reportAdicionar_(esc.membro_id); }
+    else if (ev.key === 'Escape') { reportAtivo_ = -1; renderReportLista_(false); }
+  });
+  raiz.addEventListener('input', function(ev){
+    if (ev.target.id === 'repBusca') { reportBusca_ = ev.target.value; reportAtivo_ = res0_(); renderReportLista_(true); return; }
+    if (/^rep_(baixo|medio|alto)_engajamento$/.test(ev.target.id)) atualizarReportContador_();
+  });
+  function res0_(){ return reportResultados_().length ? 0 : -1; }
+  raiz.addEventListener('focusin', function(ev){ if (ev.target.id === 'repBusca') renderReportLista_(true); });
+  raiz.addEventListener('focusout', function(ev){ if (ev.target.id === 'repBusca') setTimeout(function(){ if (document.activeElement && document.activeElement.id !== 'repBusca') renderReportLista_(false); }, 120); });
+  raiz.addEventListener('change', function(ev){
+    if (ev.target.id === 'repConselho') { reportConselho_ = ev.target.value; reportAtivo_ = -1; renderReportLista_(true); var i = document.getElementById('repBusca'); if (i) i.focus(); }
+  });
+  raiz.addEventListener('submit', function(ev){ if (ev.target.id === 'reportForm') { ev.preventDefault(); salvarReport(); } });
+}
+if (document.getElementById('report')) instalarEventosReport_(); else document.addEventListener('DOMContentLoaded', instalarEventosReport_);
 
 // ============ foto de perfil com recorte (brainstorm 29/09/2026) ============
 // Canvas simples, sem biblioteca externa (mesma filosofia zero-dependência do resto do arquivo):
