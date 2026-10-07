@@ -11,6 +11,8 @@
 // alertas e a divergência continuam vindo prontos de generateVisaoGestor() em lib/reports.ts; este
 // arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
 
+import { FAIXAS_PRESENCA } from '@/lib/constants';
+
 export const GESTOR_STYLE = `
 :root{
   --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
@@ -148,6 +150,22 @@ export const GESTOR_STYLE = `
 .kanban-col-critica .kanban-col-head{color:var(--vermelho);}
 .kanban-col-baixa .kanban-col-head{color:#C87A2E;}
 .kanban-col-atencao .kanban-col-head{color:var(--dourado);}
+.kanban-col-head-num{display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-transform:none;letter-spacing:0;white-space:nowrap;}
+.kanban-col-pct{font-size:10.5px;font-weight:600;color:var(--cinza-apoio);}
+.kanban-filtro{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;}
+.kanban-filtro label{font-weight:700;color:var(--cinza-apoio);text-transform:uppercase;font-size:10.5px;letter-spacing:0.04em;}
+.kanban-filtro select{font:inherit;font-size:12.5px;padding:7px 10px;border:1px solid var(--cinza-borda);border-radius:10px;background:var(--branco);}
+.kanban-health{font-size:12.5px;font-weight:700;padding:5px 12px;border-radius:999px;background:var(--cinza-superficie);}
+.kanban-nota{font-size:11px;color:var(--cinza-apoio);margin:-4px 0 12px;}
+.kanban-barras{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.kanban-barra-linha{display:grid;grid-template-columns:110px 1fr 120px;gap:10px;align-items:center;font-size:12px;}
+.kanban-barra-nome{font-weight:700;}
+.kanban-barra{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--cinza-linha);}
+.kanban-barra-seg{height:100%;}
+.kanban-barra-health{font-size:11px;color:var(--cinza-apoio);text-align:right;white-space:nowrap;}
+.kanban-legenda{display:flex;flex-wrap:wrap;gap:12px;font-size:10.5px;color:var(--cinza-apoio);margin-bottom:10px;}
+.kanban-legenda span{display:inline-flex;align-items:center;gap:5px;}
+.kanban-legenda i{width:10px;height:10px;border-radius:3px;display:inline-block;}
 .kanban-col-saudavel .kanban-col-head{color:var(--verde);}
 .kanban-card{background:var(--cinza-superficie);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:12px;}
 .kanban-card:last-child{margin-bottom:0;}
@@ -325,6 +343,7 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
   .form-inline{flex-direction:column;}
   .kanban-grid{grid-template-columns:1fr;}
+  .kanban-barra-linha{grid-template-columns:80px 1fr;} .kanban-barra-health{grid-column:1/-1;text-align:left;}
   .rede-stats{flex-direction:column;align-items:stretch;}
   .tabs{overflow-x:auto;}
   .tab-btn{margin-right:16px;white-space:nowrap;}
@@ -530,6 +549,13 @@ export const GESTOR_HTML = `
           <span class="kanban-toggle-icon">▾</span>
         </button>
         <div class="kanban-body" id="kanbanBody" style="display:none">
+          <div class="kanban-filtro">
+            <label for="kanbanCS">Carteira</label>
+            <select id="kanbanCS"></select>
+            <span class="kanban-health" id="kanbanHealthCS" style="display:none"></span>
+          </div>
+          <div class="kanban-nota" id="kanbanNota"></div>
+          <div id="kanbanBarrasWrap"></div>
           <div class="kanban-grid" id="kanbanGrid"></div>
         </div>
       </div>
@@ -976,7 +1002,8 @@ function renderTabela(modo) {
     var celulas = DADOS.indicadoresOrdem.map(function (k) {
       var i = cs.indicadores[k];
       var unidade = i.unidade === '%' ? '%' : '';
-      var valor = (i.calculado === null || i.calculado === undefined) ? '—' : (i.calculado + unidade);
+      var valor = i.semApuracao ? 'Sem apuração' : ((i.calculado === null || i.calculado === undefined) ? '—' : (i.calculado.toLocaleString('pt-BR') + unidade));
+      if (i.composicao) return '<td class="num" title="' + String(i.composicao).replace(/"/g, '&quot;') + '">' + valor + '</td>';
       if (modo === 'divergencia' && i.manual !== null && i.manual !== undefined) {
         return '<td class="num">' + valor + ' <span style="color:var(--cinza-apoio)">(decl. ' + i.manual + unidade + ')</span>' + divergTag(i.manual, i.calculado) + '</td>';
       }
@@ -1062,11 +1089,24 @@ function statusConselhoBadge(c) {
 // Mesmos limiares do kanban de presença (bandaPresenca no back-end): ≤50% e ≤70% (LIMIAR_PRESENCA_
 // ATENCAO), só que aqui em 3 cores (vermelho/amarelo/verde) em vez das 4 faixas do kanban — pedido
 // explícito do Vitor pra barra de progresso da tabela.
+// Faixas de presença (07/10/2026): FAIXAS_PRESENCA de lib/constants.ts, injetada aqui. Nenhum
+// limiar escrito neste arquivo. A barra da tabela usa 3 cores (crítica e baixa juntas em vermelho).
+var FAIXAS_PRESENCA_ = ${JSON.stringify(FAIXAS_PRESENCA)};
+var COR_FAIXA_ = { critica: 'var(--vermelho)', baixa: '#C87A2E', atencao: 'var(--dourado)', saudavel: 'var(--verde)' };
+function faixaPresenca_(taxa) {
+  if (taxa === null || taxa === undefined) return null;
+  for (var i = 0; i < FAIXAS_PRESENCA_.length; i++) { if (FAIXAS_PRESENCA_[i].ate === null || taxa <= FAIXAS_PRESENCA_[i].ate) return FAIXAS_PRESENCA_[i].chave; }
+  return null;
+}
+function rotuloFaixa_(idx) {
+  var f = FAIXAS_PRESENCA_[idx], ant = idx > 0 ? FAIXAS_PRESENCA_[idx - 1].ate : null;
+  var faixa = f.ate === null ? 'acima de ' + ant + '%' : (ant === null ? 'até ' + f.ate + '%' : (ant + 1) + ' a ' + f.ate + '%');
+  return f.rotulo + ' (' + faixa + ')';
+}
 function corPresenca(taxa) {
-  if (taxa === null) return 'var(--cinza-apoio)';
-  if (taxa <= 50) return 'var(--vermelho)';
-  if (taxa <= 70) return 'var(--dourado)';
-  return 'var(--verde)';
+  var f = faixaPresenca_(taxa);
+  if (f === null) return 'var(--cinza-apoio)';
+  return f === 'critica' || f === 'baixa' ? 'var(--vermelho)' : COR_FAIXA_[f];
 }
 function presencaBarHTML(taxa) {
   if (taxa === null) return '<span style="color:var(--cinza-apoio)">—</span>';
@@ -1075,8 +1115,15 @@ function presencaBarHTML(taxa) {
     + '<span class="presenca-bar-valor" style="color:' + cor + '">' + taxa + '%</span></div>';
 }
 
-var KANBAN_LABELS = { critica: 'Presença crítica (≤20%)', baixa: 'Presença baixa (21–50%)', atencao: 'Em atenção (51–70%)', saudavel: 'Saudável (>70%)' };
-var KANBAN_ORDEM = ['critica', 'baixa', 'atencao', 'saudavel'];
+var KANBAN_ORDEM = FAIXAS_PRESENCA_.map(function (f) { return f.chave; });
+var KANBAN_LABELS = {};
+FAIXAS_PRESENCA_.forEach(function (f, i) { KANBAN_LABELS[f.chave] = rotuloFaixa_(i); });
+var kanbanCarteira_ = '__todos';
+function fmtDecimos_(d) { return (d / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+function healthTexto_(hb) {
+  if (!hb || hb.semApuracao || hb.alcancado === null || hb.alcancado === undefined) return 'Sem apuração';
+  return hb.alcancado.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
 
 function renderVisaoRede() {
   var rede = DADOS.visaoGeralRede;
@@ -1107,18 +1154,77 @@ function renderVisaoRede() {
     }).join('');
   }
 
+  renderKanbanPresenca_();
+}
+
+// Kanban de presença por membro (07/10/2026): contagem e percentual por faixa (método do maior
+// resto, calculado no servidor por distribuicaoPresenca), seletor de carteira (Todos, cada CS
+// ativo, Ex CS agregado) e barra empilhada por CS ativo. Tudo vem da mesma resposta da API.
+function kanbanDistribuicaoAtual_() {
+  var d = DADOS.visaoGeralRede.distribuicaoPresenca;
+  if (kanbanCarteira_ === '__todos') return { dist: d.rede, health: null };
+  if (kanbanCarteira_ === '__excs') return { dist: d.exCS, health: null };
+  var linha = d.porCS.filter(function (x) { return x.cs === kanbanCarteira_; })[0];
+  return linha ? { dist: linha.distribuicao, health: linha.healthBase } : { dist: d.rede, health: null };
+}
+function kanbanFiltroMembro_(m) {
+  if (kanbanCarteira_ === '__todos') return true;
+  if (kanbanCarteira_ === '__excs') return !m.cs || m.cs.length === 0;
+  return (m.cs || []).indexOf(kanbanCarteira_) !== -1;
+}
+function renderKanbanPresenca_() {
+  var rede = DADOS.visaoGeralRede;
+  var dp = rede.distribuicaoPresenca;
+  var sel = document.getElementById('kanbanCS');
+  if (!sel.options.length) {
+    sel.innerHTML = '<option value="__todos">Todos</option>'
+      + dp.porCS.map(function (x) { return '<option value="' + x.cs + '">' + x.cs + '</option>'; }).join('')
+      + '<option value="__excs">Ex CS (conselhos sem CS ativo)</option>';
+    sel.addEventListener('change', function () { kanbanCarteira_ = sel.value; renderKanbanPresenca_(); });
+  }
+  sel.value = kanbanCarteira_;
+  var atual = kanbanDistribuicaoAtual_();
+  var dist = atual.dist;
+
+  var healthEl = document.getElementById('kanbanHealthCS');
+  if (atual.health) {
+    healthEl.style.display = '';
+    healthEl.textContent = 'Health da Base ' + healthTexto_(atual.health);
+    healthEl.title = atual.health.composicao || '';
+  } else { healthEl.style.display = 'none'; }
+
+  document.getElementById('kanbanNota').textContent = dist.totalApurado + ' membros apurados'
+    + (dist.semApuracao ? '. ' + dist.semApuracao + (dist.semApuracao === 1 ? ' membro sem apuração fica' : ' membros sem apuração ficam') + ' fora das faixas.' : '.')
+    + ' Presença acumulada desde o início de cada conselho.';
+
+  var legenda = '<div class="kanban-legenda">' + KANBAN_ORDEM.map(function (k) { return '<span><i style="background:' + COR_FAIXA_[k] + '"></i>' + KANBAN_LABELS[k] + '</span>'; }).join('') + '</div>';
+  var barras = dp.porCS.map(function (x) {
+    var segs = KANBAN_ORDEM.map(function (k) {
+      var pct = x.distribuicao.percentuaisDecimos[k] / 10;
+      return pct > 0 ? '<div class="kanban-barra-seg" style="width:' + pct + '%;background:' + COR_FAIXA_[k] + '" title="' + KANBAN_LABELS[k] + ': ' + x.distribuicao.contagens[k] + ' membros, ' + fmtDecimos_(x.distribuicao.percentuaisDecimos[k]) + '%"></div>' : '';
+    }).join('');
+    var aria = x.cs + ': ' + KANBAN_ORDEM.map(function (k) { return FAIXAS_PRESENCA_[KANBAN_ORDEM.indexOf(k)].rotulo + ' ' + fmtDecimos_(x.distribuicao.percentuaisDecimos[k]) + '%'; }).join(', ');
+    return '<div class="kanban-barra-linha"><span class="kanban-barra-nome">' + x.cs + '</span>'
+      + '<div class="kanban-barra" role="img" aria-label="' + aria + '">' + (x.distribuicao.totalApurado ? segs : '') + '</div>'
+      + '<span class="kanban-barra-health" title="' + String((x.healthBase && x.healthBase.composicao) || '').replace(/"/g, '&quot;') + '">Health da Base ' + healthTexto_(x.healthBase) + '</span></div>';
+  }).join('');
+  document.getElementById('kanbanBarrasWrap').innerHTML = legenda + '<div class="kanban-barras">' + barras + '</div>';
+
   var grid = document.getElementById('kanbanGrid');
-  var totalCritica = (rede.kanbanPresenca.critica || []).length;
-  document.getElementById('kanbanToggleLabel').textContent = 'Presença por membro' + (totalCritica ? ' — ' + totalCritica + ' em presença crítica' : '');
+  var totalCritica = dist.contagens.critica || 0;
+  document.getElementById('kanbanToggleLabel').textContent = 'Presença por membro' + (totalCritica ? ', ' + totalCritica + ' em presença crítica' : '');
   grid.innerHTML = KANBAN_ORDEM.map(function (chave) {
-    var lista = rede.kanbanPresenca[chave] || [];
+    var lista = (rede.kanbanPresenca[chave] || []).filter(kanbanFiltroMembro_);
     var cards = lista.length
       ? lista.map(function (m) {
           return '<div class="kanban-card"><span class="kanban-card-taxa">' + m.taxaPresenca + '%</span>'
             + '<div class="kanban-card-nome">' + m.nome + '</div><div class="kanban-card-conselho">' + m.conselho + '</div></div>';
         }).join('')
       : '<div class="gestor-empty" style="padding:8px 0;">Nenhum membro nesta faixa.</div>';
-    return '<div class="kanban-col kanban-col-' + chave + '"><div class="kanban-col-head"><span>' + KANBAN_LABELS[chave] + '</span><span>' + lista.length + '</span></div>' + cards + '</div>';
+    var qtd = dist.contagens[chave];
+    var pctTxt = fmtDecimos_(dist.percentuaisDecimos[chave]) + '%';
+    return '<div class="kanban-col kanban-col-' + chave + '"><div class="kanban-col-head"><span>' + KANBAN_LABELS[chave] + '</span>'
+      + '<span class="kanban-col-head-num" aria-label="' + qtd + ' membros, ' + pctTxt + '"><span>' + qtd + (qtd === 1 ? ' membro' : ' membros') + '</span><span class="kanban-col-pct">' + pctTxt + '</span></span></div>' + cards + '</div>';
   }).join('');
 }
 
