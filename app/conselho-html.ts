@@ -13,6 +13,8 @@
 // página de conselho separados. Plaquinha/crachá nunca aparecem aqui (decisão fechada com o Vitor,
 // 25/09/2026 — fora de tudo).
 
+import { GTD_CHECKLIST_STYLE, GTD_CHECKLIST_SCRIPT } from '../lib/gtd-checklist';
+
 export const CONSELHO_STYLE = `
 :root{
   --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
@@ -162,6 +164,7 @@ export const CONSELHO_STYLE = `
 .evolucao-vazio{padding:16px 18px;color:var(--cinza-apoio);font-size:12.5px;font-style:italic;}
 .evolucao-ver-mais{font-size:12px;font-weight:600;color:var(--dourado);background:none;border:none;cursor:pointer;padding:12px 18px;text-align:left;width:100%;font-family:inherit;}
 .evolucao-ver-mais:hover{text-decoration:underline;}
+${GTD_CHECKLIST_STYLE}
 `;
 
 export const CONSELHO_HTML = `
@@ -221,6 +224,11 @@ export const CONSELHO_HTML = `
     <div class="encontros-list" id="encontrosList"><div class="empty">Carregando…</div></div>
   </section>
 
+  <section class="block" id="gtdBlock">
+    <h2>Andamento do GTD <span class="sub">checklist de antes e depois do conselho, só leitura</span></h2>
+    <div class="chart-card" id="gtdConselho"><div class="empty">Carregando…</div></div>
+  </section>
+
   <section class="block">
     <h2>Membros <span class="sub">clique pra ver ata, oportunidades e Big Deal</span></h2>
     <div id="membrosList"><div class="empty">Carregando…</div></div>
@@ -258,6 +266,7 @@ export const CONSELHO_HTML = `
 // sem risco de quebrar o JS gerado).
 export function conselhoScript(groupId: string): string {
   return `
+${GTD_CHECKLIST_SCRIPT}
 var GROUP_ID = ${JSON.stringify(groupId).replace(/</g, '\\u003c')};
 
 function fetchJSON_(url) {
@@ -798,6 +807,10 @@ function toggleMembro(idx) {
   label.textContent = aberto ? 'ocultar ▴' : 'ver detalhes ▾';
 }
 
+function renderGtdConselho(d) {
+  document.getElementById('gtdConselho').innerHTML = gtdSecaoHtml_('conselho', d.gtd);
+}
+
 function renderTudo_(d) {
   ULTIMO_DADO_CONSELHO_ = d;
   renderHero(d);
@@ -808,6 +821,7 @@ function renderTudo_(d) {
   renderPresenca(d);
   renderPagamento(d);
   renderEncontros(d);
+  renderGtdConselho(d);
   renderMembros(d);
   renderEvolucaoMembros(d);
   renderBigDealsSemMembro(d);

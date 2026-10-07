@@ -12,6 +12,7 @@
 // de corrupção que já aconteceu neste arquivo com base64 grande colado à mão (ver
 // claude/migracao_vercel_supabase.md, lição sobre assets de imagem). A máscara --m-white abaixo
 // é a exceção: continua em base64 porque é usada como mask-image em CSS, não como <img>.
+import { GTD_CHECKLIST_STYLE, GTD_CHECKLIST_SCRIPT } from '@/lib/gtd-checklist';
 import { SEMAFORO_CONFIRMADOS, AGENDA_PASSADO_COR, SEMAFORO_NEUTRO, AGENDA_DURACAO_CONSELHO_MIN } from '@/lib/constants';
 
 export const DASHBOARD_HTML = `<!DOCTYPE html>
@@ -518,6 +519,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .resolver-status.erro { color:#C0433D; }
 
 .empty-state { text-align:center; padding:60px 20px; color:#9F9F9F; font-size:12.5px; }
+${GTD_CHECKLIST_STYLE}
 </style>
 </head>
 <body>
@@ -639,6 +641,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 </div>
 
 <script>
+${GTD_CHECKLIST_SCRIPT}
 // ============ RUNTIME_SHIM ============
 // Substitui google.script.run (Apps Script) por chamadas fetch() às rotas /api/* deste app
 // Next.js. Implementa a mesma interface encadeada (withSuccessHandler/withFailureHandler +
@@ -1553,15 +1556,8 @@ function abrirConselhoModal(i){
   }
 
   if (c.gtd) {
-    var pctGtd = (c.gtd.taxaCumprimento !== null && c.gtd.taxaCumprimento !== undefined) ? Math.round(c.gtd.taxaCumprimento) : null;
-    html += '<div class="case-modal-campo"><div class="case-modal-label">GTD do conselho'+(pctGtd!==null?' · '+pctGtd+'% cumprido':'')+'</div>';
-    (c.gtd.etapas || []).forEach(function(et){
-      html += '<div class="gtd-etapa-row'+(et.feito?' feito':'')+'">' +
-        '<span class="gtd-etapa-check">'+(et.feito?ICONS.check:ICONS.clock)+'</span>' +
-        '<span class="gtd-etapa-label">'+et.label+'</span>' +
-      '</div>';
-    });
-    html += '</div>';
+    // Componente único do checklist (lib/gtd-checklist.ts), somente leitura, com antes e depois.
+    html += '<div class="case-modal-campo"><div class="case-modal-label">GTD do conselho</div>' + gtdCicloHtml_(c.gtd) + '</div>';
   }
 
   document.getElementById('conselhoModalBody').innerHTML = html;

@@ -23,6 +23,7 @@ import {
 } from './indicadores-base';
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
+import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, type CicloGtd } from './gtd';
 
 // ============ util ============
 
@@ -1194,7 +1195,7 @@ function parseConselhoItems(
     proximaData: proximoConselho ? proximoConselho.dataIso : null,
     proximaDataEhFutura: proximoConselho ? proximoConselho.futuro : null,
     proximaDataStatus: proximoConselho ? proximoConselho.status : null,
-    gtd: null as null | { taxaCumprimento: number | null; dataConselho: string | null; etapas: any[]; etapasAtrasadas: string[] },
+    gtd: null as null | (CicloGtd & { taxaCumprimento: number | null; etapas: any[] }),
   };
 }
 
@@ -1343,13 +1344,14 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
     if (!contato) return;
     const hist = historicoDoCSAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato));
     if (!hist) return;
-    conselhos[idx].gtd = {
-      taxaCumprimento: hist.taxa_cumprimento, dataConselho: hist.data_conselho,
-      etapas: hist.etapas || [], etapasAtrasadas: hist.etapas_atrasadas || [],
-    };
+    // Ciclo pronto pro componente único de checklist (lib/gtd-checklist.ts), com as etapas já
+    // separadas em antes e depois. taxaCumprimento e etapas ficam pelos consumidores antigos.
+    const ciclo = montarCiclo(hist, true);
+    conselhos[idx].gtd = { ...ciclo, taxaCumprimento: hist.taxa_cumprimento, etapas: hist.etapas || [] };
   });
-  const taxasGtdValidas = historicoDoCSAtual.map((h: any) => h.taxa_cumprimento).filter((v: any) => v !== null && v !== undefined);
-  const cumprimentoGtdMedia = taxasGtdValidas.length > 0 ? Math.round(taxasGtdValidas.reduce((a: number, b: number) => a + b, 0) / taxasGtdValidas.length) : null;
+  // Cumprimento do GTD do CS: razão pooled (etapas feitas sobre etapas totais dos ciclos atuais dos
+  // conselhos dele), não a média das taxas (07/10/2026). Ver taxaGtdAgregada em lib/gtd.ts.
+  const cumprimentoGtdMedia = taxaGtdAgregada(historicoDoCSAtual.map((h: any) => contarEtapas(h.etapas)));
 
   const futurosDoCS = conselhos.filter((c) => c.proximaData && c.proximaDataEhFutura)
     .sort((a, b) => new Date(a.proximaData!).getTime() - new Date(b.proximaData!).getTime());
@@ -2947,6 +2949,8 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     presencaMensal,
     encontros,
     membros,
+    // GTD do conselho: ciclos do mais recente ao mais antigo, com checklist em antes e depois.
+    gtd: gtdDoConselho(dados.historico as any[], contato, normalizeNome),
     bigDealsSemMembro,
     destaqueRanking,
     destaqueSemMembro,
