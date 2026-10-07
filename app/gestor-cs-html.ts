@@ -205,8 +205,8 @@ function renderHeroCS(d) {
   var linhas = c.detalhamento.map(function (it) {
     var sem = !!it.semMeta;
     return '<div class="comp-linha"><span>' + esc(it.label) + (sem ? ' (sem meta)' : '') + '</span><span class="num">peso ' + it.peso + '</span>'
-      + '<span>' + (sem ? numFmt(it.valorAlcancado) + ', sem meta' : numFmt(it.valorAlcancado) + ' de ' + numFmt(it.meta) + ', ' + it.achievementPct + '%') + '</span>'
-      + '<span class="num">' + (sem || it.pontos === null ? 'fora da média' : it.pontos + ' pts') + '</span></div>';
+      + '<span>' + (sem ? numFmt(it.valorAlcancado) + ', sem meta' : numFmt(it.valorAlcancado) + ' de ' + numFmt(it.meta) + ', ' + it.achievementPct + '%' + (it.alemDaMetaPct > 0 ? ', ' + it.alemDaMetaPct + '% além da meta' : '')) + '</span>'
+      + '<span class="num">' + (it.semPontos ? 'sem pontos' : (sem || it.pontos === null ? 'fora da média' : it.pontos + ' pts')) + '</span></div>';
   }).join('');
 
   el.innerHTML = '<div class="hero-top">' + foto + '<div><div class="hero-eyebrow">CS</div><h1>' + esc(c.nome) + '</h1>'
@@ -220,7 +220,7 @@ function renderHeroCS(d) {
     + '<div class="stat"><div class="stat-label">Health da Base</div><div class="stat-valor">' + esc(healthTxt) + '</div><div class="stat-sub">' + esc(healthSub) + '</div></div>'
     + '</div>'
     + '<details class="composicao"><summary>Como a pontuação foi composta</summary>' + linhas
-    + '<div class="comp-nota">Pontos são o peso vezes o aproveitamento na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A pontuação vai de 0 a 100 e só existe com pelo menos ' + c.minimoIndicadores + ' indicadores com meta.</div></details>';
+    + '<div class="comp-nota">Pontos são o peso vezes o aproveitamento na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos, e quem supera a meta passa de 100. A pontuação só existe com pelo menos ' + c.minimoIndicadores + ' indicadores com meta.</div></details>';
 }
 
 // ---------- radar ----------

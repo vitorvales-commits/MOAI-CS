@@ -13,6 +13,7 @@ import {
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
   PESOS_SCORE_CS, PONTUACAO_MIN_INDICADORES_COM_META, FOTOS_CS, NIVEL_ORDEM,
+  REPORT_DIA_PRAZO, INSIGHT_REPORT_SEMANAS, INSIGHT_GTD_JANELA_DIAS,
   STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA, STATUS_PAGAMENTO_EXCLUIR,
   LIMIAR_HEALTHSCORE_ATENCAO, LIMIAR_PRESENCA_ATENCAO, MESES_JANELA_MATCHMAKINGS_PARADO, SIMILARIDADE_DESAFIO_MIN,
   AGENDA_DURACAO_CONSELHO_MIN,
@@ -24,6 +25,9 @@ import {
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
+import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias } from './gtd-prazos';
+import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
+import { insightsGestor, type CtxInsights } from './insights';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
@@ -1351,12 +1355,14 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
     if (!hist) return;
     // Ciclo pronto pro componente único de checklist (lib/gtd-checklist.ts), com as etapas já
     // separadas em antes e depois. taxaCumprimento e etapas ficam pelos consumidores antigos.
-    const ciclo = montarCiclo(hist, true);
+    const ciclo = montarCiclo(hist, cicloAberto(hist.data_conselho));
     conselhos[idx].gtd = { ...ciclo, taxaCumprimento: hist.taxa_cumprimento, etapas: hist.etapas || [] };
   });
   // Cumprimento do GTD do CS: razão pooled (etapas feitas sobre etapas totais dos ciclos atuais dos
   // conselhos dele), não a média das taxas (07/10/2026). Ver taxaGtdAgregada em lib/gtd.ts.
-  const cumprimentoGtdMedia = taxaGtdAgregada(historicoDoCSAtual.map((h: any) => contarEtapas(h.etapas)));
+  // Só ciclos abertos (cicloAberto, até D+14 do conselho): a mesma regra das Urgências.
+  const ciclosAbertosDoCS = (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(cfg.nome) && cicloAberto(h.data_conselho));
+  const cumprimentoGtdMedia = taxaGtdAgregada(ciclosAbertosDoCS.map((h: any) => contarEtapas(h.etapas)));
 
   const futurosDoCS = conselhos.filter((c) => c.proximaData && c.proximaDataEhFutura)
     .sort((a, b) => new Date(a.proximaData!).getTime() - new Date(b.proximaData!).getTime());
@@ -3412,4 +3418,141 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 export async function efeitoAdvertenciasHealthBase(sb: SupabaseClient, csNome: string) {
   const dados = await getDadosBrutos(sb);
   return healthBaseComESemPontos(sb, dados, csNome);
+}
+
+
+// ============ Urgências e Insights da Visão geral do gestor (07/10/2026) ============
+// Uma chamada agregada (GET /api/gestor/visao-geral/acoes) devolve as duas seções, cada uma isolada
+// (secoes_isoladas). Só CS de cs_config ativos entram, nunca ex CS. Status de report e prazo de GTD
+// vêm das funções puras de lib/report-semana.ts e lib/gtd-prazos.ts, as mesmas das demais telas.
+
+function diasDoMes(hoje: string): { diaDoMes: number; diasNoMes: number; mes: string; ano: number } {
+  const [a, m, d] = hoje.split('-').map(Number);
+  return { diaDoMes: d, diasNoMes: new Date(Date.UTC(a, m, 0)).getUTCDate(), mes: MESES_ORDEM[m - 1], ano: a };
+}
+
+type EnviosPorCS = Record<string, EnvioReport[]>;
+// Envios de report dos CS ativos nas últimas semanas, das linhas cruas de reports_individuais (não
+// de reports_vigentes, que fica só com o último envio da semana: a regra aqui é o primeiro envio).
+// Data efetiva = data_report ou, sem ela, o dia civil de criação em America/Sao_Paulo.
+async function buscarEnviosReport(sb: SupabaseClient, nomesAtivos: string[], desde: string): Promise<{ envios: EnviosPorCS; semMapeamento: number; ultimoEnvio: string | null }> {
+  const { data, error } = await sb.from('reports_individuais')
+    .select('cs_nome, semana_inicio, data_report, criado_em, origem').gte('semana_inicio', desde);
+  if (error) throw new Error('Erro ao buscar reports_individuais: ' + error.message);
+  const envios: EnviosPorCS = {};
+  nomesAtivos.forEach((n) => { envios[n] = []; });
+  let semMapeamento = 0, ultimoEnvio: string | null = null;
+  (data || []).forEach((r: any) => {
+    if (!r.cs_nome || !envios[r.cs_nome]) { if (!r.cs_nome) semMapeamento++; return; }
+    const efetiva = r.data_report || hojeSP(new Date(r.criado_em));
+    if (!ultimoEnvio || r.criado_em > ultimoEnvio) ultimoEnvio = r.criado_em;
+    envios[r.cs_nome].push(r.origem === 'nativo' ? { tipo: 'nativo', semana: r.semana_inicio, data: efetiva } : { tipo: 'monday', data: efetiva });
+  });
+  return { envios, semMapeamento, ultimoEnvio };
+}
+
+export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
+  const hoje = hojeSP();
+  const [dados, ativos] = await Promise.all([getDadosBrutos(sb), getCSListCompleto(sb)]);
+  const nomes = ativos.map((c) => c.nome);
+  const canonico = new Map(ativos.map((c) => [normalizeNome(c.nome), c.nome]));
+  const semanas = semanasRecentes(hoje, INSIGHT_REPORT_SEMANAS);
+  const semanaRef = semanaReferenciaReport(hoje);
+
+  const reports = await secaoIsolada('reports', () => buscarEnviosReport(sb, nomes, somarDias(semanas[0], -14) as string));
+  const historico = (dados.historico as any[]).filter((h) => canonico.has(normalizeNome(h.cs_responsavel)));
+  const snapshot = (dados.historico as any[]).reduce((m: string | null, h: any) => (h.data_snapshot && (!m || h.data_snapshot > m) ? h.data_snapshot : m), null);
+  const pend = etapasPendentes(historico, hoje);
+
+  const urgencias = await secaoIsolada('urgencias', () => {
+    if (reports.erro || !reports.dado) throw new Error(reports.erro || 'Sem dados de report.');
+    const status: Record<string, StatusReport> = {};
+    nomes.forEach((n) => { status[n] = statusReportSemana(semanaRef, reports.dado!.envios[n]); });
+    const por = (s: StatusReport) => nomes.filter((n) => status[n] === s);
+
+    const contatos = new Map<string, Set<string>>();
+    ativos.forEach((c) => {
+      const set = new Set<string>();
+      gruposDaCarteira(dados, c.apelidoConselho).forEach((g: any) => { const ct = extrairContatoDoTitulo(g.titulo); if (ct) set.add(normalizeNome(ct)); });
+      contatos.set(c.nome, set);
+    });
+    const porCS = nomes.map((nome) => {
+      const ciclos = pend.ciclosAbertos.filter((l) => canonico.get(normalizeNome(l.cs_responsavel || '')) === nome);
+      const itens = pend.pendentes.filter((p) => canonico.get(normalizeNome(p.cs)) === nome)
+        .map((p) => ({ ...p, vinculado: contatos.get(nome)!.has(normalizeNome(p.membro)) }))
+        // vence hoje no topo, depois atrasadas pelo maior atraso, depois a vencer pelo prazo mais próximo
+        .sort((a, b) => (a.status === 'a_vencer' && a.dias === 0 ? 0 : 1) - (b.status === 'a_vencer' && b.dias === 0 ? 0 : 1)
+          || (a.status === b.status ? (a.status === 'atrasada' ? b.dias - a.dias : a.dias - b.dias) : (a.status === 'atrasada' ? -1 : 1)));
+      return {
+        cs: nome, ciclosAbertos: ciclos.length,
+        atrasadas: itens.filter((i) => i.status === 'atrasada').length,
+        aVencer: itens.filter((i) => i.status === 'a_vencer').length,
+        maiorAtrasoDias: itens.reduce((m, i) => (i.status === 'atrasada' ? Math.max(m, i.dias) : m), 0),
+        itens,
+      };
+    }).sort((a, b) => b.atrasadas - a.atrasadas || b.maiorAtrasoDias - a.maiorAtrasoDias || b.aVencer - a.aVencer || a.cs.localeCompare(b.cs, 'pt-BR'));
+
+    return {
+      hoje,
+      report: {
+        semanaInicio: semanaRef, semanaFim: somarDias(semanaRef, 6), prazo: somarDias(semanaRef, REPORT_DIA_PRAZO - 1),
+        emDia: por('em_dia'), comAtraso: por('com_atraso'), pendentes: por('pendente'),
+        reportsSemMapeamento: reports.dado.semMapeamento,
+      },
+      gtd: {
+        totalAtrasadas: porCS.reduce((s, c) => s + c.atrasadas, 0), totalAVencer: porCS.reduce((s, c) => s + c.aVencer, 0),
+        porCS, rotulosNaoMapeados: pend.naoMapeados,
+      },
+    };
+  });
+
+  const insights = await secaoIsolada('insights', async () => {
+    const { diaDoMes, diasNoMes, mes, ano } = diasDoMes(hoje);
+    const visao = await generateVisaoGestor(sb, mes, ano, false);
+    const rep = reports.dado;
+    if (!rep) throw new Error(reports.erro || 'Sem dados de report.');
+    const reportPorCS: Record<string, StatusReport[]> = {};
+    nomes.forEach((n) => { reportPorCS[n] = semanas.map((s) => statusReportSemana(s, rep.envios[n])); });
+
+    const atrasadasPorCS: Record<string, number> = {};
+    nomes.forEach((n) => { atrasadasPorCS[n] = pend.pendentes.filter((p) => p.status === 'atrasada' && canonico.get(normalizeNome(p.cs)) === n).length; });
+
+    // Cumprimento por etapa nos ciclos FECHADOS dos últimos 60 dias.
+    const desde = somarDias(hoje, -INSIGHT_GTD_JANELA_DIAS) as string;
+    const acum = new Map<string, { rotulo: string; feitos: number; total: number; porCS: Map<string, { feitos: number; total: number }> }>();
+    historico.filter((h) => !cicloAberto(h.data_conselho, hoje) && String(h.data_conselho) >= desde).forEach((h) => {
+      const cs = canonico.get(normalizeNome(h.cs_responsavel)) as string;
+      (h.etapas || []).forEach((e: any) => {
+        const chave = chaveEtapaGTD(e.label);
+        if (!chave) return;
+        const a = acum.get(chave) || { rotulo: String(e.label).replace(/^\s*D\s*[+\-−–]\s*\d+\s*/i, ''), feitos: 0, total: 0, porCS: new Map() };
+        a.total++; if (e.feito) a.feitos++;
+        const c = a.porCS.get(cs) || { feitos: 0, total: 0 };
+        c.total++; if (e.feito) c.feitos++;
+        a.porCS.set(cs, c); acum.set(chave, a);
+      });
+    });
+
+    const ctx: CtxInsights = {
+      hoje, diaDoMes, diasNoMes,
+      cs: visao.porCS.filter((c) => nomes.includes(c.nome)).map((c) => {
+        const i = c.indicadores as any;
+        const pick = (k: string) => ({ meta: i[k]?.meta ?? null, calculado: i[k]?.calculado ?? null });
+        return {
+          nome: c.nome,
+          indicadores: { casesSucesso: pick('casesSucesso'), matchmakings: pick('matchmakings'), rounds: pick('rounds'), upsell: pick('upsell'), indicacoes: pick('indicacoes'), churn: pick('churn') },
+          pontosAdvertencia: pontosAtivosDoCS(dados, c.nome),
+          health: i.healthDaBase ? { calculado: i.healthDaBase.calculado ?? null, meta: i.healthDaBase.meta ?? null } : null,
+        };
+      }),
+      report: { semanas, porCS: reportPorCS },
+      gtd: { atrasadasPorCS, etapas: [...acum.entries()].map(([chave, a]) => ({ chave, rotulo: a.rotulo, feitos: a.feitos, total: a.total, porCS: [...a.porCS.entries()].map(([cs, v]) => ({ cs, ...v })) })) },
+    };
+    return { ...insightsGestor(ctx), periodo: { mes, ano } };
+  });
+
+  return {
+    geradoEm: new Date().toISOString(), urgencias, insights,
+    carimbos: { gtdSnapshot: snapshot, ultimoReportCriadoEm: reports.dado ? reports.dado.ultimoEnvio : null },
+  };
 }

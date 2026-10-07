@@ -96,9 +96,17 @@ export const LIMIAR_PRESENCA_ATENCAO = 70; // taxa de presença (%) do mês de r
 export const MESES_JANELA_MATCHMAKINGS_PARADO = 3; // janela (meses corridos terminando no mês real atual) sem nenhum matchmaking pra considerar o conselho "parado" nessa frente
 export const SIMILARIDADE_DESAFIO_MIN = 0.6; // overlap mínimo (0-1, por token) pra dois desafios de meses seguidos contarem como "o mesmo problema sem evolução"
 
-// Pesos do CS Top 3 (pontuação ponderada) — somam 100. Ver calcularScoreCS em reports.ts.
+// Carteira nunca dá ponto na pontuação ponderada (decisão do Vitor, 07/10/2026): o número de
+// conselhos mede alocação da liderança, não desempenho. Fica como informação, com peso 0.
+export const PESO_CARTEIRA_NA_PONTUACAO = 0;
+// Nulo significa sem teto: indicador de mínimo passa de 100 por cento para quem supera a meta.
+// Indicadores de máximo (Churn e Downsell) continuam limitados a 1. Para limitar, preencha aqui.
+export const TETO_APROVEITAMENTO_INDICADOR: number | null = null;
+
+// Pesos do CS Top 3 (pontuação ponderada). Sem a Carteira os demais somam 85 e são renormalizados
+// sobre os indicadores elegíveis, então bater exatamente todas as metas vale 100. Ver lib/pontuacao.ts.
 export const PESOS_SCORE_CS: Record<string, number> = {
-  carteira: 15,
+  carteira: PESO_CARTEIRA_NA_PONTUACAO,
   casesSucesso: 18,
   matchmakings: 18,
   rounds: 12,
@@ -173,3 +181,42 @@ export const REPORT_CHECKLISTS = [
 // Duração fixa de um conselho na agenda (4h, nunca registrada no Monday). Define o tamanho do bloco
 // na grade da semana e o momento em que o conselho passa a ser "encerrado" (sem semáforo).
 export const AGENDA_DURACAO_CONSELHO_MIN = 240;
+
+// ============ urgências e insights do gestor (07/10/2026) ============
+// Prazo de cada etapa do GTD em dias a partir de data_conselho (negativo é antes do conselho). Vem da
+// regra da automação AutomacaoGTDConselhos.gs definida pelo Vitor, NUNCA do prefixo do rótulo: os
+// rótulos trazem D+9 e D+5 em etapas que acontecem ANTES do conselho. Casamento por trecho do
+// rótulo, normalizado (sem acento, minúsculo). A ordem importa: o mais específico primeiro.
+export const GTD_PRAZOS_ETAPA: { chave: string; trecho: string; dias: number }[] = [
+  { chave: 'follow_encaminhamento', trecho: 'follow do encaminhamento', dias: 9 },
+  { chave: 'confirmacao_individual', trecho: 'confirmacao individual', dias: -9 },
+  { chave: 'confirmacao_grupo', trecho: 'confirmacao no grupo', dias: -5 },
+  { chave: 'verificar_jornada', trecho: 'verificar a jornada', dias: -1 },
+  { chave: 'cuidei_membros', trecho: 'cuidei dos membros', dias: 2 },
+  { chave: 'encaminhamentos', trecho: 'encaminhamentos', dias: 2 },
+  { chave: 'gestao_conhecimento', trecho: 'gestao de conhecimento', dias: 4 },
+  { chave: 'matchmakings', trecho: 'matchmakings', dias: 7 },
+  { chave: 'upsells', trecho: 'upsells', dias: 8 },
+];
+// Ciclo aberto até data_conselho mais 14 dias, igual à virada de ciclo da automação do GTD.
+export const GTD_DIAS_CICLO_ABERTO = 14;
+// Etapa não feita, ainda no prazo, que vence dentro desta janela fica como A vencer.
+export const GTD_JANELA_A_VENCER_DIAS = 7;
+// Dia do prazo do report semanal, em dia da semana ISO (5 é sexta).
+export const REPORT_DIA_PRAZO = 5;
+// Report enviado na segunda conta para a semana anterior, com atraso (quem envia na segunda está
+// fechando a semana que passou).
+export const REPORT_SEGUNDA_FECHA_SEMANA_ANTERIOR = true;
+export const INSIGHTS_MAX_VISIVEIS = 5;
+// Dispara quando o realizado do time está abaixo desta fração do ritmo esperado do mês.
+export const INSIGHT_RITMO_LIMIAR = 0.7;
+// Dispara quando uma etapa tem cumprimento abaixo disto nos ciclos fechados dos últimos 60 dias.
+export const INSIGHT_GTD_ETAPA_LIMIAR = 0.4;
+export const INSIGHT_GTD_JANELA_DIAS = 60;
+// Dispara quando a adesão ao report nas últimas 4 semanas fecha abaixo disto.
+export const INSIGHT_REPORT_ADESAO_LIMIAR = 0.8;
+export const INSIGHT_REPORT_SEMANAS = 4;
+// Pontos de advertência ativos acima disto geram insight de alerta (mesmo limite do destaque visual).
+export const INSIGHT_ADVERTENCIA_ALERTA_PONTOS = 3;
+// Piso para o insight de concentração de GTD: abaixo disto o total de atrasadas é pequeno demais.
+export const INSIGHT_GTD_CONCENTRACAO_MIN_ATRASADAS = 3;

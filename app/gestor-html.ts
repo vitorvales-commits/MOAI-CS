@@ -82,7 +82,8 @@ export const GESTOR_STYLE = `
 .rank-name-wrap{display:flex;align-items:center;gap:10px;}
 .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .rank-name{font-size:14px;font-weight:600;}
-.rank-bar-bg{height:8px;border-radius:99px;background:var(--cinza-superficie);overflow:hidden;}
+.rank-bar-bg{position:relative;height:8px;border-radius:99px;background:var(--cinza-superficie);overflow:hidden;}
+.rank-bar-mark{position:absolute;top:0;bottom:0;width:2px;background:var(--preto-tinta);opacity:.55;}
 .rank-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--dourado),var(--verde));}
 .rank-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;text-align:right;}
 
@@ -102,6 +103,56 @@ export const GESTOR_STYLE = `
 .cs-card-score-lbl{font-size:11px;color:var(--cinza-texto);margin-top:3px;}
 .cs-card-semdados{font-size:12.5px;font-weight:600;color:var(--cinza-texto);line-height:1.35;}
 .cs-nota{font-size:12px;color:var(--cinza-texto);margin-top:14px;}
+.acoes-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;margin-top:28px;align-items:start;}
+@media (max-width:980px){.acoes-grid{grid-template-columns:1fr;}}
+.acoes-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:24px;padding:24px;}
+.acoes-card h2{font-size:21px;font-weight:700;margin:0 0 4px;}
+.acoes-sub{font-size:12.5px;color:var(--cinza-texto);margin:0 0 16px;line-height:1.5;}
+.acoes-faixa{padding:16px 0;border-top:1px solid #EFEDED;}
+.acoes-faixa:first-of-type{border-top:none;padding-top:0;}
+.acoes-faixa-titulo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:700;font-size:14px;margin-bottom:10px;}
+.acoes-faixa-titulo span{font-weight:500;font-size:12px;color:var(--cinza-texto);}
+.cont-linha{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.cont{font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px;background:var(--cinza-fundo);color:var(--cinza-texto);}
+.cont.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
+.cont.ambar{background:#FBF1DA;color:#8A6410;border:1px solid #EBD39C;}
+.chips-nomes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.chip-nome{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;}
+.chip-nome.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
+.chip-nome.ambar{background:#FBF1DA;color:#8A6410;border:1px solid #EBD39C;}
+.urg-cs{border-top:1px solid #EFEDED;}
+.urg-cs:first-of-type{border-top:none;}
+.urg-cs > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 0;font-size:13.5px;}
+.urg-cs > summary::-webkit-details-marker{display:none;}
+.urg-cs > summary::before{content:"▸";color:var(--cinza-apoio);font-size:11px;width:10px;}
+.urg-cs[open] > summary::before{content:"▾";}
+.urg-cs-nome{font-weight:700;min-width:70px;}
+.urg-cs-muted{color:var(--cinza-texto);font-size:12.5px;}
+.urg-lista{padding:0 0 12px 20px;}
+.urg-item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 0;border-top:1px solid #F3F1F1;font-size:12.5px;}
+.urg-item:first-child{border-top:none;}
+.urg-item b{font-weight:600;}
+.urg-item .quando{font-weight:700;text-align:right;white-space:nowrap;}
+.urg-item .quando.vermelho{color:var(--vermelho);}
+.urg-item .quando.ambar{color:#8A6410;}
+.urg-item .detalhe{font-size:11.5px;color:var(--cinza-texto);}
+.acoes-rodape{margin-top:14px;font-size:11.5px;color:var(--cinza-apoio);line-height:1.5;}
+.ins-item{padding:14px 0;border-top:1px solid #EFEDED;}
+.ins-item:first-of-type{border-top:none;padding-top:0;}
+.ins-topo{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.ins-sev{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:99px;}
+.ins-sev.alta{background:#FBEEEC;color:var(--vermelho);}
+.ins-sev.media{background:#FBF1DA;color:#8A6410;}
+.ins-sev.baixa{background:var(--cinza-superficie);color:var(--cinza-texto);}
+.ins-oque{font-size:13.5px;font-weight:600;line-height:1.4;}
+.ins-num{font-size:12.5px;margin-top:5px;}
+.ins-num b{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;}
+.ins-num span{color:var(--cinza-texto);}
+.ins-acao{font-size:12.5px;margin-top:6px;line-height:1.5;}
+.ins-quem{font-size:12px;color:var(--cinza-texto);margin-top:4px;}
+.ins-mais{margin-top:10px;background:none;border:none;color:var(--dourado);font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;padding:0;}
+.acoes-erro{padding:12px 14px;border-radius:12px;background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;font-size:12.5px;line-height:1.5;}
+
 .radar-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:18px 18px 8px;display:flex;flex-direction:column;align-items:center;}
 .radar-card-head{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
 .radar-card-name{font-size:14px;font-weight:600;}
@@ -501,6 +552,19 @@ export const GESTOR_HTML = `
       </div>
     </section>
 
+    <div class="acoes-grid">
+      <section class="acoes-card" id="blocoUrgencias" aria-label="Urgências">
+        <h2>Urgências</h2>
+        <p class="acoes-sub">O que precisa ser feito o quanto antes, com responsável e prazo.</p>
+        <div id="urgenciasCorpo"><div class="gestor-empty">Carregando…</div></div>
+      </section>
+      <section class="acoes-card" id="blocoInsights" aria-label="Insights">
+        <h2>Insights</h2>
+        <p class="acoes-sub">O que os números estão dizendo e a primeira ação a tomar.</p>
+        <div id="insightsCorpo"><div class="gestor-empty">Carregando…</div></div>
+      </section>
+    </div>
+
     <section class="block">
       <div class="block-head">
         <div>
@@ -869,19 +933,20 @@ function abrirScoreModal(idx){
     var meta = (item.meta === null || item.meta === undefined) ? '—' : item.meta;
     var ach = (item.achievementPct === null || item.achievementPct === undefined) ? '—' : item.achievementPct + '%';
     var semMeta = !!item.semMeta;
-    var avisoMeta = semMeta ? '<span class="meta-aviso" title="Sem meta cadastrada: o indicador fica fora da média.">sem meta</span>' : '';
+    var avisoMeta = semMeta ? '<span class="meta-aviso" title="Sem meta cadastrada: o indicador fica fora da média.">sem meta</span>' : (item.semPontos ? '<span class="meta-aviso" title="A carteira não dá pontos: mede alocação, não desempenho.">sem pontos</span>' : '');
+    var alem = (item.alemDaMetaPct > 0) ? ', ' + item.alemDaMetaPct + '% além da meta' : '';
     return '<div class="score-detalhe-row">'
       + '<span class="score-detalhe-label">' + item.label + avisoMeta + '</span>'
       + '<span class="score-detalhe-peso">peso ' + item.peso + '</span>'
-      + '<span class="score-detalhe-valor">' + (semMeta ? val + ' · sem meta' : val + ' / ' + meta + ' · ' + ach) + '</span>'
-      + '<span class="score-detalhe-pontos">' + ((semMeta || item.pontos === null || item.pontos === undefined) ? 'fora da média' : item.pontos + ' pts') + '</span>'
+      + '<span class="score-detalhe-valor">' + (semMeta ? val + ' · sem meta' : val + ' / ' + meta + ' · ' + ach + alem) + '</span>'
+      + '<span class="score-detalhe-pontos">' + (item.semPontos ? 'sem pontos' : ((semMeta || item.pontos === null || item.pontos === undefined) ? 'fora da média' : item.pontos + ' pts')) + '</span>'
       + '</div>';
   }).join('');
   document.getElementById('infoModalBody').innerHTML =
     '<div class="info-modal-titulo">' + d.nome + '</div>'
     + '<div class="info-modal-sub">Pontuação: ' + (d.score === null || d.score === undefined ? '—' : d.score) + '</div>'
     + linhas
-    + '<div class="info-modal-rodape">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A pontuação final vai de 0 a 100.</div>';
+    + '<div class="info-modal-rodape">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos. Quem supera a meta passa de 100.</div>';
   document.getElementById('infoModalOverlay').classList.add('ativo');
 }
 
@@ -943,16 +1008,103 @@ function renderRanking() {
   var el = document.getElementById('rankingList');
   if (!DADOS.ranking.length) { el.innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
   // quem ficou sem indicadores com meta suficientes não ganha número: a nota fica abaixo da lista
-  var maxScore = Math.max.apply(null, DADOS.ranking.map(function (r) { return r.scoreReal || 0; }).concat([1]));
+  // escala dinâmica com marca em 100: quem passa da meta (acima de 100) se destaca sem quebrar o layout
+  var maxScore = Math.max.apply(null, DADOS.ranking.map(function (r) { return r.scoreReal || 0; }).concat([100]));
+  var marca100 = (100 / maxScore * 100).toFixed(1);
   el.innerHTML = DADOS.ranking.map(function (r, i) {
     var status = classificarScore(r.scoreReal);
     var pct = maxScore > 0 ? (r.scoreReal / maxScore * 100) : 0;
     var idxModal = registrarScoreModal_(r.nome, r.scoreReal, r.detalhamento);
     return '<div class="rank-row"><span class="rank-pos">' + (i + 1) + '</span>'
       + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><span class="rank-name">' + r.nome + '</span></div>'
-      + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div></div></div>'
+      + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div><div class="rank-bar-mark" style="left:' + marca100 + '%" title="Meta batida (100)"></div></div></div>'
       + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>';
   }).join('');
+}
+
+
+// ============ Urgências e Insights (07/10/2026) ============
+// Uma chamada agregada (/api/gestor/visao-geral/acoes). Cada bloco tem proteção própria e mostra a
+// mensagem real do erro só nele. Cor só para exceção: CS sem pendência não ganha destaque. Nada
+// aqui é calculado: status de report, prazos de GTD e insights chegam prontos do servidor.
+var ACOES_ = null;
+var INSIGHTS_TODOS_ = false;
+function dmAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
+function dmaAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function chipsAcoes_(nomes, cor) { return nomes.length ? '<div class="chips-nomes">' + nomes.map(function (n) { return '<span class="chip-nome ' + cor + '">' + escCS_(n) + '</span>'; }).join('') + '</div>' : ''; }
+function quandoAcoes_(i) {
+  if (i.status === 'atrasada') return '<span class="quando vermelho">' + i.dias + (i.dias === 1 ? ' dia de atraso' : ' dias de atraso') + '</span>';
+  return '<span class="quando ambar">' + (i.dias === 0 ? 'vence hoje' : 'vence em ' + i.dias + (i.dias === 1 ? ' dia' : ' dias')) + '</span>';
+}
+function renderUrgencias_() {
+  var el = document.getElementById('urgenciasCorpo');
+  var u = ACOES_.urgencias;
+  if (u.erro) { el.innerHTML = '<div class="acoes-erro">Não foi possível carregar as urgências: ' + escCS_(u.erro) + '</div>'; return; }
+  var d = u.dado, r = d.report;
+  var html = '<div class="acoes-faixa"><div class="acoes-faixa-titulo">Report semanal <span>semana de ' + dmAcoes_(r.semanaInicio) + ' a ' + dmAcoes_(r.semanaFim) + ', prazo na sexta ' + dmAcoes_(r.prazo) + '</span></div>'
+    + '<div class="cont-linha"><span class="cont">Em dia ' + r.emDia.length + '</span>'
+    + '<span class="cont' + (r.comAtraso.length ? ' ambar' : '') + '">Com atraso ' + r.comAtraso.length + '</span>'
+    + '<span class="cont' + (r.pendentes.length ? ' vermelho' : '') + '">Pendente ' + r.pendentes.length + '</span></div>'
+    + (r.pendentes.length ? '<div class="urg-cs-muted">Pendentes</div>' + chipsAcoes_(r.pendentes, 'vermelho') : '')
+    + (r.comAtraso.length ? '<div class="urg-cs-muted" style="margin-top:8px;">Enviaram com atraso</div>' + chipsAcoes_(r.comAtraso, 'ambar') : '')
+    + (!r.pendentes.length && !r.comAtraso.length ? '<div class="urg-cs-muted">Todos os CS enviaram o report no prazo.</div>' : '')
+    + '</div>';
+  var g = d.gtd;
+  html += '<div class="acoes-faixa"><div class="acoes-faixa-titulo">Tarefas de GTD <span>ciclos abertos, até 14 dias depois do conselho</span></div>'
+    + '<div class="cont-linha"><span class="cont' + (g.totalAtrasadas ? ' vermelho' : '') + '">Atrasadas ' + g.totalAtrasadas + '</span>'
+    + '<span class="cont' + (g.totalAVencer ? ' ambar' : '') + '">A vencer em 7 dias ' + g.totalAVencer + '</span></div>';
+  html += g.porCS.map(function (c) {
+    if (!c.ciclosAbertos) return '<div class="urg-cs"><div class="urg-cs-muted" style="padding:11px 0 11px 20px;"><b>' + escCS_(c.cs) + '</b>, sem ciclos abertos</div></div>';
+    if (!c.atrasadas && !c.aVencer) return '<div class="urg-cs"><div class="urg-cs-muted" style="padding:11px 0 11px 20px;"><b>' + escCS_(c.cs) + '</b>, sem pendências em ' + c.ciclosAbertos + (c.ciclosAbertos === 1 ? ' ciclo aberto' : ' ciclos abertos') + '</div></div>';
+    var itens = c.itens.map(function (i) {
+      return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b>, ' + escCS_(i.rotulo) + '</div>' + quandoAcoes_(i)
+        + '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + ', conselho em ' + dmAcoes_(i.dataConselho) + (i.vinculado ? '' : ', não vinculado a um conselho ativo') + '</div></div>';
+    }).join('');
+    return '<details class="urg-cs"' + (c.atrasadas && c === g.porCS[0] ? ' open' : '') + '><summary><span class="urg-cs-nome">' + escCS_(c.cs) + '</span>'
+      + (c.atrasadas ? '<span class="cont vermelho">Atrasadas ' + c.atrasadas + '</span>' : '')
+      + (c.aVencer ? '<span class="cont ambar">A vencer ' + c.aVencer + '</span>' : '') + '</summary><div class="urg-lista">' + itens + '</div></details>';
+  }).join('');
+  html += '</div>';
+  var rodape = 'GTD com posição de ' + dmaAcoes_(ACOES_.carimbos.gtdSnapshot) + '.';
+  if (ACOES_.carimbos.ultimoReportCriadoEm) rodape += ' Último report recebido em ' + dmaAcoes_(ACOES_.carimbos.ultimoReportCriadoEm) + '.';
+  if (r.reportsSemMapeamento) rodape += ' ' + r.reportsSemMapeamento + ' reports de pessoas sem vínculo com um CS ativo ficam de fora.';
+  if (g.rotulosNaoMapeados.length) rodape += ' Etapas sem prazo mapeado: ' + g.rotulosNaoMapeados.map(escCS_).join(', ') + '.';
+  document.getElementById('urgenciasCorpo').innerHTML = html + '<div class="acoes-rodape">' + rodape + '</div>';
+}
+function insightHtml_(i) {
+  var sev = { alta: 'Alta', media: 'Média', baixa: 'Baixa' }[i.severidade];
+  return '<div class="ins-item"><div class="ins-topo"><span class="ins-sev ' + i.severidade + '">' + sev + '</span></div>'
+    + '<div class="ins-oque">' + escCS_(i.oQue) + '</div>'
+    + '<div class="ins-num"><b>' + escCS_(i.numero) + '</b> <span>' + escCS_(i.referencia) + '</span></div>'
+    + '<div class="ins-acao"><b>Ação:</b> ' + escCS_(i.acao) + '</div>'
+    + (i.responsaveis.length ? '<div class="ins-quem">Quem age: ' + i.responsaveis.map(escCS_).join(', ') + '</div>' : '<div class="ins-quem">Quem age: o time</div>') + '</div>';
+}
+function renderInsights_() {
+  var el = document.getElementById('insightsCorpo');
+  var n = ACOES_.insights;
+  if (n.erro) { el.innerHTML = '<div class="acoes-erro">Não foi possível carregar os insights: ' + escCS_(n.erro) + '</div>'; return; }
+  var d = n.dado;
+  var html;
+  if (!d.total) html = '<div class="gestor-empty">Nenhum ponto de atenção identificado neste período.</div>';
+  else {
+    html = d.visiveis.map(insightHtml_).join('');
+    if (d.restantes.length) {
+      html += (INSIGHTS_TODOS_ ? d.restantes.map(insightHtml_).join('') : '')
+        + '<button class="ins-mais" type="button" id="insMais">' + (INSIGHTS_TODOS_ ? 'Mostrar menos' : 'Ver todos, mais ' + d.restantes.length) + '</button>';
+    }
+  }
+  el.innerHTML = html + '<div class="acoes-rodape">Regras fixas, sem IA, sobre os dados de ' + escCS_(d.periodo.mes) + ' de ' + d.periodo.ano + ' e do dia de hoje. Gerado em ' + new Date(ACOES_.geradoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '.</div>';
+  var b = document.getElementById('insMais');
+  if (b) b.addEventListener('click', function () { INSIGHTS_TODOS_ = !INSIGHTS_TODOS_; renderInsights_(); });
+}
+function carregarAcoes() {
+  fetchJSON_('/api/gestor/visao-geral/acoes').then(function (data) {
+    ACOES_ = data; renderUrgencias_(); renderInsights_();
+  }).catch(function (err) {
+    var msg = '<div class="acoes-erro">Não foi possível carregar: ' + escCS_(err.message) + '</div>';
+    document.getElementById('urgenciasCorpo').innerHTML = msg;
+    document.getElementById('insightsCorpo').innerHTML = msg;
+  });
 }
 
 // Cards com a cara de cada CS (07/10/2026): foto grande (a mesma resolução do app, cs_fotos antes de
@@ -2766,6 +2918,7 @@ function inicializarVoz_() {
 }
 
 carregarVisaoGeral();
+carregarAcoes();
 
 // link direto /gestor#churn (usado pelo "Voltar ao painel" do relatório de churn)
 if (window.location.hash === '#churn' || new URLSearchParams(window.location.search).has('granularidade')) {

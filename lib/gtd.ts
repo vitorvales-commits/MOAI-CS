@@ -2,6 +2,8 @@
 // etapas em antes e depois do conselho e ciclos de um conselho. Nenhuma tela recalcula nada.
 // Roda com: node --experimental-strip-types tests/gtd.test.ts
 
+import { cicloAberto, hojeSP } from './gtd-prazos.ts';
+
 export type EtapaGtd = { label: string; feito: boolean };
 export type LinhaHistoricoGtd = {
   id_item_conselho: string | null; membro: string | null; cs_responsavel: string | null;
@@ -92,7 +94,7 @@ export function cicloAtualPorId(linhas: LinhaHistoricoGtd[]): LinhaHistoricoGtd[
 // ciclo atual cujo membro bate com o conselheiro do título. Sem vínculo, devolve vinculado false e
 // nenhum ciclo, nunca adivinha por outro critério.
 export function gtdDoConselho(
-  historico: LinhaHistoricoGtd[], contato: string | null, normalizar: (s: string) => string,
+  historico: LinhaHistoricoGtd[], contato: string | null, normalizar: (s: string) => string, hoje: string = hojeSP(),
 ): { vinculado: boolean; ciclos: CicloGtd[] } {
   if (!contato) return { vinculado: false, ciclos: [] };
   const atual = cicloAtualPorId(historico).find((h) => normalizar(h.membro || '') === normalizar(contato));
@@ -100,18 +102,21 @@ export function gtdDoConselho(
   const ciclos = historico
     .filter((h) => h.id_item_conselho === atual.id_item_conselho)
     .sort((a, b) => (b.data_conselho || '').localeCompare(a.data_conselho || ''))
-    .map((h) => montarCiclo(h, h === atual));
+    // "Atual" só vale se o ciclo ainda está aberto (até D+14 do conselho, cicloAberto).
+    .map((h) => montarCiclo(h, h === atual && cicloAberto(h.data_conselho, hoje)));
   return { vinculado: true, ciclos };
 }
 
-// Agregado do CS: razão pooled das etapas dos ciclos atuais dos conselhos dele, mais a lista de
+// Agregado do CS: razão pooled das etapas dos ciclos abertos dos conselhos dele, mais a lista de
 // conselhos com barra, atrasadas e data do encontro. contatosVinculados são os conselheiros que
 // casam com um conselho ativo (para marcar os não vinculados).
 export function gtdAgregadoCS(
   historico: LinhaHistoricoGtd[], csNome: string, normalizar: (s: string) => string,
-  contatosVinculados: Set<string>,
+  contatosVinculados: Set<string>, hoje: string = hojeSP(),
 ) {
-  const atuais = cicloAtualPorId(historico).filter((h) => normalizar(h.cs_responsavel || '') === normalizar(csNome));
+  // Todos os ciclos ABERTOS do CS (até D+14 do conselho, a mesma cicloAberto das Urgências). Ciclo
+  // fechado nunca entra no agregado.
+  const atuais = historico.filter((h) => normalizar(h.cs_responsavel || '') === normalizar(csNome) && cicloAberto(h.data_conselho, hoje));
   const conselhos = atuais.map((h) => {
     const c = montarCiclo(h, true);
     return { membro: h.membro, ...c, vinculado: contatosVinculados.has(normalizar(h.membro || '')) };

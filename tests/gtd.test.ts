@@ -33,18 +33,22 @@ const hist = [
   linha('2', 'Gugu', 'Luana', '2026-10-23', 0), linha('2', 'Gugu', 'Luana', '2026-09-25', 5),
 ];
 assert.equal(cicloAtualPorId(hist).length, 2);
-const g = gtdDoConselho(hist, 'fernando zago', n);
+const HOJE = '2026-10-07';
+const g = gtdDoConselho(hist, 'fernando zago', n, HOJE);
 assert.equal(g.vinculado, true);
 assert.deepEqual(g.ciclos.map((c) => c.dataConselho), ['2026-10-16', '2026-09-23']);
 assert.equal(g.ciclos[0].atual, true); assert.equal(g.ciclos[0].taxa, 11); assert.equal(g.ciclos[0].feitas, 1);
 assert.equal(g.ciclos[0].antes.length, 1); assert.equal(g.ciclos[0].depois.length, 8);
-assert.equal(gtdDoConselho(hist, 'Fulano', n).vinculado, false, 'sem vínculo, sem adivinhar');
-assert.equal(gtdDoConselho(hist, null, n).ciclos.length, 0);
+assert.equal(gtdDoConselho(hist, 'Fulano', n, HOJE).vinculado, false, 'sem vínculo, sem adivinhar');
+assert.equal(gtdDoConselho(hist, null, n, HOJE).ciclos.length, 0);
+assert.equal(gtdDoConselho(hist, 'Fernando Zago', n, '2026-11-20').ciclos[0].atual, false, 'ciclo fechado não é atual');
 
-const ag = gtdAgregadoCS(hist, 'Vilker', n, new Set(['fernando zago']));
-assert.equal(ag.conselhos.length, 1); assert.equal(ag.taxa, 11); assert.equal(ag.conselhos[0].vinculado, true);
-const ag2 = gtdAgregadoCS(hist, 'Luana', n, new Set());
-assert.equal(ag2.conselhos[0].vinculado, false); assert.equal(ag2.taxa, 0);
-assert.equal(gtdAgregadoCS(hist, 'Ninguém', n, new Set()).taxa, null);
+// ciclos abertos em 07/10: Zago 16/10 (1 de 9) e 23/09 (9 de 9, aberto até 07/10)
+const ag = gtdAgregadoCS(hist, 'Vilker', n, new Set(['fernando zago']), HOJE);
+assert.equal(ag.conselhos.length, 2); assert.equal(ag.taxa, 56); assert.equal(ag.conselhos[0].vinculado, true);
+const ag2 = gtdAgregadoCS(hist, 'Luana', n, new Set(), HOJE);
+assert.equal(ag2.conselhos[0].vinculado, false); assert.equal(ag2.taxa, 28);
+assert.equal(gtdAgregadoCS(hist, 'Vilker', n, new Set(), '2026-10-08').conselhos.length, 1, 'D+15 do ciclo de 23/09 fecha');
+assert.equal(gtdAgregadoCS(hist, 'Ninguém', n, new Set(), HOJE).taxa, null, 'sem ciclos abertos não é zero');
 
 console.log('gtd: testes aprovados');
