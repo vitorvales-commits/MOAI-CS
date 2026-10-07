@@ -107,3 +107,45 @@ export const PESOS_SCORE_CS: Record<string, number> = {
   churn: 10,
   downsell: 3,
 };
+
+// ============ semáforo de confirmações (07/10/2026) ============
+// Fonte única das faixas de confirmados de um conselho. A agenda (semana, mês, lista), o selo dos
+// cards de conselho, a legenda e o tooltip leem esta constante — nenhum outro lugar repete os
+// limiares. "ate: null" é a faixa aberta (8 ou mais). Tokens validados com contraste de pelo menos
+// 4,5 para 1 entre corFundo e corTexto; verde e azul tiveram só a luminosidade escurecida
+// (#3D8B5F para #3A845A e #3B82F6 para #1E6FF5), mantendo a matiz.
+export type SemaforoChave = 'vermelho' | 'laranja' | 'amarelo' | 'verde' | 'azul';
+export type SemaforoFaixa = { chave: SemaforoChave; de: number; ate: number | null; corFundo: string; corTexto: string; rotulo: string };
+export const SEMAFORO_CONFIRMADOS: SemaforoFaixa[] = [
+  { chave: 'vermelho', de: 0, ate: 1, corFundo: '#C0433D', corTexto: '#FFFFFF', rotulo: 'vermelha' },
+  { chave: 'laranja', de: 2, ate: 3, corFundo: '#E8833A', corTexto: '#1A1A1A', rotulo: 'laranja' },
+  { chave: 'amarelo', de: 4, ate: 5, corFundo: '#E9C23B', corTexto: '#1A1A1A', rotulo: 'amarela' },
+  { chave: 'verde', de: 6, ate: 7, corFundo: '#3A845A', corTexto: '#FFFFFF', rotulo: 'verde' },
+  { chave: 'azul', de: 8, ate: null, corFundo: '#1E6FF5', corTexto: '#FFFFFF', rotulo: 'azul' },
+];
+// Conselho já encerrado não recebe semáforo: estilo neutro, mostra a presença apurada.
+export const AGENDA_PASSADO_COR = { corFundo: '#64748B', corTexto: '#FFFFFF' };
+// Entrada inválida (nula, negativa, não inteira) cai no neutro, sem lançar erro.
+export const SEMAFORO_NEUTRO = { corFundo: '#9F9F9F', corTexto: '#1A1A1A' };
+
+// ============ faixas de presença por membro (kanban da Visão da rede) ============
+// Fonte única das quatro faixas. "atencao" reaproveita LIMIAR_PRESENCA_ATENCAO. Fronteiras
+// fechadas à direita: até 20 crítica, acima de 20 até 50 baixa, acima de 50 até 70 atenção.
+export type FaixaPresencaChave = 'critica' | 'baixa' | 'atencao' | 'saudavel';
+export const FAIXAS_PRESENCA: { chave: FaixaPresencaChave; ate: number | null; rotulo: string }[] = [
+  { chave: 'critica', ate: 20, rotulo: 'Presença crítica' },
+  { chave: 'baixa', ate: 50, rotulo: 'Presença baixa' },
+  { chave: 'atencao', ate: LIMIAR_PRESENCA_ATENCAO, rotulo: 'Em atenção' },
+  { chave: 'saudavel', ate: null, rotulo: 'Saudável' },
+];
+
+// ============ Health da Base (07/10/2026) ============
+// Health da Base do CS = presença média da carteira (escala inversa) com as advertências ativas
+// deduzidas. Guardado como saúde líquida (0 a 100, maior é melhor) e exibido como 100 menos a
+// saúde líquida quando HEALTH_BASE_ESCALA_INVERSA é verdadeiro (maior é pior, decisão do Vitor).
+export const PESO_PONTO_ADVERTENCIA_DECIMOS = 10; // décimos de ponto percentual de saúde por ponto de advertência ativa
+export const HEALTH_BASE_ESCALA_INVERSA = true;
+
+// Duração fixa de um conselho na agenda (4h, nunca registrada no Monday). Define o tamanho do bloco
+// na grade da semana e o momento em que o conselho passa a ser "encerrado" (sem semáforo).
+export const AGENDA_DURACAO_CONSELHO_MIN = 240;
