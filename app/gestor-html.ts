@@ -12,6 +12,7 @@
 // arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
 
 import { FAIXAS_PRESENCA } from '@/lib/constants';
+import { RADAR_SVG_SCRIPT } from '@/lib/radar-svg';
 
 export const GESTOR_STYLE = `
 :root{
@@ -85,7 +86,22 @@ export const GESTOR_STYLE = `
 .rank-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--dourado),var(--verde));}
 .rank-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;text-align:right;}
 
-.radar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;}
+.cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;}
+.cs-card{position:relative;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:24px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .15s ease,box-shadow .15s ease;outline:none;}
+.cs-card:hover,.cs-card:focus-visible{transform:translateY(-3px);box-shadow:0 12px 28px rgba(20,20,20,0.12);}
+.cs-card:focus-visible{border-color:var(--dourado);}
+.cs-card-foto-wrap{position:relative;aspect-ratio:1/1;background:var(--grafite);overflow:hidden;}
+.cs-card-foto{width:100%;height:100%;object-fit:cover;display:block;}
+.cs-card-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:64px;color:#fff;}
+.cs-card-pos{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;padding:5px 11px;border-radius:99px;background:var(--dourado);color:var(--preto-tinta);}
+.cs-card-pos.sem{background:rgba(20,20,20,0.72);color:#fff;font-weight:700;}
+.cs-card-over{position:absolute;left:0;right:0;bottom:0;padding:34px 16px 12px;background:linear-gradient(180deg,rgba(20,20,20,0),rgba(20,20,20,0.82));color:#fff;}
+.cs-card-nome{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;line-height:1.15;}
+.cs-card-body{padding:14px 16px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cs-card-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:30px;line-height:1;}
+.cs-card-score-lbl{font-size:11px;color:var(--cinza-texto);margin-top:3px;}
+.cs-card-semdados{font-size:12.5px;font-weight:600;color:var(--cinza-texto);line-height:1.35;}
+.cs-nota{font-size:12px;color:var(--cinza-texto);margin-top:14px;}
 .radar-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:18px 18px 8px;display:flex;flex-direction:column;align-items:center;}
 .radar-card-head{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
 .radar-card-name{font-size:14px;font-weight:600;}
@@ -501,10 +517,11 @@ export const GESTOR_HTML = `
 
     <section class="block">
       <div class="block-head">
-        <h2>Radar por CS</h2>
-        <p>Os nove indicadores acompanhados pela área, normalizados a 100% = meta batida.</p>
+        <h2>CS da área</h2>
+        <p>Foto, pontuação e posição de cada CS ativo. Clique no card para abrir a página do CS, com radar, GTD, membros críticos e advertências.</p>
       </div>
-      <div class="radar-grid" id="radarGrid"></div>
+      <div class="cs-grid" id="csGrid"></div>
+      <div class="cs-nota" id="csGridNota"></div>
     </section>
 
     <section class="block">
@@ -896,50 +913,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
   });
 });
 
-// ============ radar SVG (feito à mão, sem lib externa) ============
-// Eixos e valores (escala 0-150, 100 = bateu a meta, capado em 150) vêm prontos do back-end em
-// data.radarEixos / cs.radar — este código só desenha, nunca recalcula.
-
-function polarPonto(cx, cy, r, i, total) {
-  var a = (Math.PI * 2 * i / total) - Math.PI / 2;
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-}
-// Valor null no eixo = sem meta (ou sem dado): o vértice é pulado no polígono e o eixo ganha um
-// marcador vazio no anel de 100 por cento, com o rótulo "sem meta". Nunca desenhado como zero
-// (07/10/2026). viewBox mais largo que o gráfico: os rótulos longos (Matchmakings, Indicações) não
-// são mais cortados nas bordas do card.
-function radarSVG(labels, valores, gradId, largura) {
-  var W = 380, H = 280, cx = W / 2, cy = 134, rMax = 86, total = labels.length;
-  var svg = '<svg width="' + (largura || 300) + '" viewBox="0 0 ' + W + ' ' + H + '" style="max-width:100%;height:auto" role="img" aria-label="Radar dos indicadores">';
-  [{ f: 50 / 150, dash: '3,3' }, { f: 100 / 150, dash: '0' }, { f: 1, dash: '3,3' }].forEach(function (anel) {
-    var pts = '';
-    for (var i = 0; i < total; i++) { var p = polarPonto(cx, cy, rMax * anel.f, i, total); pts += p.x + ',' + p.y + ' '; }
-    svg += '<polygon points="' + pts + '" fill="none" stroke="#D8D5D5" stroke-width="1" stroke-dasharray="' + anel.dash + '"/>';
-  });
-  for (var i = 0; i < total; i++) {
-    var p = polarPonto(cx, cy, rMax, i, total);
-    svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '" stroke="#D8D5D5" stroke-width="1"/>';
-    var lp = polarPonto(cx, cy, rMax + 14, i, total);
-    var anchor = 'middle'; if (lp.x > cx + 4) anchor = 'start'; else if (lp.x < cx - 4) anchor = 'end';
-    var semMeta = valores[i] === null || valores[i] === undefined;
-    svg += '<text x="' + lp.x + '" y="' + lp.y + '" font-size="9.5" fill="' + (semMeta ? '#B5B1B1' : '#6F6C6C') + '" font-family="Inter,sans-serif" text-anchor="' + anchor + '" dominant-baseline="middle">' + labels[i] + (semMeta ? ' (sem meta)' : '') + '</text>';
-  }
-  var pts = '', marcadores = '';
-  for (var i = 0; i < total; i++) {
-    if (valores[i] === null || valores[i] === undefined) {
-      var pm = polarPonto(cx, cy, rMax * 100 / 150, i, total);
-      marcadores += '<circle cx="' + pm.x + '" cy="' + pm.y + '" r="3.2" fill="#fff" stroke="#9F9F9F" stroke-width="1.2" stroke-dasharray="2,1.5"/>';
-      continue;
-    }
-    var v = Math.max(0, Math.min(150, valores[i])) / 150; var pp = polarPonto(cx, cy, rMax * v, i, total);
-    pts += pp.x + ',' + pp.y + ' ';
-    marcadores += '<circle cx="' + pp.x + '" cy="' + pp.y + '" r="2.6" fill="#141414"/>';
-  }
-  if (pts) svg += '<polygon points="' + pts + '" fill="url(#' + gradId + ')" stroke="#C89A2E" stroke-width="1.6" fill-opacity="0.55"/>';
-  svg += marcadores;
-  svg += '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C89A2E"/><stop offset="100%" stop-color="#3D8B5F"/></linearGradient></defs></svg>';
-  return svg;
-}
+${RADAR_SVG_SCRIPT}
 
 // ============ visão geral ============
 // classificarScore() é só um agrupamento visual (3 faixas) do scoreReal que já vem pronto do
@@ -968,6 +942,7 @@ function renderHero() {
 function renderRanking() {
   var el = document.getElementById('rankingList');
   if (!DADOS.ranking.length) { el.innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
+  // quem ficou sem indicadores com meta suficientes não ganha número: a nota fica abaixo da lista
   var maxScore = Math.max.apply(null, DADOS.ranking.map(function (r) { return r.scoreReal || 0; }).concat([1]));
   el.innerHTML = DADOS.ranking.map(function (r, i) {
     var status = classificarScore(r.scoreReal);
@@ -980,17 +955,49 @@ function renderRanking() {
   }).join('');
 }
 
-function renderRadares() {
-  var el = document.getElementById('radarGrid');
+// Cards com a cara de cada CS (07/10/2026): foto grande (a mesma resolução do app, cs_fotos antes de
+// FOTOS_CS), nome, pontuação com o ícone de composição e posição. Sem foto, círculo com a inicial.
+// Quem tem menos indicadores com meta do que o mínimo aparece como "Sem dados suficientes", sem
+// número e fora do ranking. A pontuação e a posição vêm prontas do servidor, nunca recalculadas.
+function corDoNome_(nome) {
+  var cores = ['#8A6D1C', '#3D8B5F', '#C0433D', '#2F6F8F', '#6B4E9B', '#B5651D', '#4A7A4A'];
+  var h = 0; String(nome || '').split('').forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 997; });
+  return cores[h % cores.length];
+}
+function escCS_(t) { return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
+function abrirPaginaCS(nome) {
+  window.location.href = '/gestor/cs/' + encodeURIComponent(nome) + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual);
+}
+function renderCardsCS() {
+  var el = document.getElementById('csGrid');
+  var cards = DADOS.cards || [];
+  if (!cards.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste período.</div>'; document.getElementById('csGridNota').textContent = ''; return; }
   el.innerHTML = '';
-  DADOS.porCS.forEach(function (cs, idx) {
-    var status = classificarScore(cs.scoreReal);
-    var idxModal = registrarScoreModal_(cs.nome, cs.scoreReal, cs.detalhamento);
-    var card = document.createElement('div'); card.className = 'radar-card';
-    card.innerHTML = '<div class="radar-card-head"><span class="radar-card-name">' + cs.nome + '</span><span class="radar-card-score" style="color:' + status.cor + '">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>'
-      + radarSVG(DADOS.radarEixos, cs.radar, 'gradFill_' + idx);
+  cards.forEach(function (c) {
+    var temNota = c.pontuacao !== null && c.pontuacao !== undefined;
+    var status = classificarScore(c.pontuacao);
+    var idxModal = registrarScoreModal_(c.nome, c.pontuacao, c.detalhamento);
+    var foto = c.fotoUrl
+      ? '<img class="cs-card-foto" loading="lazy" src="' + escCS_(c.fotoUrl) + '" alt="Foto de ' + escCS_(c.nome) + '">'
+      : '<div class="cs-card-fallback" style="background:' + corDoNome_(c.nomeCompleto || c.nome) + '">' + escCS_((c.nome || '?').charAt(0).toUpperCase()) + '</div>';
+    var pos = temNota ? '<span class="cs-card-pos">' + c.posicao + 'º no ranking</span>' : '<span class="cs-card-pos sem">Fora do ranking</span>';
+    var corpo = temNota
+      ? '<div><div class="cs-card-score" style="color:' + status.cor + '">' + c.pontuacao + '</div><div class="cs-card-score-lbl">pontos</div></div>'
+      : '<div class="cs-card-semdados">Sem dados suficientes<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
+    var card = document.createElement('div');
+    card.className = 'cs-card'; card.tabIndex = 0; card.setAttribute('role', 'link');
+    card.setAttribute('aria-label', 'Abrir a página de ' + c.nome);
+    card.innerHTML = '<div class="cs-card-foto-wrap">' + foto + pos + '<div class="cs-card-over"><div class="cs-card-nome">' + escCS_(c.nome) + '</div></div></div>'
+      + '<div class="cs-card-body">' + corpo + '<button class="info-btn" type="button" title="Como essa pontuação foi composta" aria-label="Composição da pontuação de ' + escCS_(c.nome) + '">ⓘ</button></div>';
+    card.addEventListener('click', function () { abrirPaginaCS(c.nome); });
+    card.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') abrirPaginaCS(c.nome); });
+    card.querySelector('.info-btn').addEventListener('click', function (ev) { ev.stopPropagation(); abrirScoreModal(idxModal); });
     el.appendChild(card);
   });
+  var sem = DADOS.cards.filter(function (c) { return c.estado === 'sem_dados_suficientes'; }).map(function (c) { return c.nome; });
+  document.getElementById('csGridNota').textContent = sem.length
+    ? 'Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '. É preciso ter metas cadastradas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.'
+    : '';
 }
 
 function divergTag(manual, calc) {
@@ -1270,7 +1277,7 @@ function carregarVisaoGeral() {
     DADOS = data;
     renderHero();
     renderRanking();
-    renderRadares();
+    renderCardsCS();
     renderTabelaHead();
     renderTabela('calculado');
     renderRiscos();

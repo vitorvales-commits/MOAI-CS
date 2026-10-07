@@ -12,7 +12,7 @@ import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
   AGENDA_STATUS_CANCELADO, FEEDBACK_CATEGORIAS, EX_MEMBROS_SEM_CONTA, APELIDOS_AGENDA,
-  PESOS_SCORE_CS, FOTOS_CS, NIVEL_ORDEM,
+  PESOS_SCORE_CS, PONTUACAO_MIN_INDICADORES_COM_META, FOTOS_CS, NIVEL_ORDEM,
   STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA, STATUS_PAGAMENTO_EXCLUIR,
   LIMIAR_HEALTHSCORE_ATENCAO, LIMIAR_PRESENCA_ATENCAO, MESES_JANELA_MATCHMAKINGS_PARADO, SIMILARIDADE_DESAFIO_MIN,
   AGENDA_DURACAO_CONSELHO_MIN,
@@ -23,7 +23,8 @@ import {
 } from './indicadores-base';
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
-import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, type CicloGtd } from './gtd';
+import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
+import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
 
@@ -1958,6 +1959,18 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
     porCS,
     ranking,
     semDadosSuficientes,
+    minimoIndicadores: PONTUACAO_MIN_INDICADORES_COM_META,
+    // Cards com a cara do CS (foto, nome, pontuação e posição): só CS ativos, na ordem do ranking
+    // e depois quem está sem dados suficientes (sem número). Ver renderCardsCS no gestor-html.
+    cards: [
+      ...ranking.map((r) => {
+        const c = porCS.find((x) => x.nome === r.nome)!;
+        return { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, pontuacao: r.scoreReal as number | null, posicao: r.posicao as number | null, estado: 'com_pontuacao' as string, elegiveis: c.pontuacao.elegiveis, detalhamento: c.detalhamento };
+      }),
+      ...porCS.filter((c) => c.ativo && !c.ex && c.pontuacao.estado === 'sem_dados_suficientes').map((c) => (
+        { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, pontuacao: null as number | null, posicao: null as number | null, estado: 'sem_dados_suficientes' as string, elegiveis: c.pontuacao.elegiveis, detalhamento: c.detalhamento }
+      )),
+    ],
   };
 }
 
@@ -2392,7 +2405,7 @@ function presencaDecimosMembro(m: any, statusPorMembro: Map<number, Map<string, 
 function pontosAtivosDoCS(dados: DadosBrutos, csNome: string): number {
   return pontuacaoAtivaDe((dados.advertenciasAplicadas || []).filter((a) => a.cs_nome === csNome));
 }
-function healthBaseDoCS(dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>, statusPorMembro: Map<number, Map<string, string>>): HealthBase {
+function healthBaseDoCS(dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>, statusPorMembro: Map<number, Map<string, string>>, pontosOverride?: number): HealthBase {
   const presencas: (number | null)[] = [];
   const vistos = new Set<number>();
   grupos.forEach((g: any) => {
@@ -2402,7 +2415,7 @@ function healthBaseDoCS(dados: DadosBrutos, csNome: string, grupos: any[], membr
       presencas.push(presencaDecimosMembro(m, statusPorMembro));
     });
   });
-  return calcularHealthBase(presencas, pontosAtivosDoCS(dados, csNome));
+  return calcularHealthBase(presencas, pontosOverride !== undefined ? pontosOverride : pontosAtivosDoCS(dados, csNome));
 }
 // Agregado da área: todos os conselhos ativos da rede (mesmo universo do kanban), cada membro uma
 // única vez, sem desconto de advertência (advertência é individual de cada CS).
@@ -3263,3 +3276,113 @@ export async function generateRelatorioMensal(sb: SupabaseClient, seletorMes: st
   return { periodo: nps.periodo, nps, operacional, destaque, pontos };
 }
 export type RelatorioMensal = Awaited<ReturnType<typeof generateRelatorioMensal>>;
+
+// ============ página do CS na visão do gestor (07/10/2026) ============
+// Uma chamada agregada (GET /api/gestor/cs/[nome]) devolve cabeçalho, radar, GTD, críticos por
+// produto, Health da Base e advertências. Cada seção é isolada: se uma falha, a resposta traz a
+// mensagem real do erro só dela e as demais seguem (secoes_isoladas). Nenhum cálculo novo de
+// pontuação: o score, a posição e o radar vêm de generateVisaoGestor (lib/pontuacao.ts).
+
+async function secaoIsolada<T>(rotulo: string, fn: () => Promise<T> | T): Promise<{ dado: T | null; erro: string | null }> {
+  try { return { dado: await fn(), erro: null }; }
+  catch (e: any) { console.error('[paginaCSGestor] ' + rotulo, e); return { dado: null, erro: e?.message || String(e) }; }
+}
+
+export type CriticosPorProdutoCS =
+  | { estado: 'sem_report' }
+  | { estado: 'sem_detalhamento'; semana: string; criticos: number | null; membros: number | null; percentualDecimos: number | null }
+  | { estado: 'com_detalhamento'; semana: string; linhas: LinhaProduto[]; total: { criticos: number; membros: number; percentualDecimos: number | null } };
+
+// Do report mais recente do CS: com nomes (críticos listados) devolve por produto; importado do
+// Monday (só contagem) devolve o total declarado e o marcador sem_detalhamento; sem report devolve
+// sem_report. Nunca zero no lugar de ausência. Produto é o nível do conselho do membro.
+export async function criticosPorProdutoCS(
+  sb: SupabaseClient, dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>,
+): Promise<CriticosPorProdutoCS> {
+  const { data: reps, error } = await sb.from('reports_individuais')
+    .select('id, semana_inicio, base_total, criticos_total').eq('cs_nome', csNome)
+    .order('semana_inicio', { ascending: false }).limit(1);
+  if (error) throw new Error('Erro ao buscar o report mais recente: ' + error.message);
+  if (!reps || reps.length === 0) return { estado: 'sem_report' };
+  const rep = reps[0] as any;
+  const { data: crit, error: errCrit } = await sb.from('reports_individuais_criticos').select('membro_id, group_id').eq('report_id', rep.id);
+  if (errCrit) throw new Error('Erro ao buscar os críticos do report: ' + errCrit.message);
+  if (!crit || crit.length === 0) {
+    const c = rep.criticos_total ?? null, b = rep.base_total ?? null;
+    return { estado: 'sem_detalhamento', semana: rep.semana_inicio, criticos: c, membros: b, percentualDecimos: percentualCriticosDecimos(c, b) };
+  }
+  const nivelDoGrupo = (groupId: string) => {
+    const g = dados.conselhosGrupos.find((x: any) => x.group_id === groupId);
+    return (g && parseTituloConselho(g.titulo)?.nivel) || '';
+  };
+  const criticosPorNivel: Record<string, number> = {};
+  crit.forEach((r: any) => { const n = nivelDoGrupo(r.group_id); criticosPorNivel[n] = (criticosPorNivel[n] || 0) + 1; });
+  const membrosPorNivel: Record<string, number> = {};
+  const vistos = new Set<number>();
+  grupos.forEach((g: any) => {
+    const n = parseTituloConselho(g.titulo)?.nivel || '';
+    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
+      if (vistos.has(m.id)) return;
+      vistos.add(m.id);
+      membrosPorNivel[n] = (membrosPorNivel[n] || 0) + 1;
+    });
+  });
+  const { linhas, total } = consolidarCriticosPorProduto(criticosPorNivel, membrosPorNivel);
+  return { estado: 'com_detalhamento', semana: rep.semana_inicio, linhas, total };
+}
+
+export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMes: string, ano: number) {
+  const [visao, ativos, dados] = await Promise.all([
+    generateVisaoGestor(sb, seletorMes, ano, false), getCSListCompleto(sb), getDadosBrutos(sb),
+  ]);
+  const cs = visao.porCS.find((c) => c.nome === nome);
+  const cfg = ativos.find((c) => c.nome === nome);
+  if (!cs || !cfg) {
+    const e: any = new Error(`CS "${nome}" não encontrado entre os CS ativos.`);
+    e.status = 404;
+    throw e;
+  }
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+  const grupos = gruposDaCarteira(dados, cfg.apelidoConselho);
+  const posicao = (visao.ranking.find((r) => r.nome === nome) || { posicao: null }).posicao;
+
+  const cabecalho = await secaoIsolada('cabecalho', () => ({
+    nome: cs.nome, nomeCompleto: cs.nomeCompleto, fotoUrl: cs.fotoUrl,
+    pontuacao: cs.scoreReal, posicao, estado: cs.pontuacao.estado, elegiveis: cs.pontuacao.elegiveis,
+    minimoIndicadores: PONTUACAO_MIN_INDICADORES_COM_META, detalhamento: cs.detalhamento,
+    totalRankeados: visao.ranking.length,
+    carteira: { numConselhos: cs.indicadores.numConselhos.calculado, meta: cs.indicadores.numConselhos.meta, semMetaPropria: !!cs.semMetaPropria },
+  }));
+
+  const radar = await secaoIsolada('radar', () => RADAR_EIXOS.map((eixo, i) => {
+    const ind = (cs.indicadores as any)[eixo.chave];
+    const pct = cs.radar[i];
+    return { chave: eixo.chave, label: eixo.label, tipoMeta: eixo.tipoMeta, pct, valor: ind.calculado, meta: ind.meta, unidade: ind.unidade, semMeta: pct === null };
+  }));
+
+  const gtd = await secaoIsolada('gtd', () => {
+    const contatos = new Map<string, string>();
+    grupos.forEach((g: any) => { const c = extrairContatoDoTitulo(g.titulo); if (c) contatos.set(normalizeNome(c), g.group_id); });
+    const ag = gtdAgregadoCS(dados.historico as any[], nome, normalizeNome, new Set(contatos.keys()));
+    return {
+      taxa: ag.taxa, feitas: ag.feitas, total: ag.total,
+      conselhos: ag.conselhos.map((c) => ({ ...c, groupId: contatos.get(normalizeNome(c.membro || '')) || null })),
+      naoVinculados: ag.conselhos.filter((c) => !c.vinculado).map((c) => c.membro),
+    };
+  });
+
+  const criticos = await secaoIsolada('criticos', () => criticosPorProdutoCS(sb, dados, nome, grupos, membrosPorGrupo));
+
+  const health = await secaoIsolada('health', () => {
+    const com = healthBaseDoCS(dados, nome, grupos, membrosPorGrupo, statusPorMembro);
+    const sem = healthBaseDoCS(dados, nome, grupos, membrosPorGrupo, statusPorMembro, 0);
+    return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, descontoDecimos: com.descontoDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao, composicao: com.composicao };
+  });
+
+  const advertencias = await secaoIsolada('advertencias', async () => {
+    const [lista, tipos] = await Promise.all([listarAdvertenciasCS(sb, nome), listarAdvertenciaTipos(sb)]);
+    return { registros: lista.registros, pontuacaoAtiva: lista.pontuacaoAtiva, tipos: tipos.filter((t) => t.ativo) };
+  });
+
+  return { periodo: { mes: seletorMes, ano }, cabecalho, radar, gtd, criticos, health, advertencias };
+}
