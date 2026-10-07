@@ -874,7 +874,7 @@ function abrirScoreModal(idx){
       + '<span class="score-detalhe-label">' + item.label + avisoMeta + '</span>'
       + '<span class="score-detalhe-peso">peso ' + item.peso + '</span>'
       + '<span class="score-detalhe-valor">' + (semMeta ? val + ' · sem meta' : val + ' / ' + meta + ' · ' + ach) + '</span>'
-      + '<span class="score-detalhe-pontos">' + ((semMeta || item.pontos === null || item.pontos === undefined) ? '—' : item.pontos + ' pts') + '</span>'
+      + '<span class="score-detalhe-pontos">' + ((semMeta || item.pontos === null || item.pontos === undefined) ? 'fora da média' : item.pontos + ' pts') + '</span>'
       + '</div>';
   }).join('');
   document.getElementById('infoModalBody').innerHTML =
