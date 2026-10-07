@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { interpretar, responderMetas, processarPergunta, type LinhaMeta } from '../lib/consulta.ts';
+import { interpretar, responderMetas, processarPergunta, aplicarHealthBaseCalculado, type LinhaMeta } from '../lib/consulta.ts';
 
 async function main() {
 const roster = [
@@ -64,6 +64,22 @@ assert.ok(!/carteira/i.test(respostaTimeResult.resposta), 'carteira não entra n
 
 const respostaRecorde = await processarPergunta(supabaseFalsoTime, 'quais recordes foram batidos em setembro de 2026?', roster, hoje);
 assert.equal(respostaRecorde.intencao, 'recordes_time');
+
+// Health da Base calculado (07/10/2026): substitui o manual, limite máximo, sem blending.
+{
+  const hb: LinhaMeta = { cs: 'Rodrigo', mes: '2026-10-01', metrica: 'health_base', direcao: 'min', meta: 20, alcancado_manual: 90, realizado_calculado: null, realizado: 90, fonte: 'manual', status: 'bateu', percentual: 450, divergencia: false };
+  let [x] = aplicarHealthBaseCalculado([hb], { Rodrigo: 23.4 }, true);
+  assert.deepEqual([x.realizado, x.fonte, x.direcao, x.status], [23.4, 'calculado', 'max', 'nao_bateu']);
+  [x] = aplicarHealthBaseCalculado([hb], { Rodrigo: 18 }, true);
+  assert.equal(x.status, 'bateu');
+  [x] = aplicarHealthBaseCalculado([hb], { Rodrigo: null }, true);
+  assert.deepEqual([x.status, x.fonte], ['sem_meta', 'sem_dado'], 'sem apuração nunca usa o manual');
+  [x] = aplicarHealthBaseCalculado([hb], { Rodrigo: 23.4 }, false);
+  assert.equal(x.status, 'sem_meta', 'mês passado não tem apuração histórica');
+  const texto = responderMetas([x], { intencao: 'metas', cs: 'Rodrigo', mes: '2026-09-01', filtro: 'ambos' });
+  assert.match(texto, /só é apurado para o mês corrente/);
+  assert.ok(!/[-–—]/.test(texto.replace(/\d{4}-\d{2}-\d{2}/g, '')), 'sem traço');
+}
 
 console.log('OK');
 }

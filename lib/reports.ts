@@ -15,7 +15,13 @@ import {
   PESOS_SCORE_CS, FOTOS_CS, NIVEL_ORDEM,
   STATUS_PAGAMENTO_PAGANTE, STATUS_PAGAMENTO_PERMUTA, STATUS_PAGAMENTO_EXCLUIR,
   LIMIAR_HEALTHSCORE_ATENCAO, LIMIAR_PRESENCA_ATENCAO, MESES_JANELA_MATCHMAKINGS_PARADO, SIMILARIDADE_DESAFIO_MIN,
+  AGENDA_DURACAO_CONSELHO_MIN,
 } from './constants';
+import {
+  advertenciaAtiva, pontuacaoAtiva as pontuacaoAtivaDe, faixaPresenca, distribuicaoPresenca, presencaMembroDecimos,
+  calcularHealthBase, type HealthBase, type DistribuicaoPresenca,
+} from './indicadores-base';
+import type { FaixaPresencaChave } from './constants';
 
 // ============ util ============
 
@@ -282,20 +288,18 @@ export type AdvertenciaAplicada = {
   observacao: string | null; aplicadoPor: string; aplicadoEm: string; ativa: boolean;
 };
 function mapAdvertenciaAplicadaRow(r: any): AdvertenciaAplicada {
-  const aplicadoEm = new Date(r.aplicado_em);
-  const expiraEm = new Date(aplicadoEm);
-  expiraEm.setMonth(expiraEm.getMonth() + r.validade_meses);
   return {
     id: r.id, csNome: r.cs_nome, tipoId: r.tipo_id, tipoNome: r.tipo_nome,
     pontos: r.pontos, validadeMeses: r.validade_meses, observacao: r.observacao,
     aplicadoPor: r.aplicado_por, aplicadoEm: r.aplicado_em,
-    ativa: expiraEm.getTime() > Date.now(),
+    ativa: advertenciaAtiva(r.aplicado_em, r.validade_meses),
   };
 }
 export type AdvertenciasCS = { registros: AdvertenciaAplicada[]; pontuacaoAtiva: number };
 // Pontuação ativa = soma dos pontos de advertências cuja validade (congelada na aplicação)
-// ainda não expirou — limite fixo de 3 pontos pra destaque visual decidido no front (sem
-// gatilho automático nenhum aqui, decisão explícita do Vitor de deixar só indicador por ora).
+// ainda não expirou (advertenciaAtiva em lib/indicadores-base.ts, regra única). Desde 07/10/2026
+// a pontuação ativa deixou de ser só indicador visual: ela desconta do Health da Base do CS
+// (calcularHealthBase), decisão do Vitor que revoga advertencia_separada.
 export async function listarAdvertenciasCS(sb: SupabaseClient, csNome: string): Promise<AdvertenciasCS> {
   const { data, error } = await sb.from('advertencias_aplicadas').select('*').eq('cs_nome', csNome).order('aplicado_em', { ascending: false });
   if (error) throw new Error('Erro ao buscar advertências: ' + error.message);
@@ -306,6 +310,7 @@ export async function listarAdvertenciasCS(sb: SupabaseClient, csNome: string): 
 export async function aplicarAdvertencia(sb: SupabaseClient, csNome: string, tipoId: string, observacao: string | null): Promise<string> {
   const { data: id, error } = await sb.rpc('aplicar_advertencia', { p_cs_nome: csNome, p_tipo_id: tipoId, p_observacao: observacao });
   if (error) throw new Error('Erro ao aplicar advertência: ' + error.message);
+  invalidarDadosBrutosCache(); // Health da Base depende da pontuação ativa
   return id as string;
 }
 export async function editarAdvertenciaAplicada(sb: SupabaseClient, id: string, observacao: string | null): Promise<void> {
@@ -315,6 +320,7 @@ export async function editarAdvertenciaAplicada(sb: SupabaseClient, id: string, 
 export async function excluirAdvertenciaAplicada(sb: SupabaseClient, id: string): Promise<void> {
   const { error } = await sb.rpc('excluir_advertencia_aplicada', { p_id: id });
   if (error) throw new Error('Erro ao excluir advertência: ' + error.message);
+  invalidarDadosBrutosCache(); // Health da Base depende da pontuação ativa
 }
 
 // ============ controle de perfis (aba do gestor) ============
@@ -647,7 +653,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases, metasResolvidas, configHomeIndicadores,
+    npsDestaqueAliases, metasResolvidas, configHomeIndicadores, advertenciasAplicadas,
   ] = await comConcorrenciaLimitada<any[]>([
     () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
     () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
@@ -667,6 +673,9 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // sendo a única fonte do "alcançado" autodeclarado no Monday, ver parseMetas.
     () => fetchMetasResolvidas(sb),
     () => fetchConfigHomeIndicadores(sb),
+    // Health da Base (07/10/2026): a pontuação de advertência ativa de cada CS desconta do Health
+    // da Base. Uma leitura só aqui, em vez de uma consulta por CS dentro de generateCSReport.
+    () => fetchAll(sb, 'advertencias_aplicadas', 'cs_nome,pontos,validade_meses,aplicado_em'),
   ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
@@ -674,6 +683,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
     npsDestaqueAliases, metasResolvidas: metasResolvidas as unknown as MetaResolvidaRow[],
     configHomeIndicadores: configHomeIndicadores as unknown as ConfigHomeIndicadorRow[],
+    advertenciasAplicadas: advertenciasAplicadas as { cs_nome: string; pontos: number; validade_meses: number; aplicado_em: string }[],
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -775,10 +785,20 @@ function calendarioBRT(iso: string): { ano: number; mesIdx: number; dia: number 
 // "Confirmado" só faz sentido pro mês exato do encontro sendo olhado (diferente de
 // confirmadosFuturos em parseConselhoItems, que varre os 12 meses atrás do próximo pendente) —
 // função própria, pequena, em vez de reaproveitar aquela e ter que desfazer o dedup entre meses.
+// Deduplicado por nome entre titulares e reposição (07/10/2026): a mesma pessoa listada nos dois
+// grupos conta uma vez só, e o número do selo e a cor do semáforo saem desta mesma lista.
 function confirmadosDoMes(itemsPrincipais: any[], itemsRepo: any[], mes: string, statusPorMembro: Map<number, Map<string, string>>) {
   const confirmados: { nome: string; mes: string }[] = [];
-  itemsPrincipais.forEach((m) => { if (statusPorMembro.get(m.id)?.get(mes) === STATUS_CONFIRMADO) confirmados.push({ nome: m.nome, mes }); });
-  itemsRepo.forEach((r) => { if (statusPorMembro.get(r.id)?.get(mes) === STATUS_CONFIRMADO) confirmados.push({ nome: r.nome, mes }); });
+  const vistos = new Set<string>();
+  const incluir = (item: any) => {
+    if (statusPorMembro.get(item.id)?.get(mes) !== STATUS_CONFIRMADO) return;
+    const chave = normalizeNome(item.nome);
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    confirmados.push({ nome: item.nome, mes });
+  };
+  itemsPrincipais.forEach(incluir);
+  itemsRepo.forEach(incluir);
   return confirmados;
 }
 // Presença por membro num mês específico — reaproveita o mesmo statusPorMembro já usado em
@@ -836,7 +856,10 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     const itemsRepo = grupo.repoGroupId ? (membrosPorGrupo.get(grupo.repoGroupId) || []) : [];
     const { mesIdx } = calendarioBRT(row.data_iso);
     const mes = MESES_ORDEM[mesIdx];
-    const passado = d < agora;
+    // Encerrado = término já passou (início + AGENDA_DURACAO_CONSELHO_MIN), não o início. Antes
+    // (até 07/10/2026) bastava o início ter passado, e um conselho em andamento ou do dia anterior
+    // aparecia como "passado" pintado de preto (#1A1A1A) na agenda, o bloco preto de terça.
+    const passado = d.getTime() + AGENDA_DURACAO_CONSELHO_MIN * 60_000 <= agora.getTime();
     conselhos.push({
       groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
       dataIso: row.data_iso, statusAgenda: row.status || null, passado,
@@ -1363,9 +1386,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
 
   // conselhos do CS: grupos ativos (não-repo) cujo título contém "(ApelidoConselho)"
   const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
-  const gruposDoCS = cfg.apelidoConselho
-    ? dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, cfg.apelidoConselho) && !g.titulo.startsWith('Reposições'))
-    : [];
+  const gruposDoCS = gruposDaCarteira(dados, cfg.apelidoConselho);
   const mesesRelevantes = geral ? MESES_ORDEM : [seletorMes];
   const conselhos = gruposDoCS.map((g: any) => {
     const itemsPrincipais = membrosPorGrupo.get(g.group_id) || [];
@@ -1395,6 +1416,10 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const proximoConselhoGeral = futurosDoCS.length > 0 ? { nome: futurosDoCS[0].nome, dataIso: futurosDoCS[0].proximaData } : null;
 
   const health = metas['Health da Base'];
+  // Health da Base (07/10/2026): calculado pela presença da carteira, com as advertências ativas
+  // deduzidas (healthBaseDoCS). O valor manual do board de Metas deixa de ser lido aqui; só a
+  // META continua vindo de metas_definidas (resolvida em parseMetas).
+  const healthBase = healthBaseDoCS(dados, cfg.nome, gruposDoCS, membrosPorGrupo, statusPorMembro);
   const churnR = valorRealizado(metas['Churn']?.alcancadoSoma, churn.churn);
   const casesR = valorRealizado(metas['Cases de Sucesso']?.alcancadoSoma, casesCalc);
   const mmR = valorRealizado(metas['Matchmakings']?.alcancadoSoma, mmCalc);
@@ -1415,7 +1440,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
       upsell: { meta: metas['Upsell']?.meta ?? null, tipoMeta: 'min', alcancado: upsellR.valor, fonte: upsellR.fonte, unidade: 'qtd', manual: upsellR.manual, calculado: upsellR.calculado },
       downsell: { meta: metas['Downsell']?.meta ?? null, tipoMeta: 'max', alcancado: downsellR.valor, fonte: downsellR.fonte, unidade: 'qtd', manual: downsellR.manual, calculado: downsellR.calculado },
       indicacoes: { meta: metas['Indicações']?.meta ?? null, tipoMeta: 'min', alcancado: indicacoesR.valor, fonte: indicacoesR.fonte, unidade: 'qtd', manual: indicacoesR.manual, calculado: indicacoesR.calculado },
-      healthDaBase: { meta: health?.metaMedia ?? null, tipoMeta: 'max', alcancado: health?.alcancadoMedia ?? null, unidade: '%' },
+      healthDaBase: healthBaseIndicador(healthBase, health?.metaMedia ?? null),
       cumprimentoGtd: { meta: 100, tipoMeta: 'min', alcancado: cumprimentoGtdMedia, unidade: '%' },
     },
     semanal, conselhos, feedback, casesRegistrados,
@@ -1475,14 +1500,6 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       meta: metaTimeResolvida(chave), alcancado,
       tipoMeta: (relatorios[0]?.indicadores as any)?.[chave]?.tipoMeta || 'min',
       unidade: (relatorios[0]?.indicadores as any)?.[chave]?.unidade || 'qtd',
-    };
-  }
-  function mediaInd(chave: string) {
-    const vals = relatorios.map((r) => (r.indicadores as any)[chave].alcancado).filter((v) => v !== null && v !== undefined);
-    return {
-      meta: metaTimeResolvida(chave),
-      alcancado: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null,
-      tipoMeta: 'max', unidade: '%',
     };
   }
 
@@ -1598,7 +1615,11 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       rounds: { ...somaInd('rounds'), alcancado: roundsUnicosTime },
       upsell: { ...somaInd('upsell'), alcancado: upsellDownsellUnicosTime.upsell },
       downsell: { ...somaInd('downsell'), alcancado: upsellDownsellUnicosTime.downsell },
-      indicacoes: somaInd('indicacoes'), healthDaBase: mediaInd('healthDaBase'),
+      indicacoes: somaInd('indicacoes'),
+      // Health da Base da área (07/10/2026): rede inteira, cada membro contado uma única vez
+      // (atribuicao agregado_time), nunca a média dos CS. Advertência é individual do CS e por
+      // isso não desconta do agregado da área.
+      healthDaBase: healthBaseIndicador(healthBaseRede(dados), metaTimeResolvida('healthDaBase')),
     },
     churnOrfao,
     casesPorCS,
@@ -1826,7 +1847,7 @@ const INDICADORES_GESTOR = ['churn', 'casesSucesso', 'matchmakings', 'rounds', '
 const LABELS_INDICADOR: Record<string, string> = {
   churn: 'Churn', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
   upsell: 'Upsell', downsell: 'Downsell', indicacoes: 'Indicações', cumprimentoGtd: 'Cumprimento do GTD',
-  numConselhos: 'Carteira de conselhos',
+  numConselhos: 'Carteira de conselhos', healthDaBase: 'Health da Base',
 };
 
 // Eixos do radar comparativo do gestor, na ordem em que devem aparecer no gráfico — combinados
@@ -1902,6 +1923,10 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(metaCarteiraResolvida, maxConselhosTime);
   const achCarteira = achievementIndicador({ meta: metaCarteira, tipoMeta: 'min', alcancado: r.conselhos.length });
   indicadores.numConselhos = { meta: metaCarteira, calculado: r.conselhos.length, manual: null, unidade: 'qtd', status: statusRisco(achCarteira), divergencia: null, semMetaPropria };
+  // Health da Base (07/10/2026): só exibição e alerta, nunca entra em score, radar nem divergência.
+  const hb = ind.healthDaBase;
+  const achHealth = achievementIndicador({ meta: hb.meta, tipoMeta: hb.tipoMeta, alcancado: hb.calculado });
+  (indicadores as any).healthDaBase = { meta: hb.meta, calculado: hb.calculado, manual: null, unidade: '%', status: statusRisco(achHealth), divergencia: null, composicao: hb.composicao, semApuracao: hb.semApuracao };
 
   const indiceDivergencia = INDICADORES_GESTOR.reduce((soma, chave) => {
     const d = indicadores[chave].divergencia;
@@ -1913,7 +1938,8 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   Object.keys(indicadores).forEach((chave) => {
     if (indicadores[chave].status === 'abaixo_da_meta') {
       const i = indicadores[chave];
-      alertas.push(`${LABELS_INDICADOR[chave] || chave} abaixo da meta (${i.calculado ?? '—'} de ${i.meta ?? '—'}).`);
+      const fmt = (v: number | null) => (v === null || v === undefined ? '—' : v.toLocaleString('pt-BR'));
+      alertas.push(`${LABELS_INDICADOR[chave] || chave} abaixo da meta (${fmt(i.calculado)} de ${fmt(i.meta)}).`);
     }
   });
   if (somaCalculado > 0 && indiceDivergencia > somaCalculado * LIMITE_DIVERGENCIA_PCT) {
@@ -1982,7 +2008,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
-    indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos'],
+    indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos', 'healthDaBase'],
     labelsIndicador: LABELS_INDICADOR,
     radarEixos: RADAR_EIXOS.map((e) => e.label),
     radarEquipe,
@@ -2379,16 +2405,9 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
 // olha a rede inteira de conselhos ativos no período selecionado (mesmo mês/ano dos outros blocos),
 // não um CS específico. "Conselho ativo" = mesmo critério de montarGradeConselhos (grupo não-repo
 // com título parseável).
-export type BandaPresenca = 'critica' | 'baixa' | 'atencao' | 'saudavel';
-
-// Faixas do kanban de presença por membro — reaproveita LIMIAR_PRESENCA_ATENCAO (70%) como o corte
-// de "Em atenção", pra não inventar uma escala nova e desalinhada do resto do painel.
-function bandaPresenca(taxa: number): BandaPresenca {
-  if (taxa <= 20) return 'critica';
-  if (taxa <= 50) return 'baixa';
-  if (taxa <= LIMIAR_PRESENCA_ATENCAO) return 'atencao';
-  return 'saudavel';
-}
+// Faixas do kanban de presença por membro: FAIXAS_PRESENCA em lib/constants.ts, aplicadas por
+// faixaPresenca (lib/indicadores-base.ts). Fonte única desde 07/10/2026.
+export type BandaPresenca = FaixaPresencaChave;
 
 // Taxa de presença de UM titular desde o início do conselho — SEMPRE os 12 meses (mesmo critério
 // de taxaPresencaAno em generateConselhoDetalhe), nunca filtrado por mesesRelevantes/seletorMes.
@@ -2396,14 +2415,89 @@ function bandaPresenca(taxa: number): BandaPresenca {
 // quase sempre só um mês, ex. "Setembro" sozinho), então um membro que só faltou em setembro virava
 // "presença crítica" mesmo com frequência ótima no conselho inteiro. Presença por membro é sempre
 // histórico acumulado, o seletor de período no topo não filtra este bloco.
-function taxaPresencaHistorico(membro: any, ctx: ContextoConselhos): number | null {
-  let presente = 0, registros = 0;
+function contagemPresencaMembro(membroId: number, statusPorMembro: Map<number, Map<string, string>>): { presentes: number; registros: number } {
+  let presentes = 0, registros = 0;
   MESES_ORDEM.forEach((mes) => {
-    const s = ctx.statusPorMembro.get(membro.id)?.get(mes);
-    if (s === STATUS_PRESENTE) { presente++; registros++; }
+    const s = statusPorMembro.get(membroId)?.get(mes);
+    if (s === STATUS_PRESENTE) { presentes++; registros++; }
     else if (s && STATUS_AUSENTE_SET.includes(s)) registros++;
   });
-  return registros > 0 ? Math.round((presente / registros) * 100) : null;
+  return { presentes, registros };
+}
+function taxaPresencaHistorico(membro: any, ctx: ContextoConselhos): number | null {
+  const { presentes, registros } = contagemPresencaMembro(membro.id, ctx.statusPorMembro);
+  return registros > 0 ? Math.round((presentes / registros) * 100) : null;
+}
+
+// ============ carteira de membros e Health da Base (07/10/2026) ============
+// Carteira do CS = grupos ativos (não-repo) cujo título contém "(ApelidoConselho)", o mesmo
+// mecanismo de vinculação que generateCSReport sempre usou. Um conselho que cita mais de um CS
+// conta para cada um deles. Única definição, usada pelo relatório do CS e pelo kanban por CS.
+function gruposDaCarteira(dados: DadosBrutos, apelidoConselho: string | null): any[] {
+  if (!apelidoConselho) return [];
+  return dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, apelidoConselho) && !g.titulo.startsWith('Reposições'));
+}
+// Membro da carteira = titular do grupo, sem Conselheiro/Sócio de Conselheiro (mesma exclusão do
+// kanban e da pizza pagante x permuta). Reposição não entra na presença individual.
+function titularesDaCarteira(itemsPrincipais: any[]): any[] {
+  return itemsPrincipais.filter((m: any) => !STATUS_PAGAMENTO_EXCLUIR.includes(m.status_pagamento));
+}
+function presencaDecimosMembro(m: any, statusPorMembro: Map<number, Map<string, string>>): number | null {
+  const { presentes, registros } = contagemPresencaMembro(m.id, statusPorMembro);
+  return presencaMembroDecimos(presentes, registros);
+}
+function pontosAtivosDoCS(dados: DadosBrutos, csNome: string): number {
+  return pontuacaoAtivaDe((dados.advertenciasAplicadas || []).filter((a) => a.cs_nome === csNome));
+}
+function healthBaseDoCS(dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>, statusPorMembro: Map<number, Map<string, string>>): HealthBase {
+  const presencas: (number | null)[] = [];
+  const vistos = new Set<number>();
+  grupos.forEach((g: any) => {
+    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
+      if (vistos.has(m.id)) return;
+      vistos.add(m.id);
+      presencas.push(presencaDecimosMembro(m, statusPorMembro));
+    });
+  });
+  return calcularHealthBase(presencas, pontosAtivosDoCS(dados, csNome));
+}
+// Agregado da área: todos os conselhos ativos da rede (mesmo universo do kanban), cada membro uma
+// única vez, sem desconto de advertência (advertência é individual de cada CS).
+function healthBaseRede(dados: DadosBrutos): HealthBase {
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+  const grupos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && parseTituloConselho(g.titulo));
+  const presencas: (number | null)[] = [];
+  const vistos = new Set<number>();
+  grupos.forEach((g: any) => {
+    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
+      if (vistos.has(m.id)) return;
+      vistos.add(m.id);
+      presencas.push(presencaDecimosMembro(m, statusPorMembro));
+    });
+  });
+  return calcularHealthBase(presencas, 0);
+}
+// Health da Base exibido (uma casa decimal) de cada CS, para a consulta rápida (lib/consulta.ts).
+// Mesma função do relatório individual; null quando a carteira não tem nenhum membro apurado.
+export async function healthBaseExibidoPorCS(sb: SupabaseClient): Promise<Record<string, number | null>> {
+  const dados = await getDadosBrutos(sb);
+  const lista = await getCSListParaAgregados(sb);
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+  const out: Record<string, number | null> = {};
+  lista.forEach((cs) => {
+    const h = healthBaseDoCS(dados, cs.nome, gruposDaCarteira(dados, cs.apelidoConselho), membrosPorGrupo, statusPorMembro);
+    out[cs.nome] = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
+  });
+  return out;
+}
+// Formato de indicador consumido pelos cards (mesmo shape dos demais), com uma casa decimal.
+// Sem apuração devolve alcancado null e semApuracao true: a tela mostra "Sem apuração", nunca zero.
+function healthBaseIndicador(h: HealthBase, meta: number | null) {
+  const valor = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
+  return {
+    meta, tipoMeta: 'max' as const, alcancado: valor, calculado: valor, manual: null, fonte: 'calculado' as const, unidade: '%',
+    semApuracao: h.semApuracao, composicao: h.composicao, detalhe: h,
+  };
 }
 
 // Taxa de presença histórica de UM CONSELHO inteiro (titulares + reposições, mesmo critério de
@@ -2430,25 +2524,52 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
 
   let totalMembros = 0;
   const todosItemsPrincipais: any[] = [];
-  const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca }[] = [];
+  const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca; cs: string[] }[] = [];
+  // Taxa (ou null) de TODO titular válido da rede, cada membro uma vez: base da distribuição
+  // percentual e da contagem de "sem apuração". groupId guarda o conselho a que ele pertence.
+  const taxasRede: { id: number; groupId: string; taxa: number | null }[] = [];
+  const csAtivos = await getCSListCompleto(sb);
+  const gruposPorCS = new Map<string, Set<string>>();
+  csAtivos.forEach((cs) => gruposPorCS.set(cs.nome, new Set(gruposDaCarteira(dados, cs.apelidoConselho).map((g: any) => g.group_id))));
+  const csDoGrupo = (groupId: string) => csAtivos.filter((cs) => gruposPorCS.get(cs.nome)!.has(groupId)).map((cs) => cs.nome);
   const presencaHistoricoPorGrupo = new Map<string, PresencaHistoricoConselho>();
 
   gruposAtivos.forEach((g: any) => {
     const calc = calcularConselho(ctx, g, seletorMes, ano);
     // Conselheiro/Sócio de Conselheiro nunca contam como membro da rede — mesma exclusão já usada
     // na pizza pagante x permuta de cada conselho (ver STATUS_PAGAMENTO_EXCLUIR/calcularPagamento).
-    const itemsValidos = calc.itemsPrincipais.filter((m: any) => !STATUS_PAGAMENTO_EXCLUIR.includes(m.status_pagamento));
+    const itemsValidos = titularesDaCarteira(calc.itemsPrincipais);
     totalMembros += itemsValidos.length;
     todosItemsPrincipais.push(...calc.itemsPrincipais);
+    const csDoConselho = csDoGrupo(g.group_id);
     itemsValidos.forEach((m: any) => {
       const taxa = taxaPresencaHistorico(m, ctx);
+      taxasRede.push({ id: m.id, groupId: g.group_id, taxa });
       if (taxa === null) return; // sem nenhum registro de presença ainda — não inventa banda pra quem não tem dado
-      kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: bandaPresenca(taxa) });
+      kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: faixaPresenca(taxa)!, cs: csDoConselho });
     });
     presencaHistoricoPorGrupo.set(g.group_id, presencaHistoricoConselhoDetalhe(ctx, calc.itemsPrincipais, calc.itemsRepo));
   });
 
   const pagamentoRede = calcularPagamento(todosItemsPrincipais);
+
+  // Distribuição por faixa (07/10/2026): rede inteira, cada CS ativo e a opção agregada Ex CS
+  // (conselhos sem nenhum CS ativo no título). Ex CS nunca ganha linha própria. Health da Base de
+  // cada CS vem de healthBaseDoCS, a mesma função do relatório individual.
+  const mapas = buildMembrosEStatusMaps(dados);
+  const distribuicaoDe = (filtro: (t: { groupId: string }) => boolean): DistribuicaoPresenca => {
+    const vistos = new Set<number>();
+    const taxas: (number | null)[] = [];
+    taxasRede.forEach((t) => { if (filtro(t) && !vistos.has(t.id)) { vistos.add(t.id); taxas.push(t.taxa); } });
+    return distribuicaoPresenca(taxas);
+  };
+  const distribuicaoPorCS = csAtivos.map((cs) => {
+    const grupos = gruposPorCS.get(cs.nome)!;
+    const health = healthBaseDoCS(dados, cs.nome, gruposDaCarteira(dados, cs.apelidoConselho), mapas.membrosPorGrupo, mapas.statusPorMembro);
+    return { cs: cs.nome, distribuicao: distribuicaoDe((t) => grupos.has(t.groupId)), healthBase: healthBaseIndicador(health, null) };
+  });
+  const distribuicaoExCS = distribuicaoDe((t) => csDoGrupo(t.groupId).length === 0);
+  const distribuicaoRede = distribuicaoDe(() => true);
 
   return {
     periodo: { mes: seletorMes, ano },
@@ -2473,6 +2594,7 @@ export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: str
         },
       };
     }),
+    distribuicaoPresenca: { rede: distribuicaoRede, exCS: distribuicaoExCS, porCS: distribuicaoPorCS },
     kanbanPresenca: {
       critica: kanbanMembros.filter((m) => m.banda === 'critica'),
       baixa: kanbanMembros.filter((m) => m.banda === 'baixa'),

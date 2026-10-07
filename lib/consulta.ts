@@ -28,6 +28,27 @@ export interface LinhaMeta {
   status: 'bateu' | 'nao_bateu' | 'sem_meta';
   percentual: number | null;
   divergencia: boolean;
+  observacao?: string;
+}
+
+// Health da Base (07/10/2026): o banco (metas_cs_base) só conhece o valor manual do Monday, que
+// deixou de ser usado. A linha health_base é substituída pelo valor calculado em TypeScript
+// (calcularHealthBase, lib/indicadores-base.ts), sem blending com o manual. O cálculo usa a
+// presença acumulada atual da carteira, então só vale para o mês corrente; em outro mês a linha
+// sai da contagem e a resposta avisa que não há apuração, nunca usa o manual nem inventa zero.
+export type HealthBasePorCS = Record<string, number | null>;
+export function aplicarHealthBaseCalculado(linhas: LinhaMeta[], health: HealthBasePorCS | null, mesCorrente: boolean): LinhaMeta[] {
+  return linhas.map((l) => {
+    if (l.metrica !== 'health_base') return l;
+    const v = mesCorrente && health ? health[l.cs] ?? null : null;
+    if (v === null || v === undefined) {
+      return { ...l, direcao: 'max', realizado: 0, realizado_calculado: null, fonte: 'sem_dado', status: 'sem_meta', percentual: null, divergencia: false,
+        observacao: mesCorrente ? 'Health da Base sem apuração: nenhum membro da carteira com presença registrada.' : 'Health da Base só é apurado para o mês corrente, a partir da presença acumulada da carteira.' };
+    }
+    const status: LinhaMeta['status'] = l.meta === null ? 'sem_meta' : v <= l.meta ? 'bateu' : 'nao_bateu';
+    return { ...l, direcao: 'max', realizado: v, realizado_calculado: v, fonte: 'calculado', status,
+      percentual: l.meta ? Math.round((100 * v) / l.meta) : null, divergencia: false };
+  });
 }
 
 export interface ConsultaInterpretada {
@@ -169,6 +190,7 @@ function respostaDeUmCs(nome: string, linhas: LinhaMeta[], mes: string, filtro: 
       `Atenção: em ${juntar(divergentes.map((l) => rotulo(l.metrica)))} o valor autodeclarado no Monday difere do calculado, e a resposta usa o calculado.`,
     );
   }
+  linhas.forEach((l) => { if (l.observacao) partes.push(l.observacao); });
   return partes.join(' ');
 }
 
@@ -195,10 +217,16 @@ export interface RespostaIntencao {
   resource: string;
 }
 
+// Dependências que vivem fora deste módulo (ex.: o Health da Base calculado em lib/reports.ts),
+// injetadas pela rota para os testes continuarem sem banco.
+export interface ContextoConsulta {
+  healthBasePorCS?: () => Promise<HealthBasePorCS>;
+}
+
 export interface IntencaoDef {
   nome: string;
   reconhece: (pergunta: string) => boolean;
-  responder: (supabase: SupabaseClient, pergunta: string, roster: CsRef[], hoje?: Date) => Promise<RespostaIntencao>;
+  responder: (supabase: SupabaseClient, pergunta: string, roster: CsRef[], hoje?: Date, ctx?: ContextoConsulta) => Promise<RespostaIntencao>;
 }
 
 function reconheceMetas(pergunta: string): boolean {
@@ -211,11 +239,16 @@ async function responderMetasIntencao(
   pergunta: string,
   roster: CsRef[],
   hoje: Date = new Date(),
+  ctx?: ContextoConsulta,
 ): Promise<RespostaIntencao> {
   const consulta = interpretar(pergunta, roster, hoje);
   const { data, error } = await supabase.rpc('consultar_metas_cs', { p_cs: consulta.cs, p_mes: consulta.mes });
   if (error) throw error;
-  const linhas = (data ?? []) as LinhaMeta[];
+  const brutas = (data ?? []) as LinhaMeta[];
+  const mesCorrente = consulta.mes === `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
+  const precisaHealth = mesCorrente && brutas.some((l) => l.metrica === 'health_base') && ctx?.healthBasePorCS;
+  const health = precisaHealth ? await ctx!.healthBasePorCS!() : null;
+  const linhas = aplicarHealthBaseCalculado(brutas, health, mesCorrente);
   return {
     resposta: responderMetas(linhas, consulta),
     resource: `${consulta.cs ?? 'time'}|${consulta.mes}`,
@@ -319,10 +352,11 @@ export async function processarPergunta(
   pergunta: string,
   roster: CsRef[],
   hoje: Date = new Date(),
+  ctx?: ContextoConsulta,
 ): Promise<RespostaIntencao & { intencao: string }> {
   for (const intencao of INTENCOES) {
     if (intencao.reconhece(pergunta)) {
-      const r = await intencao.responder(supabase, pergunta, roster, hoje);
+      const r = await intencao.responder(supabase, pergunta, roster, hoje, ctx);
       return { ...r, intencao: intencao.nome };
     }
   }

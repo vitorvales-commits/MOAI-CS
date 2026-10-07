@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { processarPergunta, type CsRef } from '@/lib/consulta';
+import { healthBaseExibidoPorCS } from '@/lib/reports';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,10 @@ export async function POST(req: NextRequest) {
       .eq('ativo', true);
     if (rosterError) throw rosterError;
 
-    const { resposta, resource } = await processarPergunta(supabase, pergunta, (roster ?? []) as CsRef[]);
+    // Health da Base calculado (07/10/2026) entra por injeção, só é buscado se a resposta precisar.
+    const { resposta, resource } = await processarPergunta(supabase, pergunta, (roster ?? []) as CsRef[], new Date(), {
+      healthBasePorCS: () => healthBaseExibidoPorCS(supabase),
+    });
 
     // resource carrega só CS + mês (ex.: "Rodrigo|2026-09-01"), nunca o texto integral da
     // pergunta — access_audit_log.metadata já tem limite de tamanho, e o texto livre digitado
