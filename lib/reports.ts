@@ -18,8 +18,8 @@ import {
   AGENDA_DURACAO_CONSELHO_MIN,
 } from './constants';
 import {
-  advertenciaAtiva, pontuacaoAtiva as pontuacaoAtivaDe, faixaPresenca, distribuicaoPresenca, presencaMembroDecimos,
-  calcularHealthBase, type HealthBase, type DistribuicaoPresenca,
+  advertenciaAtiva, pontuacaoAtiva as pontuacaoAtivaDe, faixaPresenca, distribuicaoPresenca,
+  calcularHealthBase, statusReport, type HealthBase, type DistribuicaoPresenca,
 } from './indicadores-base';
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
@@ -656,7 +656,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases, metasResolvidas, configHomeIndicadores, advertenciasAplicadas,
+    npsDestaqueAliases, metasResolvidas, configHomeIndicadores, advertenciasAplicadas, membrosElegiveis,
   ] = await comConcorrenciaLimitada<any[]>([
     () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
     () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
@@ -679,6 +679,9 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // Health da Base (07/10/2026): a pontuação de advertência ativa de cada CS desconta do Health
     // da Base. Uma leitura só aqui, em vez de uma consulta por CS dentro de generateCSReport.
     () => fetchAll(sb, 'advertencias_aplicadas', 'cs_nome,pontos,validade_meses,aplicado_em'),
+    // Report individual (07/10/2026): membros elegíveis da rede, fonte única no banco. O mesmo
+    // resultado para qualquer usuário MOAI, por isso pode ficar no cache global.
+    () => fetchMembrosElegiveis(sb) as Promise<any[]>,
   ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
@@ -687,6 +690,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     npsDestaqueAliases, metasResolvidas: metasResolvidas as unknown as MetaResolvidaRow[],
     configHomeIndicadores: configHomeIndicadores as unknown as ConfigHomeIndicadorRow[],
     advertenciasAplicadas: advertenciasAplicadas as { cs_nome: string; pontos: number; validade_meses: number; aplicado_em: string }[],
+    membrosElegiveis: membrosElegiveis as unknown as MembroElegivel[],
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -918,7 +922,7 @@ function historicoDoCS(cicloAtual: any[], nomeCS: string) {
 const ROTULO_INDICADOR_METAS: Record<string, string> = {
   cases: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
   indicacoes: 'Indicações', upsell: 'Upsell', downsell: 'Downsell',
-  churn: 'Churn', revenue_churn: 'Revenue Churn', health_base: 'Health da Base',
+  churn: 'Churn', revenue_churn: 'Revenue Churn', health_base: 'Health da Base', critico: 'Críticos',
 };
 
 // Parte G (29/09/2026 — metas definidas pelo gestor no dash): meta (alvo) e "alcançado"
@@ -1068,14 +1072,13 @@ function contarUpsellDownsellUnicosTime(udRows: any[], nomesConhecidos: Set<stri
   return { upsell, downsell };
 }
 
-function parseReportsSemanais(rows: any[], userId: number | null, mesInicio: string, mesFim: string) {
-  if (userId === null || userId === undefined) return [];
-  return rows.filter((r) => Number(r.creator_id) === userId)
-    .map((r) => {
-      const dataEfetiva = r.data || (r.created_at_monday ? String(r.created_at_monday).slice(0, 10) : null);
-      return { data: dataEfetiva, dataAproximada: !r.data && !!r.created_at_monday, nota: r.nota, matchmakings: r.matchmakings || 0, indicacoes: r.indicacoes || 0 };
-    })
-    .filter((r) => r.data && r.data >= mesInicio && r.data <= mesFim)
+// Report individual (07/10/2026): indicações e matchmakings autodeclarados vêm dos reports
+// vigentes (reports_resumo_cs), não mais de reports_semanais_items. O CS é o do nome do report
+// (alias), não mais o creator_id do item. Mesma regra de data aproximada: data do report, senão a
+// data de criação no Monday.
+function parseReportsSemanais(resumo: ResumoReport[], csNome: string, mesInicio: string, mesFim: string) {
+  return resumo.filter((r) => r.cs_nome === csNome && r.data_efetiva && r.data_efetiva >= mesInicio && r.data_efetiva <= mesFim)
+    .map((r) => ({ data: r.data_efetiva, dataAproximada: !!r.data_aproximada, nota: r.nota_semana, matchmakings: r.matchmakings || 0, indicacoes: r.indicacoes || 0 }))
     .sort((a, b) => (a.data! < b.data! ? -1 : 1));
 }
 function somaIndicacoesSemanal(semanal: { indicacoes: number }[]) {
@@ -1304,9 +1307,10 @@ function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: 
 
 // ============ relatório individual ============
 
-export async function generateCSReport(sb: SupabaseClient, nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos) {
+export async function generateCSReport(sb: SupabaseClient, nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos, resumoParam?: ResumoReport[]) {
   const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
   const dados = dadosParam || (await getDadosBrutos(sb));
+  const resumo = resumoParam || (await buscarResumoReports(sb));
 
   const listaCS = await getCSListParaAgregados(sb);
   const cfg = listaCS.find((c) => c.nome === nomeCS);
@@ -1322,7 +1326,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const mmCalc = parseMatchmakings(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
   const roundsCalc = parseRounds(dados.rounds, cfg.nomeCompleto, seletorMes, geral);
   const upDown = parseUpsellDownsell(dados.upsellDownsell, cfg.nomeCompleto, mesInicio, mesFim);
-  const semanal = temUserId ? parseReportsSemanais(dados.reportsSemanais, cfg.userId, mesInicio, mesFim) : [];
+  const semanal = parseReportsSemanais(resumo, cfg.nome, mesInicio, mesFim);
   const indicacoesCalc = somaIndicacoesSemanal(semanal);
   const feedback = parseFeedback(dados.feedback, cfg.nome, seletorMes, ano, geral);
 
@@ -1359,10 +1363,10 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const proximoConselhoGeral = futurosDoCS.length > 0 ? { nome: futurosDoCS[0].nome, dataIso: futurosDoCS[0].proximaData } : null;
 
   const health = metas['Health da Base'];
-  // Health da Base (07/10/2026): calculado pela presença da carteira, com as advertências ativas
-  // deduzidas (healthBaseDoCS). O valor manual do board de Metas deixa de ser lido aqui; só a
-  // META continua vindo de metas_definidas (resolvida em parseMetas).
-  const healthBase = healthBaseDoCS(dados, cfg.nome, gruposDoCS, membrosPorGrupo, statusPorMembro);
+  // Health da Base (redefinido em 07/10/2026): percentual de críticos do último report do período
+  // mais as advertências ativas (healthBaseDoCS). O valor manual do board de Metas deixa de ser
+  // lido; só a META continua vindo de metas_definidas (resolvida em parseMetas).
+  const { report: reportPeriodo, health: healthBase } = healthBaseDoCS(dados, resumo, cfg.nome, mesInicio, mesFim);
   const churnR = valorRealizado(metas['Churn']?.alcancadoSoma, churn.churn);
   const casesR = valorRealizado(metas['Cases de Sucesso']?.alcancadoSoma, casesCalc);
   const mmR = valorRealizado(metas['Matchmakings']?.alcancadoSoma, mmCalc);
@@ -1383,7 +1387,8 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
       upsell: { meta: metas['Upsell']?.meta ?? null, tipoMeta: 'min', alcancado: upsellR.valor, fonte: upsellR.fonte, unidade: 'qtd', manual: upsellR.manual, calculado: upsellR.calculado },
       downsell: { meta: metas['Downsell']?.meta ?? null, tipoMeta: 'max', alcancado: downsellR.valor, fonte: downsellR.fonte, unidade: 'qtd', manual: downsellR.manual, calculado: downsellR.calculado },
       indicacoes: { meta: metas['Indicações']?.meta ?? null, tipoMeta: 'min', alcancado: indicacoesR.valor, fonte: indicacoesR.fonte, unidade: 'qtd', manual: indicacoesR.manual, calculado: indicacoesR.calculado },
-      healthDaBase: healthBaseIndicador(healthBase, health?.metaMedia ?? null),
+      healthDaBase: healthBaseIndicador(healthBase, health?.metaMedia ?? null, reportPeriodo),
+      criticos: { meta: metas['Críticos']?.meta ?? null, tipoMeta: 'max', alcancado: reportPeriodo?.criticos_total ?? null, calculado: reportPeriodo?.criticos_total ?? null, manual: null, fonte: 'calculado', unidade: 'qtd' },
       cumprimentoGtd: { meta: 100, tipoMeta: 'min', alcancado: cumprimentoGtdMedia, unidade: '%' },
     },
     semanal, conselhos, feedback, casesRegistrados,
@@ -1396,11 +1401,13 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
   const dados = await getDadosBrutos(sb);
   const membros = await getCSListParaAgregados(sb);
+  const resumo = await buscarResumoReports(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
-    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados); }
+    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados, resumo); }
     catch (e) { return null; }
   }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
+  const area = await healthBaseArea(sb, mesInicio, mesFim);
 
   // BUG FIX (25/09/2026 — "matchmaking tem 127 no monday e 129 na aba de indicadores, cases são 38
   // e no painel 39"): até aqui somava ind.alcancado, o valor "vencedor" entre manual (board de
@@ -1558,10 +1565,9 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       upsell: { ...somaInd('upsell'), alcancado: upsellDownsellUnicosTime.upsell },
       downsell: { ...somaInd('downsell'), alcancado: upsellDownsellUnicosTime.downsell },
       indicacoes: somaInd('indicacoes'),
-      // Health da Base da área (07/10/2026): rede inteira, cada membro contado uma única vez
-      // (atribuicao agregado_time), nunca a média dos CS. Advertência é individual do CS e por
-      // isso não desconta do agregado da área.
-      healthDaBase: healthBaseIndicador(healthBaseRede(dados), metaTimeResolvida('healthDaBase')),
+      // Health da Base da área: críticos únicos sobre a união da base dos CS ativos (razão
+      // ponderada, health_base_area), nunca média ou soma de percentuais. Sem advertência.
+      healthDaBase: healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport),
     },
     churnOrfao,
     casesPorCS,
@@ -1927,9 +1933,10 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
 export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, incluirExMembros: boolean = false) {
   const dados = await getDadosBrutos(sb);
   const membros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
+  const resumo = await buscarResumoReports(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
-    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados); }
+    try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados, resumo); }
     catch (e) { return null; }
   }))).filter(Boolean) as Awaited<ReturnType<typeof generateCSReport>>[];
 
@@ -2385,77 +2392,6 @@ function taxaPresencaHistorico(membro: any, ctx: ContextoConselhos): number | nu
   return registros > 0 ? Math.round((presentes / registros) * 100) : null;
 }
 
-// ============ carteira de membros e Health da Base (07/10/2026) ============
-// Carteira do CS = grupos ativos (não-repo) cujo título contém "(ApelidoConselho)", o mesmo
-// mecanismo de vinculação que generateCSReport sempre usou. Um conselho que cita mais de um CS
-// conta para cada um deles. Única definição, usada pelo relatório do CS e pelo kanban por CS.
-function gruposDaCarteira(dados: DadosBrutos, apelidoConselho: string | null): any[] {
-  if (!apelidoConselho) return [];
-  return dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, apelidoConselho) && !g.titulo.startsWith('Reposições'));
-}
-// Membro da carteira = titular do grupo, sem Conselheiro/Sócio de Conselheiro (mesma exclusão do
-// kanban e da pizza pagante x permuta). Reposição não entra na presença individual.
-function titularesDaCarteira(itemsPrincipais: any[]): any[] {
-  return itemsPrincipais.filter((m: any) => !STATUS_PAGAMENTO_EXCLUIR.includes(m.status_pagamento));
-}
-function presencaDecimosMembro(m: any, statusPorMembro: Map<number, Map<string, string>>): number | null {
-  const { presentes, registros } = contagemPresencaMembro(m.id, statusPorMembro);
-  return presencaMembroDecimos(presentes, registros);
-}
-function pontosAtivosDoCS(dados: DadosBrutos, csNome: string): number {
-  return pontuacaoAtivaDe((dados.advertenciasAplicadas || []).filter((a) => a.cs_nome === csNome));
-}
-function healthBaseDoCS(dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>, statusPorMembro: Map<number, Map<string, string>>, pontosOverride?: number): HealthBase {
-  const presencas: (number | null)[] = [];
-  const vistos = new Set<number>();
-  grupos.forEach((g: any) => {
-    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
-      if (vistos.has(m.id)) return;
-      vistos.add(m.id);
-      presencas.push(presencaDecimosMembro(m, statusPorMembro));
-    });
-  });
-  return calcularHealthBase(presencas, pontosOverride !== undefined ? pontosOverride : pontosAtivosDoCS(dados, csNome));
-}
-// Agregado da área: todos os conselhos ativos da rede (mesmo universo do kanban), cada membro uma
-// única vez, sem desconto de advertência (advertência é individual de cada CS).
-function healthBaseRede(dados: DadosBrutos): HealthBase {
-  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
-  const grupos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && parseTituloConselho(g.titulo));
-  const presencas: (number | null)[] = [];
-  const vistos = new Set<number>();
-  grupos.forEach((g: any) => {
-    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
-      if (vistos.has(m.id)) return;
-      vistos.add(m.id);
-      presencas.push(presencaDecimosMembro(m, statusPorMembro));
-    });
-  });
-  return calcularHealthBase(presencas, 0);
-}
-// Health da Base exibido (uma casa decimal) de cada CS, para a consulta rápida (lib/consulta.ts).
-// Mesma função do relatório individual; null quando a carteira não tem nenhum membro apurado.
-export async function healthBaseExibidoPorCS(sb: SupabaseClient): Promise<Record<string, number | null>> {
-  const dados = await getDadosBrutos(sb);
-  const lista = await getCSListParaAgregados(sb);
-  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
-  const out: Record<string, number | null> = {};
-  lista.forEach((cs) => {
-    const h = healthBaseDoCS(dados, cs.nome, gruposDaCarteira(dados, cs.apelidoConselho), membrosPorGrupo, statusPorMembro);
-    out[cs.nome] = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
-  });
-  return out;
-}
-// Formato de indicador consumido pelos cards (mesmo shape dos demais), com uma casa decimal.
-// Sem apuração devolve alcancado null e semApuracao true: a tela mostra "Sem apuração", nunca zero.
-function healthBaseIndicador(h: HealthBase, meta: number | null) {
-  const valor = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
-  return {
-    meta, tipoMeta: 'max' as const, alcancado: valor, calculado: valor, manual: null, fonte: 'calculado' as const, unidade: '%',
-    semApuracao: h.semApuracao, composicao: h.composicao, detalhe: h,
-  };
-}
-
 // Taxa de presença histórica de UM CONSELHO inteiro (titulares + reposições, mesmo critério de
 // presencaDoMes/presencaMensal já usado no resto do sistema) — soma presentes/agendados de todo
 // mês com dado, nunca só o mês de referência. Mesmo motivo do bug fix acima: a tabela de presença
@@ -2471,65 +2407,144 @@ function presencaHistoricoConselhoDetalhe(ctx: ContextoConselhos, itemsPrincipai
   return { taxa: agendadosTotal > 0 ? Math.round((presentesTotal / agendadosTotal) * 100) : null, presentesTotal, agendadosTotal };
 }
 
+
+// ============ carteira, membros elegíveis e Health da Base (redefinido em 07/10/2026) ============
+// Carteira do CS = grupos ativos (não-repo) cujo título contém "(ApelidoConselho)", o mesmo
+// mecanismo de vinculação que generateCSReport sempre usou (lista de conselhos e indicador
+// Carteira). Um conselho que cita mais de um CS conta para cada um deles.
+function gruposDaCarteira(dados: DadosBrutos, apelidoConselho: string | null): any[] {
+  if (!apelidoConselho) return [];
+  return dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, apelidoConselho) && !g.titulo.startsWith('Reposições'));
+}
+
+// Membros elegíveis da rede: fonte única no banco (membros_elegiveis_rede), com os CS ativos de
+// cada conselho em cs_nomes pelo mesmo vínculo "(Apelido)" do título. Kanban da Visão da rede,
+// menu do report, denominador do Health e total da rede saem daqui. Titulares sem Conselheiro,
+// Sócio de Conselheiro, Mentor Alavanca e status nulo.
+export type MembroElegivel = { membro_id: number; nome: string; group_id: string; conselho: string; cs_nomes: string[] };
+async function fetchMembrosElegiveis(sb: SupabaseClient): Promise<MembroElegivel[]> {
+  const { data, error } = await sb.rpc('membros_elegiveis_rede');
+  if (error) throw new Error('Erro ao buscar membros_elegiveis_rede: ' + error.message);
+  return ((data || []) as any[]).map((r) => ({ ...r, membro_id: Number(r.membro_id), cs_nomes: r.cs_nomes || [] }));
+}
+
+function pontosAtivosDoCS(dados: DadosBrutos, csNome: string): number {
+  return pontuacaoAtivaDe((dados.advertenciasAplicadas || []).filter((a) => a.cs_nome === csNome));
+}
+
+// Resumo numérico dos reports vigentes (reports_resumo_cs): sem nomes de membros. Críticos e base
+// só chegam para gestor ou para o próprio CS. Buscado por requisição, nunca no cache global de
+// dados brutos (o conteúdo depende de quem pergunta).
+export type ResumoReport = {
+  cs_nome: string | null; cs_categoria: string; semana_inicio: string; data_efetiva: string | null; data_aproximada: boolean;
+  origem: 'nativo' | 'monday'; nota_semana: number | null; indicacoes: number | null; matchmakings: number | null;
+  criticos_total: number | null; base_total: number | null; base_origem: string; criticos_origem: string;
+};
+export async function buscarResumoReports(sb: SupabaseClient): Promise<ResumoReport[]> {
+  const { data, error } = await sb.rpc('reports_resumo_cs');
+  if (error) throw new Error('Erro ao buscar reports_resumo_cs: ' + error.message);
+  return (data || []) as ResumoReport[];
+}
+
+// Último report vigente do CS com semana_inicio dentro do período (limites inclusivos, nulo = sem
+// limite). Valor mensal do Health = último report do mês.
+function ultimoReportNoPeriodo(resumo: ResumoReport[], csNome: string, de: string | null, ate: string | null): ResumoReport | null {
+  let ultimo: ResumoReport | null = null;
+  resumo.forEach((r) => {
+    if (r.cs_nome !== csNome) return;
+    if (de && r.semana_inicio < de) return;
+    if (ate && r.semana_inicio > ate) return;
+    if (!ultimo || r.semana_inicio > ultimo.semana_inicio || (r.semana_inicio === ultimo.semana_inicio && r.origem === 'nativo')) ultimo = r;
+  });
+  return ultimo;
+}
+
+function healthBaseDoCS(dados: DadosBrutos, resumo: ResumoReport[], csNome: string, de: string | null, ate: string | null) {
+  const report = ultimoReportNoPeriodo(resumo, csNome, de, ate);
+  return { report, health: calcularHealthBase(report?.criticos_total ?? null, report?.base_total ?? null, pontosAtivosDoCS(dados, csNome)) };
+}
+
+// Formato de indicador consumido pelos cards (mesmo shape dos demais), com uma casa decimal.
+// Sem report: alcancado nulo e statusReport sem_report (tela mostra "Sem report", nunca zero).
+function healthBaseIndicador(h: HealthBase, meta: number | null, report: ResumoReport | null, temReport = !!report) {
+  const valor = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
+  const status = temReport ? statusReport(report?.data_efetiva ?? report?.semana_inicio ?? null) : 'sem_report';
+  const composicao = !temReport ? 'Sem report.' : h.composicao + (status === 'desatualizado' ? ' Report desatualizado.' : '');
+  return {
+    meta, tipoMeta: 'max' as const, alcancado: valor, calculado: valor, manual: null, fonte: 'calculado' as const, unidade: '%',
+    semApuracao: h.semApuracao, statusReport: status, semanaReport: report?.semana_inicio ?? null, composicao, detalhe: h,
+  };
+}
+
+// Health da Base e Críticos de cada CS no período, para a consulta rápida (lib/consulta.ts).
+export async function healthBaseExibidoPorCS(sb: SupabaseClient, de: string, ate: string): Promise<{ health: Record<string, number | null>; criticos: Record<string, number | null> }> {
+  const [dados, resumo, lista] = await Promise.all([getDadosBrutos(sb), buscarResumoReports(sb), getCSListParaAgregados(sb)]);
+  const health: Record<string, number | null> = {};
+  const criticos: Record<string, number | null> = {};
+  lista.forEach((cs) => {
+    const { report, health: h } = healthBaseDoCS(dados, resumo, cs.nome, de, ate);
+    health[cs.nome] = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
+    criticos[cs.nome] = report?.criticos_total ?? null;
+  });
+  return { health, criticos };
+}
+
+// Valor da área: críticos únicos sobre a união da base dos CS ativos (health_base_area no banco,
+// só contagens), sem advertência (advertência é individual). Mesma calcularHealthBase.
+async function healthBaseArea(sb: SupabaseClient, de: string | null, ate: string | null) {
+  const { data, error } = await sb.rpc('health_base_area', { p_de: de, p_ate: ate });
+  if (error) throw new Error('Erro ao buscar health_base_area: ' + error.message);
+  const linha = (data || [])[0] || { criticos: null, base: null, cs_com_report: 0 };
+  const temReport = Number(linha.cs_com_report) > 0;
+  return { linha, temReport, health: calcularHealthBase(temReport ? linha.criticos : null, temReport ? linha.base : null, 0) };
+}
+
 export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: string, ano: number) {
-  const dados = await getDadosBrutos(sb);
+  const [dados, resumo] = await Promise.all([getDadosBrutos(sb), buscarResumoReports(sb)]);
   const ctx = montarContextoConselhos(dados);
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && parseTituloConselho(g.titulo));
 
   const grade = montarGradeConselhos(dados, seletorMes, ano);
 
-  let totalMembros = 0;
   const todosItemsPrincipais: any[] = [];
-  const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca; cs: string[] }[] = [];
-  // Taxa (ou null) de TODO titular válido da rede, cada membro uma vez: base da distribuição
-  // percentual e da contagem de "sem apuração". groupId guarda o conselho a que ele pertence.
-  const taxasRede: { id: number; groupId: string; taxa: number | null }[] = [];
-  const csAtivos = await getCSListCompleto(sb);
-  const gruposPorCS = new Map<string, Set<string>>();
-  csAtivos.forEach((cs) => gruposPorCS.set(cs.nome, new Set(gruposDaCarteira(dados, cs.apelidoConselho).map((g: any) => g.group_id))));
-  const csDoGrupo = (groupId: string) => csAtivos.filter((cs) => gruposPorCS.get(cs.nome)!.has(groupId)).map((cs) => cs.nome);
+  const nomeConselhoPorGrupo = new Map<string, string>();
   const presencaHistoricoPorGrupo = new Map<string, PresencaHistoricoConselho>();
-
   gruposAtivos.forEach((g: any) => {
     const calc = calcularConselho(ctx, g, seletorMes, ano);
-    // Conselheiro/Sócio de Conselheiro nunca contam como membro da rede — mesma exclusão já usada
-    // na pizza pagante x permuta de cada conselho (ver STATUS_PAGAMENTO_EXCLUIR/calcularPagamento).
-    const itemsValidos = titularesDaCarteira(calc.itemsPrincipais);
-    totalMembros += itemsValidos.length;
     todosItemsPrincipais.push(...calc.itemsPrincipais);
-    const csDoConselho = csDoGrupo(g.group_id);
-    itemsValidos.forEach((m: any) => {
-      const taxa = taxaPresencaHistorico(m, ctx);
-      taxasRede.push({ id: m.id, groupId: g.group_id, taxa });
-      if (taxa === null) return; // sem nenhum registro de presença ainda — não inventa banda pra quem não tem dado
-      kanbanMembros.push({ nome: m.nome, groupId: g.group_id, conselho: calc.resumo.nome, taxaPresenca: taxa, banda: faixaPresenca(taxa)!, cs: csDoConselho });
-    });
+    nomeConselhoPorGrupo.set(g.group_id, calc.resumo.nome);
     presencaHistoricoPorGrupo.set(g.group_id, presencaHistoricoConselhoDetalhe(ctx, calc.itemsPrincipais, calc.itemsRepo));
+  });
+
+  // Kanban e distribuição: só membros elegíveis (fonte única), cada um uma vez, com a presença
+  // acumulada de sempre (taxaPresencaHistorico). Sem registro de presença conta como sem apuração.
+  const kanbanMembros: { nome: string; groupId: string; conselho: string; taxaPresenca: number; banda: BandaPresenca; cs: string[] }[] = [];
+  const taxasRede: { id: number; cs: string[]; taxa: number | null }[] = [];
+  dados.membrosElegiveis.forEach((e) => {
+    const taxa = taxaPresencaHistorico({ id: e.membro_id }, ctx);
+    taxasRede.push({ id: e.membro_id, cs: e.cs_nomes, taxa });
+    if (taxa === null) return;
+    kanbanMembros.push({ nome: e.nome, groupId: e.group_id, conselho: nomeConselhoPorGrupo.get(e.group_id) || e.conselho, taxaPresenca: taxa, banda: faixaPresenca(taxa)!, cs: e.cs_nomes });
   });
 
   const pagamentoRede = calcularPagamento(todosItemsPrincipais);
 
-  // Distribuição por faixa (07/10/2026): rede inteira, cada CS ativo e a opção agregada Ex CS
-  // (conselhos sem nenhum CS ativo no título). Ex CS nunca ganha linha própria. Health da Base de
-  // cada CS vem de healthBaseDoCS, a mesma função do relatório individual.
-  const mapas = buildMembrosEStatusMaps(dados);
-  const distribuicaoDe = (filtro: (t: { groupId: string }) => boolean): DistribuicaoPresenca => {
-    const vistos = new Set<number>();
-    const taxas: (number | null)[] = [];
-    taxasRede.forEach((t) => { if (filtro(t) && !vistos.has(t.id)) { vistos.add(t.id); taxas.push(t.taxa); } });
-    return distribuicaoPresenca(taxas);
-  };
+  // Distribuição por faixa: rede inteira, cada CS ativo e a opção agregada Ex CS (conselhos sem
+  // nenhum CS ativo no título). Ex CS nunca ganha linha própria. O Health da Base de cada CS é o
+  // do report mais recente (com selo de desatualizado), via healthBaseDoCS.
+  const distribuicaoDe = (filtro: (t: { cs: string[] }) => boolean): DistribuicaoPresenca =>
+    distribuicaoPresenca(taxasRede.filter(filtro).map((t) => t.taxa));
+  const csAtivos = await getCSListCompleto(sb);
   const distribuicaoPorCS = csAtivos.map((cs) => {
-    const grupos = gruposPorCS.get(cs.nome)!;
-    const health = healthBaseDoCS(dados, cs.nome, gruposDaCarteira(dados, cs.apelidoConselho), mapas.membrosPorGrupo, mapas.statusPorMembro);
-    return { cs: cs.nome, distribuicao: distribuicaoDe((t) => grupos.has(t.groupId)), healthBase: healthBaseIndicador(health, null) };
+    const { report, health } = healthBaseDoCS(dados, resumo, cs.nome, null, null);
+    return { cs: cs.nome, distribuicao: distribuicaoDe((t) => t.cs.includes(cs.nome)), healthBase: healthBaseIndicador(health, null, report) };
   });
-  const distribuicaoExCS = distribuicaoDe((t) => csDoGrupo(t.groupId).length === 0);
+  const distribuicaoExCS = distribuicaoDe((t) => t.cs.length === 0);
   const distribuicaoRede = distribuicaoDe(() => true);
 
   return {
     periodo: { mes: seletorMes, ano },
-    totalMembros,
+    totalMembros: dados.membrosElegiveis.length,
     pagamentoRede,
     presencaConselhos: grade.cards.map((c) => {
       const p = presencaHistoricoPorGrupo.get(c.groupId) || { taxa: null, presentesTotal: 0, agendadosTotal: 0 };
@@ -3297,7 +3312,7 @@ export type CriticosPorProdutoCS =
 // Monday (só contagem) devolve o total declarado e o marcador sem_detalhamento; sem report devolve
 // sem_report. Nunca zero no lugar de ausência. Produto é o nível do conselho do membro.
 export async function criticosPorProdutoCS(
-  sb: SupabaseClient, dados: DadosBrutos, csNome: string, grupos: any[], membrosPorGrupo: Map<string, any[]>,
+  sb: SupabaseClient, dados: DadosBrutos, csNome: string,
 ): Promise<CriticosPorProdutoCS> {
   const { data: reps, error } = await sb.from('reports_individuais')
     .select('id, semana_inicio, base_total, criticos_total').eq('cs_nome', csNome)
@@ -3317,18 +3332,27 @@ export async function criticosPorProdutoCS(
   };
   const criticosPorNivel: Record<string, number> = {};
   crit.forEach((r: any) => { const n = nivelDoGrupo(r.group_id); criticosPorNivel[n] = (criticosPorNivel[n] || 0) + 1; });
+  // Denominador por produto: os membros elegíveis do CS (membros_elegiveis_rede), a mesma base do
+  // Health da Base. Cada membro conta uma vez, no nível do conselho dele.
   const membrosPorNivel: Record<string, number> = {};
-  const vistos = new Set<number>();
-  grupos.forEach((g: any) => {
-    const n = parseTituloConselho(g.titulo)?.nivel || '';
-    titularesDaCarteira(membrosPorGrupo.get(g.group_id) || []).forEach((m: any) => {
-      if (vistos.has(m.id)) return;
-      vistos.add(m.id);
-      membrosPorNivel[n] = (membrosPorNivel[n] || 0) + 1;
-    });
+  (await fetchMembrosElegiveis(sb)).filter((m) => m.cs_nomes.includes(csNome)).forEach((m) => {
+    const n = nivelDoGrupo(m.group_id);
+    membrosPorNivel[n] = (membrosPorNivel[n] || 0) + 1;
   });
   const { linhas, total } = consolidarCriticosPorProduto(criticosPorNivel, membrosPorNivel);
   return { estado: 'com_detalhamento', semana: rep.semana_inicio, linhas, total };
+}
+
+// Health da Base de um CS com e sem os pontos de advertência ativos, a partir do último report
+// vigente (mesma calcularHealthBase do relatório individual). Alimenta a página do CS do gestor e a
+// aba Pontos tomados. Sem report, sem apuração: nunca zero.
+export async function healthBaseComESemPontos(sb: SupabaseClient, dados: DadosBrutos, csNome: string) {
+  const resumo = await buscarResumoReports(sb);
+  const report = ultimoReportNoPeriodo(resumo, csNome, null, null);
+  const c = report?.criticos_total ?? null, b = report?.base_total ?? null;
+  const com = calcularHealthBase(c, b, pontosAtivosDoCS(dados, csNome));
+  const sem = calcularHealthBase(c, b, 0);
+  return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, acrescimoDecimos: com.acrescimoDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao, semReport: !report, composicao: com.composicao };
 }
 
 export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMes: string, ano: number) {
@@ -3342,7 +3366,6 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
     e.status = 404;
     throw e;
   }
-  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
   const grupos = gruposDaCarteira(dados, cfg.apelidoConselho);
   const posicao = (visao.ranking.find((r) => r.nome === nome) || { posicao: null }).posicao;
 
@@ -3371,13 +3394,9 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
     };
   });
 
-  const criticos = await secaoIsolada('criticos', () => criticosPorProdutoCS(sb, dados, nome, grupos, membrosPorGrupo));
+  const criticos = await secaoIsolada('criticos', () => criticosPorProdutoCS(sb, dados, nome));
 
-  const health = await secaoIsolada('health', () => {
-    const com = healthBaseDoCS(dados, nome, grupos, membrosPorGrupo, statusPorMembro);
-    const sem = healthBaseDoCS(dados, nome, grupos, membrosPorGrupo, statusPorMembro, 0);
-    return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, descontoDecimos: com.descontoDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao, composicao: com.composicao };
-  });
+  const health = await secaoIsolada('health', () => healthBaseComESemPontos(sb, dados, nome));
 
   const advertencias = await secaoIsolada('advertencias', async () => {
     const [lista, tipos] = await Promise.all([listarAdvertenciasCS(sb, nome), listarAdvertenciaTipos(sb)]);
@@ -3391,12 +3410,6 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 // valor sem eles, pela mesma função do relatório individual (healthBaseDoCS). Alimenta a aba Pontos
 // tomados do dashboard; a página do CS na visão do gestor calcula o mesmo em paginaCSGestor.
 export async function efeitoAdvertenciasHealthBase(sb: SupabaseClient, csNome: string) {
-  const [dados, lista] = await Promise.all([getDadosBrutos(sb), getCSListParaAgregados(sb)]);
-  const cfg = lista.find((c) => c.nome === csNome);
-  if (!cfg) return null;
-  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
-  const grupos = gruposDaCarteira(dados, cfg.apelidoConselho);
-  const com = healthBaseDoCS(dados, csNome, grupos, membrosPorGrupo, statusPorMembro);
-  const sem = healthBaseDoCS(dados, csNome, grupos, membrosPorGrupo, statusPorMembro, 0);
-  return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao };
+  const dados = await getDadosBrutos(sb);
+  return healthBaseComESemPontos(sb, dados, csNome);
 }

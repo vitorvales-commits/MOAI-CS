@@ -3,6 +3,7 @@
 // em décimos de ponto percentual inteiros: 150 significa 15,0 por cento.
 // Roda com: node --experimental-strip-types tests/criticos.test.ts
 import { NIVEL_ORDEM } from './constants.ts';
+import { percentualCriticosDecimos } from './indicadores-base.ts';
 
 export function nivelExibicao(nivel: string | null | undefined): string {
   const n = String(nivel || '').trim();
@@ -10,14 +11,9 @@ export function nivelExibicao(nivel: string | null | undefined): string {
   return n === 'Setorial' ? 'Executivo' : n;
 }
 
-// Percentual em décimos, arredondado meio para cima. Base zero, entrada inválida ou críticos acima
-// da base devolvem null, nunca zero.
-export function percentualCriticosDecimos(criticos: unknown, base: unknown): number | null {
-  if (!Number.isInteger(criticos) || !Number.isInteger(base)) return null;
-  const c = criticos as number, b = base as number;
-  if (b <= 0 || c < 0 || c > b) return null;
-  return Math.floor((c * 2000 + b) / (2 * b));
-}
+// Percentual em décimos: definição única em indicadores-base.ts (base zero ou críticos acima da
+// base devolvem null, nunca zero).
+export { percentualCriticosDecimos };
 
 export type LinhaProduto = { produto: string; criticos: number; membros: number; percentualDecimos: number | null };
 

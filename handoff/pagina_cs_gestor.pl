@@ -25,7 +25,7 @@ armadilha(worktree_compartilhado, "Outra sessão edita o mesmo diretório moai-c
 
 arquivo(novo, "lib/pontuacao.ts, lib/gtd.ts, lib/gtd-checklist.ts, lib/criticos.ts, lib/radar-svg.ts, app/gestor-cs-html.ts, app/gestor/cs/[nome]/page.tsx, app/api/gestor/cs/[nome]/route.ts, tests/pontuacao.test.ts, tests/gtd.test.ts, tests/criticos.test.ts").
 
-padrao_adotado(dedupe_percentual_criticos, "lib/criticos.ts tem percentualCriticosDecimos próprio porque a versão de indicadores-base.ts ainda está na branch feat/report_individual_health_base. Unificar ao juntar as duas.").
+padrao_adotado(dedupe_percentual_criticos, "Resolvido no merge: lib/criticos.ts reexporta percentualCriticosDecimos de indicadores-base.ts.").
 pendente(luana, "Luana só tem a meta de carteira em metas_definidas. Confirmar se faltam metas dela no board de Metas.").
 pendente(gtd_na_pontuacao, "GTD aparece no radar e não pesa na pontuação. Padrão mantido: não entra.").
 pendente(nomes_na_pagina, "A página mostra só percentuais de críticos. Lista nominal por produto, só para gestor, depende de decisão.").

@@ -144,12 +144,31 @@ export const FAIXAS_PRESENCA: { chave: FaixaPresencaChave; ate: number | null; r
   { chave: 'saudavel', ate: null, rotulo: 'Saudável' },
 ];
 
-// ============ Health da Base (07/10/2026) ============
-// Health da Base do CS = presença média da carteira (escala inversa) com as advertências ativas
-// deduzidas. Guardado como saúde líquida (0 a 100, maior é melhor) e exibido como 100 menos a
-// saúde líquida quando HEALTH_BASE_ESCALA_INVERSA é verdadeiro (maior é pior, decisão do Vitor).
-export const PESO_PONTO_ADVERTENCIA_DECIMOS = 10; // décimos de ponto percentual de saúde por ponto de advertência ativa
-export const HEALTH_BASE_ESCALA_INVERSA = true;
+// ============ Health da Base (redefinido em 07/10/2026) ============
+// Health da Base do CS = percentual de membros críticos na base do CS (todos os membros elegíveis
+// dos conselhos dele), segundo o report semanal mais recente, mais os pontos de advertência ativos.
+// Menor é melhor; teto de 100,0. Presença NÃO entra no Health (correção do Vitor).
+export const PESO_PONTO_ADVERTENCIA_DECIMOS = 10; // décimos de ponto percentual somados ao Health por ponto de advertência ativa
+
+// ============ report individual semanal (07/10/2026) ============
+// Report mais velho que isso aparece com o selo "desatualizado".
+export const REPORT_VALIDADE_DIAS = 14;
+// Quantas semanas para trás o CS ainda pode editar o próprio report (gestor edita qualquer uma).
+// O banco aplica a mesma janela em salvar_report_individual (semana atual menos 7 dias).
+export const REPORT_EDICAO_SEMANAS = 1;
+export const REPORT_COMO_FOI_SEMANA = [
+  { valor: 'fluindo', rotulo: 'Fluindo' }, { valor: 'atencao', rotulo: 'Atenção' }, { valor: 'critica', rotulo: 'Crítica' },
+];
+export const REPORT_STATUS_CHECKLIST = [
+  { valor: 'feito', rotulo: 'Feito' }, { valor: 'em_andamento', rotulo: 'Em andamento' }, { valor: 'parado', rotulo: 'Parado' },
+];
+// Os quatro checklists de rotina, com os mesmos rótulos do board Reports Individuais CS.
+export const REPORT_CHECKLISTS = [
+  { campo: 'check_atas_crm', rotulo: 'Atas e CRM' },
+  { campo: 'check_confirmacoes', rotulo: 'Abriu as confirmações dos conselhos com 15 dias de antecedência' },
+  { campo: 'check_gtd', rotulo: 'Atualizou o GTD e a Gestão de Conselhos' },
+  { campo: 'check_kpis', rotulo: 'Verificou os KPIs individuais' },
+];
 
 // Duração fixa de um conselho na agenda (4h, nunca registrada no Monday). Define o tamanho do bloco
 // na grade da semana e o momento em que o conselho passa a ser "encerrado" (sem semáforo).

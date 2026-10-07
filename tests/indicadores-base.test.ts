@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   semaforoConfirmados, corBlocoAgenda, faixaPresenca, distribuicaoPresenca, percentuaisMaiorResto,
-  calcularHealthBase, advertenciaAtiva, pontuacaoAtiva, presencaMembroDecimos,
+  calcularHealthBase, advertenciaAtiva, pontuacaoAtiva, percentualCriticosDecimos, casaBusca, statusReport, segundaFeiraBRT,
 } from '../lib/indicadores-base.ts';
 
 // semáforo
@@ -40,25 +40,46 @@ assert.equal(dist.semApuracao, 1);
 assert.equal(dist.totalApurado, 5);
 assert.equal(Object.values(dist.percentuaisDecimos).reduce((a, b) => a + b, 0), 1000);
 
-// Health da Base
-let h = calcularHealthBase([800], 0);
-assert.deepEqual([h.saudeLiquidaDecimos, h.healthBaseDecimos], [800, 200], 'presença 80, sem advertência: 20');
-h = calcularHealthBase([800], 3);
-assert.deepEqual([h.saudeLiquidaDecimos, h.healthBaseDecimos], [770, 230], 'presença 80, 3 pontos: 23');
-assert.equal(h.composicao, 'Presença média da carteira 80,0%, advertências ativas 3 pontos, saúde líquida 77,0%, Health da Base 23,0%.');
-h = calcularHealthBase([100], 50);
-assert.deepEqual([h.saudeLiquidaDecimos, h.healthBaseDecimos], [0, 1000], 'piso em zero');
-h = calcularHealthBase([1000], 0);
-assert.deepEqual([h.saudeLiquidaDecimos, h.healthBaseDecimos], [1000, 0], 'presença total');
-h = calcularHealthBase([700, null, 900], 0);
-assert.deepEqual([h.presencaMediaDecimos, h.membrosApurados], [800, 2], 'membro sem apuração fica fora da média');
-h = calcularHealthBase([null, null], 2);
-assert.equal(h.semApuracao, true);
-assert.equal(h.healthBaseDecimos, null, 'sem apuração nunca vira zero');
-h = calcularHealthBase([], 0);
-assert.equal(h.semApuracao, true);
-assert.equal(presencaMembroDecimos(2, 3), 667);
-assert.equal(presencaMembroDecimos(0, 0), null);
+// Health da Base = percentual de críticos + advertências (casos da seção 6 do prompt de 07/10/2026)
+assert.equal(percentualCriticosDecimos(4, 50), 80, 'George outubro, base declarada');
+assert.equal(percentualCriticosDecimos(7, 43), 163, 'Vitor outubro, base declarada');
+assert.equal(percentualCriticosDecimos(1, 23), 43, 'Mateus setembro, base declarada');
+assert.equal(percentualCriticosDecimos(0, 50), 0);
+assert.equal(percentualCriticosDecimos(50, 50), 1000);
+assert.equal(percentualCriticosDecimos(0, 0), null, 'base zero não tem valor');
+assert.equal(percentualCriticosDecimos(51, 50), null, 'críticos acima da base');
+assert.equal(percentualCriticosDecimos(null, 50), null);
+let h = calcularHealthBase(4, 50, 0);
+assert.equal(h.healthBaseDecimos, 80);
+h = calcularHealthBase(4, 50, 3);
+assert.equal(h.healthBaseDecimos, 110, 'advertência soma e piora');
+assert.equal(h.composicao, 'Críticos 4 de 50 (8,0%), advertências ativas 3 pontos, Health da Base 11,0%.');
+h = calcularHealthBase(40, 50, 30);
+assert.equal(h.healthBaseDecimos, 1000, 'teto de 100,0');
+h = calcularHealthBase(null, null, 2);
+assert.deepEqual([h.semApuracao, h.healthBaseDecimos], [true, null], 'sem report nunca vira zero');
+h = calcularHealthBase(0, 0, 0);
+assert.equal(h.composicao, 'Sem apuração: base sem membros elegíveis.');
+
+// busca por nome
+assert.equal(casaBusca('ana', 'Mariana Costa'), true);
+assert.equal(casaBusca('cos mar', 'Mariana Costa'), true, 'termos em qualquer ordem');
+assert.equal(casaBusca('zzz', 'Mariana Costa'), false);
+assert.equal(casaBusca('', 'Mariana Costa'), true, 'busca vazia casa tudo');
+assert.equal(casaBusca('jose', 'José Silva'), true, 'sem acento acha com acento');
+assert.equal(casaBusca('JOSÉ', 'jose silva'), true, 'com acento acha sem acento');
+assert.equal(casaBusca('conceicao', 'Maria da Conceição'), true);
+assert.equal(casaBusca('Conceição', 'MARIA DA CONCEICAO'), true);
+// a mesma função roda no navegador a partir do próprio código-fonte
+const casaBuscaNoNavegador = new Function('return ' + casaBusca.toString())();
+assert.equal(casaBuscaNoNavegador('cos mar', 'Mariana Costa'), true);
+
+// status do report e semana
+assert.equal(statusReport(null), 'sem_report');
+assert.equal(statusReport('2026-10-02', new Date('2026-10-07T12:00:00Z')), 'atual');
+assert.equal(statusReport('2026-09-15', new Date('2026-10-07T12:00:00Z')), 'desatualizado');
+assert.equal(segundaFeiraBRT(new Date('2026-10-07T12:00:00Z')), '2026-10-05');
+assert.equal(segundaFeiraBRT(new Date('2026-10-12T02:00:00Z')), '2026-10-05', 'domingo 23h em Brasília ainda é a semana anterior');
 
 // advertências: vencida não desconta
 const agora = new Date('2026-10-07T12:00:00Z');

@@ -11,8 +11,8 @@
 // alertas e a divergência continuam vindo prontos de generateVisaoGestor() em lib/reports.ts; este
 // arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
 
-import { FAIXAS_PRESENCA } from '@/lib/constants';
-import { RADAR_SVG_SCRIPT } from '@/lib/radar-svg';
+import { FAIXAS_PRESENCA } from '../lib/constants.ts';
+import { RADAR_SVG_SCRIPT } from '../lib/radar-svg.ts';
 
 export const GESTOR_STYLE = `
 :root{

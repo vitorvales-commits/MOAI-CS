@@ -250,6 +250,14 @@ const ROUNDS_COLS = {
 };
 const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
 const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
+// v30 (07/10/2026): colunas extras do mesmo board para reports_individuais (report individual
+// nativo). Até a data de corte, cada item do board vira uma linha de origem monday.
+const REPORTS_COLS_EXTRA = {
+  como: 'color_mkzncdcf', risco: 'text_mkznj4ew', porQue: 'long_textsz1r5u8e',
+  criticos: 'numbermhxahumx', baixo: 'numberoxvnczj5', medio: 'number9rpo61w1', alto: 'numberoze44zdb',
+  churnsRevertidos: 'numberereg4o6c', pedidosChurn: 'numberfiobawma',
+  checkAtas: 'color_mm46rqw2', checkConfirmacoes: 'color_mm469bgr', checkGtd: 'color_mm5r5qw2', checkKpis: 'color_mm5rh8k7',
+};
 // v18 (26/09/2026 — pedido do Vitor): matchmakings_items estava 100% sem motivo/categoria/
 // origem/resultado/data — a query de syncMatchmakings só pedia `id name creator_id`, nunca
 // column_values, então essas 5 colunas em matchmakings_items ficavam sempre null (o schema já
@@ -709,8 +717,8 @@ async function syncUpsellDownsell() {
 async function syncReportsSemanais() {
   const items = await fetchAllItemsFlat(
     BOARDS.REPORTS_SEMANAIS,
-    [REPORTS_COLS.data, REPORTS_COLS.nota, REPORTS_COLS.mm, REPORTS_COLS.indicacoes],
-    'created_at'
+    [REPORTS_COLS.data, REPORTS_COLS.nota, REPORTS_COLS.mm, REPORTS_COLS.indicacoes, ...Object.values(REPORTS_COLS_EXTRA)],
+    'created_at name group { title }'
   );
   const rows = items.map((it) => ({
     id: Number(it.id),
@@ -723,7 +731,138 @@ async function syncReportsSemanais() {
   }));
   await upsert('reports_semanais_items', rows);
   await pruneOrfaos('reports_semanais_items', new Set(rows.map((r) => r.id)));
+  await syncReportsIndividuaisMonday(items);
   return rows.length;
+}
+
+// ---- reports_individuais de origem monday (v30, 07/10/2026) ----
+// O CS é resolvido pelo NOME digitado no item (o respondente), via reports_cs_aliases: o
+// creator_id não serve, porque contas de outras pessoas criaram itens em nome de ex CS. Nome sem
+// alias aplicado entra como nao_mapeado e é registrado como alias pendente para o Vitor.
+// Itens de semana igual ou posterior à data de corte não são mais gravados (vale o nativo).
+const MESES_PT = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function segundaDaSemana(isoData: string): string {
+  const d = new Date(isoData + 'T12:00:00Z');
+  const dow = d.getUTCDay(); // 0 domingo
+  d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().slice(0, 10);
+}
+function dataBrtDeInstante(iso: string): string {
+  return new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+// Semana do report: Data preenchida; senão a semana do título do grupo ("Semana 12 a 16 de
+// Janeiro"); senão a data de criação no Monday. Os dois últimos marcam data_aproximada.
+function semanaDoItem(it: any): { semana: string; dataReport: string | null; aproximada: boolean } {
+  const data = dateOrNull(colText(it.column_values, REPORTS_COLS.data));
+  if (data) return { semana: segundaDaSemana(data), dataReport: data, aproximada: false };
+  const titulo = normalizarTexto(it.group?.title || '');
+  const m = titulo.match(/semana (\d{1,2}) a \d{1,2} de ([a-z]+)/);
+  const ano = it.created_at ? Number(dataBrtDeInstante(it.created_at).slice(0, 4)) : new Date().getUTCFullYear();
+  if (m && MESES_PT.indexOf(m[2]) !== -1) {
+    const iso = `${ano}-${String(MESES_PT.indexOf(m[2]) + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return { semana: segundaDaSemana(iso), dataReport: null, aproximada: true };
+  }
+  const criado = it.created_at ? dataBrtDeInstante(it.created_at) : new Date().toISOString().slice(0, 10);
+  return { semana: segundaDaSemana(criado), dataReport: null, aproximada: true };
+}
+function comoFoiSemana(txt: string | null): string | null {
+  const t = normalizarTexto(txt || '');
+  if (!t) return null;
+  if (t.startsWith('flu')) return 'fluindo';
+  if (t.startsWith('aten')) return 'atencao';
+  if (t.startsWith('cr')) return 'critica'; // o rótulo no board é "Crtítica"
+  return null;
+}
+function statusChecklist(txt: string | null): string | null {
+  const t = normalizarTexto(txt || '');
+  if (t === 'feito') return 'feito';
+  if (t === 'parado') return 'parado';
+  if (t === 'em andamento') return 'em_andamento';
+  return null;
+}
+function inteiroNaoNegativo(txt: string | null): number | null {
+  const n = numOrNull(txt);
+  return n === null || !Number.isFinite(n) || n < 0 ? null : Math.round(n);
+}
+
+async function syncReportsIndividuaisMonday(items: any[]) {
+  const [aliases, cfg] = await Promise.all([
+    fetchAllFromSupabase('reports_cs_aliases', 'nome_digitado_normalizado,cs_nome,cs_categoria,aplicado'),
+    fetchAllFromSupabase('configuracoes_globais', 'data_corte_reports_nativos'),
+  ]);
+  const corte: string | null = cfg[0]?.data_corte_reports_nativos || null;
+  const aliasPorNome = new Map<string, any>(aliases.map((a: any) => [a.nome_digitado_normalizado, a]));
+  const novosAliases = new Map<string, string>();
+
+  const rows: any[] = [];
+  items.forEach((it) => {
+    const { semana, dataReport, aproximada } = semanaDoItem(it);
+    if (corte && semana >= corte) return;
+    const nomeNorm = normalizarTexto(it.name || '');
+    const alias = aliasPorNome.get(nomeNorm);
+    const aplicado = alias && alias.aplicado;
+    if (!alias && nomeNorm) novosAliases.set(nomeNorm, it.name);
+    const criticos = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.criticos));
+    const baixo = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.baixo));
+    const medio = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.medio));
+    const alto = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.alto));
+    const algumNivel = [criticos, baixo, medio, alto].some((v) => v !== null);
+    const nota = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS.nota));
+    rows.push({
+      monday_item_id: Number(it.id),
+      origem: 'monday',
+      cs_nome: aplicado ? alias.cs_nome : null,
+      cs_nome_original: it.name || null,
+      cs_categoria: aplicado ? alias.cs_categoria : 'nao_mapeado',
+      semana_inicio: semana,
+      data_report: dataReport,
+      data_aproximada: aproximada,
+      como_foi_semana: comoFoiSemana(colText(it.column_values, REPORTS_COLS_EXTRA.como)),
+      nota_semana: nota !== null && nota <= 10 ? nota : null,
+      risco_se_ignorar: colText(it.column_values, REPORTS_COLS_EXTRA.risco) || null,
+      por_que: colText(it.column_values, REPORTS_COLS_EXTRA.porQue) || null,
+      baixo_engajamento: baixo, medio_engajamento: medio, alto_engajamento: alto,
+      indicacoes: inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS.indicacoes)),
+      matchmakings: inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS.mm)),
+      churns_revertidos: inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.churnsRevertidos)),
+      pedidos_churn: inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.pedidosChurn)),
+      check_atas_crm: statusChecklist(colText(it.column_values, REPORTS_COLS_EXTRA.checkAtas)),
+      check_confirmacoes: statusChecklist(colText(it.column_values, REPORTS_COLS_EXTRA.checkConfirmacoes)),
+      check_gtd: statusChecklist(colText(it.column_values, REPORTS_COLS_EXTRA.checkGtd)),
+      check_kpis: statusChecklist(colText(it.column_values, REPORTS_COLS_EXTRA.checkKpis)),
+      criticos_total: criticos,
+      criticos_origem: 'contagem_monday',
+      base_total: algumNivel ? (criticos || 0) + (baixo || 0) + (medio || 0) + (alto || 0) : null,
+      base_origem: 'declarada_monday',
+      criado_em: it.created_at || new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    });
+  });
+  await upsert('reports_individuais', rows, 'monday_item_id');
+
+  // Nome novo no board: registra como alias pendente (não aplicado), sem sobrescrever nada.
+  if (novosAliases.size) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/reports_cs_aliases?on_conflict=nome_digitado_normalizado`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal',
+      },
+      body: JSON.stringify([...novosAliases.entries()].map(([k, v]) => ({ nome_digitado_normalizado: k, exemplo_digitado: v, cs_categoria: 'nao_mapeado', aplicado: false, observacao: 'nome novo vindo da sync, aguardando mapeamento' }))),
+    });
+    if (!res.ok) throw new Error(`Supabase insert falhou (reports_cs_aliases): ${res.status} ${await res.text()}`);
+  }
+
+  // Item apagado do board sai de reports_individuais. Só linhas de origem monday; o nativo nunca é
+  // tocado aqui (pruneOrfaos não serve: varreria a tabela inteira, incluindo o nativo).
+  const idsBoard = new Set(items.map((it) => Number(it.id)));
+  const existentes = await fetchAllFromSupabase('reports_individuais', 'monday_item_id,origem');
+  const orfaos = existentes.filter((r: any) => r.origem === 'monday' && r.monday_item_id !== null && !idsBoard.has(Number(r.monday_item_id)))
+    .map((r: any) => Number(r.monday_item_id));
+  if (orfaos.length) {
+    await deleteWhere('reports_individuais', `origem=eq.monday&monday_item_id=in.(${orfaos.join(',')})`);
+    console.warn(`[sync-monday] prune: removidas ${orfaos.length} linha(s) monday de reports_individuais (ids: ${orfaos.join(',')})`);
+  }
 }
 
 async function syncMetas() {

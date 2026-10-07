@@ -31,19 +31,24 @@ export interface LinhaMeta {
   observacao?: string;
 }
 
-// Health da Base (07/10/2026): o banco (metas_cs_base) só conhece o valor manual do Monday, que
-// deixou de ser usado. A linha health_base é substituída pelo valor calculado em TypeScript
-// (calcularHealthBase, lib/indicadores-base.ts), sem blending com o manual. O cálculo usa a
-// presença acumulada atual da carteira, então só vale para o mês corrente; em outro mês a linha
-// sai da contagem e a resposta avisa que não há apuração, nunca usa o manual nem inventa zero.
-export type HealthBasePorCS = Record<string, number | null>;
-export function aplicarHealthBaseCalculado(linhas: LinhaMeta[], health: HealthBasePorCS | null, mesCorrente: boolean): LinhaMeta[] {
+// Health da Base e Críticos (redefinidos em 07/10/2026): o banco (metas_cs_base) só conhece o
+// valor manual do Monday, que deixou de ser lido. As linhas health_base e critico são substituídas
+// pelo valor do último report do mês (calcularHealthBase em lib/indicadores-base.ts, via
+// healthBaseExibidoPorCS em lib/reports.ts), sem blending com o manual. Mês sem report do CS: a
+// linha sai da contagem e a resposta avisa, nunca usa o manual nem inventa zero.
+export type HealthBasePorCS = { health: Record<string, number | null>; criticos: Record<string, number | null> };
+const ROTULO_SEM_REPORT: Record<string, string> = {
+  health_base: 'Health da Base sem report neste mês.',
+  critico: 'Críticos sem report neste mês.',
+};
+export function aplicarHealthBaseCalculado(linhas: LinhaMeta[], valores: HealthBasePorCS | null): LinhaMeta[] {
   return linhas.map((l) => {
-    if (l.metrica !== 'health_base') return l;
-    const v = mesCorrente && health ? health[l.cs] ?? null : null;
+    if (l.metrica !== 'health_base' && l.metrica !== 'critico') return l;
+    const fonte = l.metrica === 'health_base' ? valores?.health : valores?.criticos;
+    const v = fonte ? fonte[l.cs] ?? null : null;
     if (v === null || v === undefined) {
       return { ...l, direcao: 'max', realizado: 0, realizado_calculado: null, fonte: 'sem_dado', status: 'sem_meta', percentual: null, divergencia: false,
-        observacao: mesCorrente ? 'Health da Base sem apuração: nenhum membro da carteira com presença registrada.' : 'Health da Base só é apurado para o mês corrente, a partir da presença acumulada da carteira.' };
+        observacao: ROTULO_SEM_REPORT[l.metrica] };
     }
     const status: LinhaMeta['status'] = l.meta === null ? 'sem_meta' : v <= l.meta ? 'bateu' : 'nao_bateu';
     return { ...l, direcao: 'max', realizado: v, realizado_calculado: v, fonte: 'calculado', status,
@@ -220,7 +225,7 @@ export interface RespostaIntencao {
 // Dependências que vivem fora deste módulo (ex.: o Health da Base calculado em lib/reports.ts),
 // injetadas pela rota para os testes continuarem sem banco.
 export interface ContextoConsulta {
-  healthBasePorCS?: () => Promise<HealthBasePorCS>;
+  healthBasePorCS?: (mesInicio: string, mesFim: string) => Promise<HealthBasePorCS>;
 }
 
 export interface IntencaoDef {
@@ -245,10 +250,11 @@ async function responderMetasIntencao(
   const { data, error } = await supabase.rpc('consultar_metas_cs', { p_cs: consulta.cs, p_mes: consulta.mes });
   if (error) throw error;
   const brutas = (data ?? []) as LinhaMeta[];
-  const mesCorrente = consulta.mes === `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
-  const precisaHealth = mesCorrente && brutas.some((l) => l.metrica === 'health_base') && ctx?.healthBasePorCS;
-  const health = precisaHealth ? await ctx!.healthBasePorCS!() : null;
-  const linhas = aplicarHealthBaseCalculado(brutas, health, mesCorrente);
+  const precisaHealth = brutas.some((l) => l.metrica === 'health_base' || l.metrica === 'critico') && ctx?.healthBasePorCS;
+  const [ano, mes] = consulta.mes.split('-').map(Number);
+  const mesFim = `${consulta.mes.slice(0, 8)}${String(new Date(Date.UTC(ano, mes, 0)).getUTCDate()).padStart(2, '0')}`;
+  const health = precisaHealth ? await ctx!.healthBasePorCS!(consulta.mes, mesFim) : null;
+  const linhas = aplicarHealthBaseCalculado(brutas, health);
   return {
     resposta: responderMetas(linhas, consulta),
     resource: `${consulta.cs ?? 'time'}|${consulta.mes}`,

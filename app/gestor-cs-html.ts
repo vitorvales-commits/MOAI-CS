@@ -292,7 +292,7 @@ function renderAdvertenciasCS(d) {
   if (hb && !hb.semApuracao) {
     efeito = '<div class="efeito">Efeito no Health da Base: <b>' + dec(hb.comPontosDecimos) + '</b> com os ' + hb.pontosAtivos + (hb.pontosAtivos === 1 ? ' ponto ativo' : ' pontos ativos')
       + ' e <b>' + dec(hb.semPontosDecimos) + '</b> sem eles.</div>';
-  } else if (hb) { efeito = '<div class="efeito">Health da Base sem apuração: nenhum membro da carteira com presença registrada.</div>'; }
+  } else if (hb) { efeito = '<div class="efeito">Health da Base sem apuração: sem report com críticos e base.</div>'; }
   var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + t.validadeMeses + ' meses)</option>'; }).join('');
   var form = a.tipos.length
     ? '<div class="form-adv"><label>Tipo<select id="advTipo">' + opcoes + '</select></label>'

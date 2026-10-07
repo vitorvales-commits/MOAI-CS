@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     // Health da Base calculado (07/10/2026) entra por injeção, só é buscado se a resposta precisar.
     const { resposta, resource } = await processarPergunta(supabase, pergunta, (roster ?? []) as CsRef[], new Date(), {
-      healthBasePorCS: () => healthBaseExibidoPorCS(supabase),
+      healthBasePorCS: (mesInicio, mesFim) => healthBaseExibidoPorCS(supabase, mesInicio, mesFim),
     });
 
     // resource carrega só CS + mês (ex.: "Rodrigo|2026-09-01"), nunca o texto integral da
