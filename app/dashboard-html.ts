@@ -627,7 +627,7 @@ ${GTD_CHECKLIST_STYLE}
     <div class="tab" onclick="showTab('semanal',event)">Cases de Sucesso</div>
     <div class="tab" onclick="showTab('conselhos',event)">Conselhos</div>
     <div class="tab" onclick="showTab('umaum',event)">1:1</div>
-    <div class="tab" onclick="showTab('advertencias',event)">Advertências</div>
+    <div class="tab" onclick="showTab('advertencias',event)">Pontos tomados</div>
     <div class="tab" onclick="showTab('feedbacks',event)">Feedbacks</div>
   </div>
   <div class="pessoa-conteudo">
@@ -1885,15 +1885,14 @@ function salvarUmAUm(){
   });
 }
 
-// ============ advertências (brainstorm 29/09/2026) ============
-// Separado do healthscore/destaque de propósito (decisão explícita do Vitor) — só um indicador
-// visual à parte. Visível igual pro gestor e pro próprio CS (mesma filosofia do 1:1), carregado
-// à parte via /api/cs/[nome]/advertencias. Limite de 3 pontos pra destaque visual é fixo por
-// enquanto, sem gatilho automático nenhum.
+// ============ pontos tomados (antes, aba Advertências; 07/10/2026) ============
+// Somente leitura nas duas visões. A aplicação, a edição e a exclusão de advertência moram na
+// página do CS na visão do gestor (/gestor/cs/[nome]); aqui o CS vê o ponto que tomou e o efeito no
+// Health da Base, e o gestor ganha só o atalho para a página. O destaque visual acima de 3 pontos
+// ativos continua. Carregado à parte via /api/cs/[nome]/advertencias (que já devolve o efeito).
 var advertenciasAtual_ = [];
 var advertenciaPontuacaoAtiva_ = 0;
-var advertenciaTiposCatalogo_ = [];
-var advertenciaEditandoId_ = null;
+var advertenciaEfeito_ = null;
 var LIMIAR_ADVERTENCIA_DESTAQUE_ = 3;
 
 function dataHoraBRAdvertencia_(iso){
@@ -1906,94 +1905,49 @@ function carregarAdvertencias(nome){
     if (currentCS !== nome) return;
     advertenciasAtual_ = d.registros || [];
     advertenciaPontuacaoAtiva_ = d.pontuacaoAtiva || 0;
-    if (souGestor) return carregarAdvertenciaTiposCatalogo_().then(function(){ if (currentCS === nome) renderAbaAdvertencias(); });
+    advertenciaEfeito_ = d.efeito || null;
     renderAbaAdvertencias();
   }).catch(function(err){
     if (currentCS !== nome) return;
-    document.getElementById('advertencias').innerHTML = '<div class="empty-state">Erro ao carregar advertências: ' + escUmAUm_(err.message) + '</div>';
+    document.getElementById('advertencias').innerHTML = '<div class="empty-state">Erro ao carregar os pontos tomados: ' + escUmAUm_(err.message) + '</div>';
   });
-}
-function carregarAdvertenciaTiposCatalogo_(){
-  return fetchJSON_('/api/gestor/advertencia-tipos').then(function(d){
-    advertenciaTiposCatalogo_ = (d.tipos || []).filter(function(t){ return t.ativo; });
-  }).catch(function(){ advertenciaTiposCatalogo_ = []; });
 }
 function advertenciaResumoHtml_(){
   var destaque = advertenciaPontuacaoAtiva_ > LIMIAR_ADVERTENCIA_DESTAQUE_;
   return '<div class="advertencia-resumo' + (destaque ? ' destaque' : '') + '">' +
     '<div class="advertencia-resumo-num">' + advertenciaPontuacaoAtiva_ + '</div>' +
-    '<div class="advertencia-resumo-label">ponto(s) ativo(s)' + (destaque ? ' — acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ : '') + '</div>' +
+    '<div class="advertencia-resumo-label">' + (advertenciaPontuacaoAtiva_ === 1 ? 'ponto ativo' : 'pontos ativos') + (destaque ? ', acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ : '') + '</div>' +
   '</div>';
 }
-function advertenciaFormularioHtml_(){
+function advertenciaEfeitoHtml_(){
+  var e = advertenciaEfeito_;
+  if (!e) return '';
+  var fmt = function(d){ return (d/10).toFixed(1).replace('.', ',') + '%'; };
+  if (e.semApuracao || e.comPontosDecimos === null || e.comPontosDecimos === undefined) {
+    return '<div class="umaum-card-campo" style="margin-bottom:14px;"><b>Efeito no Health da Base</b>Sem apuração: nenhum membro da carteira com presença registrada.</div>';
+  }
+  return '<div class="umaum-card-campo" style="margin-bottom:14px;"><b>Efeito no Health da Base</b>' +
+    'Com os pontos ativos: ' + fmt(e.comPontosDecimos) + '. Sem eles: ' + fmt(e.semPontosDecimos) + '.</div>';
+}
+function advertenciaAtalhoGestorHtml_(){
   if (!souGestor) return '';
-  var tipos = advertenciaTiposCatalogo_ || [];
-  if (!tipos.length) return '<div class="umaum-form-card"><div class="destaque-form-label">Nenhum tipo de advertência ativo no catálogo — cadastre em Controle de Perfis.</div></div>';
-  return '<div class="umaum-form-card">' +
-    '<div class="destaque-form-label" style="margin-bottom:14px;">Aplicar advertência</div>' +
-    '<div class="umaum-form-row"><label>Tipo<select id="advertenciaTipoSelect">' +
-      tipos.map(function(t){ return '<option value="'+t.id+'">'+escUmAUm_(t.nome)+' ('+t.pontos+' pt, '+t.validadeMeses+'m)</option>'; }).join('') +
-    '</select></label></div>' +
-    '<div class="umaum-form-row"><label style="flex:1 1 100%;">Observação (opcional)<textarea id="advertenciaObservacao" placeholder="Contexto..."></textarea></label></div>' +
-    '<div class="umaum-form-actions">' +
-      '<button class="destaque-form-btn" id="advertenciaAplicarBtn" onclick="aplicarAdvertenciaClick()">Aplicar</button>' +
-      '<span class="destaque-form-status" id="advertenciaStatus"></span>' +
-    '</div></div>';
+  return '<div style="margin-bottom:14px;"><a class="destaque-form-btn" style="display:inline-block;text-decoration:none;" href="/gestor/cs/' + encodeURIComponent(currentCS) +
+    '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + '">Aplicar, editar ou excluir na página do CS</a></div>';
 }
 function advertenciaListaHtml_(){
-  if (!advertenciasAtual_.length) return '<div class="empty-state">Nenhuma advertência registrada.</div>';
+  if (!advertenciasAtual_.length) return '<div class="empty-state">Nenhum ponto tomado até agora.</div>';
   return advertenciasAtual_.map(function(r){
-    var editando = advertenciaEditandoId_ === r.id;
     return '<div class="umaum-card">' +
       '<div class="umaum-card-head"><span class="umaum-card-data">' + escUmAUm_(r.tipoNome) + '</span>' +
-        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + ' pt' + (r.pontos!==1?'s':'') + (r.ativa ? '' : ' · expirada') + '</span>' +
-        '<span class="umaum-card-gestor">' + escUmAUm_(r.aplicadoPor) + ' · ' + dataHoraBRAdvertencia_(r.aplicadoEm) +
-          (souGestor ? ' <button class="umaum-card-editar" onclick="advertenciaEditarClick(\\'' + r.id + '\\')">Editar</button> <button class="umaum-card-excluir" onclick="advertenciaExcluirClick(\\'' + r.id + '\\')">Excluir</button>' : '') +
-        '</span></div>' +
-      (editando ?
-        '<div class="umaum-form-row"><label style="flex:1 1 100%;">Observação<textarea id="advertenciaObservacaoEdit">' + escUmAUm_(r.observacao || '') + '</textarea></label></div>' +
-        '<div class="umaum-form-actions"><button class="destaque-form-btn" onclick="advertenciaSalvarObservacaoClick(\\'' + r.id + '\\')">Salvar</button>' +
-          '<button class="destaque-form-btn" style="background:#3A3A3A;color:#fff;" onclick="advertenciaCancelarEdicaoClick()">Cancelar</button></div>'
-        : (r.observacao ? '<div class="umaum-card-campo"><b>Observação</b>' + escUmAUm_(r.observacao) + '</div>' : '')) +
+        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + (r.pontos !== 1 ? ' pontos' : ' ponto') + (r.ativa ? ', ativa' : ', vencida') + '</span>' +
+        '<span class="umaum-card-gestor">Aplicada por ' + escUmAUm_(r.aplicadoPor) + ' em ' + dataHoraBRAdvertencia_(r.aplicadoEm) + ', validade de ' + r.validadeMeses + (r.validadeMeses !== 1 ? ' meses' : ' mês') + '</span></div>' +
+      (r.observacao ? '<div class="umaum-card-campo"><b>Observação</b>' + escUmAUm_(r.observacao) + '</div>' : '') +
     '</div>';
   }).join('');
 }
 function renderAbaAdvertencias(){
   var el = document.getElementById('advertencias');
-  el.innerHTML = advertenciaResumoHtml_() + advertenciaFormularioHtml_() + advertenciaListaHtml_();
-}
-function aplicarAdvertenciaClick(){
-  var tipoId = document.getElementById('advertenciaTipoSelect').value;
-  var observacao = document.getElementById('advertenciaObservacao').value.trim();
-  var btn = document.getElementById('advertenciaAplicarBtn');
-  var status = document.getElementById('advertenciaStatus');
-  btn.disabled = true; status.style.color = '#9F9F9F'; status.textContent = 'Aplicando...';
-  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tipoId: tipoId, observacao: observacao || null }),
-  }).then(function(){
-    return carregarAdvertencias(currentCS);
-  }).catch(function(err){
-    btn.disabled = false; status.style.color = '#C0392B'; status.textContent = 'Erro: ' + err.message;
-  });
-}
-function advertenciaEditarClick(id){ advertenciaEditandoId_ = id; renderAbaAdvertencias(); }
-function advertenciaCancelarEdicaoClick(){ advertenciaEditandoId_ = null; renderAbaAdvertencias(); }
-function advertenciaSalvarObservacaoClick(id){
-  var observacao = document.getElementById('advertenciaObservacaoEdit').value.trim();
-  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias/' + encodeURIComponent(id), {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ observacao: observacao || null }),
-  }).then(function(){
-    advertenciaEditandoId_ = null;
-    return carregarAdvertencias(currentCS);
-  }).catch(function(err){ window.alert('Erro ao salvar: ' + err.message); });
-}
-function advertenciaExcluirClick(id){
-  if (!window.confirm('Excluir esta advertência aplicada? Essa ação não pode ser desfeita.')) return;
-  fetchJSON_('/api/cs/' + encodeURIComponent(currentCS) + '/advertencias/' + encodeURIComponent(id), { method: 'DELETE' })
-    .then(function(){ return carregarAdvertencias(currentCS); })
-    .catch(function(err){ window.alert('Erro ao excluir: ' + err.message); });
+  el.innerHTML = advertenciaResumoHtml_() + advertenciaAtalhoGestorHtml_() + advertenciaEfeitoHtml_() + advertenciaListaHtml_();
 }
 
 // ============ agenda visual (Parte C, 28/09/2026) ============

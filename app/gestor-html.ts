@@ -618,7 +618,7 @@ export const GESTOR_HTML = `
       </div>
       <div class="perfis-card">
         <h3>Catálogo de advertência</h3>
-        <p class="sync-desc">Nome, pontos e validade de cada tipo. Desativar tira do formulário de aplicar em "Advertências" no perfil do CS, mas mantém o histórico de quem já recebeu (a aplicação guarda uma cópia congelada, não muda com edição no catálogo).</p>
+        <p class="sync-desc">Nome, pontos e validade de cada tipo. Desativar tira do formulário de aplicar na página do CS, mas mantém o histórico de quem já recebeu (a aplicação guarda uma cópia congelada, não muda com edição no catálogo).</p>
         <div class="form-inline" style="flex-wrap:wrap;">
           <input type="text" id="advTipoNome" placeholder="Nome do tipo" style="flex:2;min-width:140px;">
           <input type="number" id="advTipoPontos" placeholder="Pontos" min="0" style="flex:1;min-width:80px;">

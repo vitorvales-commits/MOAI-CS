@@ -3386,3 +3386,17 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 
   return { periodo: { mes: seletorMes, ano }, cabecalho, radar, gtd, criticos, health, advertencias };
 }
+
+// Efeito dos pontos de advertência ativos no Health da Base de um CS: o valor com os pontos e o
+// valor sem eles, pela mesma função do relatório individual (healthBaseDoCS). Alimenta a aba Pontos
+// tomados do dashboard; a página do CS na visão do gestor calcula o mesmo em paginaCSGestor.
+export async function efeitoAdvertenciasHealthBase(sb: SupabaseClient, csNome: string) {
+  const [dados, lista] = await Promise.all([getDadosBrutos(sb), getCSListParaAgregados(sb)]);
+  const cfg = lista.find((c) => c.nome === csNome);
+  if (!cfg) return null;
+  const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+  const grupos = gruposDaCarteira(dados, cfg.apelidoConselho);
+  const com = healthBaseDoCS(dados, csNome, grupos, membrosPorGrupo, statusPorMembro);
+  const sem = healthBaseDoCS(dados, csNome, grupos, membrosPorGrupo, statusPorMembro, 0);
+  return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao };
+}

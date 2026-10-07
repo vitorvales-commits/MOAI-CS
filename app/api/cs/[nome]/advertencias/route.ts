@@ -5,7 +5,7 @@
 // de leitura de /api/cs/[nome]/um-a-um: gestor vê qualquer CS, um CS comum só vê o próprio.
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
-import { listarAdvertenciasCS, aplicarAdvertencia } from '@/lib/reports';
+import { listarAdvertenciasCS, aplicarAdvertencia, efeitoAdvertenciasHealthBase } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return NextResponse.json({ error: 'Você só pode consultar as próprias advertências.' }, { status: 403 });
     }
     const { registros, pontuacaoAtiva } = await listarAdvertenciasCS(supabase, nome);
-    return NextResponse.json({ registros, pontuacaoAtiva });
+    // Efeito dos pontos no Health da Base (com e sem os pontos). Falha aqui não derruba a lista.
+    const efeito = await efeitoAdvertenciasHealthBase(supabase, nome).catch((err: any) => { console.error('[advertencias] efeito', err); return null; });
+    return NextResponse.json({ registros, pontuacaoAtiva, efeito });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
