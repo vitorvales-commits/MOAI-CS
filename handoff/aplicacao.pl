@@ -32,3 +32,5 @@ pendencia_conhecida(dependencias_cve, "Next.js 14.2.35 com CVEs sem correção n
 pendencia_conhecida(rate_limit_borda, "Sem limite por IP nas rotas — precisa de regra manual no Vercel Firewall, fora do escopo de acesso desta sessão (moai7). Ver handoff/seguranca.pl.").
 pendencia_conhecida(preview_gestor_consulta, "Consulta rápida não foi clicada de verdade em preview/produção nesta sessão — ver teste_pendente em handoff/consulta_metas.pl.").
 pendencia_conhecida(metas_gestor_checklist, "Aba Metas e destaques validada por tsc/next build/RPC direto no banco (inclusive simulando authenticated real, não só o editor SQL), mas não clicada em preview como gestor (matriz, hide/show/reorder, copiar mês) nem testada visualmente em mobile — ver handoff/pendencias.pl.").
+
+modulo(semaforo_healthscore, "07/10/2026: semáforo de confirmações na agenda, percentuais por faixa no kanban da Visão da rede e Health da Base calculado. Detalhe em handoff/semaforo_healthscore.pl.").

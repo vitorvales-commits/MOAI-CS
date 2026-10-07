@@ -42,3 +42,6 @@ teste_pendente(recordes_time_preview, "Testes automatizados de recordes_time pas
 
 commit('2026-09-29', '2ff890e').
 commit('2026-09-29', '07c0d8a').
+
+% ---- 07/10/2026, feat/semaforo_healthscore ----
+comportamento(fonte_realizado_health, "Revoga a parte de Health da Base em comportamento(fonte_realizado): Health da Base usa o valor calculado (aplicarHealthBaseCalculado em lib/consulta.ts), limite máximo, nunca o manual. Ver handoff/semaforo_healthscore.pl. pendencia cobrir_health_base resolvida.").
