@@ -851,19 +851,20 @@ function abrirScoreModal(idx){
     var val = (item.valorAlcancado === null || item.valorAlcancado === undefined) ? '—' : item.valorAlcancado;
     var meta = (item.meta === null || item.meta === undefined) ? '—' : item.meta;
     var ach = (item.achievementPct === null || item.achievementPct === undefined) ? '—' : item.achievementPct + '%';
-    var avisoMeta = item.semMetaPropria ? '<span class="meta-aviso" title="Sem meta própria cadastrada — usando o maior número de conselhos do time como fallback.">sem meta própria</span>' : '';
+    var semMeta = !!item.semMeta;
+    var avisoMeta = semMeta ? '<span class="meta-aviso" title="Sem meta cadastrada: o indicador fica fora da média.">sem meta</span>' : '';
     return '<div class="score-detalhe-row">'
       + '<span class="score-detalhe-label">' + item.label + avisoMeta + '</span>'
       + '<span class="score-detalhe-peso">peso ' + item.peso + '</span>'
-      + '<span class="score-detalhe-valor">' + val + ' / ' + meta + ' · ' + ach + '</span>'
-      + '<span class="score-detalhe-pontos">' + item.pontos + ' pts</span>'
+      + '<span class="score-detalhe-valor">' + (semMeta ? val + ' · sem meta' : val + ' / ' + meta + ' · ' + ach) + '</span>'
+      + '<span class="score-detalhe-pontos">' + ((semMeta || item.pontos === null || item.pontos === undefined) ? '—' : item.pontos + ' pts') + '</span>'
       + '</div>';
   }).join('');
   document.getElementById('infoModalBody').innerHTML =
     '<div class="info-modal-titulo">' + d.nome + '</div>'
     + '<div class="info-modal-sub">Pontuação: ' + (d.score === null || d.score === undefined ? '—' : d.score) + '</div>'
     + linhas
-    + '<div class="info-modal-rodape">Pontos = peso × aproveitamento de cada indicador na meta. A soma dos pontos é a pontuação final (0–100) — mesma fórmula ponderada de sempre, só exposta item a item.</div>';
+    + '<div class="info-modal-rodape">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A pontuação final vai de 0 a 100.</div>';
   document.getElementById('infoModalOverlay').classList.add('ativo');
 }
 
@@ -903,9 +904,13 @@ function polarPonto(cx, cy, r, i, total) {
   var a = (Math.PI * 2 * i / total) - Math.PI / 2;
   return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
 }
-function radarSVG(labels, valores, gradId) {
-  var size = 240, cx = size / 2, cy = size / 2 - 6, rMax = 84, total = labels.length;
-  var svg = '<svg width="' + size + '" height="' + (size + 18) + '" viewBox="0 0 ' + size + ' ' + (size + 18) + '">';
+// Valor null no eixo = sem meta (ou sem dado): o vértice é pulado no polígono e o eixo ganha um
+// marcador vazio no anel de 100 por cento, com o rótulo "sem meta". Nunca desenhado como zero
+// (07/10/2026). viewBox mais largo que o gráfico: os rótulos longos (Matchmakings, Indicações) não
+// são mais cortados nas bordas do card.
+function radarSVG(labels, valores, gradId, largura) {
+  var W = 380, H = 280, cx = W / 2, cy = 134, rMax = 86, total = labels.length;
+  var svg = '<svg width="' + (largura || 300) + '" viewBox="0 0 ' + W + ' ' + H + '" style="max-width:100%;height:auto" role="img" aria-label="Radar dos indicadores">';
   [{ f: 50 / 150, dash: '3,3' }, { f: 100 / 150, dash: '0' }, { f: 1, dash: '3,3' }].forEach(function (anel) {
     var pts = '';
     for (var i = 0; i < total; i++) { var p = polarPonto(cx, cy, rMax * anel.f, i, total); pts += p.x + ',' + p.y + ' '; }
@@ -914,14 +919,24 @@ function radarSVG(labels, valores, gradId) {
   for (var i = 0; i < total; i++) {
     var p = polarPonto(cx, cy, rMax, i, total);
     svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '" stroke="#D8D5D5" stroke-width="1"/>';
-    var lp = polarPonto(cx, cy, rMax + 16, i, total);
+    var lp = polarPonto(cx, cy, rMax + 14, i, total);
     var anchor = 'middle'; if (lp.x > cx + 4) anchor = 'start'; else if (lp.x < cx - 4) anchor = 'end';
-    svg += '<text x="' + lp.x + '" y="' + lp.y + '" font-size="8" fill="#9F9F9F" font-family="Inter,sans-serif" text-anchor="' + anchor + '" dominant-baseline="middle">' + labels[i] + '</text>';
+    var semMeta = valores[i] === null || valores[i] === undefined;
+    svg += '<text x="' + lp.x + '" y="' + lp.y + '" font-size="9.5" fill="' + (semMeta ? '#B5B1B1' : '#6F6C6C') + '" font-family="Inter,sans-serif" text-anchor="' + anchor + '" dominant-baseline="middle">' + labels[i] + (semMeta ? ' (sem meta)' : '') + '</text>';
   }
-  var pts = '';
-  for (var i = 0; i < total; i++) { var v = Math.max(0, Math.min(150, valores[i] || 0)) / 150; var p = polarPonto(cx, cy, rMax * v, i, total); pts += p.x + ',' + p.y + ' '; }
-  svg += '<polygon points="' + pts + '" fill="url(#' + gradId + ')" stroke="#C89A2E" stroke-width="1.6" fill-opacity="0.55"/>';
-  for (var i = 0; i < total; i++) { var v = Math.max(0, Math.min(150, valores[i] || 0)) / 150; var p = polarPonto(cx, cy, rMax * v, i, total); svg += '<circle cx="' + p.x + '" cy="' + p.y + '" r="2.3" fill="#141414"/>'; }
+  var pts = '', marcadores = '';
+  for (var i = 0; i < total; i++) {
+    if (valores[i] === null || valores[i] === undefined) {
+      var pm = polarPonto(cx, cy, rMax * 100 / 150, i, total);
+      marcadores += '<circle cx="' + pm.x + '" cy="' + pm.y + '" r="3.2" fill="#fff" stroke="#9F9F9F" stroke-width="1.2" stroke-dasharray="2,1.5"/>';
+      continue;
+    }
+    var v = Math.max(0, Math.min(150, valores[i])) / 150; var pp = polarPonto(cx, cy, rMax * v, i, total);
+    pts += pp.x + ',' + pp.y + ' ';
+    marcadores += '<circle cx="' + pp.x + '" cy="' + pp.y + '" r="2.6" fill="#141414"/>';
+  }
+  if (pts) svg += '<polygon points="' + pts + '" fill="url(#' + gradId + ')" stroke="#C89A2E" stroke-width="1.6" fill-opacity="0.55"/>';
+  svg += marcadores;
   svg += '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#C89A2E"/><stop offset="100%" stop-color="#3D8B5F"/></linearGradient></defs></svg>';
   return svg;
 }

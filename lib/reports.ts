@@ -22,6 +22,7 @@ import {
   calcularHealthBase, type HealthBase, type DistribuicaoPresenca,
 } from './indicadores-base';
 import type { FaixaPresencaChave } from './constants';
+import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 
 // ============ util ============
 
@@ -117,7 +118,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ============ CS list ============
 
-export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null };
+export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null; ativo: boolean; ex: boolean };
 
 // Foto customizada (cs_fotos, brainstorm 29/09/2026) tem prioridade sobre FOTOS_CS estático —
 // mesmo padrão de conselheiros_fotos/conselheiro-foto: só busca cs_nome aqui (nunca o
@@ -143,7 +144,7 @@ export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]>
   return (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null,
+    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: true, ex: false,
   }));
 }
 
@@ -170,11 +171,11 @@ export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConf
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null,
+    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: !!r.ativo, ex: false,
   }));
   // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
   // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.
-  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira'>[]).map((m) => ({ ...m, fotoUrl: resolverFotoUrl(m.nome, comFotoCustomizada), metaCarteira: null as number | null }));
+  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira' | 'ativo' | 'ex'>[]).map((m) => ({ ...m, fotoUrl: resolverFotoUrl(m.nome, comFotoCustomizada), metaCarteira: null as number | null, ativo: false, ex: true }));
   const resultado = ativos.concat(exMembros);
   csListCache = { valor: resultado, expiraEm: Date.now() + CS_LIST_TTL_MS };
   return resultado;
@@ -1259,15 +1260,10 @@ function valorRealizado(valorManual: number | null | undefined, valorCalculado: 
     : { valor: m, fonte: 'manual', manual: m, calculado: c };
 }
 
+// Sem meta (nula ou zero) ou sem dado, o aproveitamento é null: nunca 30 por cento nem 100 por cento
+// por padrão (07/10/2026). Definição única em lib/pontuacao.ts.
 function achievementIndicador(ind: any): number | null {
-  if (!ind || ind.alcancado === null || ind.alcancado === undefined) return null;
-  const meta = ind.meta;
-  if (meta === null || meta === undefined || meta === 0) {
-    if (ind.tipoMeta === 'max') return ind.alcancado === 0 ? 1 : 0.4;
-    return ind.alcancado > 0 ? 0.7 : 0.3;
-  }
-  if (ind.tipoMeta === 'min') return Math.max(0, Math.min(1, ind.alcancado / meta));
-  return Math.max(0, Math.min(1, 1 - ind.alcancado / meta));
+  return aproveitamentoIndicador(ind);
 }
 
 // Meta individual de carteira (pedido do Vitor, 25/09/2026): até aqui o indicador "carteira" da
@@ -1297,67 +1293,11 @@ function carteiraMetaResolvida(dados: DadosBrutos, csNome: string, mesAlvo: stri
   return Number(linhas[0].valor);
 }
 
-function calcularScoreCS(indicadores: any, numConselhos: number, metaCarteira: number | null): number | null {
-  let somaPeso = 0, somaPonderada = 0;
-  Object.keys(PESOS_SCORE_CS).forEach((chave) => {
-    if (chave === 'carteira') return;
-    const ach = achievementIndicador(indicadores[chave]);
-    if (ach === null) return;
-    somaPonderada += ach * PESOS_SCORE_CS[chave];
-    somaPeso += PESOS_SCORE_CS[chave];
-  });
-  if (metaCarteira !== null && metaCarteira > 0) {
-    const achCarteira = Math.max(0, Math.min(1, numConselhos / metaCarteira));
-    somaPonderada += achCarteira * PESOS_SCORE_CS.carteira;
-    somaPeso += PESOS_SCORE_CS.carteira;
-  }
-  return somaPeso > 0 ? Math.round((somaPonderada / somaPeso) * 100) : null;
-}
-
-// Rótulos de cada indicador que entra na fórmula ponderada (PESOS_SCORE_CS) — usado só pelo
-// detalhamento abaixo (notinha clicável, Parte A/C, pedido do Vitor 25/09/2026), nunca pela
-// própria fórmula.
-const LABELS_SCORE_CS: Record<string, string> = {
-  carteira: 'Carteira de conselhos', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings',
-  rounds: 'Rounds', upsell: 'Upsell', indicacoes: 'Indicações', churn: 'Churn', downsell: 'Downsell',
-};
-
-export type ScoreDetalheItem = {
-  chave: string; label: string; peso: number;
-  achievementPct: number | null; pontos: number;
-  valorAlcancado: number | null; meta: number | null;
-  // Só preenchido na linha "carteira" — sinaliza que esse CS não tem meta_carteira própria
-  // cadastrada e a meta usada aqui é o fallback (maior número de conselhos do time). Ver
-  // metaCarteiraEfetiva.
-  semMetaPropria?: boolean;
-};
-
-// Detalhamento item a item da MESMA fórmula ponderada de calcularScoreCS (nunca inventa peso
-// novo, só expõe o que já é calculado internamente) — pedido do Vitor 25/09/2026: a notinha
-// clicável junto de qualquer pontuação de CS (Top 3 da home, própria posição, ranking do gestor)
-// precisa listar cada indicador com o peso e o quanto ele contribuiu, não um resumo em frase.
-export function detalharScoreCS(indicadores: any, numConselhos: number, metaCarteira: number | null, semMetaPropria?: boolean): ScoreDetalheItem[] {
-  return Object.keys(PESOS_SCORE_CS).map((chave) => {
-    const peso = PESOS_SCORE_CS[chave];
-    if (chave === 'carteira') {
-      const ach = metaCarteira !== null && metaCarteira > 0 ? Math.max(0, Math.min(1, numConselhos / metaCarteira)) : null;
-      return {
-        chave, label: LABELS_SCORE_CS.carteira, peso,
-        achievementPct: ach === null ? null : Math.round(ach * 100),
-        pontos: ach === null ? 0 : Math.round(ach * peso * 10) / 10,
-        valorAlcancado: numConselhos, meta: metaCarteira || null,
-        semMetaPropria: !!semMetaPropria,
-      };
-    }
-    const ind = indicadores[chave];
-    const ach = achievementIndicador(ind);
-    return {
-      chave, label: LABELS_SCORE_CS[chave] || chave, peso,
-      achievementPct: ach === null ? null : Math.round(ach * 100),
-      pontos: ach === null ? 0 : Math.round(ach * peso * 10) / 10,
-      valorAlcancado: ind?.alcancado ?? null, meta: ind?.meta ?? null,
-    };
-  });
+// Entrada única da pontuação ponderada (lib/pontuacao.ts). metaCarteiraPropria é a meta própria do
+// CS (null quando não há): sem ela a carteira não entra, nunca cai no maior número de conselhos do
+// time como régua da pontuação.
+function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: number | null): ScoreCS {
+  return calcularScoreCS(indicadores, { numConselhos, metaPropria: metaCarteiraPropria });
 }
 
 // ============ relatório individual ============
@@ -1429,7 +1369,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const indicacoesR = valorRealizado(metas['Indicações']?.alcancadoSoma, indicacoesCalc);
 
   return {
-    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0, metaCarteira: cfg.metaCarteira ?? null },
+    cs: { nome: cfg.nome, nomeCompleto: cfg.nomeCompleto, userId: cfg.userId, apelidoConselho: cfg.apelidoConselho, fotoUrl: cfg.fotoUrl, proximoConselho: proximoConselhoGeral, vezesDestaque: cfg.vezesDestaque || 0, metaCarteira: cfg.metaCarteira ?? null, ativo: cfg.ativo, ex: cfg.ex },
     periodo: { mes: seletorMes, ano, geral, geradoEm: new Date().toISOString() },
     indicadores: {
       churn: { meta: metas['Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churnR.valor, fonte: churnR.fonte, unidade: 'qtd', manual: churnR.manual, calculado: churnR.calculado },
@@ -1525,25 +1465,24 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     downsellMais: ranking('downsell', 'desc'), downsellMenos: ranking('downsell', 'asc'), churnMais: ranking('churn', 'desc'),
   };
 
-  const maxConselhosTime = relatorios.reduce((max, r) => Math.max(max, r.conselhos.length), 0);
-  // rankingGeralPorScore (Parte A, pedido do Vitor 25/09/2026): mesma pontuação ponderada de
-  // sempre (calcularScoreCS), só que agora guardamos a lista INTEIRA ordenada, não só o Top 3 —
-  // csTop continua sendo só os 3 primeiros (com o detalhamento item a item da notinha clicável),
-  // e a lista completa serve pra /api/home-resumo achar a posição de um CS específico sem expor
-  // o restante do ranking nomeado pra quem não é gestor.
+  // rankingGeralPorScore (Parte A, pedido do Vitor 25/09/2026; corrigido em 07/10/2026): lista
+  // inteira ordenada, csTop são só os 3 primeiros. Vem de rankingCSAtivos (lib/pontuacao.ts): só CS
+  // ativos de cs_config e com pelo menos PONTUACAO_MIN_INDICADORES_COM_META indicadores com meta e
+  // dado. Ex CS, CS inativos e quem está sem dados suficientes ficam de fora, sem preencher vaga.
+  // Causa raiz do Top 3 com Luma, Lanna e Luana: indicador sem meta recebia 30 por cento por padrão
+  // (achievementIndicador) e o ranking nominal usava a lista que inclui EX_MEMBROS_SEM_CONTA.
+  // A lista inteira também serve pra /api/home-resumo achar a posição de um CS específico sem
+  // expor o restante do ranking nomeado pra quem não é gestor.
   const mesAlvoCarteira = geral ? `${ano}-12-01` : mesInicio;
-  const rankingGeralPorScore = relatorios
-    .map((r) => {
-      const metaCarteiraResolvida = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
-      const { meta: metaCarteira, semMetaPropria } = metaCarteiraEfetiva(metaCarteiraResolvida, maxConselhosTime);
-      return {
-        nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
-        score: calcularScoreCS(r.indicadores, r.conselhos.length, metaCarteira),
-        detalhamento: detalharScoreCS(r.indicadores, r.conselhos.length, metaCarteira, semMetaPropria),
-      };
-    })
-    .filter((x) => x.score !== null)
-    .sort((a, b) => (b.score as number) - (a.score as number));
+  const pontuacaoPorCS = relatorios.map((r) => {
+    const metaPropria = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
+    return { nome: r.cs.nome, ativo: r.cs.ativo, ex: r.cs.ex, pontuacao: pontuarCS(r.indicadores, r.conselhos.length, metaPropria),
+      extra: { nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl } };
+  });
+  const rankingGeralPorScore = rankingCSAtivos(pontuacaoPorCS).map((x) => ({
+    nome: x.nome, nomeCompleto: x.extra.nomeCompleto, fotoUrl: x.extra.fotoUrl,
+    score: x.pontuacao.score, posicao: x.posicao, elegiveis: x.pontuacao.elegiveis, detalhamento: x.pontuacao.itens,
+  }));
   const csTop = rankingGeralPorScore.slice(0, 3);
 
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
@@ -1878,12 +1817,10 @@ const LIMITE_DIVERGENCIA_PCT = 0.2;
 // inverte em torno da meta — 2x a meta vira 0, a própria meta vira 100, 0 vira 200 (capado em
 // 150) — assim os dois tipos de indicador ficam na mesma unidade "% de bom desempenho", com 100
 // sempre significando "bateu a meta em cheio" nos dois sentidos.
-function radarPct(calculado: number | null | undefined, meta: number | null | undefined, tipoMeta: 'min' | 'max'): number {
-  if (calculado === null || calculado === undefined) return 0;
-  if (meta === null || meta === undefined || meta === 0) {
-    if (calculado <= 0) return tipoMeta === 'max' ? 100 : 0;
-    return tipoMeta === 'max' ? 0 : 100;
-  }
+function radarPct(calculado: number | null | undefined, meta: number | null | undefined, tipoMeta: 'min' | 'max'): number | null {
+  // Sem meta ou sem dado, o eixo é null (desenhado como "sem meta"), nunca zero nem 100 (07/10/2026).
+  if (calculado === null || calculado === undefined) return null;
+  if (meta === null || meta === undefined || !(meta > 0)) return null;
   const pct = tipoMeta === 'max' ? ((2 * meta - calculado) / meta) * 100 : (calculado / meta) * 100;
   return Math.max(0, Math.min(150, Math.round(pct)));
 }
@@ -1955,11 +1892,12 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
     const i = ind[chave];
     indicadoresParaScoreReal[chave] = { ...i, alcancado: i.calculado };
   });
-  const scoreReal = calcularScoreCS(indicadoresParaScoreReal, r.conselhos.length, metaCarteira);
+  const pontuacao = pontuarCS(indicadoresParaScoreReal, r.conselhos.length, semMetaPropria ? null : metaCarteira);
+  const scoreReal = pontuacao.score;
   // detalhamento (Parte C, pedido do Vitor 25/09/2026): notinha clicável junto da pontuação no
   // ranking do gestor — mesma fórmula, sobre os mesmos indicadores 100% calculados (nunca o
   // mascarado) usados no scoreReal acima.
-  const detalhamento = detalharScoreCS(indicadoresParaScoreReal, r.conselhos.length, metaCarteira, semMetaPropria);
+  const detalhamento = pontuacao.itens;
 
   const radar = RADAR_EIXOS.map((eixo) => {
     const i = eixo.chave === 'cumprimentoGtd' ? indicadores.cumprimentoGtd : (indicadores as any)[eixo.chave];
@@ -1971,6 +1909,7 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
   return {
     nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl,
     indicadores, indiceDivergencia, scoreReal, detalhamento, alertas, radar, temIndicadorAbaixoDaMeta,
+    ativo: r.cs.ativo, ex: r.cs.ex, pontuacao,
     semMetaPropria,
   };
 }
@@ -2001,10 +1940,11 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
     return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
   });
 
-  const ranking = [...porCS]
-    .filter((c) => c.scoreReal !== null)
-    .sort((a, b) => (b.scoreReal as number) - (a.scoreReal as number))
-    .map((c) => ({ nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, scoreReal: c.scoreReal, detalhamento: c.detalhamento, semMetaPropria: c.semMetaPropria }));
+  // Só CS ativos e elegíveis entram no ranking nominal (lib/pontuacao.ts). Quem está sem dados
+  // suficientes fica fora e aparece em semDadosSuficientes, sem número.
+  const ranking = rankingCSAtivos(porCS.map((c) => ({ nome: c.nome, ativo: c.ativo, ex: c.ex, pontuacao: c.pontuacao, extra: c })))
+    .map((x) => ({ nome: x.nome, nomeCompleto: x.extra.nomeCompleto, fotoUrl: x.extra.fotoUrl, scoreReal: x.pontuacao.score, posicao: x.posicao, detalhamento: x.pontuacao.itens, semMetaPropria: x.extra.semMetaPropria }));
+  const semDadosSuficientes = porCS.filter((c) => c.ativo && !c.ex && c.pontuacao.estado === 'sem_dados_suficientes').map((c) => c.nome);
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
@@ -2015,6 +1955,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
     csAbaixoDaMeta: porCS.filter((c) => c.temIndicadorAbaixoDaMeta).length,
     porCS,
     ranking,
+    semDadosSuficientes,
   };
 }
 

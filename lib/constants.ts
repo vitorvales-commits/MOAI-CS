@@ -108,6 +108,11 @@ export const PESOS_SCORE_CS: Record<string, number> = {
   downsell: 3,
 };
 
+// Mínimo de indicadores com meta cadastrada e dado no período para o CS receber pontuação e entrar
+// no ranking e no CS Top 3 (07/10/2026). Abaixo disso aparece como "Sem dados suficientes". Os
+// indicadores sem meta nunca recebem crédito por padrão. Ver lib/pontuacao.ts.
+export const PONTUACAO_MIN_INDICADORES_COM_META = 3;
+
 // ============ semáforo de confirmações (07/10/2026) ============
 // Fonte única das faixas de confirmados de um conselho. A agenda (semana, mês, lista), o selo dos
 // cards de conselho, a legenda e o tooltip leem esta constante — nenhum outro lugar repete os
