@@ -12,6 +12,8 @@
 // de corrupção que já aconteceu neste arquivo com base64 grande colado à mão (ver
 // claude/migracao_vercel_supabase.md, lição sobre assets de imagem). A máscara --m-white abaixo
 // é a exceção: continua em base64 porque é usada como mask-image em CSS, não como <img>.
+import { SEMAFORO_CONFIRMADOS, AGENDA_PASSADO_COR, SEMAFORO_NEUTRO, AGENDA_DURACAO_CONSELHO_MIN } from '@/lib/constants';
+
 export const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -473,7 +475,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .agenda-semana-bloco-hora { font-size:8.5px; font-weight:800; opacity:0.9; line-height:1.2; }
 .agenda-semana-bloco-nome { font-size:10px; font-weight:700; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .agenda-semana-bloco-sub { font-size:8.5px; opacity:0.85; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.agenda-semana-bloco-selo { position:absolute; top:2px; right:3px; font-size:7.5px; font-weight:800; background:rgba(0,0,0,0.28); border-radius:99px; padding:1px 4px; line-height:1.4; }
+.agenda-semana-bloco-selo { position:absolute; top:2px; right:3px; font-size:8px; font-weight:800; background:rgba(255,255,255,0.88); color:#1A1A1A; border-radius:99px; padding:1px 5px; line-height:1.4; }
 .agenda-semana-mais { position:absolute; left:4px; right:4px; text-align:center; font-size:8.5px; font-weight:700; color:#9F9F9F; background:#F5F5F5; border-radius:6px; padding:2px 0; z-index:1; }
 .agenda-semana-mais-antes { top:3px; }
 .agenda-semana-mais-depois { bottom:3px; }
@@ -490,9 +492,16 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .agenda-mes-dia.hoje { border-color:#1A1A1A; border-width:1.5pt; }
 .agenda-mes-dia-num { font-size:10.5px; font-weight:800; color:#5D5D5D; }
 .agenda-mes-dia.fora-do-mes .agenda-mes-dia-num { color:#C6C4C4; }
-.agenda-mes-chip { position:relative; font-size:9px; font-weight:700; border-radius:5px; padding:2px 5px 2px 12px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.agenda-mes-chip { position:relative; font-size:9px; font-weight:700; border-radius:5px; padding:2px 5px 2px 5px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.agenda-mes-chip.com-dot { padding-left:12px; }
 .agenda-mes-chip-dot { position:absolute; top:50%; left:5px; width:6px; height:6px; border-radius:50%; transform:translateY(-50%); box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
 .agenda-mes-mais { font-size:8.5px; font-weight:700; color:#9F9F9F; padding:1px 5px; }
+/* semáforo de confirmações (07/10/2026): fundo do bloco = faixa de confirmados; nível vira ponto */
+.agenda-nivel-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; vertical-align:middle; flex-shrink:0; box-shadow:0 0 0 1.5px currentColor; }
+.agenda-legenda { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin:-6px 0 14px; font-size:10.5px; font-weight:700; color:#5D5D5D; }
+.agenda-legenda-titulo { color:#807E7E; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; font-size:9.5px; }
+.agenda-legenda-item { display:inline-flex; align-items:center; gap:5px; }
+.agenda-legenda-cor { width:12px; height:12px; border-radius:4px; display:inline-block; }
 @media (max-width:700px){ .agenda-mes-dia{ min-height:56px; max-height:70px; } .agenda-mes-chip{ font-size:8px; } }
 
 /* ===== resolver de aliases de NPS (Parte D, 28/09/2026) ===== */
@@ -549,6 +558,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
         <button class="agenda-view-btn" type="button" id="agendaViewMesBtn" onclick="agendaMudarVisao('mes')">Mês</button>
       </div>
     </div>
+    <div class="agenda-legenda" id="agendaLegenda"></div>
     <div id="agendaBody"><div class="empty-state">Carregando…</div></div>
     <div class="section-title" style="margin-top:36px;">Indicadores gerais da área<div class="line"></div></div>
     <div id="equipeIndicadores"></div>
@@ -700,12 +710,29 @@ var ICONS = {
 };
 var AVATAR_PALETTE = ['#3D8B5F','#7dd3fc','#C89A2E','#a78bfa','#f472b6','#C0433D','#60a5fa','#34d399'];
 function corPara(nome){ var h=0; for (var i=0;i<nome.length;i++) h=nome.charCodeAt(i)+((h<<5)-h); return AVATAR_PALETTE[Math.abs(h)%AVATAR_PALETTE.length]; }
-function corConfirmacao(qtd){
-  if (qtd <= 1) return '#C0433D';
-  if (qtd <= 3) return '#E8833A';
-  if (qtd <= 5) return '#fbbf24';
-  if (qtd <= 7) return '#3D8B5F';
-  return '#3B82F6';
+// Semáforo de confirmações (07/10/2026): as faixas e cores vêm de SEMAFORO_CONFIRMADOS em
+// lib/constants.ts, injetadas aqui na montagem da página. Nenhum limiar escrito neste arquivo;
+// semaforoConfirmados_ espelha semaforoConfirmados de lib/indicadores-base.ts percorrendo a lista.
+var SEMAFORO_CONFIRMADOS_ = ${JSON.stringify(SEMAFORO_CONFIRMADOS)};
+var SEMAFORO_NEUTRO_ = ${JSON.stringify(SEMAFORO_NEUTRO)};
+var AGENDA_PASSADO_COR_ = ${JSON.stringify(AGENDA_PASSADO_COR)};
+function intervaloSemaforo_(f){ return f.ate === null ? f.de + ' ou mais' : 'de ' + f.de + ' a ' + f.ate; }
+function semaforoConfirmados_(n){
+  if (typeof n !== 'number' || n < 0 || Math.floor(n) !== n) return { chave:'neutro', corFundo:SEMAFORO_NEUTRO_.corFundo, corTexto:SEMAFORO_NEUTRO_.corTexto, rotulo:'sem faixa', intervalo:'' };
+  for (var i = 0; i < SEMAFORO_CONFIRMADOS_.length; i++) {
+    var f = SEMAFORO_CONFIRMADOS_[i];
+    if (n >= f.de && (f.ate === null || n <= f.ate)) return { chave:f.chave, corFundo:f.corFundo, corTexto:f.corTexto, rotulo:f.rotulo, intervalo:intervaloSemaforo_(f) };
+  }
+}
+function corConfirmacao(qtd){ return semaforoConfirmados_(qtd).corFundo; }
+function corTextoConfirmacao(qtd){ return semaforoConfirmados_(qtd).corTexto; }
+function legendaSemaforoTexto_(){
+  return 'Confirmados: ' + SEMAFORO_CONFIRMADOS_.map(function(f){ return intervaloSemaforo_(f) + ' ' + f.rotulo; }).join(' · ');
+}
+function legendaSemaforoHtml_(){
+  return '<span class="agenda-legenda-titulo">Confirmados</span>' + SEMAFORO_CONFIRMADOS_.map(function(f){
+    return '<span class="agenda-legenda-item"><span class="agenda-legenda-cor" style="background:'+f.corFundo+';"></span>'+(f.ate === null ? f.de + ' ou mais' : f.de + ' a ' + f.ate)+'</span>';
+  }).join('') + '<span class="agenda-legenda-item"><span class="agenda-legenda-cor" style="background:'+AGENDA_PASSADO_COR_.corFundo+';"></span>Encerrado</span>';
 }
 function iniciais(nome){ nome=String(nome||'').trim(); if(!nome) return '?'; var p=nome.split(/\\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 
@@ -1075,15 +1102,27 @@ function formatarMesAbrevAno(iso){
   var partes = iso.split('-');
   return MESES_ABREV[Number(partes[1])-1] + '/' + partes[0];
 }
+// Health da Base (07/10/2026) vem calculado com uma casa decimal e a composição pronta do servidor
+// (calcularHealthBase em lib/indicadores-base.ts): aqui só formata, nunca recalcula. Sem nenhum
+// membro apurado mostra "Sem apuração", nunca zero. Não há recorde calculado para ele (o histórico
+// de recorde no banco era do valor manual), então o selo de recorde é omitido.
+function valorKpiTexto_(ind, unidade){
+  if (ind.semApuracao) return 'Sem apuração';
+  if (ind.alcancado===null||ind.alcancado===undefined) return '—';
+  if (ind.composicao) return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
+  return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado;
+}
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   var c = calcIndicador(ind);
-  var valorMostrado = (ind.alcancado===null||ind.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado);
+  if (ind.semApuracao) { c.pctLabel = 'Sem apuração'; c.pillLabel = 'Sem apuração'; }
+  if (ind.composicao) recorde = null;
+  var valorMostrado = valorKpiTexto_(ind, unidade);
   var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
   var fonteHtml = ind.fonte ? '<span class="kpi-fonte'+(ind.fonte==='manual'?' manual':'')+'"><span class="kpi-fonte-dot"></span>'+(ind.fonte==='manual'?'Validado no Monday':'Calculado automático')+'</span>' : '';
   var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+metaMostrada+' · '+c.pctLabel);
   var timeHtml = '';
   if (timeInd) {
-    var valorTime = (timeInd.alcancado===null||timeInd.alcancado===undefined) ? '—' : (unidade==='R$' ? 'R$ '+timeInd.alcancado.toLocaleString('pt-BR') : timeInd.alcancado);
+    var valorTime = valorKpiTexto_(timeInd, unidade);
     timeHtml = '<div class="kpi-time-linha'+(blurTime?' kpi-blur':'')+'">Time: <span class="kpi-time-valor">'+valorTime+'</span></div>';
   }
   // Selo de recorde (Parte G, 29/09/2026): só quando o indicador está batendo o recorde efetivo
@@ -1091,9 +1130,11 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   var recordeBadge = (recorde && recorde.emRecorde) ? '<span class="kpi-recorde-badge">Recorde</span>' : '';
   var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
     ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
-  return '<div class="kpi"><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
+  var composicaoAttr = ind.composicao ? ' title="'+String(ind.composicao).replace(/"/g,'&quot;')+'" aria-label="'+label+': '+String(ind.composicao).replace(/"/g,'&quot;')+'"' : '';
+  var composicaoLinha = ind.composicao && !ind.semApuracao ? '<div class="kpi-recorde-linha">'+ind.composicao+'</div>' : '';
+  return '<div class="kpi"'+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+'</div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+composicaoLinha+'</div></div></div>';
 }
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
@@ -1399,8 +1440,8 @@ function renderConselhos(data){
         '<div class="council-name">'+p.contato+'</div><div class="council-sub">'+p.tipo+' · CS: '+p.apelido+'</div>' +
         gtdBadgeHtml_(c) +
         (temConfirmados
-          ? '<span class="confirm-badge" style="background:'+corConfirmacao(qtdConf)+';">'+ICONS.check+qtdConf+' confirmado(s)' +
-            '<span class="confirm-tooltip">Confirmados: 0–1 vermelho · 2–3 laranja · 4–5 amarelo · 6–7 verde · 8+ azul</span></span>'
+          ? '<span class="confirm-badge" style="background:'+corConfirmacao(qtdConf)+';color:'+corTextoConfirmacao(qtdConf)+';">'+ICONS.check+qtdConf+' confirmado(s)' +
+            '<span class="confirm-tooltip">'+legendaSemaforoTexto_()+'</span></span>'
           : '<div class="council-pending">'+ICONS.clock+'Aguardando confirmação</div>') +
         proximoConselhoHtml_(c) +
         '</div>';
@@ -1419,8 +1460,8 @@ function renderConselhos(data){
       '<div class="council-pct-row"><span class="council-pct num '+corPct+'">'+pct+'%</span><span class="council-members">'+c.membros+' membros</span></div>' +
       '<div class="council-bar"><div class="seg-presente" style="width:0%" data-w="'+pP+'"></div><div class="seg-ausente" style="width:0%" data-w="'+pA+'"></div><div class="seg-reposicao" style="width:0%" data-w="'+pR+'"></div></div>' +
       (temConfirmadosReal
-        ? '<span class="confirm-badge" style="background:'+corConfirmacao(qtdConfReal)+';margin-top:12px;">'+ICONS.check+qtdConfReal+' confirmado(s)' +
-          '<span class="confirm-tooltip">Confirmados: 0–1 vermelho · 2–3 laranja · 4–5 amarelo · 6–7 verde · 8+ azul</span></span>'
+        ? '<span class="confirm-badge" style="background:'+corConfirmacao(qtdConfReal)+';color:'+corTextoConfirmacao(qtdConfReal)+';margin-top:12px;">'+ICONS.check+qtdConfReal+' confirmado(s)' +
+          '<span class="confirm-tooltip">'+legendaSemaforoTexto_()+'</span></span>'
         : '') +
       proximoConselhoHtml_(c) +
       '</div>';
@@ -2044,6 +2085,29 @@ var NIVEL_COR_ = {
   'High End': '#475569',
 };
 function corNivel_(nivel){ return NIVEL_COR_[nivel] || '#9F9F9F'; }
+// Estilo do item na agenda (07/10/2026). Conselho aberto: fundo pelo semáforo de confirmados.
+// Conselho encerrado (término já passou, ver item.passado no servidor): neutro, com a presença.
+// Round: inalterado, cor do status. A cor do nível vira um ponto antes do título.
+function agendaNivelTexto_(nivel){ return String(nivel || 'Nível desconhecido').replace(/-/g, ' '); }
+function agendaEstiloItem_(item){
+  if (item.tipo === 'round') return { corFundo: corStatusRound_(item.statusLabel), corTexto: '#fff', selo: '', descricao: 'Round, ' + (item.statusLabel || 'sem status') };
+  var base = agendaNivelTexto_(item.nivel) + ', CS ' + (item.sub || 'não informado');
+  if (item.passado) {
+    var lista = item.presencaPorMembro || [];
+    var presentes = lista.filter(function(p){ return p.status === 'Presente'; }).length;
+    var pres = lista.length ? presentes + ' de ' + lista.length + ' presentes' : 'sem presença registrada';
+    return { corFundo: AGENDA_PASSADO_COR_.corFundo, corTexto: AGENDA_PASSADO_COR_.corTexto,
+      selo: lista.length ? presentes + '/' + lista.length : '', descricao: base + ', encerrado, ' + pres };
+  }
+  var n = (item.confirmados || []).length;
+  var s = semaforoConfirmados_(n);
+  return { corFundo: s.corFundo, corTexto: s.corTexto, selo: n + '✓',
+    descricao: base + ', ' + n + ' confirmado' + (n === 1 ? '' : 's') + ', faixa ' + s.rotulo + ' ' + s.intervalo };
+}
+function agendaTecla_(ev, idx){ if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); agendaAbrirModal_(idx); } }
+function agendaNivelDotHtml_(item){
+  return item.tipo === 'conselho' ? '<span class="agenda-nivel-dot" style="background:'+corNivel_(item.nivel)+';"></span>' : '';
+}
 function agendaItensUnificados_(d){
   var itens = [];
   (d.conselhos||[]).forEach(function(c){
@@ -2059,6 +2123,8 @@ function agendaItensUnificados_(d){
 }
 
 function carregarAgendaVisual(){
+  var legendaEl = document.getElementById('agendaLegenda');
+  if (legendaEl && !legendaEl.innerHTML) legendaEl.innerHTML = legendaSemaforoHtml_();
   var range = agendaRangeAtual_();
   agendaAtualizarLabel_(range);
   var meuSeq = ++agendaReqSeq_;
@@ -2086,7 +2152,7 @@ var AGENDA_SEMANA_JANELA_MIN_ = AGENDA_SEMANA_FIM_MIN_ - AGENDA_SEMANA_INICIO_MI
 // (conselho nunca teve duração registrada; round já não usa mais o término real aqui, ajuste
 // 29/09/2026, só pro tamanho do bloco — o término sincronizado continua existindo em item.termino
 // e aparece normal no modal ao clicar).
-var AGENDA_SEMANA_DURACAO_CONSELHO_MIN_ = 240;
+var AGENDA_SEMANA_DURACAO_CONSELHO_MIN_ = ${AGENDA_DURACAO_CONSELHO_MIN};
 var AGENDA_SEMANA_DURACAO_ROUND_MIN_ = 120;
 
 function agendaSemanaMinutosDoDia_(dt){ return dt.getHours() * 60 + dt.getMinutes(); }
@@ -2122,15 +2188,15 @@ function agendaSemanaBlocoHtml_(ev){
   var alturaPct = Math.max(2, (ev.fimMin - ev.inicioMin) / AGENDA_SEMANA_JANELA_MIN_ * 100);
   var larguraPct = 100 / ev.lanes;
   var esquerdaPct = ev.lane * larguraPct;
-  var cor = item.tipo === 'round' ? corStatusRound_(item.statusLabel) : (item.passado ? '#1A1A1A' : corNivel_(item.nivel));
-  var qtdConf = item.tipo === 'conselho' && !item.passado ? (item.confirmados||[]).length : 0;
-  var selo = qtdConf > 0 ? '<span class="agenda-semana-bloco-selo">'+qtdConf+'✓</span>' : '';
+  var est = agendaEstiloItem_(item);
+  var selo = est.selo ? '<span class="agenda-semana-bloco-selo" aria-hidden="true">'+est.selo+'</span>' : '';
   var hora = String(new Date(item.dataIso).getHours()).padStart(2,'0')+':'+String(new Date(item.dataIso).getMinutes()).padStart(2,'0');
-  return '<div class="agenda-semana-bloco" style="top:'+topPct+'%;height:'+alturaPct+'%;left:'+esquerdaPct+'%;width:'+larguraPct+'%;background:'+cor+';" ' +
-    'onclick="agendaAbrirModal_('+ev.idx+')" title="'+escAgenda_(hora+' · '+(item.nome||'—')+(item.sub?' · '+item.sub:''))+'">' +
+  var rotulo = hora + ', ' + (item.nome||'Sem nome') + ', ' + est.descricao;
+  return '<div class="agenda-semana-bloco" role="button" tabindex="0" aria-label="'+escAgenda_(rotulo)+'" style="top:'+topPct+'%;height:'+alturaPct+'%;left:'+esquerdaPct+'%;width:'+larguraPct+'%;background:'+est.corFundo+';color:'+est.corTexto+';" ' +
+    'onclick="agendaAbrirModal_('+ev.idx+')" onkeydown="agendaTecla_(event,'+ev.idx+')" title="'+escAgenda_(rotulo)+'">' +
     selo +
     '<div class="agenda-semana-bloco-hora">'+hora+'</div>' +
-    '<div class="agenda-semana-bloco-nome">'+escAgenda_(item.nome||'—')+'</div>' +
+    '<div class="agenda-semana-bloco-nome">'+agendaNivelDotHtml_(item)+escAgenda_(item.nome||'—')+'</div>' +
     (item.sub ? '<div class="agenda-semana-bloco-sub">'+escAgenda_(item.sub)+'</div>' : '') +
   '</div>';
 }
@@ -2204,17 +2270,18 @@ function agendaItemCardHtml_(item, i){
   var dt = new Date(item.dataIso);
   var dia = String(dt.getDate()).padStart(2,'0');
   var hora = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-  var corFaixa = item.tipo === 'round' ? corStatusRound_(item.statusLabel) : (item.passado ? '#1A1A1A' : corNivel_(item.nivel));
+  var est = agendaEstiloItem_(item);
+  var corFaixa = est.corFundo;
   var pill = '';
   if (item.tipo === 'round') {
     pill = '<span class="agenda-pill" style="background:'+corStatusRound_(item.statusLabel)+';">'+escAgenda_(item.statusLabel||'—')+'</span>';
   } else if (item.passado) {
     var lista = item.presencaPorMembro || [];
     var presentes = lista.filter(function(p){ return p.status === 'Presente'; }).length;
-    if (lista.length) pill = '<span class="agenda-pill" style="background:#1A1A1A;">'+presentes+'/'+lista.length+' presentes</span>';
+    if (lista.length) pill = '<span class="agenda-pill" style="background:'+est.corFundo+';color:'+est.corTexto+';">'+presentes+'/'+lista.length+' presentes</span>';
   } else {
     var qtd = (item.confirmados||[]).length;
-    if (qtd > 0) pill = '<span class="agenda-pill" style="background:'+corConfirmacao(qtd)+';">'+qtd+' confirmado'+(qtd>1?'s':'')+'</span>';
+    pill = '<span class="agenda-pill" style="background:'+est.corFundo+';color:'+est.corTexto+';">'+qtd+' confirmado'+(qtd===1?'':'s')+'</span>';
   }
   var presencaMini = '';
   if (item.passado && (item.presencaPorMembro||[]).length) {
@@ -2222,10 +2289,11 @@ function agendaItemCardHtml_(item, i){
       return '<span class="agenda-presenca-dot" style="background:'+corStatusPresenca_(p.status)+';" title="'+escAgenda_(p.nome)+' · '+escAgenda_(p.status||'—')+'"></span>';
     }).join('') + '</div>';
   }
-  return '<div class="agenda-item-card clicavel" style="border-left:4px solid '+corFaixa+';" onclick="agendaAbrirModal_('+i+')">' +
+  var rotuloCard = (item.nome||'Sem nome') + ', ' + est.descricao;
+  return '<div class="agenda-item-card clicavel" role="button" tabindex="0" aria-label="'+escAgenda_(rotuloCard)+'" title="'+escAgenda_(rotuloCard)+'" style="border-left:6px solid '+corFaixa+';" onclick="agendaAbrirModal_('+i+')" onkeydown="agendaTecla_(event,'+i+')">' +
     '<div class="agenda-item-data"><div class="agenda-item-dia">'+dia+'</div><div class="agenda-item-hora">'+MESES_ABREV[dt.getMonth()]+' · '+hora+'</div></div>' +
     '<div class="agenda-item-corpo"><div class="agenda-item-tipo">'+(item.tipo==='round'?'Round':'Conselho')+'</div>' +
-      '<div class="agenda-item-nome">'+escAgenda_(item.nome||'—')+'</div>' +
+      '<div class="agenda-item-nome">'+agendaNivelDotHtml_(item)+escAgenda_(item.nome||'—')+'</div>' +
       (item.sub ? '<div class="agenda-item-sub">'+escAgenda_(item.sub)+'</div>' : '') +
       presencaMini +
     '</div>' + pill +
@@ -2265,12 +2333,13 @@ function renderAgendaMes_(d, range){
     html += '<div class="agenda-mes-dia'+(foraDoMes?' fora-do-mes':'')+(chave===hojeChave?' hoje':'')+(ehFimDeSemana?' fim-semana':'')+'"><div class="agenda-mes-dia-num">'+diaCel.getDate()+'</div>';
     idxs.slice(0,2).forEach(function(idx){
       var item = itens[idx];
-      var cor = item.tipo === 'round' ? corStatusRound_(item.statusLabel) : (item.passado ? '#1A1A1A' : corNivel_(item.nivel));
-      var qtdConf = item.tipo === 'conselho' && !item.passado ? (item.confirmados||[]).length : 0;
-      var dot = qtdConf > 0 ? '<span class="agenda-mes-chip-dot" style="background:'+corConfirmacao(qtdConf)+';"></span>' : '';
+      var est = agendaEstiloItem_(item);
+      var dot = item.tipo === 'conselho' ? '<span class="agenda-mes-chip-dot" style="background:'+corNivel_(item.nivel)+';"></span>' : '';
       var dt = new Date(item.dataIso);
       var horaChip = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
-      html += '<div class="agenda-mes-chip" style="background:'+cor+';" onclick="agendaAbrirModal_('+idx+')" title="'+escAgenda_(item.nome)+'">'+dot+horaChip+' '+escAgenda_(item.nome)+'</div>';
+      var rotuloChip = horaChip + ', ' + (item.nome||'Sem nome') + ', ' + est.descricao;
+      var seloChip = est.selo ? ' · ' + est.selo : '';
+      html += '<div class="agenda-mes-chip'+(dot?' com-dot':'')+'" role="button" tabindex="0" aria-label="'+escAgenda_(rotuloChip)+'" style="background:'+est.corFundo+';color:'+est.corTexto+';" onclick="agendaAbrirModal_('+idx+')" onkeydown="agendaTecla_(event,'+idx+')" title="'+escAgenda_(rotuloChip)+'">'+dot+horaChip+' '+escAgenda_(item.nome)+seloChip+'</div>';
     });
     if (idxs.length > 2) html += '<div class="agenda-mes-mais">+'+(idxs.length-2)+' mais</div>';
     html += '</div>';
@@ -2427,7 +2496,7 @@ var INDICADOR_HOME_INFO = {
   cases: { label: 'Cases de Sucesso', unidade: null, chave: 'casesSucesso' },
   matchmakings: { label: 'Matchmakings', unidade: null, chave: 'matchmakings' },
   rounds: { label: 'Rounds', unidade: null, chave: 'rounds' },
-  health_base: { label: 'Health da Base (média)', unidade: null, chave: 'healthDaBase' },
+  health_base: { label: 'Health da Base', unidade: null, chave: 'healthDaBase' },
   indicacoes: { label: 'Indicações', unidade: null, chave: 'indicacoes' },
   upsell: { label: 'Upsell', unidade: null, chave: 'upsell' },
   downsell: { label: 'Downsell', unidade: null, chave: 'downsell' },
