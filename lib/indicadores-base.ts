@@ -3,11 +3,11 @@
 // node --experimental-strip-types (tests/indicadores-base.test.ts). Nenhum componente nem rota
 // recalcula nada disto por conta própria: tudo passa por aqui.
 //
-// Presenças e Health da Base trabalham em inteiros de décimos de ponto percentual: 800 significa
+// Percentuais e Health da Base trabalham em inteiros de décimos de ponto percentual: 800 significa
 // 80,0 por cento. Evita erro de ponto flutuante e mantém uma casa decimal exata na tela.
 import {
   SEMAFORO_CONFIRMADOS, SEMAFORO_NEUTRO, AGENDA_PASSADO_COR, FAIXAS_PRESENCA,
-  PESO_PONTO_ADVERTENCIA_DECIMOS, HEALTH_BASE_ESCALA_INVERSA,
+  PESO_PONTO_ADVERTENCIA_DECIMOS, REPORT_VALIDADE_DIAS,
   type SemaforoChave, type FaixaPresencaChave,
 } from './constants.ts';
 
@@ -45,12 +45,6 @@ export function corBlocoAgenda(confirmados: number, encerrado: boolean): { corFu
 export function faixaPresenca(taxa: unknown): FaixaPresencaChave | null {
   if (typeof taxa !== 'number' || !Number.isFinite(taxa) || taxa < 0 || taxa > 100) return null;
   return FAIXAS_PRESENCA.find((f) => f.ate === null || taxa <= f.ate)!.chave;
-}
-
-// Presença individual de um membro em décimos de ponto percentual, ou null sem nenhum registro.
-export function presencaMembroDecimos(presentes: number, registros: number): number | null {
-  if (!registros || registros <= 0) return null;
-  return Math.round((presentes * 1000) / registros);
 }
 
 // Percentuais inteiros em décimos que somam exatamente 1000, pelo método do maior resto.
@@ -103,39 +97,79 @@ export function pontuacaoAtiva(registros: { aplicado_em: string; validade_meses:
   return registros.filter((r) => advertenciaAtiva(r.aplicado_em, r.validade_meses, agora)).reduce((s, r) => s + (r.pontos || 0), 0);
 }
 
-// ============ Health da Base ============
+// ============ Health da Base (redefinido em 07/10/2026) ============
+// Health da Base = percentual de membros críticos na base do CS, mais os pontos de advertência
+// ativos vezes PESO_PONTO_ADVERTENCIA_DECIMOS, com teto de 100,0. Menor é melhor. Críticos e base
+// vêm do report semanal (nativo: críticos nomeados sobre o snapshot da carteira; importado do
+// Monday: contagem e base declaradas pelo CS). Presença não entra.
 
 export function formatarDecimos(d: number): string {
   return (d / 10).toFixed(1).replace('.', ',');
 }
 
+// Percentual de críticos em décimos de ponto, arredondado meio para cima. Base zero, entrada não
+// inteira ou críticos acima da base devolvem null (sem valor), nunca zero.
+export function percentualCriticosDecimos(criticos: unknown, base: unknown): number | null {
+  if (!Number.isInteger(criticos) || !Number.isInteger(base)) return null;
+  const c = criticos as number;
+  const b = base as number;
+  if (b <= 0 || c < 0 || c > b) return null;
+  return Math.floor((c * 2000 + b) / (2 * b));
+}
+
 export type HealthBase = {
-  presencaMediaDecimos: number | null;
-  descontoDecimos: number;
-  saudeLiquidaDecimos: number | null;
+  criticos: number | null;
+  base: number | null;
+  percentualCriticosDecimos: number | null;
+  acrescimoDecimos: number;
   healthBaseDecimos: number | null;
-  membrosApurados: number;
-  semApuracao: boolean;
   pontosAtivos: number;
+  semApuracao: boolean;
   composicao: string;
 };
 
-// Recebe a presença individual de cada membro titular da carteira (décimos, null para quem não tem
-// nenhum mês realizado) e a pontuação de advertência ativa do CS. Membro sem apuração fica fora da
-// média. Carteira sem nenhum membro apurado devolve semApuracao, nunca zero.
-export function calcularHealthBase(presencasDecimos: (number | null)[], pontosAtivos: number): HealthBase {
+export function calcularHealthBase(criticos: number | null | undefined, base: number | null | undefined, pontosAtivos: number): HealthBase {
   const pontos = Number.isInteger(pontosAtivos) && pontosAtivos > 0 ? pontosAtivos : 0;
-  const descontoDecimos = pontos * PESO_PONTO_ADVERTENCIA_DECIMOS;
-  const validas = presencasDecimos.filter((p): p is number => typeof p === 'number' && Number.isFinite(p));
-  if (!validas.length) {
-    return { presencaMediaDecimos: null, descontoDecimos, saudeLiquidaDecimos: null, healthBaseDecimos: null, membrosApurados: 0, semApuracao: true, pontosAtivos: pontos, composicao: 'Sem apuração: nenhum membro da carteira com presença registrada.' };
+  const acrescimoDecimos = pontos * PESO_PONTO_ADVERTENCIA_DECIMOS;
+  const pct = percentualCriticosDecimos(criticos, base);
+  const c = Number.isInteger(criticos) ? (criticos as number) : null;
+  const b = Number.isInteger(base) ? (base as number) : null;
+  if (pct === null) {
+    const motivo = b === 0 ? 'base sem membros elegíveis' : 'sem críticos e base apurados';
+    return { criticos: c, base: b, percentualCriticosDecimos: null, acrescimoDecimos, healthBaseDecimos: null, pontosAtivos: pontos, semApuracao: true, composicao: `Sem apuração: ${motivo}.` };
   }
-  const presencaMediaDecimos = Math.round(validas.reduce((s, p) => s + p, 0) / validas.length);
-  const saudeLiquidaDecimos = Math.max(0, presencaMediaDecimos - descontoDecimos);
-  const healthBaseDecimos = HEALTH_BASE_ESCALA_INVERSA ? 1000 - saudeLiquidaDecimos : saudeLiquidaDecimos;
-  const composicao = `Presença média da carteira ${formatarDecimos(presencaMediaDecimos)}%, `
+  const healthBaseDecimos = Math.min(1000, pct + acrescimoDecimos);
+  const composicao = `Críticos ${c} de ${b} (${formatarDecimos(pct)}%), `
     + `advertências ativas ${pontos} ${pontos === 1 ? 'ponto' : 'pontos'}, `
-    + `saúde líquida ${formatarDecimos(saudeLiquidaDecimos)}%, `
     + `Health da Base ${formatarDecimos(healthBaseDecimos)}%.`;
-  return { presencaMediaDecimos, descontoDecimos, saudeLiquidaDecimos, healthBaseDecimos, membrosApurados: validas.length, semApuracao: false, pontosAtivos: pontos, composicao };
+  return { criticos: c, base: b, percentualCriticosDecimos: pct, acrescimoDecimos, healthBaseDecimos, pontosAtivos: pontos, semApuracao: false, composicao };
+}
+
+// ============ report individual ============
+
+export type StatusReport = 'atual' | 'desatualizado' | 'sem_report';
+// Idade medida a partir da data do report (ou do fim da semana, se não houver data).
+export function statusReport(dataReferencia: string | null | undefined, hoje: Date = new Date()): StatusReport {
+  if (!dataReferencia) return 'sem_report';
+  const ref = new Date(String(dataReferencia).slice(0, 10) + 'T12:00:00Z');
+  if (Number.isNaN(ref.getTime())) return 'sem_report';
+  const dias = (hoje.getTime() - ref.getTime()) / 86_400_000;
+  return dias > REPORT_VALIDADE_DIAS ? 'desatualizado' : 'atual';
+}
+
+// Busca de membro por nome: ignora maiúsculas, acentos e espaços extras, e exige que todos os
+// termos apareçam, em qualquer ordem. Autocontida de propósito: o template do dashboard injeta o
+// próprio código desta função no navegador (casaBusca.toString()), para existir uma regra só.
+export function casaBusca(termo: string, nome: string): boolean {
+  const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+  const alvo = norm(nome);
+  return norm(termo).split(' ').filter(Boolean).every((t) => alvo.indexOf(t) !== -1);
+}
+
+// Segunda feira (YYYY-MM-DD) da semana de uma data, no calendário de Brasília.
+export function segundaFeiraBRT(agora: Date = new Date()): string {
+  const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  const dow = brt.getUTCDay();
+  brt.setUTCDate(brt.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return brt.toISOString().slice(0, 10);
 }
