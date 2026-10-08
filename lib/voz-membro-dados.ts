@@ -6,10 +6,10 @@ import { parseTituloConselho, ganhoRelatado } from './reports.ts';
 import { semAcento } from './voz.ts';
 import {
   classificarTemasMembro, ehNaoResposta, ehPreenchidoPeloCs, ehPrimeiroConselho, ehTravado,
-  montarTemas, resumoNotas, conselhosComNotasBaixas, justificativasNotaBaixa, tabelaDesafio, frasesDesafio,
+  montarTemas, resumoNotas, conselhosComNotasBaixas, justificativasNotaBaixa, tabelaDesafio, frasesDesafio, distribuicaoContinuidade, DIMENSOES_NOTA,
   type TextoVoz, type RespostaNps, type ExtrasConselho, TEMAS_MEMBRO,
 } from './voz-membro.ts';
-import { VOZ_MEMBRO_JANELA_MESES, AMOSTRA_MINIMA } from './constants.ts';
+import { VOZ_MEMBRO_JANELA_MESES, AMOSTRA_MINIMA, STATUS_AUSENTE_SET } from './constants.ts';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const STATUS_FORA_DO_CONSELHO = ['Não era do conselho', 'Retirado', 'Churn'];
@@ -132,11 +132,17 @@ const meses = janela(ref, VOZ_MEMBRO_JANELA_MESES);
   const presenca = new Map<string, { agendados: number; presentes: number }>();
   for (const s of statusRows) {
     const grupo = membroDoGrupo.get(Number(s.membro_id));
+    // Mesma regra de presencaDoMes (lib/reports.ts): só conta quem tem presença apurada no mês,
+    // Presente ou ausente (Ausente, Não vai). Confirmado, Agd. Confirmação, Congelado e afins ainda não
+    // dizem se a pessoa foi, e antes (até 08/10/2026) entravam no denominador e geravam presença 0%.
     if (!grupo || !s.status || STATUS_FORA_DO_CONSELHO.includes(s.status)) continue;
+    const presente = s.status === 'Presente';
+    const ausente = STATUS_AUSENTE_SET.includes(s.status);
+    if (!presente && !ausente) continue;
     if (!presenca.has(grupo)) presenca.set(grupo, { agendados: 0, presentes: 0 });
     const p = presenca.get(grupo)!;
     p.agendados++;
-    if (s.status === 'Presente') p.presentes++;
+    if (presente) p.presentes++;
   }
   const ataPorGrupo = new Map<string, { membros: Set<string>; comGanho: Set<string> }>();
   for (const a of atas) {
@@ -187,11 +193,13 @@ const meses = janela(ref, VOZ_MEMBRO_JANELA_MESES);
       trechos,
       rodape: `${tema.textosAnalisados} textos analisados, ${tema.descartadosVazios} descartados por não trazerem conteúdo, ${tema.preenchidosPeloCs} formulários de saída preenchidos pelo CS.`,
     },
-    b4: { dimensoes, conselhos: conselhosNotas, justificativas },
+    b4: { dimensoes, conselhos: conselhosNotas, justificativas, dimensoesRotulos: DIMENSOES_NOTA },
     b5: {
       tabela,
       frases: frasesDesafio(tabela),
       percentualTravados: { janela: desafioJanela, anterior: desafioAnterior },
+      continuidade: { atual: distribuicaoContinuidade(respAtual), anterior: distribuicaoContinuidade(respAnterior) },
+      semPresenca: tabela.filter((l) => l.presencaPercentual === null).length,
       aviso: `Só ${comAta} de ${conselhosAtivos} conselhos têm atas extraídas neste mês; a coluna de ganhos cobre apenas esses.`,
     },
     cartao4: { atual: desafioMes, anterior: desafioMesAnterior },

@@ -505,6 +505,64 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .voz-erro{font-size:11px;color:var(--vermelho);margin-top:6px;}
 @media (max-width:1100px){.voz-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media (max-width:640px){.voz-grid{grid-template-columns:1fr;} .voz-temas-linha{grid-template-columns:1fr;gap:6px;} .voz-temas-num{text-align:left;}}
+
+/* ===== avaliação dos membros e desafio, visual (08/10/2026) ===== */
+.aval-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
+.aval-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:16px 18px;}
+.aval-card .rot{font-size:12px;font-weight:700;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:.4px;}
+.aval-card .nota{font-family:'Bricolage Grotesque',sans-serif;font-size:44px;line-height:1;margin:8px 0 2px;color:var(--preto-tinta);}
+.aval-card .nota small{font-size:16px;color:var(--cinza-apoio);font-family:Inter,sans-serif;font-weight:600;}
+.aval-card .nota.atencao{color:var(--dourado);} .aval-card .nota.critico{color:var(--vermelho);}
+.aval-card .var{font-size:12px;color:var(--cinza-texto);min-height:16px;}
+.aval-card .var.pior{color:var(--vermelho);font-weight:600;}
+.aval-trilho{margin:12px 0 10px;}
+.aval-faixas{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--cinza-superficie);}
+.aval-faixas span{display:block;height:100%;}
+.aval-faixas .alta{background:var(--preto-tinta);} .aval-faixas .media{background:var(--cinza-linha);} .aval-faixas .baixa{background:var(--vermelho);}
+.aval-legenda{display:flex;justify-content:space-between;font-size:11px;color:var(--cinza-apoio);margin-top:6px;}
+.aval-legenda b{color:var(--vermelho);}
+.aval-mapa{margin-top:22px;}
+.aval-mapa-grade{display:grid;grid-template-columns:minmax(180px,2.2fr) repeat(4,minmax(56px,1fr)) minmax(150px,1.6fr);gap:4px;align-items:center;}
+.aval-mapa-grade .cab{font-size:11px;font-weight:700;color:var(--cinza-apoio);text-transform:uppercase;letter-spacing:.4px;text-align:center;padding-bottom:4px;}
+.aval-mapa-grade .cab.esq{text-align:left;}
+.aval-mapa-grade .cab .curto{display:none;}
+.aval-mapa-grade .nome{font-size:13px;font-weight:600;color:var(--preto-tinta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aval-mapa-grade .nome span{display:block;font-size:11px;font-weight:500;color:var(--cinza-apoio);}
+.aval-cel{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+.aval-cel.n0{background:#F2F2F2;color:var(--cinza-texto);}
+.aval-cel.n1{background:#F6E7C2;color:#6B4E0E;}
+.aval-cel.n2{background:#E9B84E;color:#3D2A03;}
+.aval-cel.n3{background:var(--vermelho);color:#FFFFFF;}
+.aval-cel.nd{background:transparent;color:var(--cinza-apoio);font-weight:500;border:1px dashed var(--cinza-borda);}
+.aval-acao{font-size:12px;color:var(--vermelho);font-weight:600;}
+.aval-acao.ok{color:var(--cinza-apoio);font-weight:500;}
+.aval-escala{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--cinza-texto);margin-top:10px;align-items:center;}
+.aval-escala i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-3px;margin-right:5px;}
+.aval-mais{margin-top:10px;background:none;border:0;padding:0;font-size:13px;font-weight:700;color:var(--preto-tinta);text-decoration:underline;cursor:pointer;}
+.aval-detalhe{margin-top:16px;} .aval-detalhe summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--cinza-texto);}
+.desafio-barra{display:flex;height:34px;border-radius:10px;overflow:hidden;margin:6px 0 6px;}
+.desafio-barra span{display:flex;align-items:center;padding:0 10px;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;}
+.desafio-barra .sim{background:var(--preto-tinta);color:#FFFFFF;} .desafio-barra .partes{background:var(--dourado);color:#1A1A1A;} .desafio-barra .nao{background:var(--vermelho);color:#FFFFFF;}
+.desafio-resumo{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--cinza-texto);}
+.desafio-resumo b{font-size:14px;color:var(--preto-tinta);}
+.desafio-dispersao{margin-top:18px;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:12px 12px 6px;}
+.desafio-dispersao svg{display:block;width:100%;max-width:860px;height:auto;margin:0 auto;}
+.desafio-dispersao .eixo{font-size:11px;fill:#807E7E;font-family:Inter,sans-serif;}
+.desafio-dispersao .quad{font-size:11px;fill:#9F9F9F;font-family:Inter,sans-serif;font-weight:600;}
+.desafio-dispersao .rot-ponto{font-size:11px;fill:#1A1A1A;font-family:Inter,sans-serif;font-weight:700;}
+.desafio-acoes{margin:14px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;}
+.desafio-acoes li{background:#FBF3E2;border-left:4px solid var(--dourado);border-radius:8px;padding:10px 12px;font-size:13px;}
+.desafio-acoes li b{display:block;}
+@media (max-width:900px){ .aval-cards{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:640px){
+  .aval-card .nota{font-size:36px;}
+  .aval-mapa-grade{grid-template-columns:minmax(120px,1.6fr) repeat(4,minmax(40px,1fr));}
+  .aval-mapa-grade .col-acao{display:none;}
+  .aval-cel{height:34px;font-size:12px;}
+  .aval-mapa-grade .cab .longo{display:none;} .aval-mapa-grade .cab .curto{display:inline;}
+  .aval-legenda{flex-direction:column;gap:2px;}
+  .desafio-dispersao{overflow-x:auto;} .desafio-dispersao svg{min-width:560px;}
+}
 `;
 
 export const GESTOR_HTML = `
@@ -901,15 +959,17 @@ export const GESTOR_HTML = `
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>Por que as notas são baixas</h2><p>Notas baixas por dimensão, na janela de três meses, com o período anterior. Valores fora da escala não entram.</p></div></div>
+      <div class="block-head"><div><h2>Como os membros avaliam</h2><p>Nota média de 0 a 10 nos últimos três meses, comparada aos três anteriores. Trocas e evolução são respondidas de 1 a 5 e aparecem multiplicadas por 2 para ficarem na mesma régua.</p></div></div>
       <div id="notasDimensoes"><div class="gestor-empty">Carregando…</div></div>
-      <h3 class="churn-subtitulo">Conselhos com mais notas baixas</h3>
-      <div id="notasConselhos"></div>
+      <div class="aval-mapa">
+        <h3 class="churn-subtitulo">Onde a nota cai</h3>
+        <div id="notasConselhos"></div>
+      </div>
       <p class="churn-nota" id="notasJustificativas"></p>
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>Por que não evoluem no desafio</h2><p>Percentual de membros que se dizem travados, por conselho, com presença e ganhos da ata do mês.</p></div></div>
+      <div class="block-head"><div><h2>Por que não evoluem no desafio</h2><p>Quanto os membros dizem evoluir nos desafios, e se o travamento acompanha a presença no conselho. Primeiro conselho fica fora.</p></div></div>
       <div id="desafioTabela"><div class="gestor-empty">Carregando…</div></div>
       <div id="desafioFrases"></div>
       <p class="churn-nota" id="desafioAviso"></p>
@@ -2704,25 +2764,168 @@ function churnMostrarTrechos_(chave) {
     }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>');
 }
 
+// ===== Como os membros avaliam (08/10/2026) =====
+// Régua única de 0 a 10. Cor só para exceção: média abaixo de 9 em âmbar, abaixo de 8 em vermelho.
+function avalNivel_(m) { if (m === null || m === undefined) return 'nd'; if (m >= 9.5) return 'n0'; if (m >= 9) return 'n1'; if (m >= 8) return 'n2'; return 'n3'; }
+function avalNum_(m) { return m === null || m === undefined ? '-' : Number(m).toFixed(1).replace('.', ','); }
+function avalTrilhoSvg_(media, anterior) {
+  // Régua de 6 a 10: abaixo de 6 a média encosta no início. Na escala inteira de 0 a 10 todas as
+  // médias reais (perto de 9,5) ficariam no mesmo ponto e a régua não diria nada.
+  var W = 240, H = 26, x = function (v) { return 6 + ((Math.max(6, Math.min(10, v)) - 6) / 4) * (W - 12); };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="aval-trilho" role="img" aria-label="Posição da média na régua de 6 a 10">';
+  h += '<rect x="6" y="11" width="' + (W - 12) + '" height="4" rx="2" fill="#E9E9E9"/>';
+  h += '<rect x="' + x(9) + '" y="11" width="' + (x(10) - x(9)) + '" height="4" fill="#C6C4C4"/>';
+  [6, 7, 8, 9, 10].forEach(function (t) { h += '<text x="' + x(t) + '" y="26" text-anchor="middle" font-size="9" fill="#9F9F9F" font-family="Inter,sans-serif">' + t + '</text>'; });
+  if (anterior !== null && anterior !== undefined) h += '<circle cx="' + x(anterior) + '" cy="13" r="5" fill="#FFFFFF" stroke="#9F9F9F" stroke-width="1.5"><title>Período anterior: ' + avalNum_(anterior) + '</title></circle>';
+  if (media !== null && media !== undefined) h += '<circle cx="' + x(media) + '" cy="13" r="6" fill="#1A1A1A"><title>Média atual: ' + avalNum_(media) + '</title></circle>';
+  return h + '</svg>';
+}
 function churnRenderNotas_(b4) {
-  document.getElementById('notasDimensoes').innerHTML = churnTabela_(['Dimensão', 'Respostas', 'Notas baixas', 'Percentual', 'Período anterior', 'Variação'],
-    b4.dimensoes.map(function (d) {
-      return [churnEsc_(d.rotulo), churnEsc_(d.respostas), churnEsc_(d.baixas), churnPct_(d.percentual), churnPct_(d.percentualAnterior), d.variacao === null ? '-' : churnSeta_(d.variacao) + ' pontos'];
-    }));
-  document.getElementById('notasConselhos').innerHTML = b4.conselhos.length ? churnTabela_(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões', 'Ação'],
-    b4.conselhos.map(function (c) {
-      return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnEsc_(c.baixas), churnPct_(c.percentual), churnEsc_(c.dimensaoMaisPesa), churnEsc_(c.temaSugestoes || '-'), churnEsc_(c.fraseConversa || '-')];
-    })) : '<p class="gestor-empty">Nenhum conselho com amostra suficiente nesta janela.</p>';
+  var cards = b4.dimensoes.map(function (d) {
+    var cls = d.media === null ? '' : (d.media < 8 ? ' critico' : (d.media < 9 ? ' atencao' : ''));
+    var v = d.variacaoMedia;
+    var varTxt = v === null ? (d.mediaAnterior === null ? 'Sem período anterior para comparar' : '') :
+      (v === 0 ? 'Igual ao período anterior' : (v > 0 ? '▲ ' : '▼ ') + avalNum_(Math.abs(v)) + ' em relação ao período anterior');
+    var tot = d.faixas.alta + d.faixas.media + d.faixas.baixa;
+    var seg = function (k) { return tot ? '<span class="' + k + '" style="width:' + (d.faixas[k] / tot * 100) + '%"></span>' : ''; };
+    var corteAlto = d.escala === 5 ? 'nota 5' : '9 e 10';
+    return '<div class="aval-card">' +
+      '<div class="rot">' + churnEsc_(d.curto) + '</div>' +
+      '<div class="nota' + cls + '">' + avalNum_(d.media) + ' <small>de 10</small></div>' +
+      '<div class="var' + (v !== null && v < 0 ? ' pior' : '') + '">' + churnEsc_(varTxt) + '</div>' +
+      avalTrilhoSvg_(d.media, d.mediaAnterior) +
+      '<div class="aval-faixas" title="' + d.faixas.alta + ' altas, ' + d.faixas.media + ' médias, ' + d.faixas.baixa + ' baixas">' + seg('alta') + seg('media') + seg('baixa') + '</div>' +
+      '<div class="aval-legenda"><span>' + (tot ? Math.round(d.faixas.alta / tot * 100) : 0) + '% deram ' + corteAlto + '</span><span><b>' + d.baixas + '</b> notas baixas de ' + d.respostas + '</span></div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('notasDimensoes').innerHTML = '<div class="aval-cards">' + cards + '</div>';
+  avalRenderMapa_(b4, false);
   var j = b4.justificativas;
   document.getElementById('notasJustificativas').textContent = 'O que dizem os que deram nota baixa: ' + (j.temaSugestoes ? 'o tema mais citado nas sugestões é ' + j.temaSugestoes + '. ' : '') +
     (j.temaAvaliacoesCs ? 'Nas avaliações de CS, o mais citado é ' + j.temaAvaliacoesCs + '. ' : '') + j.frase;
 }
+// Mapa de calor: conselhos (linhas) por dimensão (colunas), da menor média geral para a maior.
+// Mostra os 8 primeiros; o resto fica a um clique. A tabela completa continua no detalhe.
+var AVAL_LINHAS_INICIAIS_ = 8;
+function avalNomeCurto_(titulo) {
+  // "Executivo | Adriana Soares (Mateus)" vira "Adriana Soares". Sem regex de propósito: dentro deste
+  // template string as barras invertidas somem e quebram a expressão.
+  var t = String(titulo || '');
+  var partes = t.split('|');
+  if (partes.length < 2) return t;
+  var meio = partes[1];
+  var abre = meio.indexOf('(');
+  return (abre >= 0 ? meio.slice(0, abre) : meio).trim() || t;
+}
+function avalRenderMapa_(b4, todos) {
+  var el = document.getElementById('notasConselhos');
+  if (!b4.conselhos.length) { el.innerHTML = '<p class="gestor-empty">Nenhum conselho com respostas suficientes nesta janela.</p>'; return; }
+  var dims = b4.dimensoesRotulos;
+  var ordem = b4.conselhos.slice().sort(function (a, b) {
+    var x = a.mediaGeral === null ? 99 : a.mediaGeral, y = b.mediaGeral === null ? 99 : b.mediaGeral;
+    return x - y || b.percentual - a.percentual;
+  });
+  var visiveis = todos ? ordem : ordem.slice(0, AVAL_LINHAS_INICIAIS_);
+  var h = '<div class="aval-mapa-grade"><div class="cab esq">Conselho</div>' +
+    dims.map(function (d) { return '<div class="cab"><span class="longo">' + churnEsc_(d.curto) + '</span><span class="curto">' + churnEsc_(d.curto.slice(0, 4)) + '</span></div>'; }).join('') + '<div class="cab esq col-acao">Próximo passo</div>';
+  visiveis.forEach(function (c) {
+    h += '<div class="nome" title="' + churnEsc_(c.conselho) + '">' + churnEsc_(avalNomeCurto_(c.conselho)) + '<span>CS ' + churnEsc_(c.cs || 'não informado') + ', ' + c.respostas + ' respostas</span></div>';
+    dims.forEach(function (d) {
+      var m = c.medias[d.chave];
+      h += '<div class="aval-cel ' + avalNivel_(m) + '" title="' + churnEsc_(d.curto) + ': ' + avalNum_(m) + ' de 10">' + (m === null ? 'sem dado' : avalNum_(m)) + '</div>';
+    });
+    var acao = c.fraseConversa ? 'Conversar com ' + c.cs : (c.percentual > 0 ? c.baixas + ' nota' + (c.baixas === 1 ? '' : 's') + ' baixa' + (c.baixas === 1 ? '' : 's') : 'Sem nota baixa');
+    var dica = (c.temaSugestoes ? 'Tema das sugestões: ' + c.temaSugestoes + '. ' : '') + 'Dimensão que mais pesa: ' + c.dimensaoMaisPesa + '.';
+    h += '<div class="aval-acao col-acao' + (c.fraseConversa ? '' : ' ok') + '" title="' + churnEsc_(dica) + '">' + churnEsc_(acao) + '</div>';
+  });
+  h += '</div>';
+  h += '<div class="aval-escala"><span><i style="background:#F2F2F2"></i>9,5 ou mais</span><span><i style="background:#F6E7C2"></i>9 a 9,4</span><span><i style="background:#E9B84E"></i>8 a 8,9</span><span><i style="background:#C0433D"></i>abaixo de 8</span><span>Passe o mouse sobre o próximo passo para ver o tema das sugestões.</span></div>';
+  if (ordem.length > AVAL_LINHAS_INICIAIS_) {
+    h += '<button type="button" class="aval-mais" id="avalMais">' + (todos ? 'Mostrar só os ' + AVAL_LINHAS_INICIAIS_ + ' com menor nota' : 'Ver os ' + ordem.length + ' conselhos') + '</button>';
+  }
+  h += '<details class="aval-detalhe"><summary>Ver a tabela completa</summary>' +
+    churnTabela_(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões', 'Ação'],
+      b4.conselhos.map(function (c) {
+        return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnEsc_(c.baixas), churnPct_(c.percentual), churnEsc_(c.dimensaoMaisPesa), churnEsc_(c.temaSugestoes || '-'), churnEsc_(c.fraseConversa || '-')];
+      })) + '</details>';
+  el.innerHTML = h;
+  var btn = document.getElementById('avalMais');
+  if (btn) btn.addEventListener('click', function () { avalRenderMapa_(b4, !todos); });
+}
 
+// ===== Por que não evoluem no desafio (08/10/2026) =====
+// Barra única da resposta de continuidade e dispersão presença por travados, um ponto por conselho.
+function desafioBarraHtml_(c) {
+  if (!c || !c.base) return '<p class="gestor-empty">Sem respostas de continuidade nesta janela.</p>';
+  var p = function (n) { return Math.round(n / c.base * 1000) / 10; };
+  var seg = function (cls, n, rot) { var w = n / c.base * 100; return n ? '<span class="' + cls + '" style="width:' + w + '%" title="' + rot + ': ' + n + ' (' + String(p(n)).replace('.', ',') + '%)">' + (w >= 9 ? String(p(n)).replace('.', ',') + '%' : '') + '</span>' : ''; };
+  return '<div class="desafio-barra">' + seg('sim', c.sim, 'Sentem bastante evolução') + seg('partes', c.partes, 'Em partes, ainda travados') + seg('nao', c.naoVejo, 'Não veem evolução') + '</div>';
+}
+function desafioDispersaoSvg_(tabela) {
+  var pts = tabela.filter(function (l) { return l.presencaPercentual !== null; });
+  if (!pts.length) return '<p class="gestor-empty">Nenhum conselho com presença apurada no mês de referência.</p>';
+  var W = 680, H = 320, ml = 48, mr = 16, mt = 16, mb = 42;
+  var x = function (v) { return ml + (v / 100) * (W - ml - mr); };
+  var y = function (v) { return mt + (1 - v / 100) * (H - mt - mb); };
+  var maxR = Math.max.apply(null, pts.map(function (l) { return l.respostas; }));
+  var r = function (n) { return 5 + Math.sqrt(n / maxR) * 9; };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Presença no mês por percentual de travados, um ponto por conselho">';
+  h += '<rect x="' + ml + '" y="' + mt + '" width="' + (x(70) - ml) + '" height="' + (y(40) - mt) + '" fill="#FBEDEC"/>';
+  h += '<rect x="' + x(70) + '" y="' + mt + '" width="' + (W - mr - x(70)) + '" height="' + (y(40) - mt) + '" fill="#FBF3E2"/>';
+  [0, 25, 50, 75, 100].forEach(function (t) {
+    h += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="#EEECEC"/>';
+    h += '<text class="eixo" x="' + (ml - 8) + '" y="' + (y(t) + 4) + '" text-anchor="end">' + t + '%</text>';
+    h += '<text class="eixo" x="' + x(t) + '" y="' + (H - mb + 16) + '" text-anchor="middle">' + t + '%</text>';
+  });
+  h += '<line x1="' + x(70) + '" x2="' + x(70) + '" y1="' + mt + '" y2="' + (H - mb) + '" stroke="#C6C4C4" stroke-dasharray="4 4"/>';
+  h += '<line x1="' + ml + '" x2="' + (W - mr) + '" y1="' + y(40) + '" y2="' + y(40) + '" stroke="#C6C4C4" stroke-dasharray="4 4"/>';
+  h += '<text class="quad" x="' + (ml + 8) + '" y="' + (mt + 14) + '">Pouca presença e muitos travados: atacar presença</text>';
+  h += '<text class="quad" x="' + (W - mr - 8) + '" y="' + (mt + 14) + '" text-anchor="end">Boa presença e muitos travados: rever a condução</text>';
+  h += '<text class="eixo" x="' + ((ml + W - mr) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">Presença no mês de referência</text>';
+  h += '<text class="eixo" transform="rotate(-90)" x="' + (-(mt + H - mb) / 2) + '" y="12" text-anchor="middle">Membros travados</text>';
+  var rotulos = '';
+  pts.slice().sort(function (a, b) { return b.respostas - a.respostas; }).forEach(function (l) {
+    var alerta = l.percentualTravados >= 40;
+    var dica = l.conselho + '. CS ' + (l.cs || 'não informado') + '. ' + String(l.percentualTravados).replace('.', ',') + '% travados em ' + l.respostas + ' respostas. Presença ' + String(l.presencaPercentual).replace('.', ',') + '%.' +
+      (l.ganhosPercentual !== null ? ' Ganhos na ata ' + String(l.ganhosPercentual).replace('.', ',') + '%.' : '') + (l.temaTravados ? ' Tema dos travados: ' + l.temaTravados + '.' : '');
+    h += '<circle cx="' + x(l.presencaPercentual) + '" cy="' + y(l.percentualTravados) + '" r="' + r(l.respostas) + '" fill="' + (alerta ? '#C89A2E' : '#1A1A1A') + '" fill-opacity="' + (alerta ? '0.95' : '0.35') + '" stroke="#FFFFFF" stroke-width="1.5"><title>' + churnEsc_(dica) + '</title></circle>';
+    if (alerta) {
+      var lx = x(l.presencaPercentual), anc = lx > W - 160 ? 'end' : 'start', dx = anc === 'end' ? -(r(l.respostas) + 4) : r(l.respostas) + 4;
+      // rótulos vão numa segunda camada para nenhum círculo ficar por cima do texto
+      rotulos += '<text class="rot-ponto" x="' + (lx + dx) + '" y="' + (y(l.percentualTravados) + 4) + '" text-anchor="' + anc + '" stroke="#FFFFFF" stroke-width="3" paint-order="stroke">' + churnEsc_(avalNomeCurto_(l.conselho)) + '</text>';
+    }
+  });
+  return h + rotulos + '</svg>';
+}
 function churnRenderDesafio_(b5) {
-  document.getElementById('desafioTabela').innerHTML = churnTabela_(['Conselho', 'CS', 'Respostas', 'Travados', 'Presença no mês', 'Ganhos na ata', 'Qualidade das trocas', 'Tema dos travados', 'Ação'],
-    b5.tabela.map(function (c) {
-      return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnPct_(c.percentualTravados), churnPct_(c.presencaPercentual), churnPct_(c.ganhosPercentual), churnNum_(c.qualidadeMedia), churnEsc_(c.temaTravados || '-'), churnEsc_(c.fraseRevisao || '-')];
-    }));
+  var c = b5.continuidade ? b5.continuidade.atual : null;
+  var ant = b5.continuidade ? b5.continuidade.anterior : null;
+  var h = '';
+  if (c && c.base) {
+    var travados = c.partes + c.naoVejo;
+    var antTxt = ant && ant.pctTravados !== null ? String(ant.pctTravados).replace('.', ',') + '%' : null;
+    var comp = antTxt === null || c.pctTravados === null ? 'sem período anterior para comparar' :
+      (c.pctTravados > ant.pctTravados ? 'acima dos ' + antTxt + ' do período anterior' : (c.pctTravados < ant.pctTravados ? 'abaixo dos ' + antTxt + ' do período anterior' : 'igual ao período anterior'));
+    h += '<div class="desafio-resumo"><span><b>' + String(c.pctTravados === null ? '-' : c.pctTravados).replace('.', ',') + '% se dizem travados</b> (' + travados + ' de ' + c.base + ' respostas), ' + comp + '.</span>' +
+      '<span>Escuro: sentem evolução. Âmbar: em partes. Vermelho: não veem evolução.</span></div>';
+  }
+  h += desafioBarraHtml_(c);
+  h += '<div class="desafio-dispersao">' + desafioDispersaoSvg_(b5.tabela) + '</div>';
+  var semPres = b5.semPresenca || 0;
+  if (semPres) h += '<p class="churn-nota">' + semPres + ' conselho' + (semPres === 1 ? '' : 's') + ' com respostas suficientes não aparece' + (semPres === 1 ? '' : 'm') + ' no gráfico por não ter presença apurada no mês.</p>';
+  var acoes = b5.tabela.filter(function (l) { return l.fraseRevisao; }).slice(0, 3);
+  if (acoes.length) {
+    h += '<ul class="desafio-acoes">' + acoes.map(function (l) {
+      return '<li><b>' + churnEsc_(l.fraseRevisao) + '</b>' + churnEsc_(avalNomeCurto_(l.conselho)) + ': ' + String(l.percentualTravados).replace('.', ',') + '% travados' +
+        (l.presencaPercentual !== null ? ', presença de ' + String(l.presencaPercentual).replace('.', ',') + '%' : '') + (l.temaTravados ? '. Os travados falam de ' + churnEsc_(l.temaTravados).toLowerCase() : '') + '.</li>';
+    }).join('') + '</ul>';
+  }
+  h += '<details class="aval-detalhe"><summary>Ver a tabela completa por conselho</summary>' +
+    churnTabela_(['Conselho', 'CS', 'Respostas', 'Travados', 'Presença no mês', 'Ganhos na ata', 'Qualidade das trocas', 'Tema dos travados', 'Ação'],
+      b5.tabela.map(function (l) {
+        return [churnEsc_(l.conselho), churnEsc_(l.cs || '-'), churnEsc_(l.respostas), churnPct_(l.percentualTravados), churnPct_(l.presencaPercentual), churnPct_(l.ganhosPercentual), churnNum_(l.qualidadeMedia), churnEsc_(l.temaTravados || '-'), churnEsc_(l.fraseRevisao || '-')];
+      })) + '</details>';
+  document.getElementById('desafioTabela').innerHTML = h;
   document.getElementById('desafioFrases').innerHTML = b5.frases.map(function (t) { return '<div class="voz-insight">' + churnEsc_(t) + '</div>'; }).join('');
   document.getElementById('desafioAviso').textContent = b5.aviso;
 }
