@@ -95,3 +95,25 @@ assert.equal(linhas[1].posicao, null, 'fora do ranking: posição nula');
 assert.equal(linhas[1].estado, 'sem_dados_suficientes');
 
 console.log('evolucao: todos os casos passaram');
+
+// --- mês em andamento fica fora da comparação (09/10/2026) ---
+const comAberto = serieDoCS([
+  { rotulo: 'Agosto 2026', aberto: false, cs: { pontuacao: 173, posicao: 1 }, medianaTime: 120 },
+  { rotulo: 'Setembro 2026', aberto: false, cs: { pontuacao: 104, posicao: 5 }, medianaTime: 118 },
+  { rotulo: 'Outubro 2026', aberto: true, cs: { pontuacao: 12, posicao: 6 }, medianaTime: 20 },
+]);
+assert.deepEqual(leituraEvolucao(comAberto), [
+  'A pontuação foi de 173 para 104 em 1 mês.',
+  'A posição foi de 1º para 5º.',
+  'Outubro 2026 está em andamento: 12 pontos até agora, 6º lugar parcial. Esse mês não entra na comparação.',
+], 'mês aberto não entra na comparação e ganha frase própria');
+assert.equal(
+  maiorQuedaIndicador([{ chave: 'matchmakings', label: 'Matchmakings', pctPorMes: [150, 150, 0] }], undefined, [false, false, true]),
+  null,
+  'queda causada só pelo mês aberto não é alerta',
+);
+assert.deepEqual(
+  maiorQuedaIndicador([{ chave: 'matchmakings', label: 'Matchmakings', pctPorMes: [150, 80, 0] }], undefined, [false, false, true]),
+  { chave: 'matchmakings', label: 'Matchmakings', de: 150, para: 80, queda: 70 },
+  'queda entre meses fechados continua valendo',
+);

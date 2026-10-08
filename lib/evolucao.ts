@@ -54,19 +54,26 @@ export function serieDoCS(meses: { rotulo: string; aberto: boolean; cs: { pontua
   }));
 }
 
-// Frases de leitura por regra. Só aparece o que tem dado nos dois extremos da série.
+// Frases de leitura por regra. Só aparece o que tem dado nos dois extremos da série. A comparação usa
+// apenas meses fechados: o mês em andamento tem pontuação parcial e, comparado a um mês inteiro, dava
+// quedas falsas (ex.: 173 em agosto contra 12 no oitavo dia de outubro). Ele entra numa frase à parte.
 export function leituraEvolucao(serie: PontoSerie[]): string[] {
-  const com = serie.filter((p) => p.pontuacao !== null);
+  const fechados = serie.filter((p) => !p.aberto);
+  const com = fechados.filter((p) => p.pontuacao !== null);
   const frases: string[] = [];
   if (com.length >= 2) {
     const primeiro = com[0], ultimo = com[com.length - 1];
     const meses = serie.indexOf(ultimo) - serie.indexOf(primeiro);
     frases.push('A pontuação foi de ' + primeiro.pontuacao + ' para ' + ultimo.pontuacao + ' em ' + meses + (meses === 1 ? ' mês.' : ' meses.'));
   }
-  const comPos = serie.filter((p) => p.posicao !== null);
+  const comPos = fechados.filter((p) => p.posicao !== null);
   if (comPos.length >= 2) {
     const p1 = comPos[0], p2 = comPos[comPos.length - 1];
     frases.push('A posição foi de ' + p1.posicao + 'º para ' + p2.posicao + 'º.');
+  }
+  const aberto = serie.length ? serie[serie.length - 1] : null;
+  if (aberto && aberto.aberto && aberto.pontuacao !== null) {
+    frases.push(aberto.rotulo + ' está em andamento: ' + aberto.pontuacao + ' pontos até agora' + (aberto.posicao !== null ? ', ' + aberto.posicao + 'º lugar parcial' : '') + '. Esse mês não entra na comparação.');
   }
   return frases;
 }
@@ -75,11 +82,12 @@ export type EixoSerie = { chave: string; label: string; pctPorMes: (number | nul
 
 // Maior queda de aproveitamento entre os eixos com histórico (GTD fica de fora: sem série confiável).
 // Compara o penúltimo mês com dado e o último. Só vale se a queda for igual ou maior que o limite.
-export function maiorQuedaIndicador(eixos: EixoSerie[], limite: number = QUEDA_APROVEITAMENTO_ALERTA_PP) {
+// abertoPorMes (opcional, mesma ordem de pctPorMes) tira o mês em andamento da comparação.
+export function maiorQuedaIndicador(eixos: EixoSerie[], limite: number = QUEDA_APROVEITAMENTO_ALERTA_PP, abertoPorMes: boolean[] = []) {
   let melhor: { chave: string; label: string; de: number; para: number; queda: number } | null = null;
   for (const eixo of eixos) {
     if (eixo.chave === 'cumprimentoGtd') continue;
-    const comDado = eixo.pctPorMes.filter((p): p is number => typeof p === 'number');
+    const comDado = eixo.pctPorMes.filter((p, i): p is number => typeof p === 'number' && !abertoPorMes[i]);
     if (comDado.length < 2) continue;
     const para = comDado[comDado.length - 1];
     const de = comDado[comDado.length - 2];

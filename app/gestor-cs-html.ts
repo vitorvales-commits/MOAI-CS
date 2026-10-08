@@ -99,13 +99,79 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .msg{font-size:12px;font-weight:600;margin-left:8px;}
 .um-topo{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 .btn.sec.ativo{background:var(--preto-tinta);color:var(--branco);}
+/* ---------- indicadores do mês (09/10/2026): radar sempre visível e cartões por indicador ---------- */
+.ind-resumo{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--cinza-superficie);}
+.ind-placar{display:flex;align-items:baseline;gap:6px;}
+.ind-placar b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:44px;line-height:1;}
+.ind-placar span{font-size:14px;font-weight:700;color:var(--cinza-texto);}
+.ind-resumo-txt{flex:1;min-width:220px;font-size:14px;line-height:1.55;}
+.ind-resumo-txt .longe{color:var(--vermelho);font-weight:700;}
+.ind-aviso{font-size:12px;color:var(--cinza-texto);margin-top:4px;}
+.ind-grid{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;align-items:start;}
+@media (max-width:860px){ .ind-grid{grid-template-columns:1fr;} }
+.ind-radar{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.ind-radar svg{width:100%;max-width:380px;height:auto;}
+.ind-legenda{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11.5px;color:var(--cinza-texto);}
+.ind-legenda i{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:5px;vertical-align:middle;}
+.ind-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:1000px){ .ind-cards{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:330px){ .ind-cards{grid-template-columns:1fr;} }
+@media (max-width:600px){ .ind-rodape svg{width:50px;} .ind-card{padding:10px 11px;} .ind-valor b{font-size:22px;} .evo-kpi{flex:1 1 40%;min-width:0;padding:9px 11px;} .evo-kpi-val{font-size:21px;} }
+.ind-card{border:1px solid var(--cinza-borda);border-radius:16px;padding:12px 14px;background:var(--branco);display:flex;flex-direction:column;gap:7px;min-width:0;}
+.ind-card.critico{border-color:#EBC6C0;background:#FDF6F5;}
+.ind-card.atencao{border-color:#EAD9AE;background:#FDFAF2;}
+.ind-card.neutro{background:var(--cinza-fundo);}
+.ind-card-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.ind-nome{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ind-pill{font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:99px;white-space:nowrap;}
+.ind-pill.ok{background:#E6F2EB;color:var(--verde);}
+.ind-pill.atencao{background:#F7EBCB;color:#8A6D1C;}
+.ind-pill.critico{background:#F6DCD8;color:var(--vermelho);}
+.ind-pill.neutro{background:var(--cinza-superficie);color:var(--cinza-texto);}
+.ind-valor{display:flex;align-items:baseline;gap:6px;}
+.ind-valor b{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:26px;line-height:1;}
+.ind-valor span{font-size:12px;color:var(--cinza-texto);}
+.ind-barra{position:relative;height:8px;border-radius:99px;background:var(--cinza-superficie);}
+.ind-barra > i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;}
+.ind-barra > em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--preto-tinta);border-radius:2px;}
+.ind-card.ok .ind-barra > i{background:var(--verde);}
+.ind-card.atencao .ind-barra > i{background:var(--dourado);}
+.ind-card.critico .ind-barra > i{background:var(--vermelho);}
+.ind-rodape{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--cinza-texto);min-height:18px;}
+.ind-rodape span{white-space:nowrap;}
+.ind-rodape .sobe{color:var(--verde);font-weight:700;}
+.ind-rodape .cai{color:var(--vermelho);font-weight:700;}
+/* ---------- evolução (09/10/2026) ---------- */
+.evo-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:8px;}
+.evo-kpis{display:flex;gap:10px;flex-wrap:wrap;}
+.evo-kpi{border:1px solid var(--cinza-borda);border-radius:14px;padding:10px 14px;min-width:132px;}
+.evo-kpi.parcial{border-style:dashed;}
+.evo-kpi-rot{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cinza-texto);}
+.evo-kpi-val{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;line-height:1.1;margin-top:3px;}
+.evo-kpi-var{font-size:11.5px;font-weight:700;margin-top:2px;color:var(--cinza-texto);}
+.evo-kpi-var.sobe{color:var(--verde);}
+.evo-kpi-var.cai{color:var(--vermelho);}
+.seg{display:inline-flex;background:var(--cinza-superficie);border-radius:99px;padding:3px;gap:2px;}
+.seg button{border:none;background:none;font:inherit;font-size:12px;font-weight:700;color:var(--cinza-texto);padding:6px 12px;border-radius:99px;cursor:pointer;}
+.seg button.ativo{background:var(--branco);color:var(--preto-tinta);box-shadow:0 1px 2px rgba(0,0,0,.12);}
 .evo-svg{width:100%;height:auto;display:block;}
 .evo-eixo{font-size:11px;fill:var(--cinza-texto);}
-.evo-leitura p{font-size:13px;line-height:1.6;margin:6px 0 0;}
-.evo-acao{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-.evo-acao button{background:var(--cinza-superficie);color:var(--preto-tinta);border:none;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
-.tend-queda{color:var(--vermelho);font-weight:700;}
-.tend-txt{font-size:12px;color:var(--cinza-texto);margin-left:6px;}
+.evo-valor{font-size:12.5px;font-weight:800;fill:var(--preto-tinta);}
+.evo-pos{font-size:10.5px;font-weight:700;fill:var(--cinza-texto);}
+.evo-legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--cinza-texto);margin-top:4px;}
+.evo-legenda i{display:inline-block;width:18px;height:0;border-top:2.5px solid var(--preto-tinta);margin-right:6px;vertical-align:middle;}
+.evo-legenda i.med{border-top:2px dashed var(--cinza-apoio);}
+.evo-legenda i.meta{border-top:2px dashed var(--dourado);}
+.evo-legenda i.parc{border-top:2.5px dotted var(--preto-tinta);}
+.evo-leitura{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
+.evo-leitura p{font-size:13px;line-height:1.55;margin:0;color:var(--cinza-texto);}
+.evo-alerta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--vermelho);background:#FDF6F5;border-radius:12px;padding:12px 14px;}
+.evo-alerta-txt{font-size:13.5px;line-height:1.5;}
+.evo-alerta-txt b{color:var(--vermelho);}
+.evo-acao{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.evo-acao button.principal{background:var(--preto-tinta);color:var(--branco);border:none;border-radius:99px;padding:8px 14px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;}
+.evo-rodape{display:flex;justify-content:flex-end;margin-top:10px;}
+.evo-rodape button{background:none;border:none;padding:0;font:inherit;font-size:11.5px;color:var(--cinza-texto);text-decoration:underline;cursor:pointer;}
 .um-colunas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
 @media (max-width:820px){ .um-colunas{grid-template-columns:1fr;} }
 .um-col h3{font-size:14px;margin:0 0 4px;}
@@ -158,23 +224,26 @@ export const GESTOR_CS_HTML = `
 
   <section class="hero" id="heroCS"><div class="vazio" style="background:rgba(255,255,255,0.08);color:#E9E9E9;">Carregando…</div></section>
 
+  <section class="block">
+    <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
+    <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
+  </section>
+
   <section class="block" id="secEvolucao">
-    <h2>Evolução <span class="sub">Pontuação mensal do CS comparada à mediana do time.</span></h2>
+    <h2>Evolução <span class="sub">Pontuação mensal do CS, mediana do time e meta de 100 pontos.</span></h2>
     <div class="card">
-      <div class="um-topo" id="evoJanelas">
-        <button class="btn sec" type="button" data-evo-janela="3">3 meses</button>
-        <button class="btn sec" type="button" data-evo-janela="6">6 meses</button>
-        <button class="btn sec" type="button" data-evo-janela="12">12 meses</button>
+      <div class="evo-cab">
+        <div class="evo-kpis" id="evoResumo"></div>
+        <div class="seg" id="evoJanelas">
+          <button type="button" data-evo-janela="3">3 meses</button>
+          <button type="button" data-evo-janela="6">6 meses</button>
+          <button type="button" data-evo-janela="12">12 meses</button>
+        </div>
       </div>
       <div id="evoGrafico"><div class="vazio">Carregando…</div></div>
       <div id="evoLeitura"></div>
       <div id="evoRecalcular"></div>
     </div>
-  </section>
-
-  <section class="block">
-    <h2>Radar dos indicadores <span class="sub">Cada eixo vai de 0 a 150, e 100 significa meta batida. Eixo sem meta aparece com marcador vazio.</span></h2>
-    <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
   </section>
 
   <section class="block" id="secUmAUm">
@@ -292,54 +361,141 @@ function renderHeroCS(d) {
     + '<div class="comp-nota">Pontos são o peso vezes o aproveitamento na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos, e quem supera a meta passa de 100. A pontuação só existe com pelo menos ' + c.minimoIndicadores + ' indicadores com meta.</div></details>';
 }
 
-// ---------- radar ----------
-function tendenciaCelula_(chave) {
-  if (!EVO) return '<span class="tend-txt">Carregando…</span>';
-  if (chave === 'cumprimentoGtd') return '<span class="tend-txt">sem histórico</span>';
-  var valores = EVO.meses.map(function (m) {
+// ---------- indicadores do mês (09/10/2026) ----------
+// Radar sempre visível e um cartão por indicador, ordenado do mais longe da meta para o mais perto.
+// Estado: na meta (100 ou mais), abaixo (60 a 99), longe (menos de 60), sem meta. Os números vêm prontos
+// do servidor (pct na escala de 0 a 150); aqui só se desenha.
+var IND_LIMIAR_LONGE_ = 60;
+var IND_ROTULO_ESTADO_ = { ok: 'Na meta', atencao: 'Abaixo', critico: 'Longe', neutro: 'Sem meta' };
+var IND_COR_ESTADO_ = { ok: '#3D8B5F', atencao: '#C89A2E', critico: '#C0433D', neutro: '#9F9F9F' };
+var MESES_CURTOS_ = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+function indEstado_(e) {
+  if (e.semMeta || e.pct === null || e.pct === undefined) return 'neutro';
+  if (e.pct >= 100) return 'ok';
+  if (e.pct >= IND_LIMIAR_LONGE_) return 'atencao';
+  return 'critico';
+}
+function indValorFmt_(v, e) {
+  if (v === null || v === undefined) return 'sem dado';
+  return Number(v).toLocaleString('pt-BR') + (e.unidade === '%' ? '%' : '');
+}
+// Série do indicador nos meses da evolução: [{ pct, aberto, rotulo }]
+function indSerie_(chave) {
+  if (!EVO || !EVO.meses) return [];
+  return EVO.meses.map(function (m) {
     var r = m.cs && m.cs.radar ? m.cs.radar.filter(function (x) { return x.chave === chave; })[0] : null;
-    return r ? r : null;
+    return { pct: r && r.pct !== null && r.pct !== undefined ? r.pct : null, valor: r ? r.valor : null, aberto: !!m.aberto, mes: m.mes };
   });
-  if (chave === 'numConselhos') {
-    var conselhos = valores.map(function (r) { return r && r.valor !== null ? r.valor : null; });
-    return '<span class="tend-txt">' + conselhos.map(function (v) { return v === null ? 'sem dado' : v; }).join(' · ') + '</span>';
-  }
-  var pcts = valores.map(function (r) { return r && r.pct !== null && r.pct !== undefined ? r.pct : null; });
-  var pts = [];
-  var w = 64, h = 18;
-  pcts.forEach(function (p, i) {
-    if (p === null) return;
-    var x = pcts.length > 1 ? (i * w / (pcts.length - 1)) : w / 2;
-    var y = h - Math.min(p, 150) / 150 * h;
-    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+}
+function indMesAberto_() {
+  return !!(EVO && EVO.meses && EVO.meses.length && EVO.meses[EVO.meses.length - 1].aberto);
+}
+function indSparkline_(serie) {
+  var pts = serie.filter(function (p) { return p.pct !== null; });
+  if (pts.length < 2) return '';
+  var w = 70, h = 18, n = serie.length, d = '', marcas = '';
+  serie.forEach(function (p, i) {
+    if (p.pct === null) return;
+    var x = n > 1 ? 2 + i * (w - 4) / (n - 1) : w / 2;
+    var y = h - 2 - Math.min(p.pct, 150) / 150 * (h - 4);
+    d += (d ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
+    if (i === n - 1) marcas = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="' + (p.aberto ? '#fff' : '#1A1A1A') + '" stroke="#1A1A1A" stroke-width="1.2"/>';
   });
-  var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><polyline fill="none" stroke="var(--preto-tinta)" stroke-width="1.5" points="' + pts.join(' ') + '"/></svg>';
-  var comDado = pcts.filter(function (p) { return p !== null; });
-  var variacao = '';
-  if (comDado.length >= 2) {
-    var diff = comDado[comDado.length - 1] - comDado[comDado.length - 2];
-    var txt = (diff >= 0 ? '+' : '−') + Math.abs(diff) + ' p.p.';
-    variacao = '<span class="' + (diff <= -QUEDA_APROVEITAMENTO_ALERTA_PP_ ? 'tend-queda' : 'tend-txt') + '">' + txt + '</span>';
-  } else {
-    variacao = '<span class="tend-txt">sem comparação</span>';
-  }
-  return svg + variacao;
+  var yMeta = (h - 2 - 100 / 150 * (h - 4)).toFixed(1);
+  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true">'
+    + '<line x1="0" x2="' + w + '" y1="' + yMeta + '" y2="' + yMeta + '" stroke="#C89A2E" stroke-width="1" stroke-dasharray="2 2"/>'
+    + '<path d="' + d + '" fill="none" stroke="#1A1A1A" stroke-width="1.4"/>' + marcas + '</svg>';
+}
+// Referência do cartão: o mês anterior com dado. Se o mês atual está aberto, mostra só o valor de
+// referência (comparar parcial com mês inteiro engana); se está fechado, mostra a variação.
+function indReferencia_(serie) {
+  if (serie.length < 2) return '';
+  var atual = serie[serie.length - 1];
+  var ant = null;
+  for (var i = serie.length - 2; i >= 0; i--) { if (serie[i].pct !== null) { ant = serie[i]; break; } }
+  if (!ant) return '';
+  var rot = MESES_CURTOS_[(ant.mes || 1) - 1] + ': ' + ant.pct + '%';
+  if (atual.aberto || atual.pct === null) return '<span>' + rot + '</span>';
+  var diff = atual.pct - ant.pct;
+  if (diff === 0) return '<span>igual a ' + rot + '</span>';
+  return '<span class="' + (diff > 0 ? 'sobe' : 'cai') + '">' + (diff > 0 ? '+' : '−') + Math.abs(diff) + ' p.p.</span>';
+}
+
+// Radar do CS: anel da meta destacado, vértices pintados pelo estado e rótulo com o percentual.
+function indRadarSvg_(eixos) {
+  var W = 420, H = 330, cx = 210, cy = 160, rMax = 104, total = eixos.length;
+  function pol(r, i) { var a = (Math.PI * 2 * i / total) - Math.PI / 2; return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Radar dos indicadores do CS">';
+  svg += '<defs><radialGradient id="indRadarFill" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="#C89A2E" stop-opacity="0.15"/><stop offset="100%" stop-color="#C89A2E" stop-opacity="0.45"/></radialGradient></defs>';
+  [50, 150].forEach(function (v) {
+    var pts = ''; for (var i = 0; i < total; i++) { var p = pol(rMax * v / 150, i); pts += p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' '; }
+    svg += '<polygon points="' + pts + '" fill="none" stroke="#E2DFDF" stroke-width="1" stroke-dasharray="3 3"/>';
+  });
+  var ptsMeta = ''; for (var k = 0; k < total; k++) { var pm = pol(rMax * 100 / 150, k); ptsMeta += pm.x.toFixed(1) + ',' + pm.y.toFixed(1) + ' '; }
+  svg += '<polygon points="' + ptsMeta + '" fill="#F7F3E8" stroke="#C89A2E" stroke-width="1.6"/>';
+  for (var j = 0; j < total; j++) { var pe = pol(rMax, j); svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pe.x.toFixed(1) + '" y2="' + pe.y.toFixed(1) + '" stroke="#E2DFDF" stroke-width="1"/>'; }
+  var poli = '', marcas = '', rotulos = '';
+  eixos.forEach(function (e, i) {
+    var est = indEstado_(e), cor = IND_COR_ESTADO_[est];
+    var lp = pol(rMax + 22, i);
+    var anchor = 'middle'; if (lp.x > cx + 6) anchor = 'start'; else if (lp.x < cx - 6) anchor = 'end';
+    rotulos += '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y - 5).toFixed(1) + '" font-size="11" font-weight="700" fill="#1A1A1A" text-anchor="' + anchor + '">' + esc(e.label) + '</text>'
+      + '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y + 9).toFixed(1) + '" font-size="10.5" font-weight="700" fill="' + cor + '" text-anchor="' + anchor + '">' + (est === 'neutro' ? 'sem meta' : e.pct + '%') + '</text>';
+    if (est === 'neutro') {
+      var pn = pol(rMax * 100 / 150, i);
+      marcas += '<circle cx="' + pn.x.toFixed(1) + '" cy="' + pn.y.toFixed(1) + '" r="4" fill="#fff" stroke="#9F9F9F" stroke-width="1.3" stroke-dasharray="2 1.5"/>';
+      return;
+    }
+    var p = pol(rMax * Math.max(0, Math.min(150, e.pct)) / 150, i);
+    poli += p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ';
+    marcas += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="5" fill="' + cor + '" stroke="#fff" stroke-width="1.5"><title>' + esc(e.label) + ': ' + e.pct + '% da meta</title></circle>';
+  });
+  if (poli) svg += '<polygon points="' + poli + '" fill="url(#indRadarFill)" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/>';
+  svg += '<text x="' + (cx + 4) + '" y="' + (cy - rMax * 100 / 150 - 4).toFixed(1) + '" font-size="9.5" font-weight="700" fill="#8A6D1C">meta</text>';
+  return svg + marcas + rotulos + '</svg>';
+}
+
+function indCardHtml_(e) {
+  var est = indEstado_(e);
+  var serie = indSerie_(e.chave);
+  var meta = e.semMeta ? 'sem meta cadastrada' : (e.tipoMeta === 'max' ? 'limite ' : 'de ') + indValorFmt_(e.meta, e);
+  var largura = est === 'neutro' ? 0 : Math.max(2, Math.min(150, e.pct) / 150 * 100);
+  var barra = est === 'neutro' ? '' : '<div class="ind-barra" title="' + e.pct + '% da meta"><i style="width:' + largura.toFixed(1) + '%"></i><em style="left:' + (100 / 150 * 100).toFixed(1) + '%"></em></div>';
+  var rodape = e.chave === 'cumprimentoGtd' ? '<span>sem histórico mensal</span>' : (indSparkline_(serie) + indReferencia_(serie));
+  return '<div class="ind-card ' + est + '">'
+    + '<div class="ind-card-topo"><span class="ind-nome">' + esc(e.label) + '</span><span class="ind-pill ' + est + '">' + (est === 'neutro' ? 'Sem meta' : e.pct + '%') + '</span></div>'
+    + '<div class="ind-valor"><b>' + indValorFmt_(e.valor, e) + '</b><span>' + esc(meta) + '</span></div>'
+    + barra
+    + '<div class="ind-rodape">' + rodape + '</div></div>';
 }
 
 function renderRadarCS(d) {
   var el = document.getElementById('secRadar');
   if (d.radar.erro) { el.innerHTML = erroSecao(d.radar.erro); return; }
   var eixos = d.radar.dado;
-  var svg = radarSVG(eixos.map(function (e) { return e.label; }), eixos.map(function (e) { return e.pct; }), 'gradCS', 380);
-  var linhas = eixos.map(function (e) {
-    var un = e.unidade === '%' ? '%' : '';
-    return '<tr><td>' + esc(e.label) + '</td><td class="num">' + numFmt(e.valor) + un + '</td><td class="num">' + (e.semMeta ? '<span class="tag-sem-meta">sem meta</span>' : numFmt(e.meta) + un) + '</td>'
-      + '<td>' + tendenciaCelula_(e.chave) + '</td>'
-      + '<td class="num">' + (e.semMeta ? 'sem meta' : e.pct + '%') + '</td></tr>';
-  }).join('');
-  el.innerHTML = '<div class="radar-bloco">'
-    + '<details class="um-det"><summary>Ver radar</summary><div class="radar-svg-wrap">' + svg + '</div></details>'
-    + '<table class="leg"><thead><tr><th>Indicador</th><th class="num">Valor</th><th class="num">Meta</th><th>Tendência</th><th class="num">Aproveitamento</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+  var peso = { critico: 0, atencao: 1, ok: 2, neutro: 3 };
+  var ordenados = eixos.slice().sort(function (a, b) {
+    var ea = indEstado_(a), eb = indEstado_(b);
+    if (peso[ea] !== peso[eb]) return peso[ea] - peso[eb];
+    return (a.pct || 0) - (b.pct || 0);
+  });
+  var comMeta = eixos.filter(function (e) { return indEstado_(e) !== 'neutro'; });
+  var batidas = comMeta.filter(function (e) { return indEstado_(e) === 'ok'; });
+  var longe = ordenados.filter(function (e) { return indEstado_(e) === 'critico'; });
+  var frase;
+  if (!comMeta.length) frase = 'Nenhum indicador tem meta cadastrada neste mês.';
+  else if (!longe.length && batidas.length === comMeta.length) frase = 'Todos os indicadores com meta estão batidos.';
+  else if (longe.length) frase = 'Mais longe da meta: ' + longe.slice(0, 3).map(function (e) {
+    return '<span class="longe">' + esc(e.label) + '</span> (' + indValorFmt_(e.valor, e) + ' de ' + indValorFmt_(e.meta, e) + ')';
+  }).join(', ') + '. É por aí que a pontuação mais sobe.';
+  else frase = 'Nenhum indicador está longe da meta; ' + (comMeta.length - batidas.length) + ' ainda abaixo.';
+  var aviso = indMesAberto_() ? '<div class="ind-aviso">Mês em andamento: os números ainda sobem até o fechamento, e a referência ao lado de cada cartão é o mês anterior.</div>' : '';
+  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>na meta</span><span><i style="background:#C89A2E"></i>abaixo</span><span><i style="background:#C0433D"></i>longe</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta</span></div>';
+  el.innerHTML = '<div class="ind-resumo"><div class="ind-placar"><b>' + batidas.length + '</b><span>de ' + comMeta.length + ' na meta</span></div>'
+    + '<div class="ind-resumo-txt">' + frase + aviso + '</div></div>'
+    + '<div class="ind-grid"><div class="ind-radar">' + indRadarSvg_(eixos) + legenda + '</div>'
+    + '<div class="ind-cards">' + ordenados.map(indCardHtml_).join('') + '</div></div>';
 }
 
 // ---------- GTD ----------
@@ -748,79 +904,135 @@ function carregarEvolucao() {
   });
 }
 
+function evoMesCurto_(m) { return MESES_CURTOS_[(m.mes || 1) - 1]; }
+
+// Resumo no topo: último mês fechado contra o fechado anterior, e o mês aberto à parte (parcial).
+function evoResumoHtml_(meses) {
+  var fechados = meses.filter(function (m) { return !m.aberto && !m.pendente && m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined; });
+  var aberto = meses.length && meses[meses.length - 1].aberto ? meses[meses.length - 1] : null;
+  var html = '';
+  if (fechados.length) {
+    var u = fechados[fechados.length - 1], a = fechados.length > 1 ? fechados[fechados.length - 2] : null;
+    var dPts = a ? u.cs.pontuacao - a.cs.pontuacao : null;
+    var dPos = a && u.cs.posicao !== null && a.cs.posicao !== null ? a.cs.posicao - u.cs.posicao : null;
+    html += '<div class="evo-kpi"><div class="evo-kpi-rot">Pontuação em ' + esc(evoMesCurto_(u)) + '</div><div class="evo-kpi-val">' + u.cs.pontuacao + '</div>'
+      + '<div class="evo-kpi-var' + (dPts === null || dPts === 0 ? '' : (dPts > 0 ? ' sobe' : ' cai')) + '">' + (dPts === null ? 'primeiro mês fechado' : (dPts === 0 ? 'igual a ' + esc(evoMesCurto_(a)) : (dPts > 0 ? '▲ ' : '▼ ') + Math.abs(dPts) + ' desde ' + esc(evoMesCurto_(a)))) + '</div></div>';
+    if (u.cs.posicao !== null && u.cs.posicao !== undefined) {
+      html += '<div class="evo-kpi"><div class="evo-kpi-rot">Posição em ' + esc(evoMesCurto_(u)) + '</div><div class="evo-kpi-val">' + u.cs.posicao + 'º</div>'
+        + '<div class="evo-kpi-var' + (dPos === null || dPos === 0 ? '' : (dPos > 0 ? ' sobe' : ' cai')) + '">' + (dPos === null ? 'de ' + (u.cs.totalRankeados || '') : (dPos === 0 ? 'mesma posição' : (dPos > 0 ? '▲ subiu ' : '▼ caiu ') + Math.abs(dPos) + (Math.abs(dPos) === 1 ? ' posição' : ' posições'))) + '</div></div>';
+    }
+  }
+  if (aberto && aberto.cs && aberto.cs.pontuacao !== null && aberto.cs.pontuacao !== undefined) {
+    html += '<div class="evo-kpi parcial"><div class="evo-kpi-rot">' + esc(evoMesCurto_(aberto)) + ' até agora</div><div class="evo-kpi-val">' + aberto.cs.pontuacao + '</div>'
+      + '<div class="evo-kpi-var">parcial' + (aberto.cs.posicao ? ', ' + aberto.cs.posicao + 'º no momento' : '') + '</div></div>';
+  }
+  return html;
+}
+
 function evoSvgHtml_(meses) {
-  var W = 640, H = 220, pL = 44, pR = 16, pT = 24, pB = 34;
+  // Em tela estreita o viewBox encolhe, para o texto do gráfico não ficar minúsculo.
+  var estreito = window.innerWidth < 600;
+  var W = estreito ? 400 : 680, H = estreito ? 280 : 260, pL = 34, pR = 70, pT = 34, pB = 34;
   var valores = [0];
   meses.forEach(function (m) {
     if (m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined) valores.push(m.cs.pontuacao);
     if (m.medianaTime !== null && m.medianaTime !== undefined) valores.push(m.medianaTime);
   });
-  var topo = Math.max(120, Math.ceil(Math.max.apply(null, valores) / 10) * 10);
+  var topo = Math.max(120, Math.ceil(Math.max.apply(null, valores) * 1.1 / 20) * 20);
   var n = meses.length;
   function X(i) { return n === 1 ? pL + (W - pL - pR) / 2 : pL + i * (W - pL - pR) / (n - 1); }
   function Y(v) { return pT + (H - pT - pB) * (1 - v / topo); }
-  var grade = '';
+  var g = '<defs><linearGradient id="evoArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#C89A2E" stop-opacity="0.35"/><stop offset="100%" stop-color="#C89A2E" stop-opacity="0"/></linearGradient></defs>';
   [0, topo / 2, topo].forEach(function (v) {
-    grade += '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--cinza-superficie)"/>'
+    g += '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#EFEDED"/>'
       + '<text class="evo-eixo" x="' + (pL - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
   });
-  var yRef = Y(100);
-  var ref = '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + yRef.toFixed(1) + '" y2="' + yRef.toFixed(1) + '" stroke="var(--dourado)" stroke-dasharray="4 4"/>'
-    + '<text class="evo-eixo" x="' + (W - pR) + '" y="' + (yRef - 4).toFixed(1) + '" text-anchor="end">meta</text>';
-  function caminho(pegar) {
-    var d = '', abriu = false;
-    meses.forEach(function (m, i) {
-      var v = pegar(m);
-      if (v === null || v === undefined) { abriu = false; return; }
-      d += (abriu ? ' L ' : ' M ') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1);
-      abriu = true;
-    });
-    return d;
-  }
-  var linhaCS = caminho(function (m) { return m.cs ? m.cs.pontuacao : null; });
-  var linhaMed = caminho(function (m) { return m.medianaTime; });
-  var pontos = '', rotulos = '';
+  var yMeta = Y(100);
+  g += '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + yMeta.toFixed(1) + '" y2="' + yMeta.toFixed(1) + '" stroke="#C89A2E" stroke-width="1.5" stroke-dasharray="5 4"/>'
+    + '<text x="' + (W - pR + 6) + '" y="' + (yMeta + 4).toFixed(1) + '" font-size="11" font-weight="700" fill="#8A6D1C">meta 100</text>';
+  // pontos do CS separados entre fechados (linha cheia + área) e o aberto (pontilhado)
+  var pts = [];
   meses.forEach(function (m, i) {
-    var x = X(i);
-    rotulos += '<text class="evo-eixo" x="' + x.toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(m.rotulo.split(' ')[0].slice(0, 3)) + (m.aberto ? ' parcial' : '') + '</text>';
     var v = m.cs ? m.cs.pontuacao : null;
     if (v === null || v === undefined) return;
-    var y = Y(v);
-    var pos = (m.cs.posicao !== null && m.cs.posicao !== undefined) ? m.cs.posicao + 'º' : '';
-    pontos += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" fill="' + (m.aberto ? 'var(--branco)' : 'var(--preto-tinta)') + '" stroke="var(--preto-tinta)" stroke-width="1.5"><title>' + esc(m.rotulo) + ': ' + v + (pos ? ', ' + pos : '') + '</title></circle>';
-    if (pos) pontos += '<text class="evo-eixo" x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" text-anchor="middle">' + pos + '</text>';
+    pts.push({ i: i, x: X(i), y: Y(v), v: v, aberto: !!m.aberto, pos: m.cs.posicao, rotulo: m.rotulo });
   });
-  return '<svg class="evo-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pontuação mensal do CS e mediana do time">' + grade + ref
-    + '<path d="' + linhaMed + '" fill="none" stroke="var(--cinza-apoio)" stroke-width="2" stroke-dasharray="6 5"/>'
-    + '<path d="' + linhaCS + '" fill="none" stroke="var(--preto-tinta)" stroke-width="2.5"/>'
-    + pontos + rotulos + '</svg>'
-    + '<div style="font-size:11.5px;color:var(--cinza-texto);margin-top:6px;">Linha escura: este CS. Tracejada cinza: mediana do time. Ponto vazado: mês ainda aberto.</div>';
+  var fech = pts.filter(function (p) { return !p.aberto; });
+  if (fech.length >= 2) {
+    var area = 'M ' + fech[0].x.toFixed(1) + ' ' + Y(0).toFixed(1);
+    fech.forEach(function (p) { area += ' L ' + p.x.toFixed(1) + ' ' + p.y.toFixed(1); });
+    area += ' L ' + fech[fech.length - 1].x.toFixed(1) + ' ' + Y(0).toFixed(1) + ' Z';
+    g += '<path d="' + area + '" fill="url(#evoArea)"/>';
+  }
+  // mediana
+  var dMed = '', ultimaMed = null;
+  meses.forEach(function (m, i) {
+    if (m.medianaTime === null || m.medianaTime === undefined || m.aberto) return;
+    dMed += (dMed ? ' L ' : 'M ') + X(i).toFixed(1) + ' ' + Y(m.medianaTime).toFixed(1);
+    ultimaMed = { x: X(i), y: Y(m.medianaTime), v: m.medianaTime };
+  });
+  if (dMed) g += '<path d="' + dMed + '" fill="none" stroke="#9F9F9F" stroke-width="2" stroke-dasharray="6 5"/>';
+  if (ultimaMed) {
+    // rótulo da mediana na margem direita, sem encostar no rótulo da meta
+    var yMedTxt = ultimaMed.y + 4;
+    if (Math.abs(ultimaMed.y - yMeta) < 14) yMedTxt = ultimaMed.y < yMeta ? yMeta - 12 : yMeta + 18;
+    g += '<line x1="' + ultimaMed.x.toFixed(1) + '" x2="' + (W - pR).toFixed(1) + '" y1="' + ultimaMed.y.toFixed(1) + '" y2="' + ultimaMed.y.toFixed(1) + '" stroke="#9F9F9F" stroke-width="1" stroke-dasharray="2 4"/>'
+      + '<text x="' + (W - pR + 6) + '" y="' + yMedTxt.toFixed(1) + '" font-size="11" fill="#5D5D5D">mediana ' + Math.round(ultimaMed.v) + '</text>';
+  }
+  // linha do CS
+  var dCS = '';
+  fech.forEach(function (p) { dCS += (dCS ? ' L ' : 'M ') + p.x.toFixed(1) + ' ' + p.y.toFixed(1); });
+  if (dCS) g += '<path d="' + dCS + '" fill="none" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>';
+  var ab = pts.filter(function (p) { return p.aberto; })[0];
+  if (ab && fech.length) {
+    var ult = fech[fech.length - 1];
+    g += '<path d="M ' + ult.x.toFixed(1) + ' ' + ult.y.toFixed(1) + ' L ' + ab.x.toFixed(1) + ' ' + ab.y.toFixed(1) + '" fill="none" stroke="#1A1A1A" stroke-width="2" stroke-dasharray="2 4" stroke-linecap="round"/>';
+  }
+  pts.forEach(function (p) {
+    var acima = p.v >= 100;
+    var cor = p.aberto ? '#FFFFFF' : (acima ? '#3D8B5F' : '#C0433D');
+    g += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="6" fill="' + cor + '" stroke="' + (p.aberto ? '#1A1A1A' : '#FFFFFF') + '" stroke-width="2"><title>' + esc(p.rotulo) + ': ' + p.v + ' pontos' + (p.pos ? ', ' + p.pos + 'º' : '') + (p.aberto ? ' (parcial)' : '') + '</title></circle>';
+    var yTxt = p.y - 14 < pT - 18 ? p.y + 22 : p.y - 14;
+    g += '<text class="evo-valor" x="' + p.x.toFixed(1) + '" y="' + yTxt.toFixed(1) + '" text-anchor="middle">' + p.v + (p.pos ? '<tspan class="evo-pos" dx="5">' + p.pos + 'º</tspan>' : '') + '</text>';
+  });
+  meses.forEach(function (m, i) {
+    g += '<text class="evo-eixo" x="' + X(i).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle"' + (m.aberto ? ' font-style="italic"' : '') + '>' + esc(evoMesCurto_(m)) + (m.aberto ? ' (parcial)' : '') + '</text>';
+  });
+  return '<svg class="evo-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pontuação mensal do CS, mediana do time e meta">' + g + '</svg>'
+    + '<div class="evo-legenda"><span><i></i>este CS</span><span><i class="med"></i>mediana do time</span><span><i class="meta"></i>meta</span><span><i class="parc"></i>mês em andamento</span></div>';
 }
 
 function renderEvolucao() {
   if (!EVO) return;
   var meses = EVO.meses;
+  document.querySelectorAll('[data-evo-janela]').forEach(function (b) {
+    b.classList.toggle('ativo', Number(b.getAttribute('data-evo-janela')) === EVO_JANELA);
+  });
   var temPonto = meses.some(function (m) { return m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined; });
+  document.getElementById('evoResumo').innerHTML = temPonto ? evoResumoHtml_(meses) : '';
   document.getElementById('evoGrafico').innerHTML = temPonto
     ? evoSvgHtml_(meses)
     : '<div class="vazio">Ainda não há meses com pontuação para comparar.</div>';
 
   var pendente = meses.some(function (m) { return m.pendente; });
-  var html = '<div class="evo-leitura">'
-    + (pendente ? '<p>Alguns meses ainda estão sendo fechados. Atualize a página.</p>' : '')
-    + EVO.leitura.map(function (f) { return '<p>' + esc(f) + '</p>'; }).join('');
+  var html = '<div class="evo-leitura">';
   if (EVO.maiorQueda) {
     var q = EVO.maiorQueda;
     EVO_QUEDA_TEXTO = 'Maior queda: ' + q.label + ', de ' + q.de + '% para ' + q.para + '% da meta.';
-    html += '<p>' + esc(EVO_QUEDA_TEXTO) + '</p>'
-      + '<div class="evo-acao"><button type="button" data-evo-acao="ponto-atencao">Registrar como ponto de atenção</button><span id="evoMsg" style="font-size:12px;color:var(--cinza-texto);"></span></div>';
+    html += '<div class="evo-alerta"><div class="evo-alerta-txt">Maior queda entre os meses fechados: <b>' + esc(q.label) + '</b>, de ' + q.de + '% para ' + q.para + '% da meta. Vale levar para a próxima 1:1.</div>'
+      + '<div class="evo-acao"><button type="button" class="principal" data-evo-acao="ponto-atencao">Registrar como ponto de atenção</button><span id="evoMsg" style="font-size:12px;color:var(--cinza-texto);"></span></div></div>';
   }
+  if (pendente) html += '<p>Alguns meses ainda estão sendo fechados. Atualize a página em instantes.</p>';
+  // Os cartões do topo já comparam os dois últimos meses fechados e mostram o mês aberto; a leitura só
+  // entra quando a janela tem mais meses fechados do que isso (visão de prazo maior).
+  var nFechados = meses.filter(function (m) { return !m.aberto && m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined; }).length;
+  if (nFechados > 2) html += EVO.leitura.filter(function (f) { return f.indexOf('em andamento') === -1; }).map(function (f) { return '<p>No período: ' + esc(f.charAt(0).toLowerCase() + f.slice(1)) + '</p>'; }).join('');
   document.getElementById('evoLeitura').innerHTML = html + '</div>';
 
   var fechados = meses.filter(function (m) { return !m.aberto && !m.pendente; });
   var ultimo = fechados.length ? fechados[fechados.length - 1] : null;
   document.getElementById('evoRecalcular').innerHTML = ultimo
-    ? '<div class="evo-acao"><button type="button" data-evo-acao="recalcular" data-ano="' + ultimo.ano + '" data-mes="' + ultimo.mes + '">Recalcular ' + esc(ultimo.rotulo) + '</button></div>'
+    ? '<div class="evo-rodape"><button type="button" data-evo-acao="recalcular" data-ano="' + ultimo.ano + '" data-mes="' + ultimo.mes + '" title="Apaga a fotografia gravada deste mês e recalcula com os dados de agora">Recalcular a fotografia de ' + esc(ultimo.rotulo) + '</button></div>'
     : '';
 }
 

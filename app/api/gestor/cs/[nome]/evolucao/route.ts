@@ -62,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
     return NextResponse.json({
       meses,
       leitura: leituraEvolucao(serie),
-      maiorQueda: maiorQuedaIndicador(eixos),
+      maiorQueda: maiorQuedaIndicador(eixos, undefined, meses.map((m) => m.aberto)),
       hoje,
     });
   } catch (e: any) {
