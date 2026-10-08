@@ -71,7 +71,10 @@ assert.equal(casaBusca('JOSÉ', 'jose silva'), true, 'com acento acha sem acento
 assert.equal(casaBusca('conceicao', 'Maria da Conceição'), true);
 assert.equal(casaBusca('Conceição', 'MARIA DA CONCEICAO'), true);
 // a mesma função roda no navegador a partir do próprio código-fonte
-const casaBuscaNoNavegador = new Function('return ' + casaBusca.toString())();
+// O tsx (esbuild) injeta chamadas a um auxiliar __name no código transformado; recriada fora do módulo,
+// a função não o encontraria. O parâmetro abaixo supre o auxiliar e não muda nada no node puro nem no
+// navegador, onde o código não passa por essa transformação.
+const casaBuscaNoNavegador = new Function('__name', 'return ' + casaBusca.toString())((f: unknown) => f);
 assert.equal(casaBuscaNoNavegador('cos mar', 'Mariana Costa'), true);
 
 // status do report e semana

@@ -141,12 +141,38 @@ export type RespostaNps = {
   avalia_cs_texto: string | null;
 };
 
+// escala é a do formulário. Para comparar as quatro na mesma régua, a tela usa nota10: notas de 1 a 5
+// são multiplicadas por 2 (5 vira 10, 3 vira 6). Faixas: baixa (o mesmo corte de nota baixa), média e alta.
 const DIMENSOES = [
-  { chave: 'conselheiro', rotulo: 'Conselheiro (0 a 10)', campo: 'nota_conselheiro' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
-  { chave: 'cs_hoje', rotulo: 'CS hoje (0 a 10)', campo: 'nota_cs_hoje' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
-  { chave: 'trocas', rotulo: 'Qualidade das trocas (1 a 5)', campo: 'nota_qualidade_trocas' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
-  { chave: 'evolucao', rotulo: 'Evolução no desafio (1 a 5)', campo: 'nota_evolucao_desafios' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
+  { chave: 'conselheiro', rotulo: 'Conselheiro (0 a 10)', curto: 'Conselheiro', escala: 10, campo: 'nota_conselheiro' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
+  { chave: 'cs_hoje', rotulo: 'CS hoje (0 a 10)', curto: 'CS', escala: 10, campo: 'nota_cs_hoje' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
+  { chave: 'trocas', rotulo: 'Qualidade das trocas (1 a 5)', curto: 'Trocas', escala: 5, campo: 'nota_qualidade_trocas' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
+  { chave: 'evolucao', rotulo: 'Evolução no desafio (1 a 5)', curto: 'Evolução', escala: 5, campo: 'nota_evolucao_desafios' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
 ];
+type Dimensao = (typeof DIMENSOES)[number];
+export const DIMENSOES_NOTA = DIMENSOES.map((d) => ({ chave: d.chave, rotulo: d.rotulo, curto: d.curto, escala: d.escala }));
+
+function nota10(d: Dimensao, n: number): number {
+  return d.escala === 5 ? n * 2 : n;
+}
+function faixaDe(d: Dimensao, n: number): 'baixa' | 'media' | 'alta' {
+  if (d.baixa(n)) return 'baixa';
+  return d.escala === 5 ? (n >= 5 ? 'alta' : 'media') : (n >= 9 ? 'alta' : 'media');
+}
+// Notas válidas de uma dimensão, sem primeiro conselho na evolução
+function notasValidas(linhas: RespostaNps[], d: Dimensao): number[] {
+  const out: number[] = [];
+  for (const r of linhas) {
+    if (d.chave === 'evolucao' && ehPrimeiroConselho(r)) continue;
+    const n = r[d.campo];
+    if (n !== null && n !== undefined) out.push(Number(n));
+  }
+  return out;
+}
+function media10(d: Dimensao, notas: number[]): number | null {
+  if (notas.length < AMOSTRA_MINIMA) return null;
+  return Math.round((notas.reduce((s, n) => s + nota10(d, n), 0) / notas.length) * 10) / 10;
+}
 
 // "Este é o meu primeiro conselho" não conta como travamento nem como nota baixa de evolução
 export function ehPrimeiroConselho(r: RespostaNps): boolean {
@@ -176,7 +202,12 @@ function temNota(r: RespostaNps): boolean {
   return DIMENSOES.some((d) => r[d.campo] !== null && r[d.campo] !== undefined);
 }
 
-export type LinhaDimensao = { chave: string; rotulo: string; respostas: number; baixas: number; percentual: number | null; percentualAnterior: number | null; variacao: number | null };
+export type LinhaDimensao = {
+  chave: string; rotulo: string; curto: string; escala: number;
+  respostas: number; baixas: number; percentual: number | null; percentualAnterior: number | null; variacao: number | null;
+  media: number | null; mediaAnterior: number | null; variacaoMedia: number | null;
+  faixas: { baixa: number; media: number; alta: number };
+};
 
 // Por dimensão, na janela e na anterior. Percentual só com AMOSTRA_MINIMA respostas válidas.
 export function resumoNotas(atual: RespostaNps[], anterior: RespostaNps[]): LinhaDimensao[] {
@@ -194,14 +225,25 @@ export function resumoNotas(atual: RespostaNps[], anterior: RespostaNps[]): Linh
     const y = medir(anterior, d);
     const pct = x.respostas >= AMOSTRA_MINIMA ? Math.round((x.baixas / x.respostas) * 1000) / 10 : null;
     const pctAnt = y.respostas >= AMOSTRA_MINIMA ? Math.round((y.baixas / y.respostas) * 1000) / 10 : null;
+    const notasAtual = notasValidas(atual, d);
+    const media = media10(d, notasAtual);
+    const mediaAnterior = media10(d, notasValidas(anterior, d));
+    const faixas = { baixa: 0, media: 0, alta: 0 };
+    notasAtual.forEach((n) => { faixas[faixaDe(d, n)]++; });
     return {
       chave: d.chave,
       rotulo: d.rotulo,
+      curto: d.curto,
+      escala: d.escala,
       respostas: x.respostas,
       baixas: x.baixas,
       percentual: pct,
       percentualAnterior: pctAnt,
       variacao: pct !== null && pctAnt !== null ? Math.round((pct - pctAnt) * 10) / 10 : null,
+      media,
+      mediaAnterior,
+      variacaoMedia: media !== null && mediaAnterior !== null ? Math.round((media - mediaAnterior) * 10) / 10 : null,
+      faixas,
     };
   });
 }
@@ -216,6 +258,8 @@ export type LinhaConselhoNotas = {
   dimensaoMaisPesa: string;
   temaSugestoes: string | null;
   fraseConversa: string | null;
+  medias: Record<string, number | null>;
+  mediaGeral: number | null;
 };
 
 // Conselhos com mais notas baixas (só os que têm AMOSTRA_MINIMA respostas), por percentual desc.
@@ -239,6 +283,9 @@ export function conselhosComNotasBaixas(linhas: RespostaNps[]): LinhaConselhoNot
     const textoBaixas = comBaixa.map((r) => r.sugestao_texto).filter((t): t is string => !!t && !ehNaoResposta(t));
     const temas = classificarTemasDe(textoBaixas);
     const base = rs[0];
+    const medias: Record<string, number | null> = {};
+    DIMENSOES.forEach((d) => { medias[d.chave] = media10(d, notasValidas(rs, d)); });
+    const valoresMedias = Object.values(medias).filter((v): v is number => v !== null);
     out.push({
       groupId,
       conselho: base.nome_grupo || groupId,
@@ -249,6 +296,8 @@ export function conselhosComNotasBaixas(linhas: RespostaNps[]): LinhaConselhoNot
       dimensaoMaisPesa: rotuloDim,
       temaSugestoes: temas,
       fraseConversa: percentual >= 30 && base.cs ? `Conversar com ${base.cs} sobre ${base.nome_grupo || groupId}` : null,
+      medias,
+      mediaGeral: valoresMedias.length ? Math.round((valoresMedias.reduce((a, b) => a + b, 0) / valoresMedias.length) * 10) / 10 : null,
     });
   }
   return out.sort((x, y) => y.percentual - x.percentual || x.conselho.localeCompare(y.conselho, 'pt-BR'));
@@ -326,16 +375,32 @@ export function tabelaDesafio(linhas: RespostaNps[], extras: ExtrasConselho): Li
       ganhosPercentual: ex?.ganhosPercentual ?? null,
       qualidadeMedia: notas.length ? Math.round((notas.reduce((s, n) => s + n, 0) / notas.length) * 10) / 10 : null,
       temaTravados: classificarTemasDe(travados.map((r) => r.sugestao_texto || '').filter((t) => !ehNaoResposta(t))),
-      fraseRevisao: pctTravados >= 40 && rs[0].cs ? `Revisar a condução dos desafios com ${rs[0].cs}` : null,
+      // A ação depende de onde o conselho cai: com presença abaixo de 70 por cento o primeiro passo é
+      // trazer as pessoas de volta; com presença boa, o problema está na condução do desafio.
+      fraseRevisao: pctTravados >= 40 && rs[0].cs
+        ? (ex?.presencaPercentual !== null && ex?.presencaPercentual !== undefined && ex.presencaPercentual < 70
+          ? `Recuperar a presença no conselho com ${rs[0].cs}`
+          : `Revisar a condução dos desafios com ${rs[0].cs}`)
+        : null,
     });
   }
   return out.sort((x, y) => y.percentualTravados - x.percentualTravados || x.conselho.localeCompare(y.conselho, 'pt-BR'));
 }
 
+// Distribuição da resposta de continuidade, sem primeiro conselho e sem nulo (base do percentual de travados)
+export function distribuicaoContinuidade(linhas: RespostaNps[]) {
+  const validas = linhas.filter(temContinuidadeValida);
+  const partes = validas.filter((r) => normalizado(r.continuidade_desafios).startsWith('em partes')).length;
+  const naoVejo = validas.filter((r) => normalizado(r.continuidade_desafios).startsWith('nao vejo')).length;
+  const base = validas.length;
+  const pct = (n: number) => (base >= AMOSTRA_MINIMA ? Math.round((n / base) * 1000) / 10 : null);
+  return { base, sim: base - partes - naoVejo, partes, naoVejo, pctTravados: pct(partes + naoVejo) };
+}
+
 // Frases por regra, só quando cada lado tem pelo menos dois conselhos com dado. Abaixo disso não sai frase.
 export function frasesDesafio(tabela: LinhaDesafio[]): string[] {
   const out: string[] = [];
-  const media = (xs: number[]) => Math.round((xs.reduce((s, n) => s + n, 0) / xs.length) * 10) / 10;
+  const media = (xs: number[]) => String(Math.round((xs.reduce((s, n) => s + n, 0) / xs.length) * 10) / 10).replace('.', ',');
   const comPresenca = tabela.filter((l) => l.presencaPercentual !== null);
   const presBaixa = comPresenca.filter((l) => (l.presencaPercentual as number) < 70);
   const presAlta = comPresenca.filter((l) => (l.presencaPercentual as number) >= 70);
