@@ -864,6 +864,7 @@ export const GESTOR_HTML = `
     <section class="block">
       <div class="block-head"><div><h2>Por que estão saindo</h2><p>Quantos membros saíram e por quê, segundo o formulário de saída. Base e Produtos valem para os números e o gráfico.</p></div></div>
       <div class="churn-numeros" id="churnNumeros"><div class="gestor-empty">Carregando…</div></div>
+      <p class="erro-msg" id="churnErro" aria-live="polite"></p>
       <p class="churn-nota" id="churnNotaRecorde"></p>
       <div class="churn-card">
         <div id="churnGrafico"><div class="gestor-empty">Carregando…</div></div>
@@ -2427,12 +2428,15 @@ function carregarChurn() {
   var minha = ++churnReq_;
   document.getElementById('churnErro').textContent = '';
   document.getElementById('churnGrafico').innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  churnDados_ = null;
+  churnTelaErro_ = null;
+  carregarChurnBlocos_();
   return fetchJSON_(ENDPOINT_CHURN + '?' + churnParams_()).then(function (data) {
     if (minha !== churnReq_) return;
     churnDados_ = data;
     churnPopularOpcoes_(data.opcoes);
     renderChurn_(data);
-    carregarChurnBlocos_(data);
+    churnRenderA1Atual_();
     churnSincronizarUrl_();
     // a lista de auditoria aberta acompanha o filtro
     if (!document.getElementById('churnLista').hidden) churnCarregarLista_();
@@ -2443,7 +2447,17 @@ function carregarChurn() {
       churnRetentouCs_ = true; churnEstado_.cs = ''; churnEstado_.categoria = '';
       return carregarChurn();
     }
+    churnDados_ = null;
+    churnTelaErro_ = err;
+    var botaoProdutos = document.getElementById('churnProdutoBtn');
+    if (botaoProdutos && botaoProdutos.textContent === 'Carregando…') botaoProdutos.textContent = 'Indisponível';
     document.getElementById('churnGrafico').innerHTML = '<div class="gestor-erro">Erro ao carregar o churn: ' + churnEsc_(err.message) + '</div>';
+    document.getElementById('churnNumeros').innerHTML = '';
+    document.getElementById('churnNotaRecorde').textContent = '';
+    document.getElementById('churnLegenda').innerHTML = '';
+    document.getElementById('churnComunidade').innerHTML = '';
+    document.getElementById('churnErro').textContent = 'Não foi possível carregar os números do churn: ' + (err.message || 'erro desconhecido') + '.';
+    churnRenderA1Atual_();
   });
 }
 
@@ -2550,45 +2564,105 @@ function churnTabela_(cabecalho, linhas) {
     '</tbody></table></div></div>';
 }
 
-// Carrega os blocos que dependem do mês e dos filtros (voz, visitas e melhorias). A ordem de resposta
-// é checada pelo contador, para que um mês antigo nunca sobrescreva o atual.
-function carregarChurnBlocos_(dadosTela) {
+// Carrega os blocos que dependem do mês e dos filtros (voz, visitas e melhorias). Cada fonte é
+// independente: falha em uma não prende as outras, e não depende da rota de churn ter respondido.
+// Cada render roda protegido, e um erro vira mensagem no próprio bloco em vez de "Carregando…" eterno.
+// A ordem de resposta é checada pelo contador, para que um mês antigo nunca sobrescreva o atual.
+var CHURN_IDS_VOZ_ = ['vozTemas', 'notasDimensoes', 'desafioTabela'];
+var CHURN_IDS_VISITAS_ = ['churnA2', 'churnCruzamento', 'visitasFunil', 'visitasPerfil', 'visitasLista', 'melhoriaFatos'];
+var churnVozErro_ = null;
+var churnVisitasErro_ = null;
+var churnTelaErro_ = null;
+
+function churnErroEm_(ids, err) {
+  var texto = err && err.message ? err.message : String(err || 'erro desconhecido');
+  var msg = '<div class="gestor-erro">Não foi possível carregar este bloco: ' + churnEsc_(texto) + '. Tente atualizar a página.</div>';
+  ids.forEach(function (id) { var el = document.getElementById(id); if (el) el.innerHTML = msg; });
+}
+
+function churnRenderSeguro_(ids, fn) {
+  try { fn(); } catch (err) {
+    console.error('Erro ao montar bloco do churn:', err);
+    churnErroEm_(ids, err);
+  }
+}
+
+function churnRenderA1Atual_() {
+  churnRenderSeguro_(['churnA1'], function () { churnRenderA1_(churnVisitasDados_, churnVozDados_, churnDados_); });
+}
+
+function carregarChurnBlocos_() {
   var minha = ++churnBlocosReq_;
   var ref = churnEstado_.ref;
   var cs = churnEstado_.cs || '';
   var fonte = document.getElementById('vozFonte') ? document.getElementById('vozFonte').value : 'todas';
-  var voz = fetchJSON_(ENDPOINT_VOZ_MEMBRO + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs) + '&fonte=' + fonte);
-  var visitas = fetchJSON_(ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(ref));
-  Promise.all([voz, visitas]).then(function (r) {
+  churnVozDados_ = null;
+  churnVisitasDados_ = null;
+  churnVozErro_ = null;
+  churnVisitasErro_ = null;
+  CHURN_IDS_VOZ_.concat(['churnCruzamento', 'visitasFunil']).forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = '<div class="gestor-empty">Carregando…</div>';
+  });
+  churnRenderA1Atual_();
+
+  fetchJSON_(ENDPOINT_VOZ_MEMBRO + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs) + '&fonte=' + fonte).then(function (v) {
     if (minha !== churnBlocosReq_) return;
-    churnVozDados_ = r[0];
-    churnVisitasDados_ = r[1];
-    churnRenderVoz_(r[0]);
-    churnRenderDesafio_(r[0].b5);
-    churnRenderNotas_(r[0].b4);
-    churnRenderVisitas_(r[1]);
-    churnRenderA1_(r[1], r[0], dadosTela);
-    churnRenderA2_(r[1].a2);
-    churnRenderCruzamento_(r[1].c1.cruzamento);
-    churnRenderFatosMelhoria_(r[1].b3);
+    churnVozDados_ = v;
+    churnRenderSeguro_(['vozTemas'], function () { churnRenderVoz_(v); });
+    churnRenderSeguro_(['notasDimensoes'], function () { churnRenderNotas_(v.b4); });
+    churnRenderSeguro_(['desafioTabela'], function () { churnRenderDesafio_(v.b5); });
+    churnRenderA1Atual_();
   }).catch(function (err) {
     if (minha !== churnBlocosReq_) return;
-    var msg = '<div class="gestor-erro">Não foi possível carregar este bloco: ' + churnEsc_(err.message) + '. Tente atualizar a página.</div>';
-    ['vozTemas', 'notasDimensoes', 'desafioTabela', 'visitasFunil', 'churnA1'].forEach(function (id) { document.getElementById(id).innerHTML = msg; });
+    churnVozErro_ = err;
+    churnErroEm_(CHURN_IDS_VOZ_, err);
+    churnRenderA1Atual_();
   });
+
+  fetchJSON_(ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(ref)).then(function (v) {
+    if (minha !== churnBlocosReq_) return;
+    churnVisitasDados_ = v;
+    churnRenderSeguro_(['visitasFunil', 'visitasPerfil', 'visitasLista'], function () { churnRenderVisitas_(v); });
+    churnRenderSeguro_(['churnA2'], function () { churnRenderA2_(v.a2); });
+    churnRenderSeguro_(['churnCruzamento'], function () { churnRenderCruzamento_(v.c1.cruzamento); });
+    churnRenderSeguro_(['melhoriaFatos'], function () { churnRenderFatosMelhoria_(v.b3); });
+    churnRenderA1Atual_();
+  }).catch(function (err) {
+    if (minha !== churnBlocosReq_) return;
+    churnVisitasErro_ = err;
+    churnErroEm_(CHURN_IDS_VISITAS_, err);
+    churnRenderA1Atual_();
+  });
+
   churnCarregarMelhorias_();
 }
 
+// Cada cartão aceita a fonte nula: enquanto carrega mostra "Carregando…", se a fonte falhou mostra
+// "Sem dado" com o motivo, e nunca derruba os outros cartões.
 function churnRenderA1_(visitas, voz, tela) {
-  var pend = visitas.cartoes.pedidosEmAberto;
-  var c4 = voz.cartao4;
-  var r90 = visitas.cartoes.retencao90;
-  document.getElementById('churnA1').innerHTML =
-    '<div class="churn-numero"><b>' + (tela ? tela.totalMes : '-') + '</b><span class="rot">Churns da carteira no mês</span></div>' +
-    '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos em aberto, MRR ' + churnMoeda_(pend.mrr) + '</span><span class="def">' + pend.semMrr + ' sem MRR informado</span></div>' +
-    '<div class="churn-numero"><b>' + churnPct_(r90.pct) + '</b><span class="rot">Reversão sustentada em 90 dias</span><span class="def">' + r90.base + ' visitas maturadas</span></div>' +
-    '<div class="churn-numero"><b>' + churnPct_(c4.atual.pct) + '</b><span class="rot">Membros travados no desafio</span><span class="def">' +
+  var vazio = function (rotulo, erro) {
+    return '<div class="churn-numero"><b class="texto">Sem dado</b><span class="rot">' + rotulo + '</span><span class="def">' +
+      (erro ? 'Não foi possível carregar: ' + churnEsc_(erro.message || String(erro)) : 'Carregando…') + '</span></div>';
+  };
+  var h = tela ? '<div class="churn-numero"><b>' + tela.totalMes + '</b><span class="rot">Churns da carteira no mês</span></div>'
+    : vazio('Churns da carteira no mês', churnTelaErro_);
+  if (visitas) {
+    var pend = visitas.cartoes.pedidosEmAberto;
+    var r90 = visitas.cartoes.retencao90;
+    h += '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos em aberto, MRR ' + churnMoeda_(pend.mrr) + '</span><span class="def">' + pend.semMrr + ' sem MRR informado</span></div>' +
+      '<div class="churn-numero"><b>' + churnPct_(r90.pct) + '</b><span class="rot">Reversão sustentada em 90 dias</span><span class="def">' + r90.base + ' visitas maturadas</span></div>';
+  } else {
+    h += vazio('Pedidos em aberto', churnVisitasErro_) + vazio('Reversão sustentada em 90 dias', churnVisitasErro_);
+  }
+  if (voz) {
+    var c4 = voz.cartao4;
+    h += '<div class="churn-numero"><b>' + churnPct_(c4.atual.pct) + '</b><span class="rot">Membros travados no desafio</span><span class="def">' +
       (c4.anterior.pct !== null ? 'Mês anterior: ' + churnPct_(c4.anterior.pct) : 'Sem dado do mês anterior') + '</span></div>';
+  } else {
+    h += vazio('Membros travados no desafio', churnVozErro_);
+  }
+  document.getElementById('churnA1').innerHTML = h;
 }
 
 function churnRenderA2_(lista) {
@@ -2908,6 +2982,7 @@ function inicializarChurn() {
     carregarChurn();
   } catch (err) {
     console.error('Erro ao iniciar Churn:', err);
+    churnErroEm_(['churnA1', 'churnNumeros', 'churnGrafico'].concat(CHURN_IDS_VOZ_, CHURN_IDS_VISITAS_, ['melhoriaQuadro']), err);
   }
 }
 
