@@ -606,7 +606,7 @@ export const GESTOR_HTML = `
     <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
     <button class="tab-btn" data-tab="churn">Churn</button>
     <button class="tab-btn" data-tab="pulso">Pulso de CS</button>
-    <button class="tab-btn" data-tab="voz">Voz do liderado</button>
+    <button class="tab-btn" data-tab="voz">Fila da liderança</button>
   </div>
 
   <div class="tab-panel active" id="tab-visaoGeral">
@@ -844,6 +844,23 @@ export const GESTOR_HTML = `
   </div>
 
   <div class="tab-panel" id="tab-voz">
+    <section class="block" style="margin-top:0;" id="filaLideranca">
+      <div class="block-head">
+        <div>
+          <h2>Compromissos da liderança</h2>
+          <p>O que a liderança deve ao time, de todas as 1:1, em quadro de status. Vencidos aparecem primeiro em cada coluna. Estes compromissos são nominais e não se misturam com a voz anônima do time.</p>
+        </div>
+      </div>
+      <div class="pulso-filtros">
+        <label class="churn-campo">CS <select class="pill-select" id="filaCs" data-fila="filtro"></select></label>
+        <label class="churn-campo">Prioridade <select class="pill-select" id="filaPrio" data-fila="filtro"><option value="">Todas</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select></label>
+      </div>
+      <div id="filaMsg" class="gestor-erro" hidden></div>
+      <div id="filaResumo"><div class="gestor-empty">Carregando…</div></div>
+      <div id="filaGranolaBloco"></div>
+      <div id="filaQuadro"></div>
+    </section>
+
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
@@ -1095,7 +1112,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
     if (btn.dataset.tab === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
     if (btn.dataset.tab === 'pulso' && !pulsoCarregado_) { pulsoCarregado_ = true; inicializarPulso_(); }
-    if (btn.dataset.tab === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); }
+    if (btn.dataset.tab === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); inicializarFila_(); }
   });
 });
 
@@ -3290,6 +3307,139 @@ function inicializarPulso_() {
   carregarPulso_();
 }
 
+
+// ============ Fila da liderança (08/10/2026) ============
+// Compromissos nominais da liderança, de todas as 1:1, em quadro de status (os mesmos status da Voz).
+// Vem de /api/gestor/lideranca já ordenado: vencidos primeiro. Também lista as gravações do Granola
+// sem CS identificado, para o gestor vincular ou ignorar. Nada aqui é anônimo.
+var filaDados_ = null;
+var filaReq_ = 0;
+function inicializarFila_() {
+  var painel = document.getElementById('filaLideranca');
+  painel.addEventListener('change', function (ev) {
+    var alvo = ev.target;
+    if (!alvo || !alvo.getAttribute) return;
+    var tipo = alvo.getAttribute('data-fila');
+    if (tipo === 'status') filaAcao_({ acao: 'status', id: alvo.getAttribute('data-id'), status: alvo.value });
+    else if (tipo === 'filtro') renderFila_();
+  });
+  painel.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-fila]');
+    if (!b) return;
+    var acao = b.getAttribute('data-fila'), id = b.getAttribute('data-id');
+    if (acao === 'vincular') {
+      var sel = document.getElementById('gsel_' + id);
+      if (!sel.value) { filaMensagem_('Escolha o CS antes de vincular esta gravação.'); return; }
+      filaAcao_({ acao: 'vincular_granola', noteId: id, cs: sel.value });
+    } else if (acao === 'ignorar') {
+      filaAcao_({ acao: 'vincular_granola', noteId: id, cs: null });
+    } else if (acao === 'expandir-granola') {
+      var lista = document.getElementById('filaGranola');
+      lista.hidden = !lista.hidden;
+    }
+  });
+  carregarFila_();
+}
+function filaMensagem_(texto) {
+  var m = document.getElementById('filaMsg');
+  m.hidden = !texto;
+  m.textContent = texto || '';
+}
+function filaData_(iso) {
+  var p = String(iso || '').slice(0, 10).split('-');
+  return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : 'sem data';
+}
+function filaDataHora_(iso) {
+  return iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'sem data';
+}
+function filaFetch_(url, opts) {
+  opts = opts || {};
+  opts.cache = 'no-store';
+  return fetch(url, opts).then(function (res) {
+    return res.json().then(function (d) {
+      if (!res.ok) throw new Error(d.error || ('Erro ' + res.status));
+      return d;
+    });
+  });
+}
+function carregarFila_() {
+  var req = ++filaReq_;
+  filaFetch_('/api/gestor/lideranca').then(function (d) {
+    if (req !== filaReq_) return;
+    filaDados_ = d;
+    renderFila_();
+  }).catch(function (err) {
+    document.getElementById('filaResumo').innerHTML = '<div class="gestor-erro">Não foi possível carregar esta seção: ' + pulsoEsc_(err.message) + '.</div>';
+  });
+}
+function filaAcao_(corpo) {
+  filaMensagem_('');
+  filaFetch_('/api/gestor/lideranca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(carregarFila_)
+    .catch(function (err) { filaMensagem_('Erro: ' + err.message); });
+}
+function filaCardHtml_(i, d) {
+  var meta = '';
+  if (i.prioridade === 'alta') meta += '<span style="color:#C89A2E;font-weight:700;">Prioridade alta</span> ';
+  if (i.prazo) {
+    meta += i.vencido
+      ? '<span style="color:#C0433D;font-weight:700;">vencido há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') + '</span> '
+      : '<span>prazo ' + filaData_(i.prazo) + '</span> ';
+  }
+  var opcoes = d.statusOpcoes.map(function (s) {
+    return '<option value="' + s.chave + '"' + (s.chave === i.status ? ' selected' : '') + '>' + pulsoEsc_(s.rotulo) + '</option>';
+  }).join('');
+  return '<div class="voz-card">'
+    + '<div class="voz-card-tags"><span class="voz-tag origem">' + pulsoEsc_(i.csNome) + '</span>'
+    + (i.visibilidade === 'privado_gestor' ? '<span class="voz-tag">Só a liderança</span>' : '') + '</div>'
+    + '<div class="voz-card-texto">' + pulsoEsc_(i.texto) + '</div>'
+    + '<div class="voz-card-meta">' + meta + '<br>1:1 de ' + filaData_(i.dataOrigem) + ' · <a href="/gestor/cs/' + encodeURIComponent(i.csNome) + '#secUmAUm">Abrir 1:1</a></div>'
+    + '<div class="voz-card-acoes" style="margin-top:8px;"><select class="pill-select" data-fila="status" data-id="' + pulsoEsc_(i.id) + '" aria-label="Status do compromisso">' + opcoes + '</select></div>'
+    + '</div>';
+}
+function renderFila_() {
+  var d = filaDados_;
+  if (!d) return;
+  var csSel = document.getElementById('filaCs');
+  if (!csSel.options.length) {
+    var todos = document.createElement('option'); todos.value = ''; todos.textContent = 'Todos os CS'; csSel.appendChild(todos);
+    d.csOpcoes.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; csSel.appendChild(o); });
+  }
+  var csAtual = csSel.value, prioAtual = document.getElementById('filaPrio').value;
+  var r = d.resumo;
+  document.getElementById('filaResumo').innerHTML = '<p class="pulso-aviso">' + (r.liderancaAbertos === 0
+    ? 'Nenhum compromisso da liderança em aberto.'
+    : r.liderancaAbertos + (r.liderancaAbertos === 1 ? ' compromisso aberto' : ' compromissos abertos') + ' · ' + r.liderancaVencidos + ' vencidos · ' + r.prioridadeAlta + ' de prioridade alta') + '</p>';
+
+  var pend = d.granolaPendentes || [];
+  var csOpts = d.csOpcoes.map(function (n) { return '<option value="' + pulsoEsc_(n) + '">' + pulsoEsc_(n) + '</option>'; }).join('');
+  document.getElementById('filaGranolaBloco').innerHTML = pend.length
+    ? '<div class="pulso-aviso" style="margin-top:12px;">' + pend.length + (pend.length === 1 ? ' gravação do Granola sem CS identificado' : ' gravações do Granola sem CS identificado')
+      + ' <button class="pill-select" data-fila="expandir-granola">Ver</button></div>'
+      + '<div id="filaGranola" hidden>' + pend.map(function (g) {
+        return '<div class="voz-card"><div class="voz-card-texto">' + filaDataHora_(g.dataReuniao) + ' · ' + pulsoEsc_(g.titulo || 'Sem título') + '</div>'
+          + '<div class="voz-card-acoes" style="margin-top:8px;">'
+          + '<select class="pill-select" id="gsel_' + pulsoEsc_(g.noteId) + '" aria-label="CS da gravação"><option value="">Escolher CS</option>' + csOpts + '</select> '
+          + '<button class="pill-select" data-fila="vincular" data-id="' + pulsoEsc_(g.noteId) + '">Vincular</button> '
+          + '<button class="pill-select" data-fila="ignorar" data-id="' + pulsoEsc_(g.noteId) + '">Ignorar</button>'
+          + (g.webUrl ? ' <a href="' + pulsoEsc_(g.webUrl) + '" target="_blank" rel="noopener">Abrir no Granola</a>' : '')
+          + '</div></div>';
+      }).join('') + '</div>'
+    : '';
+
+  var filtrados = d.itens.filter(function (i) {
+    return (!csAtual || i.csNome === csAtual) && (!prioAtual || i.prioridade === prioAtual);
+  });
+  var html = '<div class="voz-grid">';
+  d.statusOpcoes.forEach(function (st) {
+    var daColuna = filtrados.filter(function (i) { return i.status === st.chave; });
+    html += '<div class="voz-col voz-col-' + st.chave + '"><div class="voz-col-head"><span>' + pulsoEsc_(st.rotulo) + '</span><span>' + daColuna.length + '</span></div>';
+    if (!daColuna.length) html += '<div class="voz-col-vazio">Nada aqui' + (filtrados.length !== d.itens.length ? ' com os filtros atuais' : '') + '.</div>';
+    daColuna.forEach(function (i) { html += filaCardHtml_(i, d); });
+    html += '</div>';
+  });
+  document.getElementById('filaQuadro').innerHTML = html + '</div>';
+}
 
 // ============ Voz do liderado (05/10/2026) ============
 // Insights, temas, itens e a lista do que o time quer manter chegam prontos de /api/gestor/voz
