@@ -1,47 +1,33 @@
-// GET  /api/cs/:nome/um-a-um — histórico de 1:1 daquele CS (mais recente primeiro).
-// POST /api/cs/:nome/um-a-um — cria um novo registro (só gestor).
-// Parte A (pedido do Vitor 28/09/2026): mesma regra de acesso de /api/cs/[nome] — gestor vê
-// qualquer CS, um CS comum só vê o próprio (nome === csNome).
+// GET /api/cs/:nome/um-a-um — visão compartilhada da 1:1 daquele CS. Só leitura.
+// Regra de acesso igual à de /api/cs/[nome]: gestor vê qualquer CS, CS comum só o próprio.
+// Devolve SEMPRE a visão compartilhada, inclusive para o gestor. Ponto de atenção, notas privadas,
+// item privado e dados do Granola nunca saem daqui.
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
-import { listarUmAUm, criarUmAUm } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
+import { carregarUmAUmCompartilhado, resumoAbertos } from '@/lib/um-a-um';
+import { hojeSP } from '@/lib/gtd-prazos';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { nome: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { nome: string } }) {
   noStore();
   const nome = decodeURIComponent(params.nome);
   try {
     const { supabase, isGestor, csNome } = await requireMoaiUser();
     if (!isGestor && nome !== csNome) {
-      return NextResponse.json({ error: 'Você só pode consultar os próprios 1:1.' }, { status: 403 });
+      return NextResponse.json({ error: 'Você só pode consultar a própria 1:1.' }, { status: 403 });
     }
-    const registros = await listarUmAUm(supabase, nome);
-    return NextResponse.json({ registros });
+    const visao = await carregarUmAUmCompartilhado(supabase, nome);
+    const todos = [...visao.passosLiderado, ...visao.compromissosLideranca];
+    return NextResponse.json({
+      registros: visao.registros,
+      passosLiderado: visao.passosLiderado,
+      compromissosLideranca: visao.compromissosLideranca,
+      resumo: resumoAbertos(todos, hojeSP()),
+    });
   } catch (e: any) {
-    if (e?.status) return authErrorResponse(e);
-    return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
-  }
-}
-
-export async function POST(req: NextRequest, { params }: { params: { nome: string } }) {
-  const nome = decodeURIComponent(params.nome);
-  try {
-    const { supabase, isGestor } = await requireMoaiUser();
-    if (!isGestor) {
-      return NextResponse.json({ error: 'Só gestor pode registrar um 1:1.' }, { status: 403 });
-    }
-    const body = await req.json();
-    const data = String(body?.data || '').trim();
-    const oQueFoiFalado = body?.oQueFoiFalado ? String(body.oQueFoiFalado) : null;
-    const combinados = body?.combinados ? String(body.combinados) : null;
-    if (!data) {
-      return NextResponse.json({ error: 'Parâmetro obrigatório: data' }, { status: 400 });
-    }
-    const id = await criarUmAUm(supabase, nome, data, oQueFoiFalado, combinados);
-    return NextResponse.json({ id });
-  } catch (e: any) {
+    console.error('cs um-a-um GET', e);
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });
   }
