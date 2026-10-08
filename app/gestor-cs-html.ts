@@ -107,22 +107,24 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .ind-resumo-txt{flex:1;min-width:220px;font-size:14px;line-height:1.55;}
 .ind-resumo-txt .longe{color:var(--vermelho);font-weight:700;}
 .ind-aviso{font-size:12px;color:var(--cinza-texto);margin-top:4px;}
-.ind-grid{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;align-items:start;}
+.ind-grid{display:grid;grid-template-columns:minmax(280px,400px) 1fr;gap:22px;align-items:center;}
 @media (max-width:860px){ .ind-grid{grid-template-columns:1fr;} }
 .ind-radar{display:flex;flex-direction:column;align-items:center;gap:8px;}
-.ind-radar svg{width:100%;max-width:380px;height:auto;}
+.ind-radar svg{width:100%;max-width:400px;height:auto;overflow:visible;}
 .ind-legenda{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11.5px;color:var(--cinza-texto);}
 .ind-legenda i{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:5px;vertical-align:middle;}
 .ind-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (min-width:861px) and (max-width:1000px){ .ind-grid{grid-template-columns:minmax(240px,320px) 1fr;} }
 @media (max-width:1000px){ .ind-cards{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media (max-width:330px){ .ind-cards{grid-template-columns:1fr;} }
-@media (max-width:600px){ .ind-rodape svg{width:50px;} .ind-card{padding:10px 11px;} .ind-valor b{font-size:22px;} .evo-kpi{flex:1 1 40%;min-width:0;padding:9px 11px;} .evo-kpi-val{font-size:21px;} }
+@media (max-width:600px){ .ind-card{padding:10px 11px;} .ind-valor b{font-size:22px;} .evo-kpi{flex:1 1 40%;min-width:0;padding:9px 11px;} .evo-kpi-val{font-size:21px;} }
 .ind-card{border:1px solid var(--cinza-borda);border-radius:16px;padding:12px 14px;background:var(--branco);display:flex;flex-direction:column;gap:7px;min-width:0;}
 .ind-card.critico{border-color:#EBC6C0;background:#FDF6F5;}
 .ind-card.atencao{border-color:#EAD9AE;background:#FDFAF2;}
 .ind-card.neutro{background:var(--cinza-fundo);}
-.ind-card-topo{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-.ind-nome{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ind-card-topo{display:flex;justify-content:space-between;align-items:center;gap:4px 8px;flex-wrap:wrap;}
+.ind-nome{font-size:12.5px;font-weight:700;overflow-wrap:anywhere;}
+@media (max-width:600px){ .ind-radar text{font-size:12.5px;} }
 .ind-pill{font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:99px;white-space:nowrap;}
 .ind-pill.ok{background:#E6F2EB;color:var(--verde);}
 .ind-pill.atencao{background:#F7EBCB;color:#8A6D1C;}
@@ -137,8 +139,22 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .ind-card.ok .ind-barra > i{background:var(--verde);}
 .ind-card.atencao .ind-barra > i{background:var(--dourado);}
 .ind-card.critico .ind-barra > i{background:var(--vermelho);}
-.ind-rodape{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--cinza-texto);min-height:18px;}
-.ind-rodape span{white-space:nowrap;}
+.ind-rodape{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;font-size:11px;color:var(--cinza-texto);min-height:18px;margin-top:2px;}
+.ind-hist{flex:1;min-width:0;max-width:150px;}
+.ind-hist svg{display:block;width:100%;height:30px;}
+.ind-hist-eixo{display:flex;justify-content:space-between;font-size:9.5px;color:var(--cinza-apoio);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
+.ind-hist-vazio{font-size:11px;color:var(--cinza-apoio);}
+.ind-ref{text-align:right;line-height:1.3;}
+.ind-ritmo{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1px;background:var(--dourado);border-radius:2px;}
+.ind-ritmo-txt{font-size:11px;color:#8A6D1C;font-weight:600;}
+.ind-card.ritmo .ind-barra > i{background:var(--verde);}
+.ind-card.cedo{background:var(--cinza-fundo);}
+.ind-card.cedo .ind-barra > i{background:var(--cinza-apoio);}
+.ind-pill.ritmo{background:#E6F2EB;color:var(--verde);}
+.ind-pill.cedo{background:var(--cinza-superficie);color:var(--cinza-texto);}
+.ind-placar.critico b{color:var(--vermelho);}
+.ind-placar.ok b{color:var(--verde);}
+.ind-rodape .ind-ref span{white-space:nowrap;}
 .ind-rodape .sobe{color:var(--verde);font-weight:700;}
 .ind-rodape .cai{color:var(--vermelho);font-weight:700;}
 /* ---------- evolução (09/10/2026) ---------- */
@@ -366,16 +382,52 @@ function renderHeroCS(d) {
 // Estado: na meta (100 ou mais), abaixo (60 a 99), longe (menos de 60), sem meta. Os números vêm prontos
 // do servidor (pct na escala de 0 a 150); aqui só se desenha.
 var IND_LIMIAR_LONGE_ = 60;
-var IND_ROTULO_ESTADO_ = { ok: 'Na meta', atencao: 'Abaixo', critico: 'Longe', neutro: 'Sem meta' };
-var IND_COR_ESTADO_ = { ok: '#3D8B5F', atencao: '#C89A2E', critico: '#C0433D', neutro: '#9F9F9F' };
+var IND_ROTULO_ESTADO_ = { ok: 'Na meta', ritmo: 'No ritmo', atencao: 'Abaixo', critico: 'Longe', cedo: 'No prazo', neutro: 'Sem meta' };
+var IND_COR_ESTADO_ = { ok: '#3D8B5F', ritmo: '#3D8B5F', atencao: '#C89A2E', critico: '#C0433D', cedo: '#9F9F9F', neutro: '#9F9F9F' };
 var MESES_CURTOS_ = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
+// Ritmo do mês em andamento (09/10/2026). Nos indicadores de fluxo com meta mínima, comparar o acumulado
+// do dia 8 com a meta do mês inteiro pinta tudo de vermelho. Com o mês aberto, a régua passa a ser o
+// esperado até hoje (meta vezes a fração do mês já decorrida). Estoque (carteira), percentual (GTD) e
+// metas de limite (churn, downsell) continuam contra a meta cheia.
+var IND_FLUXO_RITMO_ = ['casesSucesso', 'matchmakings', 'rounds', 'upsell', 'indicacoes'];
+function indFracaoMes_() {
+  var sm = document.getElementById('selMesCS'), sa = document.getElementById('selAnoCS');
+  if (!sm || !sa) return null;
+  var idx = MESES_CS.indexOf(sm.value);
+  var hoje = new Date();
+  if (idx !== hoje.getMonth() || Number(sa.value) !== hoje.getFullYear()) return null;
+  var dias = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+  return hoje.getDate() / dias;
+}
+function indRitmo_(e) {
+  var f = indFracaoMes_();
+  if (f === null || e.semMeta || e.pct === null || e.pct === undefined || e.pct >= 100) return null;
+  if (IND_FLUXO_RITMO_.indexOf(e.chave) === -1 || !e.meta) return null;
+  var esperado = e.meta * f;
+  return { esperado: esperado, pct: esperado > 0 ? Math.round((Number(e.valor) || 0) / esperado * 100) : 100, cedo: esperado < 1, fracao: f };
+}
 function indEstado_(e) {
   if (e.semMeta || e.pct === null || e.pct === undefined) return 'neutro';
   if (e.pct >= 100) return 'ok';
+  var r = indRitmo_(e);
+  if (r) {
+    if (r.cedo && !(Number(e.valor) > 0)) return 'cedo';
+    if (r.pct >= 100) return 'ritmo';
+    return r.pct >= IND_LIMIAR_LONGE_ ? 'atencao' : 'critico';
+  }
   if (e.pct >= IND_LIMIAR_LONGE_) return 'atencao';
   return 'critico';
 }
+function indPill_(e, est) {
+  var r = indRitmo_(e);
+  if (est === 'neutro') return 'Sem meta';
+  if (est === 'cedo') return 'No prazo';
+  if (est === 'ritmo') return 'No ritmo';
+  if (r) return 'Atrás';
+  return e.pct + '%';
+}
+function decimalBR_(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR'); }
 function indValorFmt_(v, e) {
   if (v === null || v === undefined) return 'sem dado';
   return Number(v).toLocaleString('pt-BR') + (e.unidade === '%' ? '%' : '');
@@ -391,21 +443,26 @@ function indSerie_(chave) {
 function indMesAberto_() {
   return !!(EVO && EVO.meses && EVO.meses.length && EVO.meses[EVO.meses.length - 1].aberto);
 }
-function indSparkline_(serie) {
-  var pts = serie.filter(function (p) { return p.pct !== null; });
-  if (pts.length < 2) return '';
-  var w = 70, h = 18, n = serie.length, d = '', marcas = '';
+// Histórico do indicador em colunas (09/10/2026): uma coluna por mês da evolução, altura pelo
+// aproveitamento (teto 150), cor pelo estado e o mês em andamento só com contorno. A linha tracejada é a meta.
+function indHistorico_(serie) {
+  var com = serie.filter(function (p) { return p.pct !== null; });
+  if (com.length < 2) return '<span class="ind-hist-vazio">sem histórico</span>';
+  var n = serie.length, w = 100, h = 30, gap = 3, bw = (w - gap * (n - 1)) / n, out = '';
+  var yMeta = h - 100 / 150 * h;
   serie.forEach(function (p, i) {
-    if (p.pct === null) return;
-    var x = n > 1 ? 2 + i * (w - 4) / (n - 1) : w / 2;
-    var y = h - 2 - Math.min(p.pct, 150) / 150 * (h - 4);
-    d += (d ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1);
-    if (i === n - 1) marcas = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="' + (p.aberto ? '#fff' : '#1A1A1A') + '" stroke="#1A1A1A" stroke-width="1.2"/>';
+    var x = i * (bw + gap);
+    var rot = MESES_CURTOS_[(p.mes || 1) - 1] + (p.aberto ? ' (parcial)' : '') + ': ' + (p.pct === null ? 'sem dado' : p.pct + '% da meta');
+    if (p.pct === null) { out += '<rect x="' + x.toFixed(1) + '" y="' + (h - 2) + '" width="' + bw.toFixed(1) + '" height="2" rx="1" fill="#E2DFDF"><title>' + esc(rot) + '</title></rect>'; return; }
+    var alt = Math.max(2, Math.min(p.pct, 150) / 150 * h);
+    var cor = p.pct >= 100 ? '#3D8B5F' : (p.pct >= IND_LIMIAR_LONGE_ ? '#C89A2E' : '#C0433D');
+    out += '<rect x="' + x.toFixed(1) + '" y="' + (h - alt).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + alt.toFixed(1) + '" rx="2" '
+      + (p.aberto ? 'fill="#fff" stroke="' + cor + '" stroke-width="1.4" stroke-dasharray="2 1.5"' : 'fill="' + cor + '"') + '><title>' + esc(rot) + '</title></rect>';
   });
-  var yMeta = (h - 2 - 100 / 150 * (h - 4)).toFixed(1);
-  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true">'
-    + '<line x1="0" x2="' + w + '" y1="' + yMeta + '" y2="' + yMeta + '" stroke="#C89A2E" stroke-width="1" stroke-dasharray="2 2"/>'
-    + '<path d="' + d + '" fill="none" stroke="#1A1A1A" stroke-width="1.4"/>' + marcas + '</svg>';
+  out += '<line x1="0" x2="' + w + '" y1="' + yMeta.toFixed(1) + '" y2="' + yMeta.toFixed(1) + '" stroke="#1A1A1A" stroke-width="0.8" stroke-dasharray="2 2" opacity=".5"/>';
+  var ini = MESES_CURTOS_[(serie[0].mes || 1) - 1], fim = MESES_CURTOS_[(serie[n - 1].mes || 1) - 1];
+  return '<div class="ind-hist"><svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-label="Histórico mensal do indicador">' + out + '</svg>'
+    + '<div class="ind-hist-eixo"><span>' + esc(ini) + '</span><span>' + esc(fim) + '</span></div></div>';
 }
 // Referência do cartão: o mês anterior com dado. Se o mês atual está aberto, mostra só o valor de
 // referência (comparar parcial com mês inteiro engana); se está fechado, mostra a variação.
@@ -441,7 +498,7 @@ function indRadarSvg_(eixos) {
     var lp = pol(rMax + 22, i);
     var anchor = 'middle'; if (lp.x > cx + 6) anchor = 'start'; else if (lp.x < cx - 6) anchor = 'end';
     rotulos += '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y - 5).toFixed(1) + '" font-size="11" font-weight="700" fill="#1A1A1A" text-anchor="' + anchor + '">' + esc(e.label) + '</text>'
-      + '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y + 9).toFixed(1) + '" font-size="10.5" font-weight="700" fill="' + cor + '" text-anchor="' + anchor + '">' + (est === 'neutro' ? 'sem meta' : e.pct + '%') + '</text>';
+      + '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y + 9).toFixed(1) + '" font-size="10.5" font-weight="700" fill="' + cor + '" text-anchor="' + anchor + '">' + (est === 'neutro' ? 'sem meta' : e.pct + '%' + (est === 'ritmo' ? ', no ritmo' : '')) + '</text>';
     if (est === 'neutro') {
       var pn = pol(rMax * 100 / 150, i);
       marcas += '<circle cx="' + pn.x.toFixed(1) + '" cy="' + pn.y.toFixed(1) + '" r="4" fill="#fff" stroke="#9F9F9F" stroke-width="1.3" stroke-dasharray="2 1.5"/>';
@@ -458,41 +515,48 @@ function indRadarSvg_(eixos) {
 
 function indCardHtml_(e) {
   var est = indEstado_(e);
+  var r = indRitmo_(e);
   var serie = indSerie_(e.chave);
   var meta = e.semMeta ? 'sem meta cadastrada' : (e.tipoMeta === 'max' ? 'limite ' : 'de ') + indValorFmt_(e.meta, e);
   var largura = est === 'neutro' ? 0 : Math.max(2, Math.min(150, e.pct) / 150 * 100);
-  var barra = est === 'neutro' ? '' : '<div class="ind-barra" title="' + e.pct + '% da meta"><i style="width:' + largura.toFixed(1) + '%"></i><em style="left:' + (100 / 150 * 100).toFixed(1) + '%"></em></div>';
-  var rodape = e.chave === 'cumprimentoGtd' ? '<span>sem histórico mensal</span>' : (indSparkline_(serie) + indReferencia_(serie));
+  var marcaRitmo = r ? '<b class="ind-ritmo" style="left:' + (r.fracao * 100 / 150 * 100).toFixed(1) + '%" title="esperado até hoje: ' + decimalBR_(r.esperado) + '"></b>' : '';
+  var barra = est === 'neutro' ? '' : '<div class="ind-barra" title="' + e.pct + '% da meta do mês"><i style="width:' + largura.toFixed(1) + '%"></i>' + marcaRitmo + '<em style="left:' + (100 / 150 * 100).toFixed(1) + '%"></em></div>';
+  var linhaRitmo = r ? '<div class="ind-ritmo-txt">Esperado até hoje: ' + decimalBR_(r.esperado) + '</div>' : '';
+  var historico = e.chave === 'cumprimentoGtd' ? '<span class="ind-hist-vazio">sem histórico mensal</span>' : indHistorico_(serie);
+  var ref = e.chave === 'cumprimentoGtd' ? '' : indReferencia_(serie);
   return '<div class="ind-card ' + est + '">'
-    + '<div class="ind-card-topo"><span class="ind-nome">' + esc(e.label) + '</span><span class="ind-pill ' + est + '">' + (est === 'neutro' ? 'Sem meta' : e.pct + '%') + '</span></div>'
+    + '<div class="ind-card-topo"><span class="ind-nome">' + esc(e.label) + '</span><span class="ind-pill ' + est + '">' + indPill_(e, est) + '</span></div>'
     + '<div class="ind-valor"><b>' + indValorFmt_(e.valor, e) + '</b><span>' + esc(meta) + '</span></div>'
-    + barra
-    + '<div class="ind-rodape">' + rodape + '</div></div>';
+    + barra + linhaRitmo
+    + '<div class="ind-rodape">' + historico + (ref ? '<div class="ind-ref">' + ref + '</div>' : '') + '</div></div>';
 }
 
 function renderRadarCS(d) {
   var el = document.getElementById('secRadar');
   if (d.radar.erro) { el.innerHTML = erroSecao(d.radar.erro); return; }
   var eixos = d.radar.dado;
-  var peso = { critico: 0, atencao: 1, ok: 2, neutro: 3 };
+  var peso = { critico: 0, atencao: 1, cedo: 2, ritmo: 3, ok: 4, neutro: 5 };
   var ordenados = eixos.slice().sort(function (a, b) {
     var ea = indEstado_(a), eb = indEstado_(b);
     if (peso[ea] !== peso[eb]) return peso[ea] - peso[eb];
     return (a.pct || 0) - (b.pct || 0);
   });
+  var aberto = indFracaoMes_() !== null;
   var comMeta = eixos.filter(function (e) { return indEstado_(e) !== 'neutro'; });
-  var batidas = comMeta.filter(function (e) { return indEstado_(e) === 'ok'; });
+  var bem = comMeta.filter(function (e) { var s = indEstado_(e); return s === 'ok' || s === 'ritmo' || s === 'cedo'; });
   var longe = ordenados.filter(function (e) { return indEstado_(e) === 'critico'; });
   var frase;
   if (!comMeta.length) frase = 'Nenhum indicador tem meta cadastrada neste mês.';
-  else if (!longe.length && batidas.length === comMeta.length) frase = 'Todos os indicadores com meta estão batidos.';
-  else if (longe.length) frase = 'Mais longe da meta: ' + longe.slice(0, 3).map(function (e) {
-    return '<span class="longe">' + esc(e.label) + '</span> (' + indValorFmt_(e.valor, e) + ' de ' + indValorFmt_(e.meta, e) + ')';
-  }).join(', ') + '. É por aí que a pontuação mais sobe.';
-  else frase = 'Nenhum indicador está longe da meta; ' + (comMeta.length - batidas.length) + ' ainda abaixo.';
-  var aviso = indMesAberto_() ? '<div class="ind-aviso">Mês em andamento: os números ainda sobem até o fechamento, e a referência ao lado de cada cartão é o mês anterior.</div>' : '';
-  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>na meta</span><span><i style="background:#C89A2E"></i>abaixo</span><span><i style="background:#C0433D"></i>longe</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta</span></div>';
-  el.innerHTML = '<div class="ind-resumo"><div class="ind-placar"><b>' + batidas.length + '</b><span>de ' + comMeta.length + ' na meta</span></div>'
+  else if (!longe.length && bem.length === comMeta.length) frase = aberto ? 'Todos os indicadores com meta estão batidos ou no ritmo esperado para hoje.' : 'Todos os indicadores com meta estão batidos.';
+  else if (longe.length) frase = (aberto ? 'Atrás do ritmo: ' : 'Mais longe da meta: ') + longe.slice(0, 3).map(function (e) {
+    var r = indRitmo_(e);
+    return '<span class="longe">' + esc(e.label) + '</span> (' + indValorFmt_(e.valor, e) + (r ? ', esperado ' + decimalBR_(r.esperado) + ' até hoje' : ' de ' + indValorFmt_(e.meta, e)) + ')';
+  }).join(', ') + '. É por aí que a pontuação mais sobe; vale levar para a próxima 1:1.';
+  else frase = 'Nenhum indicador está longe; ' + (comMeta.length - bem.length) + ' ainda pede atenção.';
+  var aviso = aberto ? '<div class="ind-aviso">Mês em andamento: nos indicadores de volume a régua é o esperado até hoje, e a barra mostra o ritmo com um traço âmbar.</div>' : '';
+  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>' + (aberto ? 'na meta ou no ritmo' : 'na meta') + '</span><span><i style="background:#C89A2E"></i>abaixo</span><span><i style="background:#C0433D"></i>' + (aberto ? 'atrás' : 'longe') + '</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta ou cedo</span></div>';
+  var tom = longe.length ? 'critico' : (bem.length === comMeta.length ? 'ok' : 'atencao');
+  el.innerHTML = '<div class="ind-resumo"><div class="ind-placar ' + tom + '"><b>' + bem.length + '</b><span>de ' + comMeta.length + (aberto ? ' na meta ou no ritmo' : ' na meta') + '</span></div>'
     + '<div class="ind-resumo-txt">' + frase + aviso + '</div></div>'
     + '<div class="ind-grid"><div class="ind-radar">' + indRadarSvg_(eixos) + legenda + '</div>'
     + '<div class="ind-cards">' + ordenados.map(indCardHtml_).join('') + '</div></div>';
@@ -1026,7 +1090,10 @@ function renderEvolucao() {
   // Os cartões do topo já comparam os dois últimos meses fechados e mostram o mês aberto; a leitura só
   // entra quando a janela tem mais meses fechados do que isso (visão de prazo maior).
   var nFechados = meses.filter(function (m) { return !m.aberto && m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined; }).length;
-  if (nFechados > 2) html += EVO.leitura.filter(function (f) { return f.indexOf('em andamento') === -1; }).map(function (f) { return '<p>No período: ' + esc(f.charAt(0).toLowerCase() + f.slice(1)) + '</p>'; }).join('');
+  if (nFechados > 2) {
+    var frasesPeriodo = EVO.leitura.filter(function (f) { return f.indexOf('em andamento') === -1; });
+    if (frasesPeriodo.length) html += '<p>No período, ' + esc(frasesPeriodo.map(function (f) { return f.charAt(0).toLowerCase() + f.slice(1).replace(/[.]$/, ''); }).join('; ')) + '.</p>';
+  }
   document.getElementById('evoLeitura').innerHTML = html + '</div>';
 
   var fechados = meses.filter(function (m) { return !m.aberto && !m.pendente; });
