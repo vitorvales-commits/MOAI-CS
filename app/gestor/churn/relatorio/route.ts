@@ -1,5 +1,5 @@
 // GET /gestor/churn/relatorio?granularidade=&ref=&cs=&produtos=&comunidade=&categoria=:
-// relatório imprimível de churn e voz do membro (onda 2, 08/10/2026). Sem IA e sem análise salva:
+// relatório imprimível de churn (onda 2, 08/10/2026; só formulário de saída e visitas desde a separação do NPS). Sem IA e sem análise salva:
 // os números vêm das mesmas funções que a aba usa (voz do membro e visitas), e o relatório é sempre
 // anonimizado. A barreira de acesso é a mesma de app/gestor/page.tsx: sem sessão vai para /login,
 // sessão sem is_gestor vai para a home, antes de qualquer dado ser consultado. Cada emissão fica
@@ -7,7 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { parseRecorte, RecorteInvalido, buscarTela, validarCsAtivo } from '@/lib/churn';
-import { carregarVozMembro } from '@/lib/voz-membro-dados';
+import { carregarSaidaMembro } from '@/lib/voz-membro-dados';
+import { carregarReconquista } from '@/lib/reconquista';
 import { carregarVisitas } from '@/lib/visitas-dados';
 import { gerarRelatorioChurnHtml } from '@/lib/churn-relatorio-html';
 
@@ -30,9 +31,10 @@ export async function GET(req: NextRequest) {
     await validarCsAtivo(supabase, recorte);
     const telaMensal = await buscarTela(supabase, recorte, 'mes');
     const ref = telaMensal.referencia;
-    const [voz, visitas] = await Promise.all([
-      carregarVozMembro(supabase, ref, recorte.cs || '', 'todas'),
+    const [voz, visitas, reconquista] = await Promise.all([
+      carregarSaidaMembro(supabase, ref, recorte.cs || ''),
       carregarVisitas(supabase, ref),
+      carregarReconquista(supabase, false),
     ]);
     await supabase.rpc('log_access', {
       p_action: 'relatorio_churn',
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
       telaMensal,
       voz,
       visitas: visitas.payload,
+      reconquista: reconquista.resumo,
       emitidoPor: email,
       emitidoEm: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });

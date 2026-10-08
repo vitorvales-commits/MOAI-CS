@@ -1,13 +1,15 @@
-// HTML do relatório imprimível de churn e voz do membro (churn, onda 2, 08/10/2026). Sem IA e sem
-// análise salva: só os números que a aba mostra, na mesma ordem (a1, b1, b2, b4, b5, c1). Anonimizado
-// sempre: nenhum trecho de texto de membro, nenhum nome de membro e nenhum nome de respondente do NPS.
+// HTML do relatório imprimível de churn (onda 2, 08/10/2026). Sem IA e sem análise salva: só os números
+// que a aba Churn mostra, na mesma ordem. Desde a separação das abas (08/10/2026) usa apenas o formulário
+// de saída e as visitas; o NPS dos conselhos tem aba própria e não entra aqui. Anonimizado sempre:
+// nenhum trecho de texto de membro e nenhum nome de membro, nem na reconquista (só contagens).
 import { descreverRecorte, graficoChurnSVG, tabelaMotivosHTML, type Recorte, type TelaChurn } from './churn.ts';
 
 export type EntradaRelatorio = {
   recorte: Recorte;
   telaMensal: TelaChurn;
-  voz: any; // retorno de carregarVozMembro (sem trechos)
+  voz: any; // retorno de carregarSaidaMembro (os trechos não são usados)
   visitas: any; // payload de carregarVisitas
+  reconquista: any; // resumo de carregarReconquista (só contagens)
   emitidoPor: string;
   emitidoEm: string;
 };
@@ -33,14 +35,16 @@ export function gerarRelatorioChurnHtml(e: EntradaRelatorio): string {
   const f = visitas.c1.funil;
   const cartoes = visitas.cartoes;
 
+  const ret = voz.retorno;
+  const rec = e.reconquista;
   const a1 = `
     <section>
       <h2>Situação do mês</h2>
       <div class="cartoes">
         <div class="cartao"><span class="valor">${esc(telaMensal.totalMes)}</span><span class="rotulo">Churns da carteira no mês</span></div>
-        <div class="cartao"><span class="valor">${esc(cartoes.pedidosEmAberto.quantidade)}</span><span class="rotulo">Pedidos em aberto, MRR R$ ${esc(numeroTexto(Math.round(cartoes.pedidosEmAberto.mrr * 100) / 100))}</span></div>
-        <div class="cartao"><span class="valor">${esc(pctTexto(cartoes.retencao90.pct))}</span><span class="rotulo">Reversão sustentada em 90 dias (${esc(cartoes.retencao90.base)} visitas maturadas)</span></div>
-        <div class="cartao"><span class="valor">${esc(pctTexto(voz.cartao4.atual.pct))}</span><span class="rotulo">Membros travados no desafio no mês</span></div>
+        <div class="cartao"><span class="valor">${esc(ret.mes.voltaria)} de ${esc(ret.mes.base)}</span><span class="rotulo">Saídas do mês que voltariam (nota 9 ou 10)</span></div>
+        <div class="cartao"><span class="valor">${esc(rec.abertos)}</span><span class="rotulo">Reconquistas em aberto, ${esc(rec.vencidos)} com contato vencido</span></div>
+        <div class="cartao"><span class="valor">${esc(cartoes.pedidosEmAberto.quantidade)}</span><span class="rotulo">Pedidos de churn em aberto, MRR R$ ${esc(numeroTexto(Math.round(cartoes.pedidosEmAberto.mrr * 100) / 100))}</span></div>
       </div>
     </section>`;
 
@@ -53,30 +57,26 @@ export function gerarRelatorioChurnHtml(e: EntradaRelatorio): string {
 
   const b2 = `
     <section>
-      <h2>O que os membros estão falando</h2>
-      <p class="rodape">${esc(voz.b2.rodape)}</p>
-      <ul>${voz.b2.insights.map((t: string) => `<li>${esc(t)}</li>`).join('')}</ul>
-      ${tabela(['Tema', 'Textos', 'Período anterior', 'Variação'],
-        voz.b2.ranking.map((l: any) => [esc(l.rotulo), esc(l.textos), esc(l.anterior), esc(l.delta > 0 ? `+${l.delta}` : l.delta)]))}
+      <h2>O que dizem ao sair</h2>
+      ${voz.b2.perguntas.map((p: any) => `
+        <h3>${esc(p.rotulo)}</h3>
+        <ul>${p.insights.map((t: string) => `<li>${esc(t)}</li>`).join('')}</ul>
+        ${tabela(['Tema', 'Respostas', 'Período anterior', 'Variação'],
+          p.ranking.slice(0, 6).map((l: any) => [esc(l.rotulo), esc(l.textos), esc(l.anterior), esc(l.delta > 0 ? `+${l.delta}` : l.delta)]))}
+        <p class="rodape">${esc(p.rodape)}</p>`).join('')}
     </section>`;
 
-  const b4 = `
+  const b3 = `
     <section>
-      <h2>Por que as notas são baixas</h2>
-      ${tabela(['Dimensão', 'Respostas', 'Notas baixas', 'Percentual', 'Período anterior'],
-        voz.b4.dimensoes.map((d: any) => [esc(d.rotulo), esc(d.respostas), esc(d.baixas), esc(pctTexto(d.percentual)), esc(pctTexto(d.percentualAnterior))]))}
-      <h3>Conselhos com mais notas baixas</h3>
-      ${tabela(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões'],
-        voz.b4.conselhos.map((c: any) => [esc(c.conselho), esc(c.cs || '-'), esc(c.respostas), esc(c.baixas), esc(pctTexto(c.percentual)), esc(c.dimensaoMaisPesa), esc(c.temaSugestoes || '-')]))}
-      <p class="rodape">${esc(voz.b4.justificativas.frase)}</p>
-    </section>`;
-
-  const b5 = `
-    <section>
-      <h2>Por que não evoluem no desafio</h2>
-      ${tabela(['Conselho', 'CS', 'Respostas', 'Travados', 'Presença', 'Ganhos na ata', 'Qualidade das trocas'],
-        voz.b5.tabela.map((c: any) => [esc(c.conselho), esc(c.cs || '-'), esc(c.respostas), esc(pctTexto(c.percentualTravados)), esc(pctTexto(c.presencaPercentual)), esc(pctTexto(c.ganhosPercentual)), esc(numeroTexto(c.qualidadeMedia))]))}
-      <p class="rodape">${esc(voz.b5.aviso)}</p>
+      <h2>Quem voltaria</h2>
+      <ul>${ret.frases.map((t: string) => `<li>${esc(t)}</li>`).join('')}</ul>
+      ${tabela(['Motivo da saída', 'Respostas', 'Voltariam (9 e 10)', 'Talvez (7 e 8)', 'Não (0 a 6)', 'Percentual que voltaria'],
+        ret.historico.porMotivo.map((m: any) => [esc(m.rotulo), esc(m.base), esc(m.voltaria), esc(m.talvez), esc(m.nao), esc(pctTexto(m.pctVoltaria))]))}
+      <h3>Rastreio de reconquista</h3>
+      ${tabela(['Situação', 'Ex membros'], [
+        ['A contatar', esc(rec.porStatus.a_contatar)], ['Contatado', esc(rec.porStatus.contatado)], ['Em conversa', esc(rec.porStatus.em_conversa)],
+        ['Voltou', esc(rec.porStatus.voltou)], ['Sem interesse', esc(rec.porStatus.sem_interesse)], ['Contato vencido', esc(rec.vencidos)],
+      ])}
     </section>`;
 
   const c1 = `
@@ -101,7 +101,7 @@ export function gerarRelatorioChurnHtml(e: EntradaRelatorio): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Relatório de churn e voz do membro</title>
+<title>Relatório de churn</title>
 <style>
   body { font-family: Inter, Arial, sans-serif; color: #1d1d1b; margin: 32px; font-size: 13px; line-height: 1.45; }
   h1 { font-size: 20px; margin: 0 0 4px; }
@@ -124,17 +124,16 @@ export function gerarRelatorioChurnHtml(e: EntradaRelatorio): string {
 </head>
 <body>
 <header class="cabecalho">
-  <h1>Relatório de churn e voz do membro</h1>
+  <h1>Relatório de churn</h1>
   <p>Mês de referência: ${esc(ref)}. Recorte: ${esc(descreverRecorte(recorte))}.</p>
   <p>Emitido por ${esc(e.emitidoPor)} em ${esc(e.emitidoEm)}. Anonimizado: nenhum nome de membro ou de respondente aparece.</p>
 </header>
 ${a1}
 ${b1}
 ${b2}
-${b4}
-${b5}
+${b3}
 ${c1}
-<p class="rodape-pagina">Relatório gerado a partir das leituras determinísticas da aba Churn e voz do membro. Sem análise de inteligência artificial.</p>
+<p class="rodape-pagina">Relatório gerado a partir das leituras determinísticas da aba Churn, só com o formulário de saída e as visitas de reversão. Sem análise de inteligência artificial.</p>
 </body>
 </html>`;
 }

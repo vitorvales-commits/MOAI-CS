@@ -509,6 +509,84 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 @media (max-width:1100px){.voz-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media (max-width:640px){.voz-grid{grid-template-columns:1fr;} .voz-temas-linha{grid-template-columns:1fr;gap:6px;} .voz-temas-num{text-align:left;}}
 
+/* ===== churn: o que dizem ao sair, quem voltaria e reconquista (08/10/2026) ===== */
+#churnA1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;}
+@media (max-width:900px){ #churnA1{grid-template-columns:repeat(2,minmax(0,1fr));} }
+.churn-numero b small.de{font-size:18px;color:var(--cinza-apoio);font-family:Inter,sans-serif;font-weight:600;}
+.churn-numero b.alerta{color:var(--vermelho);} .churn-numero .def.alerta{color:var(--vermelho);font-weight:600;}
+.saida-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.saida-grade.dupla{grid-template-columns:repeat(2,minmax(0,1fr));}
+.saida-col{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;}
+.saida-col h3{font-size:15px;margin:0;}
+.saida-perg{font-size:11.5px;color:var(--cinza-apoio);margin:2px 0 10px;}
+.saida-insight{font-size:13px;font-weight:600;color:var(--preto-tinta);margin:0 0 10px;min-height:34px;}
+.saida-insight.vazio{color:var(--cinza-apoio);font-weight:500;}
+.saida-tema{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 54px;gap:10px;align-items:center;width:100%;background:none;border:0;border-radius:8px;padding:6px 6px;margin:0 -6px;font-family:inherit;font-size:12.5px;color:inherit;text-align:left;cursor:pointer;}
+.saida-tema:hover,.saida-tema:focus-visible{background:var(--cinza-fundo);outline:none;}
+.saida-tema .nome{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.saida-tema .barra{display:block;height:8px;border-radius:99px;background:var(--cinza-superficie);overflow:hidden;}
+.saida-tema .barra i{display:block;height:100%;background:var(--preto-tinta);border-radius:99px;}
+.saida-tema .num{font-weight:700;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.saida-tema .num span{font-size:10.5px;font-weight:700;margin-left:2px;}
+.saida-tema .sobe{color:var(--vermelho);} .saida-tema .desce{color:var(--verde);} .saida-tema .igual{color:var(--cinza-apoio);}
+.saida-melhoria{margin-top:8px;align-self:flex-start;font-size:12px;}
+.saida-rodape{margin:auto 0 0;padding-top:10px;font-size:11px;color:var(--cinza-apoio);}
+.saida-trechos{margin-top:16px;}
+.saida-trechos blockquote{margin:0 0 10px;padding:10px 14px;background:var(--branco);border-left:3px solid var(--preto-tinta);border-radius:6px;font-size:13px;}
+.saida-trechos cite{display:block;margin-top:4px;font-style:normal;font-size:11px;color:var(--cinza-apoio);}
+.retorno-topo{display:flex;gap:32px;flex-wrap:wrap;margin-bottom:10px;}
+.retorno-num b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:34px;line-height:1.05;}
+.retorno-num span{font-size:12px;color:var(--cinza-texto);}
+.retorno-faixa{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:4px 0 12px;}
+.retorno-faixa span{display:flex;align-items:center;padding:0 8px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;}
+.retorno-faixa .v{background:var(--preto-tinta);color:#FFFFFF;} .retorno-faixa .t{background:var(--cinza-linha);color:#1A1A1A;} .retorno-faixa .n{background:var(--vermelho);color:#FFFFFF;}
+.retorno-grade{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:22px;margin-top:12px;align-items:start;}
+.retorno-hist{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:12px;}
+.retorno-hist svg{display:block;width:100%;height:auto;}
+.retorno-motivos h3{margin-top:0;}
+.retorno-mot{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1.6fr) 60px;gap:10px;align-items:center;padding:5px 0;font-size:12.5px;}
+.retorno-mot .nome{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.retorno-mot .barra{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--cinza-superficie);}
+.retorno-mot .barra i{display:block;height:100%;}
+.retorno-mot .barra .v{background:var(--preto-tinta);} .retorno-mot .barra .t{background:var(--cinza-linha);} .retorno-mot .barra .n{background:var(--vermelho);}
+.retorno-mot .num{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+.rcq-talvez{font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer;}
+.rcq-filtros{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.rcq-filtro{font-family:inherit;font-size:12px;font-weight:600;color:var(--cinza-texto);background:var(--branco);border:1px solid var(--cinza-borda);border-radius:99px;padding:6px 12px;cursor:pointer;}
+.rcq-filtro b{color:var(--preto-tinta);margin-left:2px;}
+.rcq-filtro.ativo{background:var(--preto-tinta);border-color:var(--preto-tinta);color:#FFFFFF;} .rcq-filtro.ativo b{color:#FFFFFF;}
+.rcq-filtro.alerta:not(.ativo){border-color:var(--vermelho);color:var(--vermelho);} .rcq-filtro.alerta:not(.ativo) b{color:var(--vermelho);}
+.rcq-lista{display:flex;flex-direction:column;gap:8px;}
+.rcq-item{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:14px;padding:10px 14px;}
+.rcq-item.vencido{border-left:4px solid var(--vermelho);}
+.rcq-item.encerrado{opacity:.7;}
+.rcq-item.editando{border-color:var(--preto-tinta);}
+.rcq-linha{display:grid;grid-template-columns:48px minmax(0,1.5fr) minmax(0,1.6fr) auto;gap:14px;align-items:center;}
+.rcq-quem{display:flex;flex-direction:column;gap:1px;font-size:11.5px;color:var(--cinza-texto);min-width:0;}
+.rcq-quem a{font-size:13.5px;font-weight:700;color:var(--preto-tinta);text-decoration:none;}
+.rcq-quem a:hover{text-decoration:underline;}
+.rcq-quem span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rcq-nota{text-align:center;}
+.rcq-nota b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;line-height:1;}
+.rcq-nota span{font-size:10px;color:var(--cinza-apoio);}
+.rcq-nota.talvez b{color:var(--cinza-texto);}
+.rcq-sit{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:0;font-size:12px;}
+.rcq-pill{font-size:11px;font-weight:700;border-radius:99px;padding:3px 10px;background:var(--cinza-superficie);color:var(--preto-tinta);}
+.rcq-pill.st-a_contatar{background:#F6E7C2;color:#6B4E0E;} .rcq-pill.st-voltou{background:var(--preto-tinta);color:#FFFFFF;} .rcq-pill.st-sem_interesse{background:transparent;border:1px solid var(--cinza-borda);color:var(--cinza-apoio);}
+.rcq-prox{color:var(--cinza-texto);} .rcq-prox.alerta{color:var(--vermelho);font-weight:700;}
+.rcq-obs-txt{color:var(--cinza-apoio);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.rcq-editar{font-family:inherit;font-size:12px;font-weight:700;background:none;border:1px solid var(--cinza-borda);border-radius:99px;padding:7px 14px;cursor:pointer;color:var(--preto-tinta);white-space:nowrap;}
+.rcq-editar:hover{border-color:var(--preto-tinta);}
+.rcq-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) auto;gap:10px;align-items:end;margin-top:12px;padding-top:12px;border-top:1px solid var(--cinza-superficie);}
+.rcq-campo{display:flex;flex-direction:column;gap:4px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--cinza-apoio);min-width:0;}
+.rcq-campo input,.rcq-campo select{width:100%;box-sizing:border-box;font-size:12.5px;text-transform:none;letter-spacing:0;font-weight:500;}
+.rcq-acoes{display:flex;flex-direction:column;gap:4px;align-items:flex-end;}
+.rcq-acoes button.primario{font-family:inherit;font-size:12px;font-weight:700;background:var(--preto-tinta);color:var(--branco);border:1px solid var(--preto-tinta);border-radius:99px;padding:8px 18px;cursor:pointer;white-space:nowrap;}
+.rcq-acoes button.primario:disabled{opacity:.5;cursor:default;}
+.rcq-msg{font-size:10.5px;color:var(--cinza-apoio);text-align:right;max-width:160px;}
+.rcq-msg.erro{color:var(--vermelho);}
+@media (max-width:900px){ .rcq-linha{grid-template-columns:44px minmax(0,1fr);} .rcq-sit{grid-column:2;} .rcq-editar{grid-column:1 / -1;justify-self:start;} .rcq-form{grid-template-columns:1fr 1fr;} .rcq-form .rcq-obs,.rcq-form .rcq-acoes{grid-column:1 / -1;} .rcq-acoes{flex-direction:row;justify-content:space-between;align-items:center;} .rcq-msg{max-width:none;} }
+@media (max-width:900px){ .saida-grade,.saida-grade.dupla{grid-template-columns:1fr;} .retorno-grade{grid-template-columns:1fr;} }
 /* ===== avaliação dos membros e desafio, visual (08/10/2026) ===== */
 .aval-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
 .aval-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;padding:16px 18px;}
@@ -608,6 +686,7 @@ export const GESTOR_HTML = `
     <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
     <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
     <button class="tab-btn" data-tab="churn">Churn</button>
+    <button class="tab-btn" data-tab="nps">NPS dos conselhos</button>
     <button class="tab-btn" data-tab="pulso">Pulso de CS</button>
     <button class="tab-btn" data-tab="voz">Fila da liderança</button>
   </div>
@@ -902,8 +981,8 @@ export const GESTOR_HTML = `
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
-          <h2>Churn e voz do membro</h2>
-          <p>Por que os membros saem, o que eles dizem e se a visita de reversão funciona. Os blocos usam o mês e os filtros desta barra.</p>
+          <h2>Churn</h2>
+          <p>Por que os membros saem, o que dizem no formulário de saída, quem voltaria e se a visita de reversão funciona. Fonte: board de churn e board de visitas. O NPS dos conselhos tem aba própria.</p>
         </div>
         <a id="churnBtnRelatorio" class="churn-link" href="#" target="_blank" rel="noopener">Emitir relatório</a>
       </div>
@@ -930,12 +1009,12 @@ export const GESTOR_HTML = `
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>Situação do mês</h2><p>Carteira, reversão e travamento do mês de referência, com a variação contra o mês anterior.</p></div></div>
+      <div class="block-head"><div><h2>Situação do mês</h2><p>Saídas da carteira, quem saiu disposto a voltar, reconquistas em aberto e pedidos de churn ainda sem desfecho.</p></div></div>
       <div class="churn-numeros" id="churnA1"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>O que fazer agora</h2><p>As pendências de reversão que pedem ação hoje, da mais atrasada para a menos atrasada.</p></div></div>
+      <div class="block-head"><div><h2>O que fazer agora</h2><p>Pendências de reversão e de reconquista que pedem ação hoje, da mais atrasada para a menos atrasada.</p></div></div>
       <ul class="churn-acoes-lista" id="churnA2"><li class="gestor-empty">Carregando…</li></ul>
     </section>
 
@@ -959,13 +1038,21 @@ export const GESTOR_HTML = `
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>O que os membros estão falando</h2><p>Temas da voz do membro nos últimos três meses, contra os três meses anteriores. Textos sem conteúdo e os preenchidos pelo CS ficam fora.</p></div>
-        <label class="churn-campo">Fonte <select class="pill-select" id="vozFonte"><option value="todas">Todas</option><option value="saida">Saída</option><option value="nps">NPS</option></select></label>
+      <div class="block-head"><div><h2>O que dizem ao sair</h2><p>As três perguntas abertas do formulário de saída, lidas separadamente, nos últimos três meses contra os três anteriores. Respostas sem conteúdo e as preenchidas pelo CS ficam fora. Clique num tema para ler os trechos.</p></div></div>
+      <div id="saidaPerguntas"><div class="gestor-empty">Carregando…</div></div>
+      <div id="saidaTrechos"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Quem voltaria</h2><p>Resposta à pergunta de 0 a 10 sobre voltar à MOAI, em todo o histórico do formulário: 9 e 10 voltariam, 7 e 8 talvez, 0 a 6 não.</p></div></div>
+      <div id="retornoResumo"><div class="gestor-empty">Carregando…</div></div>
+    </section>
+
+    <section class="block" id="blocoReconquista">
+      <div class="block-head"><div><h2>Rastreio de reconquista</h2><p>Cada ex membro que disse que voltaria vira um contato a acompanhar: status, responsável, próximo contato e observação. Só gestores veem esta lista.</p></div>
+        <label class="churn-campo rcq-talvez"><input type="checkbox" id="recTalvez"> Incluir quem deu 7 ou 8</label>
       </div>
-      <div id="vozInsights"></div>
-      <div id="vozTemas"><div class="gestor-empty">Carregando…</div></div>
-      <div id="vozTrechos"></div>
-      <p class="churn-nota" id="vozRodape"></p>
+      <div id="reconquistaPainel"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
     <section class="block">
@@ -976,23 +1063,6 @@ export const GESTOR_HTML = `
       <div id="melhoriaForm" hidden></div>
       <div id="melhoriaQuadro"><div class="gestor-empty">Carregando…</div></div>
       <div id="melhoriaExcluidas"></div>
-    </section>
-
-    <section class="block">
-      <div class="block-head"><div><h2>Como os membros avaliam</h2><p>Nota média de 0 a 10 nos últimos três meses, comparada aos três anteriores. Trocas e evolução são respondidas de 1 a 5 e aparecem multiplicadas por 2 para ficarem na mesma régua.</p></div></div>
-      <div id="notasDimensoes"><div class="gestor-empty">Carregando…</div></div>
-      <div class="aval-mapa">
-        <h3 class="churn-subtitulo">Onde a nota cai</h3>
-        <div id="notasConselhos"></div>
-      </div>
-      <p class="churn-nota" id="notasJustificativas"></p>
-    </section>
-
-    <section class="block">
-      <div class="block-head"><div><h2>Por que não evoluem no desafio</h2><p>Quanto os membros dizem evoluir nos desafios, e se o travamento acompanha a presença no conselho. Primeiro conselho fica fora.</p></div></div>
-      <div id="desafioTabela"><div class="gestor-empty">Carregando…</div></div>
-      <div id="desafioFrases"></div>
-      <p class="churn-nota" id="desafioAviso"></p>
     </section>
 
     <section class="block">
@@ -1013,6 +1083,45 @@ export const GESTOR_HTML = `
       <div id="visitasLista"></div>
       <p><a id="visitasCsv" href="#">Exportar em planilha</a></p>
     </details>
+  </div>
+
+  <div class="tab-panel" id="tab-nps">
+    <section class="block" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>NPS dos conselhos</h2>
+          <p>O que os membros respondem depois de cada conselho: notas de 0 a 10, evolução nos desafios e sugestões. Fonte: board NPS Conselhos Estratégicos. Janela de três meses terminando no mês escolhido, comparada aos três anteriores.</p>
+        </div>
+      </div>
+      <div class="churn-filtros">
+        <label class="churn-campo">Mês <select class="pill-select" id="npsRef" title="Mês de referência"></select></label>
+        <label class="churn-campo">CS <select class="pill-select" id="npsCs"><option value="">Todos</option></select></label>
+      </div>
+      <p class="churn-nota" id="npsBase"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Como os membros avaliam</h2><p>Nota média de 0 a 10 nos últimos três meses, comparada aos três anteriores. Trocas e evolução são respondidas de 1 a 5 e aparecem multiplicadas por 2 para ficarem na mesma régua.</p></div></div>
+      <div id="notasDimensoes"><div class="gestor-empty">Carregando…</div></div>
+      <div class="aval-mapa">
+        <h3 class="churn-subtitulo">Onde a nota cai</h3>
+        <div id="notasConselhos"></div>
+      </div>
+      <p class="churn-nota" id="notasJustificativas"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Por que não evoluem no desafio</h2><p>Quanto os membros dizem evoluir nos desafios, e se o travamento acompanha a presença no conselho. Primeiro conselho fica fora.</p></div></div>
+      <div id="desafioTabela"><div class="gestor-empty">Carregando…</div></div>
+      <div id="desafioFrases"></div>
+      <p class="churn-nota" id="desafioAviso"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>O que os membros sugerem</h2><p>Respostas abertas do NPS, separadas entre sugestões sobre o conselho e avaliação do CS. Clique num tema para ler os trechos.</p></div></div>
+      <div id="npsSugestoes"><div class="gestor-empty">Carregando…</div></div>
+      <div id="npsTrechos"></div>
+    </section>
   </div>
 
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
@@ -1114,6 +1223,7 @@ document.querySelectorAll('.tab-btn').forEach(function (btn) {
     if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
     if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
     if (btn.dataset.tab === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
+    if (btn.dataset.tab === 'nps' && !npsCarregado_) { npsCarregado_ = true; inicializarNps_(); }
     if (btn.dataset.tab === 'pulso' && !pulsoCarregado_) { pulsoCarregado_ = true; inicializarPulso_(); }
     if (btn.dataset.tab === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); inicializarFila_(); }
   });
@@ -2634,6 +2744,8 @@ function churnCarregarLista_() {
 // ---- churn e voz do membro (onda 2, 08/10/2026): situação, pendências, voz, melhorias, notas, desafio, visitas ----
 var ENDPOINT_VOZ_MEMBRO = '/api/gestor/membro/voz';
 var ENDPOINT_VISITAS = '/api/gestor/visitas';
+var ENDPOINT_NPS_CONSELHOS = '/api/gestor/nps-conselhos';
+var ENDPOINT_RECONQUISTA = '/api/gestor/reconquista';
 var ENDPOINT_MELHORIAS = '/api/gestor/membro/melhorias';
 var CHURN_ETAPAS_ORIGEM = ['Comercial', 'Onboarding', 'Conselho e conselheiro', 'CS', 'Eventos e operação', 'Financeiro', 'Fora da MOAI'];
 var CHURN_STATUS_MELHORIA = [['backlog', 'Backlog'], ['em_andamento', 'Em andamento'], ['realizado', 'Realizado'], ['rejeitado', 'Rejeitado']];
@@ -2661,9 +2773,16 @@ function churnTabela_(cabecalho, linhas) {
 // independente: falha em uma não prende as outras, e não depende da rota de churn ter respondido.
 // Cada render roda protegido, e um erro vira mensagem no próprio bloco em vez de "Carregando…" eterno.
 // A ordem de resposta é checada pelo contador, para que um mês antigo nunca sobrescreva o atual.
-var CHURN_IDS_VOZ_ = ['vozTemas', 'notasDimensoes', 'desafioTabela'];
-var CHURN_IDS_VISITAS_ = ['churnA2', 'churnCruzamento', 'visitasFunil', 'visitasPerfil', 'visitasLista', 'melhoriaFatos'];
+var CHURN_IDS_VOZ_ = ['saidaPerguntas', 'retornoResumo'];
+var CHURN_IDS_VISITAS_ = ['churnCruzamento', 'visitasFunil', 'visitasPerfil', 'visitasLista', 'melhoriaFatos'];
 var churnVozErro_ = null;
+var churnRecDados_ = null;
+var churnRecErro_ = null;
+var churnRecTalvez_ = false;
+var churnRecFiltro_ = 'abertos';
+var churnRecLimite_ = 8;
+var churnRecEditando_ = null;
+var churnRecReq_ = 0;
 var churnVisitasErro_ = null;
 var churnTelaErro_ = null;
 
@@ -2681,14 +2800,14 @@ function churnRenderSeguro_(ids, fn) {
 }
 
 function churnRenderA1Atual_() {
-  churnRenderSeguro_(['churnA1'], function () { churnRenderA1_(churnVisitasDados_, churnVozDados_, churnDados_); });
+  churnRenderSeguro_(['churnA1'], function () { churnRenderA1_(churnVisitasDados_, churnVozDados_, churnDados_, churnRecDados_); });
+  churnRenderSeguro_(['churnA2'], churnRenderA2Atual_);
 }
 
 function carregarChurnBlocos_() {
   var minha = ++churnBlocosReq_;
   var ref = churnEstado_.ref;
   var cs = churnEstado_.cs || '';
-  var fonte = document.getElementById('vozFonte') ? document.getElementById('vozFonte').value : 'todas';
   churnVozDados_ = null;
   churnVisitasDados_ = null;
   churnVozErro_ = null;
@@ -2697,14 +2816,15 @@ function carregarChurnBlocos_() {
     var el = document.getElementById(id);
     if (el) el.innerHTML = '<div class="gestor-empty">Carregando…</div>';
   });
+  document.getElementById('saidaTrechos').innerHTML = '';
   churnRenderA1Atual_();
 
-  fetchJSON_(ENDPOINT_VOZ_MEMBRO + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs) + '&fonte=' + fonte).then(function (v) {
+  // Formulário de saída (board de churn): as três perguntas abertas e a disposição para voltar
+  fetchJSON_(ENDPOINT_VOZ_MEMBRO + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs)).then(function (v) {
     if (minha !== churnBlocosReq_) return;
     churnVozDados_ = v;
-    churnRenderSeguro_(['vozTemas'], function () { churnRenderVoz_(v); });
-    churnRenderSeguro_(['notasDimensoes'], function () { churnRenderNotas_(v.b4); });
-    churnRenderSeguro_(['desafioTabela'], function () { churnRenderDesafio_(v.b5); });
+    churnRenderSeguro_(['saidaPerguntas'], function () { churnRenderSaida_(v); });
+    churnRenderSeguro_(['retornoResumo'], function () { churnRenderRetorno_(v.retorno); });
     churnRenderA1Atual_();
   }).catch(function (err) {
     if (minha !== churnBlocosReq_) return;
@@ -2717,7 +2837,6 @@ function carregarChurnBlocos_() {
     if (minha !== churnBlocosReq_) return;
     churnVisitasDados_ = v;
     churnRenderSeguro_(['visitasFunil', 'visitasPerfil', 'visitasLista'], function () { churnRenderVisitas_(v); });
-    churnRenderSeguro_(['churnA2'], function () { churnRenderA2_(v.a2); });
     churnRenderSeguro_(['churnCruzamento'], function () { churnRenderCruzamento_(v.c1.cruzamento); });
     churnRenderSeguro_(['melhoriaFatos'], function () { churnRenderFatosMelhoria_(v.b3); });
     churnRenderA1Atual_();
@@ -2728,38 +2847,59 @@ function carregarChurnBlocos_() {
     churnRenderA1Atual_();
   });
 
+  // O rastreio de reconquista não depende do mês: só recarrega se ainda não veio
+  if (!churnRecDados_) churnCarregarReconquista_();
   churnCarregarMelhorias_();
 }
 
 // Cada cartão aceita a fonte nula: enquanto carrega mostra "Carregando…", se a fonte falhou mostra
 // "Sem dado" com o motivo, e nunca derruba os outros cartões.
-function churnRenderA1_(visitas, voz, tela) {
+function churnRenderA1_(visitas, voz, tela, rec) {
   var vazio = function (rotulo, erro) {
     return '<div class="churn-numero"><b class="texto">Sem dado</b><span class="rot">' + rotulo + '</span><span class="def">' +
       (erro ? 'Não foi possível carregar: ' + churnEsc_(erro.message || String(erro)) : 'Carregando…') + '</span></div>';
   };
   var h = tela ? '<div class="churn-numero"><b>' + tela.totalMes + '</b><span class="rot">Churns da carteira no mês</span></div>'
     : vazio('Churns da carteira no mês', churnTelaErro_);
+  if (voz) {
+    var m = voz.retorno.mes, ma = voz.retorno.mesAnterior;
+    h += '<div class="churn-numero"><b>' + m.voltaria + '<small class="de"> de ' + m.base + '</small></b><span class="rot">Saídas do mês que voltariam</span><span class="def">Nota 9 ou 10 para voltar. Mês anterior: ' + ma.voltaria + ' de ' + ma.base + '</span></div>';
+  } else {
+    h += vazio('Saídas do mês que voltariam', churnVozErro_);
+  }
+  if (rec) {
+    var r = rec.resumo;
+    h += '<div class="churn-numero"><b' + (r.vencidos ? ' class="alerta"' : '') + '>' + r.abertos + '</b><span class="rot">Reconquistas em aberto</span><span class="def' + (r.vencidos ? ' alerta' : '') + '">' +
+      (r.vencidos ? r.vencidos + ' com contato vencido, ' : '') + r.semContato + ' ainda sem contato, ' + r.voltaram + ' já voltaram</span></div>';
+  } else {
+    h += vazio('Reconquistas em aberto', churnRecErro_);
+  }
   if (visitas) {
     var pend = visitas.cartoes.pedidosEmAberto;
-    var r90 = visitas.cartoes.retencao90;
-    h += '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos em aberto, MRR ' + churnMoeda_(pend.mrr) + '</span><span class="def">' + pend.semMrr + ' sem MRR informado</span></div>' +
-      '<div class="churn-numero"><b>' + churnPct_(r90.pct) + '</b><span class="rot">Reversão sustentada em 90 dias</span><span class="def">' + r90.base + ' visitas maturadas</span></div>';
+    h += '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos de churn em aberto</span><span class="def">MRR ' + churnMoeda_(pend.mrr) + (pend.semMrr ? ', ' + pend.semMrr + ' sem MRR informado' : '') + '</span></div>';
   } else {
-    h += vazio('Pedidos em aberto', churnVisitasErro_) + vazio('Reversão sustentada em 90 dias', churnVisitasErro_);
-  }
-  if (voz) {
-    var c4 = voz.cartao4;
-    h += '<div class="churn-numero"><b>' + churnPct_(c4.atual.pct) + '</b><span class="rot">Membros travados no desafio</span><span class="def">' +
-      (c4.anterior.pct !== null ? 'Mês anterior: ' + churnPct_(c4.anterior.pct) : 'Sem dado do mês anterior') + '</span></div>';
-  } else {
-    h += vazio('Membros travados no desafio', churnVozErro_);
+    h += vazio('Pedidos de churn em aberto', churnVisitasErro_);
   }
   document.getElementById('churnA1').innerHTML = h;
 }
 
 function churnRenderA2_(lista) {
   document.getElementById('churnA2').innerHTML = lista.map(function (t) { return '<li>' + churnEsc_(t) + '</li>'; }).join('');
+}
+// Pendências de reversão (visitas) e de reconquista juntas, no máximo 6. Enquanto uma das duas fontes
+// não chega, mostra o que já veio; se as duas falharem, o erro aparece no bloco.
+function churnRenderA2Atual_() {
+  var el = document.getElementById('churnA2');
+  if (!churnVisitasDados_ && !churnRecDados_) {
+    if (churnVisitasErro_ && churnRecErro_) churnErroEm_(['churnA2'], churnVisitasErro_);
+    else el.innerHTML = '<li class="gestor-empty">Carregando…</li>';
+    return;
+  }
+  var itens = [];
+  if (churnVisitasDados_) itens = itens.concat((churnVisitasDados_.a2 || []).filter(function (t) { return !/^Nenhuma pend/.test(t); }));
+  if (churnRecDados_) itens = itens.concat(churnRecDados_.pendencias || []);
+  if (!itens.length) { el.innerHTML = '<li class="gestor-empty">Nenhuma pendência de reversão ou reconquista hoje.</li>'; return; }
+  churnRenderA2_(itens.slice(0, 6));
 }
 
 function churnRenderCruzamento_(c) {
@@ -2773,28 +2913,173 @@ function churnRenderCruzamento_(c) {
   }));
 }
 
-function churnRenderVoz_(v) {
-  document.getElementById('vozInsights').innerHTML = v.b2.insights.map(function (t) { return '<div class="voz-insight">' + churnEsc_(t) + '</div>'; }).join('');
-  var max = Math.max.apply(null, v.b2.ranking.map(function (l) { return l.textos; }).concat([1]));
-  document.getElementById('vozTemas').innerHTML = v.b2.ranking.length ? v.b2.ranking.map(function (l) {
-    var saida = l.textos ? Math.round(l.porFonte.saida / l.textos * 100) : 0;
-    return '<div class="churn-tema-linha">' +
-      '<button type="button" class="churn-link" data-ch="trechos" data-tema="' + churnEsc_(l.chave) + '">' + churnEsc_(l.rotulo) + '</button>' +
-      '<span class="churn-barra" style="width:' + Math.round(l.textos / max * 100) + '%"><i class="saida" style="width:' + saida + '%"></i></span>' +
-      '<span>' + l.textos + ' textos, ' + churnSeta_(l.delta) + ' contra o período anterior</span>' +
-      '<button type="button" class="churn-link" data-ch="criarMelhoria" data-tema="' + churnEsc_(l.chave) + '" data-rotulo="' + churnEsc_(l.rotulo) + '">Criar melhoria a partir deste tema</button>' +
-      '</div>';
-  }).join('') : '<p class="gestor-empty">Nenhum tema apareceu nos textos deste período.</p>';
-  document.getElementById('vozRodape').textContent = v.b2.rodape;
-  document.getElementById('vozTrechos').innerHTML = '';
+// ===== O que dizem ao sair (08/10/2026) =====
+// Três colunas, uma por pergunta aberta do formulário de saída. Cada coluna mostra a frase do tema mais
+// citado e os cinco temas com mais respostas, com a variação contra o período anterior.
+var SAIDA_TEMAS_POR_PERGUNTA_ = 5;
+function temasColunaHtml_(p, grupoAttr, grupoValor, comMelhoria) {
+  var linhas = p.ranking.slice(0, SAIDA_TEMAS_POR_PERGUNTA_);
+  var max = Math.max.apply(null, linhas.map(function (l) { return l.textos; }).concat([1]));
+  var h = '<div class="saida-col"><h3>' + churnEsc_(p.rotulo) + '</h3>' + (p.pergunta ? '<p class="saida-perg">' + churnEsc_(p.pergunta) + '</p>' : '');
+  h += p.insights.length ? '<p class="saida-insight">' + churnEsc_(p.insights[0]) + '</p>' : '<p class="saida-insight vazio">Nenhum tema apareceu nas respostas deste período.</p>';
+  linhas.forEach(function (l) {
+    var delta = l.delta > 0 ? '<span class="sobe">▲ ' + l.delta + '</span>' : (l.delta < 0 ? '<span class="desce">▼ ' + Math.abs(l.delta) + '</span>' : '<span class="igual">=</span>');
+    h += '<button type="button" class="saida-tema" data-' + grupoAttr + '="trechos" data-grupo="' + churnEsc_(grupoValor) + '" data-tema="' + churnEsc_(l.chave) + '" title="Ler os trechos deste tema">' +
+      '<span class="nome">' + churnEsc_(l.rotulo) + '</span>' +
+      '<span class="barra"><i style="width:' + Math.round(l.textos / max * 100) + '%"></i></span>' +
+      '<span class="num">' + l.textos + ' ' + delta + '</span></button>';
+  });
+  if (comMelhoria && linhas[0]) {
+    h += '<button type="button" class="churn-link saida-melhoria" data-ch="criarMelhoria" data-tema="' + churnEsc_(linhas[0].chave) + '" data-rotulo="' + churnEsc_(linhas[0].rotulo) + '">Criar melhoria sobre ' + churnEsc_(linhas[0].rotulo) + '</button>';
+  }
+  h += '<p class="saida-rodape">' + churnEsc_(p.rodape) + '</p></div>';
+  return h;
+}
+function churnRenderSaida_(v) {
+  document.getElementById('saidaPerguntas').innerHTML = '<div class="saida-grade">' +
+    v.b2.perguntas.map(function (p) { return temasColunaHtml_(p, 'ch', p.chave, true); }).join('') + '</div>' +
+    '<p class="churn-nota">O número ao lado de cada tema é de respostas no período; a seta compara com os três meses anteriores.</p>';
+}
+function trechosHtml_(titulo, lista) {
+  return '<div class="saida-trechos"><h3 class="churn-subtitulo">' + churnEsc_(titulo) + '</h3>' +
+    (lista.length ? lista.map(function (t) {
+      return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(t.mes.split('-').reverse().join('/')) + '</cite></blockquote>';
+    }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>') + '</div>';
+}
+function churnMostrarTrechos_(pergunta, chave) {
+  var p = ((churnVozDados_ && churnVozDados_.b2.perguntas) || []).filter(function (x) { return x.chave === pergunta; })[0];
+  if (!p) return;
+  var tema = p.ranking.filter(function (l) { return l.chave === chave; })[0];
+  var el = document.getElementById('saidaTrechos');
+  el.innerHTML = trechosHtml_(p.rotulo + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados', (p.trechos || {})[chave] || []);
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function churnMostrarTrechos_(chave) {
-  var lista = (churnVozDados_.b2.trechos || {})[chave] || [];
-  document.getElementById('vozTrechos').innerHTML = '<h3 class="churn-subtitulo">Trechos anonimizados</h3>' +
-    (lista.length ? lista.map(function (t) {
-      return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(t.fonte === 'saida' ? 'Saída' : 'NPS') + ', ' + churnEsc_(t.mes) + '</cite></blockquote>';
-    }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>');
+// ===== Quem voltaria (08/10/2026) =====
+// Histograma da nota de 0 a 10 e, ao lado, a proporção de quem voltaria por motivo da saída.
+function retornoHistogramaSvg_(dist) {
+  var W = 420, H = 190, ml = 8, mr = 8, mt = 18, mb = 30, n = 11, gap = 6;
+  var bw = (W - ml - mr - gap * (n - 1)) / n;
+  var max = Math.max.apply(null, dist.concat([1]));
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Quantas pessoas deram cada nota de 0 a 10 para voltar">';
+  dist.forEach(function (q, i) {
+    var x = ml + i * (bw + gap), alt = (q / max) * (H - mt - mb), y = H - mb - alt;
+    var cor = i >= 9 ? '#1A1A1A' : (i >= 7 ? '#C6C4C4' : '#C0433D');
+    h += '<rect x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(alt, q ? 2 : 0) + '" rx="3" fill="' + cor + '"><title>Nota ' + i + ': ' + q + '</title></rect>';
+    if (q) h += '<text x="' + (x + bw / 2) + '" y="' + (y - 4) + '" text-anchor="middle" font-size="10" font-weight="700" fill="#5D5D5D" font-family="Inter,sans-serif">' + q + '</text>';
+    h += '<text x="' + (x + bw / 2) + '" y="' + (H - mb + 14) + '" text-anchor="middle" font-size="10" fill="#807E7E" font-family="Inter,sans-serif">' + i + '</text>';
+  });
+  h += '<text x="' + (W / 2) + '" y="' + (H - 2) + '" text-anchor="middle" font-size="10" fill="#9F9F9F" font-family="Inter,sans-serif">Nota para voltar à MOAI</text>';
+  return h + '</svg>';
+}
+function churnRenderRetorno_(r) {
+  var hst = r.historico;
+  if (!hst.base) { document.getElementById('retornoResumo').innerHTML = '<p class="gestor-empty">Nenhuma nota de retorno registrada no formulário de saída.</p>'; return; }
+  var f = hst.faixas;
+  var p = function (x) { return Math.round(x / hst.base * 100); };
+  var h = '<div class="retorno-topo">' +
+    '<div class="retorno-num"><b>' + f.voltaria + '</b><span>voltariam (9 e 10)</span></div>' +
+    '<div class="retorno-num"><b>' + f.talvez + '</b><span>talvez (7 e 8)</span></div>' +
+    '<div class="retorno-num"><b>' + f.nao + '</b><span>não voltariam (0 a 6)</span></div>' +
+    '<div class="retorno-num"><b>' + churnNum_(hst.media) + '</b><span>nota média, em ' + hst.base + ' respostas</span></div></div>';
+  h += '<div class="retorno-faixa"><span class="v" style="width:' + p(f.voltaria) + '%">' + p(f.voltaria) + '%</span><span class="t" style="width:' + p(f.talvez) + '%">' + p(f.talvez) + '%</span><span class="n" style="width:' + p(f.nao) + '%">' + p(f.nao) + '%</span></div>';
+  h += (r.frases || []).map(function (t) { return '<div class="voz-insight">' + churnEsc_(t) + '</div>'; }).join('');
+  h += '<div class="retorno-grade"><div class="retorno-hist">' + retornoHistogramaSvg_(hst.distribuicao) + '</div><div class="retorno-motivos"><h3 class="churn-subtitulo">Quem voltaria, por motivo da saída</h3>';
+  hst.porMotivo.forEach(function (m) {
+    var w = function (x) { return m.base ? (x / m.base * 100) : 0; };
+    h += '<div class="retorno-mot" title="' + m.voltaria + ' voltariam, ' + m.talvez + ' talvez, ' + m.nao + ' não, em ' + m.base + ' respostas">' +
+      '<span class="nome">' + churnEsc_(m.rotulo) + '</span>' +
+      '<span class="barra"><i class="v" style="width:' + w(m.voltaria) + '%"></i><i class="t" style="width:' + w(m.talvez) + '%"></i><i class="n" style="width:' + w(m.nao) + '%"></i></span>' +
+      '<span class="num">' + (m.pctVoltaria === null ? m.voltaria + ' de ' + m.base : churnPct_(m.pctVoltaria)) + '</span></div>';
+  });
+  h += '<p class="churn-nota">Escuro: voltariam. Cinza: talvez. Vermelho: não voltariam. O percentual é de quem deu 9 ou 10.</p></div></div>';
+  var extras = [];
+  if (hst.preenchidosPeloCs) extras.push(hst.preenchidosPeloCs + ' formulários preenchidos pelo CS ficaram fora');
+  if (hst.semNota) extras.push(hst.semNota + ' sem nota');
+  h += '<p class="churn-nota">Respostas desde ' + churnEsc_(hst.desde ? hst.desde.split('-').reverse().join('/') : 'o início') + (extras.length ? '; ' + extras.join(' e ') : '') + '. A lista nominal está no rastreio de reconquista, logo abaixo.</p>';
+  document.getElementById('retornoResumo').innerHTML = h;
+}
+
+// ===== Rastreio de reconquista (08/10/2026) =====
+function churnCarregarReconquista_() {
+  var minha = ++churnRecReq_;
+  churnRecErro_ = null;
+  return fetchJSON_(ENDPOINT_RECONQUISTA + (churnRecTalvez_ ? '?talvez=1' : '')).then(function (d) {
+    if (minha !== churnRecReq_) return;
+    churnRecDados_ = d;
+    churnRenderSeguro_(['reconquistaPainel'], churnRenderReconquista_);
+    churnRenderA1Atual_();
+  }).catch(function (err) {
+    if (minha !== churnRecReq_) return;
+    churnRecErro_ = err;
+    churnErroEm_(['reconquistaPainel'], err);
+    churnRenderA1Atual_();
+  });
+}
+function recStatusRotulo_(chave) {
+  var s = ((churnRecDados_ && churnRecDados_.status) || []).filter(function (x) { return x.chave === chave; })[0];
+  return s ? s.rotulo : chave;
+}
+function churnRenderReconquista_() {
+  var d = churnRecDados_, r = d.resumo;
+  var el = document.getElementById('reconquistaPainel');
+  if (!r.total) { el.innerHTML = '<p class="gestor-empty">Nenhum ex membro com nota ' + (d.incluirTalvez ? '7 ou mais' : '9 ou 10') + ' para voltar.</p>'; return; }
+  var filtros = [{ chave: 'abertos', rotulo: 'Em aberto', n: r.abertos }, { chave: 'vencidos', rotulo: 'Contato vencido', n: r.vencidos }]
+    .concat(d.status.map(function (s) { return { chave: s.chave, rotulo: s.rotulo, n: r.porStatus[s.chave] }; }))
+    .concat([{ chave: 'todos', rotulo: 'Todos', n: r.total }]);
+  var h = '<div class="rcq-filtros" role="group" aria-label="Filtrar por situação">' + filtros.map(function (f) {
+    return '<button type="button" class="rcq-filtro' + (churnRecFiltro_ === f.chave ? ' ativo' : '') + (f.chave === 'vencidos' && f.n ? ' alerta' : '') + '" data-ch="recFiltro" data-filtro="' + f.chave + '">' + churnEsc_(f.rotulo) + ' <b>' + f.n + '</b></button>';
+  }).join('') + '</div>';
+  var lista = d.itens.filter(function (i) {
+    if (churnRecFiltro_ === 'todos') return true;
+    if (churnRecFiltro_ === 'abertos') return i.aberto;
+    if (churnRecFiltro_ === 'vencidos') return i.vencido;
+    return i.status === churnRecFiltro_;
+  });
+  if (!lista.length) { h += '<p class="gestor-empty">Ninguém nesta situação.</p>'; el.innerHTML = h; return; }
+  var opcoes = function (atual) { return d.status.map(function (s) { return '<option value="' + s.chave + '"' + (s.chave === atual ? ' selected' : '') + '>' + churnEsc_(s.rotulo) + '</option>'; }).join(''); };
+  h += '<div class="rcq-lista">';
+  lista.slice(0, churnRecLimite_).forEach(function (i) {
+    var editando = churnRecEditando_ === i.churnId;
+    var proximo = i.proximoContato ? (i.vencido ? 'Contato venceu há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') : 'Próximo contato em ' + churnDataBR_(i.proximoContato)) : 'Sem próximo contato';
+    h += '<div class="rcq-item' + (i.vencido ? ' vencido' : '') + (i.aberto ? '' : ' encerrado') + (editando ? ' editando' : '') + '" data-churn="' + i.churnId + '">' +
+      '<div class="rcq-linha">' +
+        '<div class="rcq-nota' + (i.faixa === 'voltaria' ? '' : ' talvez') + '" title="Nota para voltar à MOAI"><b>' + i.nota + '</b><span>de 10</span></div>' +
+        '<div class="rcq-quem"><a href="' + churnEsc_(i.link) + '" target="_blank" rel="noopener" title="Abrir no Monday">' + churnEsc_(i.membro) + '</a>' +
+          '<span>' + churnEsc_([i.empresa, i.cs ? 'CS ' + i.cs : null].filter(Boolean).join(', ')) + '</span>' +
+          '<span>Saiu em ' + churnDataBR_(i.dataSaida) + '. Motivo: ' + churnEsc_(i.motivoRotulo) + '</span></div>' +
+        '<div class="rcq-sit"><span class="rcq-pill st-' + i.status + '">' + churnEsc_(recStatusRotulo_(i.status)) + '</span>' +
+          '<span class="rcq-prox' + (i.vencido ? ' alerta' : '') + '">' + churnEsc_(proximo) + (i.responsavel ? ', com ' + churnEsc_(i.responsavel) : '') + '</span>' +
+          (i.observacao ? '<span class="rcq-obs-txt" title="' + churnEsc_(i.observacao) + '">' + churnEsc_(i.observacao) + '</span>' : '') + '</div>' +
+        '<button type="button" class="rcq-editar" data-ch="recEditar" aria-expanded="' + (editando ? 'true' : 'false') + '">' + (editando ? 'Fechar' : 'Registrar contato') + '</button>' +
+      '</div>';
+    if (editando) {
+      h += '<div class="rcq-form">' +
+        '<label class="rcq-campo">Situação<select class="pill-select" data-rec="status">' + opcoes(i.status) + '</select></label>' +
+        '<label class="rcq-campo">Responsável<input type="text" class="pill-select" data-rec="responsavel" maxlength="80" value="' + churnEsc_(i.responsavel || '') + '" placeholder="Quem vai falar"></label>' +
+        '<label class="rcq-campo">Próximo contato<input type="date" class="pill-select" data-rec="proximo" value="' + churnEsc_(i.proximoContato || '') + '"></label>' +
+        '<label class="rcq-campo rcq-obs">Observação<input type="text" class="pill-select" data-rec="observacao" maxlength="600" value="' + churnEsc_(i.observacao || '') + '" placeholder="O que foi conversado"></label>' +
+        '<div class="rcq-acoes"><button type="button" class="primario" data-ch="recSalvar">Salvar</button>' +
+          '<span class="rcq-msg">' + (i.atualizadoEm ? 'Último registro em ' + churnDataBR_(i.atualizadoEm.slice(0, 10)) + (i.atualizadoPor ? ' por ' + churnEsc_(i.atualizadoPor.split('@')[0]) : '') : 'Ainda sem registro') + '</span></div>' +
+        '</div>';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+  if (lista.length > churnRecLimite_) h += '<button type="button" class="aval-mais" data-ch="recMais">Ver mais ' + Math.min(8, lista.length - churnRecLimite_) + ' (faltam ' + (lista.length - churnRecLimite_) + ')</button>';
+  if (r.preenchidosPeloCs) h += '<p class="churn-nota">' + r.preenchidosPeloCs + ' formulários preenchidos pelo CS no lugar do membro não entram nesta lista.</p>';
+  el.innerHTML = h;
+}
+function churnSalvarReconquista_(card) {
+  var churnId = Number(card.getAttribute('data-churn'));
+  var val = function (k) { var x = card.querySelector('[data-rec="' + k + '"]'); return x ? x.value : ''; };
+  var corpo = { churnId: churnId, status: val('status'), responsavel: val('responsavel') || null, proximoContato: val('proximo') || null, observacao: val('observacao') || null };
+  var msg = card.querySelector('.rcq-msg');
+  var btn = card.querySelector('[data-ch="recSalvar"]');
+  btn.disabled = true; msg.textContent = 'Salvando…';
+  return fetchJSON_(ENDPOINT_RECONQUISTA, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(function () { churnRecEditando_ = null; return churnCarregarReconquista_(); })
+    .catch(function (err) { btn.disabled = false; msg.textContent = 'Não foi possível salvar: ' + err.message; msg.classList.add('erro'); });
 }
 
 // ===== Como os membros avaliam (08/10/2026) =====
@@ -3132,14 +3417,20 @@ function churnMelhoriaPorId_(id) {
 
 // Ligações dos blocos novos. Um único ouvinte no painel cuida dos botões e selects gerados.
 function churnLigarBlocos_() {
-  document.getElementById('vozFonte').addEventListener('change', function () { carregarChurnBlocos_(churnDados_); });
+  document.getElementById('recTalvez').addEventListener('change', function () {
+    churnRecTalvez_ = this.checked; churnRecLimite_ = 8; churnCarregarReconquista_();
+  });
   document.getElementById('melhoriaNova').addEventListener('click', function () { churnAbrirFormMelhoria_(null, '', ''); });
   var painel = document.getElementById('tab-churn');
   painel.addEventListener('click', function (ev) {
     var alvo = ev.target.closest('[data-ch]');
     if (!alvo) return;
     var acao = alvo.getAttribute('data-ch');
-    if (acao === 'trechos') churnMostrarTrechos_(alvo.getAttribute('data-tema'));
+    if (acao === 'trechos') churnMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-tema'));
+    else if (acao === 'recFiltro') { churnRecFiltro_ = alvo.getAttribute('data-filtro'); churnRecLimite_ = 8; churnRecEditando_ = null; churnRenderReconquista_(); }
+    else if (acao === 'recEditar') { var idRec = Number(alvo.closest('.rcq-item').getAttribute('data-churn')); churnRecEditando_ = churnRecEditando_ === idRec ? null : idRec; churnRenderReconquista_(); }
+    else if (acao === 'recMais') { churnRecLimite_ += 8; churnRenderReconquista_(); }
+    else if (acao === 'recSalvar') churnSalvarReconquista_(alvo.closest('.rcq-item'));
     else if (acao === 'criarMelhoria') churnAbrirFormMelhoria_(null, alvo.getAttribute('data-tema'), alvo.getAttribute('data-rotulo'));
     else if (acao === 'verExcluidas') { churnMelhoriasExcluidasAbertas_ = !churnMelhoriasExcluidasAbertas_; churnRenderMelhorias_(); }
     else if (acao === 'excluir' || acao === 'restaurar' || acao === 'editar') {
@@ -3222,6 +3513,84 @@ function inicializarChurn() {
   }
 }
 
+
+// ============ NPS dos conselhos (08/10/2026) ============
+// Aba própria para o board de NPS, separada do churn. Reaproveita os renderizadores das notas
+// (churnRenderNotas_) e do desafio (churnRenderDesafio_), que escrevem nos mesmos ids, agora dentro
+// desta aba. Filtros próprios de mês e CS; a lista de CS vem do próprio NPS (CS do título do conselho).
+var npsCarregado_ = false;
+var npsReq_ = 0;
+var npsDados_ = null;
+var npsCsMontado_ = false;
+var NPS_IDS_ = ['notasDimensoes', 'desafioTabela', 'npsSugestoes'];
+function npsPopularRef_() {
+  var sel = document.getElementById('npsRef');
+  var hoje = new Date();
+  var ano = hoje.getFullYear(), mes = hoje.getMonth() + 1, html = '';
+  for (var i = 0; i < 24; i++) {
+    var valor = ano + '-' + (mes < 10 ? '0' + mes : String(mes));
+    html += '<option value="' + valor + '">' + CHURN_MESES_[mes - 1] + ' de ' + ano + (i === 0 ? ' (em andamento)' : '') + '</option>';
+    mes--;
+    if (mes === 0) { mes = 12; ano--; }
+  }
+  sel.innerHTML = html;
+  sel.selectedIndex = 1;
+}
+function npsMontarCs_(lista) {
+  if (npsCsMontado_) return;
+  npsCsMontado_ = true;
+  var sel = document.getElementById('npsCs');
+  (lista || []).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+}
+function npsRenderSugestoes_(sg) {
+  document.getElementById('npsSugestoes').innerHTML = '<div class="saida-grade dupla">' +
+    temasColunaHtml_({ rotulo: 'Sobre o conselho', pergunta: 'Sugestões deixadas depois do encontro', ranking: sg.conselho.ranking, insights: sg.conselho.insights, rodape: sg.conselho.rodape }, 'nps', 'conselho', false) +
+    temasColunaHtml_({ rotulo: 'Sobre o CS', pergunta: 'Como avalia o CS', ranking: sg.cs.ranking, insights: sg.cs.insights, rodape: sg.cs.rodape }, 'nps', 'cs', false) +
+    '</div>';
+  document.getElementById('npsTrechos').innerHTML = '';
+}
+function npsMostrarTrechos_(grupo, chave) {
+  if (!npsDados_) return;
+  var g = npsDados_.sugestoes[grupo];
+  var tema = g.ranking.filter(function (l) { return l.chave === chave; })[0];
+  var el = document.getElementById('npsTrechos');
+  el.innerHTML = trechosHtml_((grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados', (g.trechos || {})[chave] || []);
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function carregarNps_() {
+  var minha = ++npsReq_;
+  var ref = document.getElementById('npsRef').value;
+  var cs = document.getElementById('npsCs').value;
+  NPS_IDS_.forEach(function (id) { document.getElementById(id).innerHTML = '<div class="gestor-empty">Carregando…</div>'; });
+  ['notasConselhos', 'notasJustificativas', 'desafioFrases', 'desafioAviso', 'npsTrechos', 'npsBase'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
+  fetchJSON_(ENDPOINT_NPS_CONSELHOS + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs)).then(function (d) {
+    if (minha !== npsReq_) return;
+    npsDados_ = d;
+    npsMontarCs_(d.csDisponiveis);
+    document.getElementById('npsBase').textContent = d.respostas.janela + ' respostas nos três meses até ' + CHURN_MESES_[Number(ref.slice(5, 7)) - 1].toLowerCase() + ' de ' + ref.slice(0, 4) + ', contra ' + d.respostas.anterior + ' nos três anteriores.';
+    churnRenderSeguro_(['notasDimensoes'], function () { churnRenderNotas_(d.b4); });
+    churnRenderSeguro_(['desafioTabela'], function () { churnRenderDesafio_(d.b5); });
+    churnRenderSeguro_(['npsSugestoes'], function () { npsRenderSugestoes_(d.sugestoes); });
+  }).catch(function (err) {
+    if (minha !== npsReq_) return;
+    churnErroEm_(NPS_IDS_, err);
+  });
+}
+function inicializarNps_() {
+  try {
+    npsPopularRef_();
+    document.getElementById('npsRef').addEventListener('change', carregarNps_);
+    document.getElementById('npsCs').addEventListener('change', carregarNps_);
+    document.getElementById('tab-nps').addEventListener('click', function (ev) {
+      var alvo = ev.target.closest('[data-nps="trechos"]');
+      if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-tema'));
+    });
+    carregarNps_();
+  } catch (err) {
+    console.error('Erro ao iniciar NPS dos conselhos:', err);
+    churnErroEm_(NPS_IDS_, err);
+  }
+}
 
 // ============ Pulso de CS (05/10/2026) ============
 // Tudo que a tela mostra chega pronto de /api/gestor/pulso (lib/pulso.ts). Aqui só ficam o seletor de
