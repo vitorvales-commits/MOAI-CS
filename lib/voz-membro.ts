@@ -21,6 +21,11 @@ export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] =
   { chave: 'estrutura', rotulo: 'Local e estrutura', termos: /\b(local|sala|espaco|ar condicionado|wifi|wi fi|internet|barulho|comida|lanche|cafe|almoco|ventilac\w*|cadeira\w*|caneta\w*|estacionamento|confort\w*|apertad\w*)\b/g },
   { chave: 'expectativa', rotulo: 'Promessa e expectativa da venda', termos: /\b(prometid\w*|prometer|promessa\w*|foi falado|foi vendido|vendido|proposto|esperava\w*|esperavamos)\b/g },
   { chave: 'comunicacao', rotulo: 'Comunicação e informação', termos: /\b(comunicac\w*|informac\w*|transparenc\w*|onboarding|perdid\w*|alinhamento)\b/g },
+  // Os dois abaixo vieram da leitura das respostas reais do formulário de saída (08/10/2026): boa parte
+  // de quem sai explica a saída por vida pessoal ou por mudança na própria empresa, e sem eles esses
+  // textos caíam em Outros.
+  { chave: 'pessoal', rotulo: 'Momento pessoal e família', termos: /\b(pessoa\w*|familia\w*|familiar\w*|saude|gravidez|gestacao|nascimento|filho\w*|bebe|casamento|luto|faleciment\w*|especializac\w*|estudo\w*)\b/g },
+  { chave: 'empresa', rotulo: 'Mudança na empresa do membro', termos: /\b(reestrutur\w*|socio\w*|sociedade|societari\w*|operac\w*|falencia|liquidac\w*|reorganiz\w*|corte\w*|reducao de custo\w*|mudanca de atuacao|vendi a empresa|sai da empresa|saida da empresa)\b/g },
 ];
 
 // Respostas que não dizem nada: "não", "ok", "tudo ótimo" etc. Aplicadas ao texto sem acento, em
@@ -69,18 +74,21 @@ export type ResumoTemas = {
 };
 
 // Conta uma janela: textos válidos, descartados e preenchidos pelo CS, e os temas de cada texto.
-// Um mesmo texto (normalizado) conta uma vez por tema dentro da janela.
+// Cada resposta conta uma vez por tema (até 08/10/2026 respostas de texto idêntico, como duas pessoas
+// escrevendo "falta de tempo", contavam uma vez só e o tema aparecia menor do que era).
 function contarJanela(textos: TextoVoz[]) {
   let analisados = 0;
   let descartados = 0;
   let preenchidos = 0;
   const porTema = new Map<string, { rotulo: string; distintos: Set<string>; saida: Set<string>; nps: Set<string> }>();
+  let indice = 0;
   for (const t of textos) {
+    indice++;
     if (t.texto === null || t.texto === undefined) continue;
     if (t.fonte === 'saida' && ehPreenchidoPeloCs(t.texto)) { preenchidos++; continue; }
     if (ehNaoResposta(t.texto)) { descartados++; continue; }
     analisados++;
-    const chaveTexto = normalizado(t.texto);
+    const chaveTexto = String(indice);
     for (const tema of classificarTemasMembro(t.texto)) {
       if (tema.chave === TEMA_OUTROS.chave) continue;
       if (!porTema.has(tema.chave)) porTema.set(tema.chave, { rotulo: tema.rotulo, distintos: new Set(), saida: new Set(), nps: new Set() });
@@ -412,6 +420,96 @@ export function frasesDesafio(tabela: LinhaDesafio[]): string[] {
   const ganhoAlto = comGanho.filter((l) => (l.ganhosPercentual as number) >= 50);
   if (ganhoBaixo.length >= 2 && ganhoAlto.length >= 2) {
     out.push(`Nos conselhos com ganho registrado abaixo de 50 por cento, ${media(ganhoBaixo.map((l) => l.percentualTravados))} por cento se dizem travados; nos demais, ${media(ganhoAlto.map((l) => l.percentualTravados))} por cento.`);
+  }
+  return out;
+}
+
+
+// ---- formulário de saída: perguntas abertas e disposição para voltar (08/10/2026) ----
+
+// As três perguntas abertas do formulário de saída (board de churn 10008640053). Cada uma responde uma
+// coisa diferente e por isso é lida separada: por que saiu, o que esperava e não recebeu, o que sugere.
+export const PERGUNTAS_SAIDA = [
+  { chave: 'motivo', rotulo: 'Por que saiu', pergunta: 'Explique melhor o motivo da sua saída', campo: 'explicacao' as const },
+  { chave: 'expectativa', rotulo: 'O que esperava e não recebeu', pergunta: 'Você tinha alguma expectativa que não foi atendida?', campo: 'expectativa_nao_atendida' as const },
+  { chave: 'sugestao', rotulo: 'O que sugere melhorar', pergunta: 'Como podemos melhorar nossa rede?', campo: 'sugestao_melhoria' as const },
+];
+
+// Disposição para voltar, pergunta de 0 a 10 do formulário de saída. Mesma régua do NPS: 9 e 10
+// voltariam, 7 e 8 talvez, 0 a 6 não.
+export type FaixaRetorno = 'voltaria' | 'talvez' | 'nao';
+export const NOTA_RETORNO_VOLTARIA = 9;
+export const NOTA_RETORNO_TALVEZ = 7;
+export function faixaRetorno(nota: number | null | undefined): FaixaRetorno | null {
+  if (nota === null || nota === undefined || !Number.isFinite(Number(nota))) return null;
+  const n = Number(nota);
+  if (n >= NOTA_RETORNO_VOLTARIA) return 'voltaria';
+  if (n >= NOTA_RETORNO_TALVEZ) return 'talvez';
+  return 'nao';
+}
+
+export type SaidaRetorno = { motivo: string; nota: number | null; preenchidoPeloCs: boolean };
+export type ResumoRetorno = {
+  base: number;
+  media: number | null;
+  distribuicao: number[]; // índice 0 a 10, quantas respostas deram cada nota
+  faixas: { voltaria: number; talvez: number; nao: number };
+  pctVoltaria: number | null;
+  semNota: number;
+  preenchidosPeloCs: number;
+  porMotivo: { motivo: string; base: number; voltaria: number; talvez: number; nao: number; pctVoltaria: number | null; media: number | null }[];
+};
+
+// Resumo da disposição para voltar. Formulário preenchido pelo CS fica fora: a nota não é do membro.
+export function resumoRetorno(linhas: SaidaRetorno[]): ResumoRetorno {
+  const pct = (parte: number, base: number) => (base >= AMOSTRA_MINIMA ? Math.round((parte / base) * 1000) / 10 : null);
+  const media = (ns: number[]) => (ns.length ? Math.round((ns.reduce((a, b) => a + b, 0) / ns.length) * 10) / 10 : null);
+  const distribuicao = Array.from({ length: 11 }, () => 0);
+  const faixas = { voltaria: 0, talvez: 0, nao: 0 };
+  const notas: number[] = [];
+  let semNota = 0;
+  let preenchidos = 0;
+  const motivos = new Map<string, number[]>();
+  for (const l of linhas) {
+    if (l.preenchidoPeloCs) { preenchidos++; continue; }
+    const f = faixaRetorno(l.nota);
+    if (!f) { semNota++; continue; }
+    const n = Math.round(Number(l.nota));
+    distribuicao[Math.max(0, Math.min(10, n))]++;
+    faixas[f]++;
+    notas.push(Number(l.nota));
+    if (!motivos.has(l.motivo)) motivos.set(l.motivo, []);
+    motivos.get(l.motivo)!.push(Number(l.nota));
+  }
+  const porMotivo = Array.from(motivos.entries()).map(([motivo, ns]) => {
+    const voltaria = ns.filter((n) => faixaRetorno(n) === 'voltaria').length;
+    const talvez = ns.filter((n) => faixaRetorno(n) === 'talvez').length;
+    return { motivo, base: ns.length, voltaria, talvez, nao: ns.length - voltaria - talvez, pctVoltaria: pct(voltaria, ns.length), media: media(ns) };
+  }).sort((x, y) => (y.pctVoltaria ?? -1) - (x.pctVoltaria ?? -1) || y.base - x.base);
+  return {
+    base: notas.length,
+    media: media(notas),
+    distribuicao,
+    faixas,
+    pctVoltaria: pct(faixas.voltaria, notas.length),
+    semNota,
+    preenchidosPeloCs: preenchidos,
+    porMotivo,
+  };
+}
+
+// Frases por regra sobre a disposição para voltar, só com amostra mínima por motivo.
+export function frasesRetorno(r: ResumoRetorno, rotuloMotivo: (chave: string) => string): string[] {
+  const out: string[] = [];
+  if (r.base >= AMOSTRA_MINIMA) {
+    out.push(`${r.faixas.voltaria} de ${r.base} ex membros deram 9 ou 10 para voltar à MOAI, e mais ${r.faixas.talvez} deram 7 ou 8.`);
+  }
+  const comAmostra = r.porMotivo.filter((m) => m.pctVoltaria !== null);
+  const topo = comAmostra[0];
+  const fundo = comAmostra[comAmostra.length - 1];
+  if (topo && fundo && topo.motivo !== fundo.motivo) {
+    // rótulo sem minúscula forçada: motivos como Ausência de Brasília têm nome próprio
+    out.push(`O motivo de saída com mais gente disposta a voltar é ${rotuloMotivo(topo.motivo)} (${String(topo.pctVoltaria).replace('.', ',')} por cento deram 9 ou 10); o com menos é ${rotuloMotivo(fundo.motivo)} (${String(fundo.pctVoltaria).replace('.', ',')} por cento).`);
   }
   return out;
 }

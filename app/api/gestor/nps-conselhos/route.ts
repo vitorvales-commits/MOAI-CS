@@ -1,12 +1,13 @@
-// GET /api/gestor/membro/voz?ref=AAAA-MM&cs=
-// Aba Churn, só com o formulário de saída (board de churn 10008640053): as três perguntas abertas lidas
-// separadamente e a disposição para voltar. O NPS dos conselhos saiu desta rota em 08/10/2026 e tem a
-// sua própria (/api/gestor/nps-conselhos). Determinístico, sem IA; trechos anonimizados. Gestor apenas.
+// GET /api/gestor/nps-conselhos?ref=AAAA-MM&cs=
+// Aba NPS dos conselhos (08/10/2026), só com o board NPS Conselhos Estratégicos 2026 (18393367198):
+// notas de 0 a 10 por dimensão, onde a nota cai, evolução nos desafios e o que os membros sugerem.
+// Presença e atas entram só como contexto do desafio. Sem IA; trechos anonimizados; nenhum nome de
+// respondente sai na resposta. Gestor apenas.
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { mesAtualBrasilia } from '@/lib/churn';
-import { carregarSaidaMembro } from '@/lib/voz-membro-dados';
+import { carregarNpsConselhos } from '@/lib/voz-membro-dados';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +24,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Mês de referência inválido.' }, { status: 400 });
     }
     const cs = (sp.get('cs') || '').trim();
-
-    const payload = await carregarSaidaMembro(supabase, ref, cs);
-    return NextResponse.json(payload);
+    return NextResponse.json(await carregarNpsConselhos(supabase, ref, cs));
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
-    console.error('voz do membro falhou', e);
-    return NextResponse.json({ error: 'Não foi possível carregar a voz do membro agora.' }, { status: 500 });
+    console.error('NPS dos conselhos falhou', e);
+    return NextResponse.json({ error: 'Não foi possível carregar o NPS dos conselhos agora.' }, { status: 500 });
   }
 }
