@@ -193,6 +193,7 @@ const BOARDS = {
   HISTORICO_CONSELHOS: '18430666375',
   CONSELHEIROS: '18393359980',
   NPS_CONSELHOS: '18393367198',
+  VISITA_CHURNS: '18432210313',
 };
 
 const CONSELHEIROS_FOTO_COL = 'file_mm519xd1';
@@ -380,6 +381,12 @@ function colText(columnValues: { id: string; text: string | null }[], colId: str
 function numOrNull(txt: string | null): number | null {
   return txt === '' || txt === null || txt === undefined ? null : Number(txt);
 }
+// nota fora da escala vira nula (07/10/2026: havia 1010, 10000 e 19 gravados no NPS, que
+// distorcem médias). Escala de 0 a 10 ou de 1 a 5, conforme a pergunta.
+function notaNaFaixa(txt: string | null, min: number, max: number): number | null {
+  const n = numOrNull(txt);
+  return n !== null && Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
 function dateOrNull(txt: string | null): string | null {
   return txt || null;
 }
@@ -391,9 +398,11 @@ async function fetchGroups(boardId: string): Promise<{ id: string; title: string
   return data.boards[0].groups;
 }
 
-// pagina um board "achatado" (sem groups) inteiro via next_items_page
-async function fetchAllItemsFlat(boardId: string, colIds: string[], extraFields = ''): Promise<any[]> {
-  const fields = `id creator_id ${extraFields} column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}`;
+// pagina um board "achatado" (sem groups) inteiro via next_items_page. fragmentoColunas recebe
+// fragmentos inline de tipo (ex.: "... on BoardRelationValue { linked_item_ids }") para colunas
+// que precisam do valor estruturado além do texto formatado.
+async function fetchAllItemsFlat(boardId: string, colIds: string[], extraFields = '', fragmentoColunas = ''): Promise<any[]> {
+  const fields = `id creator_id ${extraFields} column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text ${fragmentoColunas}}`;
   let query = `query($boardId:[ID!]){boards(ids:$boardId){items_page(limit:200){cursor items{${fields}}}}}`;
   let data = await mondayFetch(query, { boardId: [boardId] });
   let page = data.boards[0].items_page;
@@ -695,6 +704,101 @@ async function syncChurn() {
   await upsert('churn_items', rows);
   await upsert('churn_detalhes', detalhes, 'churn_id');
   await pruneOrfaos('churn_items', new Set(rows.map((r) => r.id)));
+  return rows.length;
+}
+
+// ---- visitas de reversão: board Visita Churns (08/10/2026, onda 2) ----
+// Ids lidos por get_board_info em 08/10/2026, depois da renomeação e da criação das colunas
+// novas. O mapa de Etapa vem de constante(etapa_chave) da especificação.
+const VISITA_COLS = {
+  membroRel: 'board_relation_mm7y4zgt', churnRel: 'board_relation_mm7y7spz',
+  cs: 'person', etapa: 'status', produto: 'color_mm7evjh9', local: 'color_mm7ejsh6',
+  acaoPrincipal: 'color_mm7epkwj', termometro: 'color_mm7e48nq', observacoes: 'text_mm7eya7z',
+  dataPedido: 'date_mm7y6f2a', dataVisita: 'date_mm7y4cb4', dataDesfecho: 'date_mm7ybe0t',
+  fimFidelidade: 'date_mm7yrqq0', proximoAcompanhamento: 'date_mm7eccg9', mrr: 'numeric_mm7ymky2',
+  visitantes: 'multiple_person_mm7ykjbj', causaRaiz: 'color_mm7y7q68', etapaOrigem: 'color_mm7yyvyf',
+  duracao: 'color_mm7yyd7k', algoNovo: 'color_mm7y4j1c', causaEncontrada: 'color_mm7ymney',
+  evitavel: 'color_mm7ydwcf', identificavelAntes: 'color_mm7y1pf', expansao: 'color_mm7y9x5q',
+};
+const VISITA_COLS_PROIBIDAS = ['short_text4w9ft9pn', 'short_textln136606', 'file_mm48thg5'];
+const VISITA_FRAGMENTOS = '... on BoardRelationValue { linked_item_ids } ... on NumbersValue { number }';
+const VISITA_ETAPA_CHAVE: Record<string, string> = {
+  'Pediu Churn': 'pedido', 'Visita/Ação': 'visita', 'Acompanhamento': 'acompanhamento',
+  'Revertido': 'revertido', 'Churn': 'perdido',
+};
+
+function visitaEtapaChave(txt: string | null): string {
+  return VISITA_ETAPA_CHAVE[(txt || '').trim()] ?? 'outro';
+}
+function simNaoOrNull(txt: string | null): boolean | null {
+  const t = normalizarTexto(txt || '');
+  if (t === 'sim') return true;
+  if (t === 'nao') return false;
+  return null;
+}
+function primeiroLinkado(cv: any[], colId: string): number | null {
+  const c = cv.find((x) => x.id === colId);
+  const ids = c?.linked_item_ids;
+  return ids && ids.length ? Number(ids[0]) : null;
+}
+// MRR negativo ou não numérico vira nulo (regra de visitas_churn.mrr_em_risco)
+function mrrOrNull(cv: any[], colId: string): number | null {
+  const c = cv.find((x) => x.id === colId);
+  const n = c?.number === null || c?.number === undefined ? null : Number(c.number);
+  return n !== null && Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+async function syncVisitasChurn() {
+  const colIds = Object.values(VISITA_COLS);
+  assertColunasPermitidas(colIds, VISITA_COLS_PROIBIDAS);
+  const itens = await fetchAllItemsFlat(BOARDS.VISITA_CHURNS, colIds, 'name created_at group{id}', VISITA_FRAGMENTOS);
+  // item de teste criado durante a configuração do board não entra
+  const items = itens.filter((it) => normalizarTexto(it.name || '') !== 'teste');
+  // group_id é buscado pelo membro ligado, no momento do sync (regra do trigger visitas_churn_manter_grupo)
+  const membros = await fetchAllFromSupabase('conselhos_membros', 'id,group_id');
+  const groupDoMembro = new Map<number, string>(membros.map((m: any) => [Number(m.id), m.group_id]));
+  const agora = new Date().toISOString();
+  const rows = items.map((it) => {
+    const cv = it.column_values;
+    const dataPedidoTxt = dateOrNull(colText(cv, VISITA_COLS.dataPedido));
+    const membroId = primeiroLinkado(cv, VISITA_COLS.membroRel);
+    return {
+      id: Number(it.id),
+      membro_nome: textoOrNull(it.name),
+      membro_id: membroId,
+      group_id: membroId !== null ? groupDoMembro.get(membroId) ?? null : null,
+      churn_item_id: primeiroLinkado(cv, VISITA_COLS.churnRel),
+      cs_responsavel: textoOrNull(colText(cv, VISITA_COLS.cs)),
+      visitantes: textoOrNull(colText(cv, VISITA_COLS.visitantes)),
+      etapa: visitaEtapaChave(colText(cv, VISITA_COLS.etapa)),
+      produto: textoOrNull(colText(cv, VISITA_COLS.produto)),
+      local: textoOrNull(colText(cv, VISITA_COLS.local)),
+      acao_principal: textoOrNull(colText(cv, VISITA_COLS.acaoPrincipal)),
+      termometro: textoOrNull(colText(cv, VISITA_COLS.termometro)),
+      causa_raiz: textoOrNull(colText(cv, VISITA_COLS.causaRaiz)),
+      etapa_origem: textoOrNull(colText(cv, VISITA_COLS.etapaOrigem)),
+      duracao: textoOrNull(colText(cv, VISITA_COLS.duracao)),
+      expansao: textoOrNull(colText(cv, VISITA_COLS.expansao)),
+      algo_novo: simNaoOrNull(colText(cv, VISITA_COLS.algoNovo)),
+      causa_encontrada: simNaoOrNull(colText(cv, VISITA_COLS.causaEncontrada)),
+      evitavel: simNaoOrNull(colText(cv, VISITA_COLS.evitavel)),
+      identificavel_antes: simNaoOrNull(colText(cv, VISITA_COLS.identificavelAntes)),
+      mrr_em_risco: mrrOrNull(cv, VISITA_COLS.mrr),
+      // sem data do pedido, usa a criação do item e marca como aproximada
+      data_pedido: dataPedidoTxt || (it.created_at ? String(it.created_at).slice(0, 10) : null),
+      data_pedido_aproximada: !dataPedidoTxt,
+      data_visita: dateOrNull(colText(cv, VISITA_COLS.dataVisita)),
+      data_desfecho: dateOrNull(colText(cv, VISITA_COLS.dataDesfecho)),
+      fim_fidelidade: dateOrNull(colText(cv, VISITA_COLS.fimFidelidade)),
+      proximo_acompanhamento: dateOrNull(colText(cv, VISITA_COLS.proximoAcompanhamento)),
+      observacoes: textoOrNull(colText(cv, VISITA_COLS.observacoes)),
+      board_group_id: it.group?.id || null,
+      created_at_monday: it.created_at || null,
+      synced_at: agora,
+    };
+  });
+  await upsert('visitas_churn', rows);
+  await pruneOrfaos('visitas_churn', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
 
@@ -1226,18 +1330,18 @@ async function syncNpsConselhos() {
         respondente_nome: item.name,
         conselho_raw: conselhoRaw,
         produto,
-        nota_conselheiro: numOrNull(colText(cv, NPS_COLS.notaConselheiro)),
-        nota_conselho: numOrNull(colText(cv, NPS_COLS.notaConselho)),
-        nota_cs_hoje: numOrNull(colText(cv, NPS_COLS.notaCsHoje)),
-        nota_cs_mes: numOrNull(colText(cv, NPS_COLS.notaCsMes)),
-        nota_cs_trimestre: numOrNull(colText(cv, NPS_COLS.notaCsTrimestre)),
-        nota_qualidade_trocas: numOrNull(colText(cv, NPS_COLS.qualidadeTrocas)),
-        nota_evolucao_desafios: numOrNull(colText(cv, NPS_COLS.evolucaoDesafios)),
+        nota_conselheiro: notaNaFaixa(colText(cv, NPS_COLS.notaConselheiro), 0, 10),
+        nota_conselho: notaNaFaixa(colText(cv, NPS_COLS.notaConselho), 0, 10),
+        nota_cs_hoje: notaNaFaixa(colText(cv, NPS_COLS.notaCsHoje), 0, 10),
+        nota_cs_mes: notaNaFaixa(colText(cv, NPS_COLS.notaCsMes), 0, 10),
+        nota_cs_trimestre: notaNaFaixa(colText(cv, NPS_COLS.notaCsTrimestre), 0, 10),
+        nota_qualidade_trocas: notaNaFaixa(colText(cv, NPS_COLS.qualidadeTrocas), 1, 5),
+        nota_evolucao_desafios: notaNaFaixa(colText(cv, NPS_COLS.evolucaoDesafios), 1, 5),
         continuidade_desafios: colText(cv, NPS_COLS.continuidadeDesafios),
         destaque_texto_bruto: colText(cv, NPS_COLS.destaqueTexto),
         avalia_cs_texto: colText(cv, NPS_COLS.avaliaCsTexto),
-        nota_estrutura_local: numOrNull(colText(cv, NPS_COLS.notaEstruturaLocal)),
-        nota_comida_local: numOrNull(colText(cv, NPS_COLS.notaComidaLocal)),
+        nota_estrutura_local: notaNaFaixa(colText(cv, NPS_COLS.notaEstruturaLocal), 0, 10),
+        nota_comida_local: notaNaFaixa(colText(cv, NPS_COLS.notaComidaLocal), 0, 10),
         aspectos_local: aspectosTxt ? aspectosTxt.split(',').map((s: string) => s.trim()) : [],
         local_nome: colText(cv, NPS_COLS.localNome),
         sugestao_texto: colText(cv, NPS_COLS.sugestaoTextoAtual) || colText(cv, NPS_COLS.sugestaoTextoLegado) || null,
@@ -1476,6 +1580,7 @@ const SYNC_TASKS: Record<string, () => Promise<number>> = {
   conselheiros_fotos: syncConselheirosFotos,
   conselheiros: syncConselheiros,
   nps_conselhos: syncNpsConselhos,
+  visitas_churn: syncVisitasChurn,
 };
 
 Deno.serve(async (req) => {
