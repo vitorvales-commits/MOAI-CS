@@ -607,6 +607,20 @@ select.pickmes:hover { border-color:#1A1A1A; }
 
 .empty-state { text-align:center; padding:60px 20px; color:#9F9F9F; font-size:12.5px; }
 ${GTD_CHECKLIST_STYLE}
+.farol-bloco { margin: 0 0 18px; }
+.farol-titulo { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.farol-resumo { margin: 0 0 10px; color: #5d5d5d; font-size: 13px; }
+.farol-linha { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; }
+.farol-card { display: flex; align-items: flex-start; gap: 10px; min-width: 250px; max-width: 280px; background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 12px; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.farol-card:focus-visible { outline: 2px solid #1d1d1b; outline-offset: 2px; }
+.farol-lampada { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px; margin-top: 2px; }
+.farol-numero { font-size: 22px; font-weight: 700; min-width: 28px; line-height: 1.1; }
+.farol-info { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 0; }
+.farol-data { color: #5d5d5d; }
+.farol-nome { font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.farol-cs, .farol-pend { color: #5d5d5d; }
+.farol-acao { margin-top: 4px; color: #1d1d1b; font-weight: 600; }
+.farol-encerrados { color: #777; font-size: 12px; margin: 8px 0 0; }
 </style>
 </head>
 <body>
@@ -634,6 +648,7 @@ ${GTD_CHECKLIST_STYLE}
   </div>
   <div id="equipeSection">
     <div class="section-title">Agenda<div class="line"></div></div>
+    <div id="farolSemana" class="farol-bloco" aria-live="polite"><div class="empty-state">Carregando…</div></div>
     <div class="agenda-toolbar">
       <div class="agenda-nav">
         <button class="agenda-nav-btn" type="button" onclick="agendaNavegar(-1)">&lsaquo;</button>
@@ -900,6 +915,7 @@ function iniciarHomeGestor(){
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
   carregarAgendaVisual();
+  carregarFarolSemana_();
   carregarNpsAliasesPendentes();
   iniciarSeletorRelatorioMensal_();
 }
@@ -944,6 +960,7 @@ function sincronizarAgora(){
   fetchJSON_('/api/sync-agora', { method: 'POST' })
     .then(function (data) {
       var boards = Object.keys(data);
+      carregarFarolSemana_();
       var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
       var status2 = document.getElementById('syncStatusTopbar');
       if (status2) {
@@ -2164,6 +2181,84 @@ function agendaItensUnificados_(d){
   });
   itens.sort(function(a,b){ return new Date(a.dataIso) - new Date(b.dataIso); });
   return itens;
+}
+
+// ===== farol da semana (08/10/2026): confirmações da semana corrente, no topo da agenda =====
+// Sempre a semana corrente, de segunda a domingo, independente da semana que a agenda estiver mostrando.
+// Usa a mesma faixa de cor da agenda (semaforoConfirmados_), sem limiar novo. A lista de itens é própria,
+// para não trocar a lista de cliques da agenda.
+var farolItens_ = [];
+var FAROL_GRAVIDADE_ = { vermelho: 0, laranja: 1, amarelo: 2, verde: 3, azul: 4 };
+var FAROL_DIAS_ = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function farolAbrir_(i){
+  var salvo = agendaItensClique_;
+  agendaItensClique_ = farolItens_;
+  try { agendaAbrirModal_(i); } finally { agendaItensClique_ = salvo; }
+}
+
+function carregarFarolSemana_(){
+  var el = document.getElementById('farolSemana');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state">Carregando…</div>';
+  var inicio = agendaInicioSemana_(agendaZerarHora_(new Date()));
+  var fim = agendaAddDias_(inicio, 7);
+  fetchJSON_('/api/gestor/agenda?inicio='+agendaFmtYYYYMMDD_(inicio)+'&fim='+agendaFmtYYYYMMDD_(fim)).then(function(d){
+    renderFarolSemana_(d);
+  }).catch(function(err){
+    el.innerHTML = '<div class="gestor-erro">Não foi possível carregar o farol: '+escAgenda_(err.message)+'.</div>';
+  });
+}
+
+function renderFarolSemana_(d){
+  var el = document.getElementById('farolSemana');
+  var todos = d.conselhos || [];
+  var encerrados = todos.filter(function(c){ return c.passado; }).length;
+  var cards = todos.filter(function(c){ return !c.passado; }).map(function(c){
+    var faixa = semaforoConfirmados_((c.confirmados || []).length);
+    var ordem = FAROL_GRAVIDADE_[faixa.chave];
+    return { c: c, faixa: faixa, ordem: ordem === undefined ? 9 : ordem };
+  }).sort(function(a, b){
+    return a.ordem - b.ordem || new Date(a.c.dataIso) - new Date(b.c.dataIso);
+  });
+  var atencao = cards.filter(function(x){ return x.ordem <= 1; }).length;
+  var resumo;
+  if (!cards.length) resumo = 'Nenhum conselho nesta semana.';
+  else if (atencao) resumo = cards.length + (cards.length === 1 ? ' conselho nesta semana; ' : ' conselhos nesta semana; ') + atencao + (atencao === 1 ? ' precisa' : ' precisam') + ' de atenção (vermelho ou laranja).';
+  else resumo = cards.length + (cards.length === 1 ? ' conselho nesta semana' : ' conselhos nesta semana') + ', todos com confirmações em dia.';
+
+  var html = '<div class="farol-titulo">Farol da semana</div><p class="farol-resumo">' + escAgenda_(resumo) + '</p>';
+  farolItens_ = [];
+  if (cards.length) {
+    html += '<div class="farol-linha">';
+    cards.forEach(function(x, k){
+      var c = x.c;
+      farolItens_.push(agendaItensUnificados_({ conselhos: [c], rounds: [] })[0]);
+      var dt = new Date(c.dataIso);
+      var dia = FAROL_DIAS_[dt.getDay()];
+      var hora = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+      var confirmados = (c.confirmados || []).length;
+      var naoVao = c.naoVao || 0;
+      var aguardando = c.aguardando || 0;
+      var chave = x.faixa.chave;
+      var acao = (chave === 'vermelho' || chave === 'laranja') ? 'Cobrar confirmações com ' + (c.cs || 'o CS') + ' hoje'
+        : (chave === 'amarelo' ? 'Acompanhar confirmações até a véspera' : 'Confirmações em dia');
+      var rotulo = c.nomeGrupo + ', ' + dia + ' ' + hora + ', ' + confirmados + ' confirmados, faixa ' + x.faixa.rotulo;
+      html += '<button type="button" class="farol-card" aria-label="' + escAgenda_(rotulo) + '" onclick="farolAbrir_(' + k + ')">' +
+        '<span class="farol-lampada" style="background:' + x.faixa.corFundo + ';box-shadow:0 0 12px ' + x.faixa.corFundo + '80"></span>' +
+        '<span class="farol-numero">' + confirmados + '</span>' +
+        '<span class="farol-info">' +
+          '<span class="farol-data">' + dia + ' ' + hora + '</span>' +
+          '<span class="farol-nome">' + escAgenda_(c.nomeGrupo) + '</span>' +
+          '<span class="farol-cs">CS ' + escAgenda_(c.cs || '-') + '</span>' +
+          '<span class="farol-pend">' + aguardando + ' aguardando resposta, ' + naoVao + ' não vão</span>' +
+          '<span class="farol-acao">' + escAgenda_(acao) + '</span>' +
+        '</span></button>';
+    });
+    html += '</div>';
+  }
+  if (encerrados) html += '<p class="farol-encerrados">' + encerrados + (encerrados === 1 ? ' conselho desta semana já aconteceu.' : ' conselhos desta semana já aconteceram.') + '</p>';
+  el.innerHTML = html;
 }
 
 function carregarAgendaVisual(){

@@ -39,6 +39,7 @@ export type VisitaLinha = {
   retido_90: string;
   retido_180: string;
   iev: number | null;
+  churn_item_id?: number | null;
   board_item_id?: number;
 };
 

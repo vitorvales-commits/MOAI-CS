@@ -7,7 +7,7 @@ import { semAcento } from './voz.ts';
 import {
   classificarTemasMembro, ehNaoResposta, ehPreenchidoPeloCs, ehPrimeiroConselho, ehTravado,
   montarTemas, resumoNotas, conselhosComNotasBaixas, justificativasNotaBaixa, tabelaDesafio, frasesDesafio,
-  type TextoVoz, type RespostaNps, type ExtrasConselho,
+  type TextoVoz, type RespostaNps, type ExtrasConselho, TEMAS_MEMBRO,
 } from './voz-membro.ts';
 import { VOZ_MEMBRO_JANELA_MESES, AMOSTRA_MINIMA } from './constants.ts';
 
@@ -183,6 +183,7 @@ const meses = janela(ref, VOZ_MEMBRO_JANELA_MESES);
     filtros: { cs, fonte },
     b2: {
       ...tema,
+      temas: TEMAS_MEMBRO.map((x) => ({ chave: x.chave, rotulo: x.rotulo })),
       trechos,
       rodape: `${tema.textosAnalisados} textos analisados, ${tema.descartadosVazios} descartados por não trazerem conteúdo, ${tema.preenchidosPeloCs} formulários de saída preenchidos pelo CS.`,
     },

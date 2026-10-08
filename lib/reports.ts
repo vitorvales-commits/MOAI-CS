@@ -833,6 +833,8 @@ export type AgendaConselhoItem = {
   dataIso: string; statusAgenda: string | null; passado: boolean;
   presencaPorMembro: { nome: string; status: string | null; reposicao: boolean }[] | null;
   confirmados: { nome: string; mes: string }[] | null;
+  // farol da semana (08/10/2026): só para conselho ainda não encerrado; null quando já passou
+  membrosEsperados: number | null; naoVao: number | null; aguardando: number | null;
 };
 export type AgendaRoundItem = {
   id: number; nome: string; inicio: string | null; termino: string | null;
@@ -846,6 +848,8 @@ export type AgendaRoundItem = {
 function parseLimiteBRT(dataYYYYMMDD: string): Date {
   return new Date(dataYYYYMMDD + 'T00:00:00-03:00');
 }
+const STATUS_FORA_DO_FAROL = ['Não era do conselho', 'Retirado', 'Churn', 'Congelado'];
+const STATUS_NAO_VAI = 'Não vai';
 export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: string, dataFimISO: string, dadosParam?: DadosBrutos) {
   const dados = dadosParam || (await getDadosBrutos(sb));
   const limiteInicio = parseLimiteBRT(dataInicioISO);
@@ -871,11 +875,20 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     // (até 07/10/2026) bastava o início ter passado, e um conselho em andamento ou do dia anterior
     // aparecia como "passado" pintado de preto (#1A1A1A) na agenda, o bloco preto de terça.
     const passado = d.getTime() + AGENDA_DURACAO_CONSELHO_MIN * 60_000 <= agora.getTime();
+    // farol: titulares com status no mês (exceto os que saíram, estão congelados ou não eram do conselho),
+    // os que marcaram Não vai e os que ainda não responderam (esperados menos confirmados menos não vão)
+    const statusDoTitular = (m: any) => statusPorMembro.get(m.id)?.get(mes) ?? null;
+    const esperados = itemsPrincipais.filter((m: any) => { const st = statusDoTitular(m); return st !== null && !STATUS_FORA_DO_FAROL.includes(st); }).length;
+    const naoVao = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_NAO_VAI).length;
+    const titularesConfirmados = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_CONFIRMADO).length;
     conselhos.push({
       groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
       dataIso: row.data_iso, statusAgenda: row.status || null, passado,
       presencaPorMembro: passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null,
       confirmados: passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro),
+      membrosEsperados: passado ? null : esperados,
+      naoVao: passado ? null : naoVao,
+      aguardando: passado ? null : Math.max(0, esperados - titularesConfirmados - naoVao),
     });
   });
   conselhos.sort((a, b) => new Date(a.dataIso).getTime() - new Date(b.dataIso).getTime());
