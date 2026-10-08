@@ -76,6 +76,9 @@ export const GESTOR_STYLE = `
 .toggle-inline input{width:16px;height:16px;cursor:pointer;accent-color:var(--preto-tinta);}
 
 .ranking-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;overflow:hidden;}
+.rank-var{display:block;font-size:11px;color:var(--cinza-texto);margin-top:2px;}
+.rank-var.alerta{color:var(--vermelho);font-weight:600;}
+.rank-var a{color:inherit;text-decoration:underline;}
 .rank-row{display:grid;grid-template-columns:32px 1fr 200px 64px;align-items:center;gap:18px;padding:16px 22px;border-bottom:1px solid var(--cinza-linha);}
 .rank-row:last-child{border-bottom:none;}
 .rank-pos{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;color:var(--cinza-apoio);}
@@ -1142,6 +1145,19 @@ function renderHero() {
   document.getElementById('statDiverg').textContent = divergMedia;
 }
 
+// Variação contra o mês anterior (08/10/2026). Queda que passa do limite fica vermelha e leva à 1:1.
+// Mês anterior sem dado não mostra nada. A conta vem pronta do servidor.
+function variacaoRankHtml_(nome, v) {
+  if (!v) return '';
+  if (v.posicoes === 0 && v.pontos === 0) return '<span class="rank-var">estável</span>';
+  var pos = v.posicoes === 0
+    ? 'sem mudança de posição'
+    : (v.posicoes > 0 ? '▲ ' + v.posicoes + (v.posicoes === 1 ? ' posição' : ' posições') : '▼ ' + (-v.posicoes) + (v.posicoes === -1 ? ' posição' : ' posições'));
+  var pts = (v.pontos >= 0 ? '+' : '−') + Math.abs(v.pontos) + ' pts';
+  var pauta = v.alerta ? ' · <a href="/gestor/cs/' + encodeURIComponent(nome) + '#secUmAUm">Pautar na próxima 1:1</a>' : '';
+  return '<span class="rank-var' + (v.alerta ? ' alerta' : '') + '">' + pos + ' · ' + pts + pauta + '</span>';
+}
+
 function renderRanking() {
   var el = document.getElementById('rankingList');
   if (!DADOS.ranking.length) { el.innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
@@ -1154,7 +1170,7 @@ function renderRanking() {
     var pct = maxScore > 0 ? (r.scoreReal / maxScore * 100) : 0;
     var idxModal = registrarScoreModal_(r.nome, r.scoreReal, r.detalhamento);
     return '<div class="rank-row"><span class="rank-pos">' + (i + 1) + '</span>'
-      + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><span class="rank-name">' + r.nome + '</span></div>'
+      + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><div><span class="rank-name">' + r.nome + '</span>' + variacaoRankHtml_(r.nome, r.variacao) + '</div></div>'
       + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div><div class="rank-bar-mark" style="left:' + marca100 + '%" title="Meta batida (100)"></div></div></div>'
       + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>';
   }).join('');

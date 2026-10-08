@@ -1763,7 +1763,7 @@ const LABELS_INDICADOR: Record<string, string> = {
 // eixos (mesma ordem de INDICADORES_GESTOR + cumprimentoGtd + numConselhos, ou seja, os mesmos
 // nove indicadores já expostos em indicadoresOrdem) — cobre todo indicador que a área acompanha,
 // não só os seis originais.
-const RADAR_EIXOS: { chave: string; label: string; tipoMeta: 'min' | 'max' }[] = [
+export const RADAR_EIXOS: { chave: string; label: string; tipoMeta: 'min' | 'max' }[] = [
   { chave: 'churn', label: 'Churn', tipoMeta: 'max' },
   { chave: 'casesSucesso', label: 'Cases', tipoMeta: 'min' },
   { chave: 'matchmakings', label: 'Matchmakings', tipoMeta: 'min' },

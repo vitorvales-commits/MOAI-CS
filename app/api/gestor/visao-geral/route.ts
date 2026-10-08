@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateVisaoGestor, generateVisaoGeralRede } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
+import { variacaoDoRanking } from '@/lib/evolucao-dados';
+import { hojeSP } from '@/lib/gtd-prazos';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +32,13 @@ export async function GET(req: NextRequest) {
       generateVisaoGestor(supabase, mes, ano, incluirExMembros),
       generateVisaoGeralRede(supabase, mes, ano),
     ]);
-    return NextResponse.json({ ...data, visaoGeralRede });
+    // Variação do ranking contra o mês anterior (08/10/2026). Se o cálculo falhar, variacao fica nula e o resto segue.
+    const variacoes = await variacaoDoRanking(supabase, mes, ano, data.ranking, hojeSP()).catch((e) => {
+      console.error('visao-geral variacao', e);
+      return null;
+    });
+    const ranking = data.ranking.map((r) => ({ ...r, variacao: variacoes ? variacoes.get(r.nome) ?? null : null }));
+    return NextResponse.json({ ...data, ranking, visaoGeralRede });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

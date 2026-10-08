@@ -233,4 +233,14 @@ export const NOTA_BAIXA_ESCALA_5 = 3; // nota menor ou igual a este valor (escal
 export const IEV_PONTOS_MAXIMOS = 6; // Índice de Efetividade da Visita, de 0 a 6
 export const FIDELIDADE_MESES = 12; // fidelidade da MOAI: multa proporcional dentro dela
 export const CAUSA_RAIZ_PRAZO_DIAS = 3; // dias da data da visita sem causa raiz antes de cobrar o registro
-
+// ============ liderança e evolução (08/10/2026) ============
+// Decisões padrão a confirmar pelo Vitor. Listadas no PR.
+export const FECHAMENTO_DIA_CORTE = 5; // o mês M fica aberto até este dia do mês seguinte, inclusive
+export const FECHAMENTO_MAX_POR_REQUISICAO = 6; // meses fechados gravados numa única requisição
+export const EVOLUCAO_MES_INICIAL = '2026-05'; // primeiro mês com metas
+export const EVOLUCAO_JANELAS = [3, 6, 12]; // janelas de meses da evolução
+export const EVOLUCAO_JANELA_PADRAO = 6;
+export const QUEDA_POSICOES_ALERTA = 2; // queda de posições que vira alerta na Visão geral
+export const QUEDA_PONTUACAO_ALERTA = 15; // queda de pontos que vira alerta na Visão geral
+export const QUEDA_APROVEITAMENTO_ALERTA_PP = 30; // queda de aproveitamento, em pontos percentuais, que vira alerta
+export const UMAUM_TEXTO_MAX = 600; // limite de texto da 1:1

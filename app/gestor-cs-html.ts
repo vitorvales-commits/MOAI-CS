@@ -97,7 +97,15 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .adv-acoes{margin-left:auto;display:flex;gap:6px;}
 .efeito{padding:12px 14px;border-radius:12px;background:var(--cinza-fundo);font-size:13px;line-height:1.5;margin-bottom:14px;}
 .msg{font-size:12px;font-weight:600;margin-left:8px;}
-.um-topo{display:flex;justify-content:flex-end;margin-bottom:12px;}
+.um-topo{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.btn.sec.ativo{background:var(--preto-tinta);color:var(--branco);}
+.evo-svg{width:100%;height:auto;display:block;}
+.evo-eixo{font-size:11px;fill:var(--cinza-texto);}
+.evo-leitura p{font-size:13px;line-height:1.6;margin:6px 0 0;}
+.evo-acao{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.evo-acao button{background:var(--cinza-superficie);color:var(--preto-tinta);border:none;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.tend-queda{color:var(--vermelho);font-weight:700;}
+.tend-txt{font-size:12px;color:var(--cinza-texto);margin-left:6px;}
 .um-colunas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
 @media (max-width:820px){ .um-colunas{grid-template-columns:1fr;} }
 .um-col h3{font-size:14px;margin:0 0 4px;}
@@ -149,6 +157,20 @@ export const GESTOR_CS_HTML = `
   </header>
 
   <section class="hero" id="heroCS"><div class="vazio" style="background:rgba(255,255,255,0.08);color:#E9E9E9;">Carregando…</div></section>
+
+  <section class="block" id="secEvolucao">
+    <h2>Evolução <span class="sub">Pontuação mensal do CS comparada à mediana do time.</span></h2>
+    <div class="card">
+      <div class="um-topo" id="evoJanelas">
+        <button class="btn sec" type="button" data-evo-janela="3">3 meses</button>
+        <button class="btn sec" type="button" data-evo-janela="6">6 meses</button>
+        <button class="btn sec" type="button" data-evo-janela="12">12 meses</button>
+      </div>
+      <div id="evoGrafico"><div class="vazio">Carregando…</div></div>
+      <div id="evoLeitura"></div>
+      <div id="evoRecalcular"></div>
+    </div>
+  </section>
 
   <section class="block">
     <h2>Radar dos indicadores <span class="sub">Cada eixo vai de 0 a 150, e 100 significa meta batida. Eixo sem meta aparece com marcador vazio.</span></h2>
@@ -271,6 +293,39 @@ function renderHeroCS(d) {
 }
 
 // ---------- radar ----------
+function tendenciaCelula_(chave) {
+  if (!EVO) return '<span class="tend-txt">Carregando…</span>';
+  if (chave === 'cumprimentoGtd') return '<span class="tend-txt">sem histórico</span>';
+  var valores = EVO.meses.map(function (m) {
+    var r = m.cs && m.cs.radar ? m.cs.radar.filter(function (x) { return x.chave === chave; })[0] : null;
+    return r ? r : null;
+  });
+  if (chave === 'numConselhos') {
+    var conselhos = valores.map(function (r) { return r && r.valor !== null ? r.valor : null; });
+    return '<span class="tend-txt">' + conselhos.map(function (v) { return v === null ? 'sem dado' : v; }).join(' · ') + '</span>';
+  }
+  var pcts = valores.map(function (r) { return r && r.pct !== null && r.pct !== undefined ? r.pct : null; });
+  var pts = [];
+  var w = 64, h = 18;
+  pcts.forEach(function (p, i) {
+    if (p === null) return;
+    var x = pcts.length > 1 ? (i * w / (pcts.length - 1)) : w / 2;
+    var y = h - Math.min(p, 150) / 150 * h;
+    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  });
+  var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true"><polyline fill="none" stroke="var(--preto-tinta)" stroke-width="1.5" points="' + pts.join(' ') + '"/></svg>';
+  var comDado = pcts.filter(function (p) { return p !== null; });
+  var variacao = '';
+  if (comDado.length >= 2) {
+    var diff = comDado[comDado.length - 1] - comDado[comDado.length - 2];
+    var txt = (diff >= 0 ? '+' : '−') + Math.abs(diff) + ' p.p.';
+    variacao = '<span class="' + (diff <= -QUEDA_APROVEITAMENTO_ALERTA_PP_ ? 'tend-queda' : 'tend-txt') + '">' + txt + '</span>';
+  } else {
+    variacao = '<span class="tend-txt">sem comparação</span>';
+  }
+  return svg + variacao;
+}
+
 function renderRadarCS(d) {
   var el = document.getElementById('secRadar');
   if (d.radar.erro) { el.innerHTML = erroSecao(d.radar.erro); return; }
@@ -279,10 +334,12 @@ function renderRadarCS(d) {
   var linhas = eixos.map(function (e) {
     var un = e.unidade === '%' ? '%' : '';
     return '<tr><td>' + esc(e.label) + '</td><td class="num">' + numFmt(e.valor) + un + '</td><td class="num">' + (e.semMeta ? '<span class="tag-sem-meta">sem meta</span>' : numFmt(e.meta) + un) + '</td>'
+      + '<td>' + tendenciaCelula_(e.chave) + '</td>'
       + '<td class="num">' + (e.semMeta ? 'sem meta' : e.pct + '%') + '</td></tr>';
   }).join('');
-  el.innerHTML = '<div class="radar-bloco"><div class="radar-svg-wrap">' + svg + '</div>'
-    + '<table class="leg"><thead><tr><th>Indicador</th><th class="num">Valor</th><th class="num">Meta</th><th class="num">Aproveitamento</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
+  el.innerHTML = '<div class="radar-bloco">'
+    + '<details class="um-det"><summary>Ver radar</summary><div class="radar-svg-wrap">' + svg + '</div></details>'
+    + '<table class="leg"><thead><tr><th>Indicador</th><th class="num">Valor</th><th class="num">Meta</th><th>Tendência</th><th class="num">Aproveitamento</th></tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 
 // ---------- GTD ----------
@@ -663,6 +720,134 @@ function umAoMudarStatus(ev) {
 document.addEventListener('click', umAoClicar);
 document.addEventListener('change', umAoMudarStatus);
 
+// ---------- evolução (08/10/2026): fotografia mensal, lida do servidor ----------
+var EVO = null;
+var EVO_JANELA = 6;
+var EVO_REQ = 0;
+var EVO_QUEDA_TEXTO = '';
+var QUEDA_APROVEITAMENTO_ALERTA_PP_ = 30;
+
+function evoErro_(msg) { return '<div class="erro-secao">Não foi possível carregar esta seção: ' + esc(msg) + '.</div>'; }
+
+function carregarEvolucao() {
+  var req = ++EVO_REQ;
+  var mes = document.getElementById('selMesCS').value, ano = document.getElementById('selAnoCS').value;
+  document.querySelectorAll('[data-evo-janela]').forEach(function (b) {
+    b.classList.toggle('ativo', Number(b.getAttribute('data-evo-janela')) === EVO_JANELA);
+  });
+  fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '/evolucao?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + '&meses=' + EVO_JANELA).then(function (d) {
+    if (req !== EVO_REQ) return;
+    EVO = d;
+    renderEvolucao();
+    if (DADOS_CS) renderRadarCS(DADOS_CS);
+  }).catch(function (err) {
+    if (req !== EVO_REQ) return;
+    EVO = null;
+    document.getElementById('evoGrafico').innerHTML = evoErro_(err.message);
+    if (DADOS_CS) renderRadarCS(DADOS_CS);
+  });
+}
+
+function evoSvgHtml_(meses) {
+  var W = 640, H = 220, pL = 44, pR = 16, pT = 24, pB = 34;
+  var valores = [0];
+  meses.forEach(function (m) {
+    if (m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined) valores.push(m.cs.pontuacao);
+    if (m.medianaTime !== null && m.medianaTime !== undefined) valores.push(m.medianaTime);
+  });
+  var topo = Math.max(120, Math.ceil(Math.max.apply(null, valores) / 10) * 10);
+  var n = meses.length;
+  function X(i) { return n === 1 ? pL + (W - pL - pR) / 2 : pL + i * (W - pL - pR) / (n - 1); }
+  function Y(v) { return pT + (H - pT - pB) * (1 - v / topo); }
+  var grade = '';
+  [0, topo / 2, topo].forEach(function (v) {
+    grade += '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="var(--cinza-superficie)"/>'
+      + '<text class="evo-eixo" x="' + (pL - 8) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
+  });
+  var yRef = Y(100);
+  var ref = '<line x1="' + pL + '" x2="' + (W - pR) + '" y1="' + yRef.toFixed(1) + '" y2="' + yRef.toFixed(1) + '" stroke="var(--dourado)" stroke-dasharray="4 4"/>'
+    + '<text class="evo-eixo" x="' + (W - pR) + '" y="' + (yRef - 4).toFixed(1) + '" text-anchor="end">meta</text>';
+  function caminho(pegar) {
+    var d = '', abriu = false;
+    meses.forEach(function (m, i) {
+      var v = pegar(m);
+      if (v === null || v === undefined) { abriu = false; return; }
+      d += (abriu ? ' L ' : ' M ') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1);
+      abriu = true;
+    });
+    return d;
+  }
+  var linhaCS = caminho(function (m) { return m.cs ? m.cs.pontuacao : null; });
+  var linhaMed = caminho(function (m) { return m.medianaTime; });
+  var pontos = '', rotulos = '';
+  meses.forEach(function (m, i) {
+    var x = X(i);
+    rotulos += '<text class="evo-eixo" x="' + x.toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle">' + esc(m.rotulo.split(' ')[0].slice(0, 3)) + (m.aberto ? ' parcial' : '') + '</text>';
+    var v = m.cs ? m.cs.pontuacao : null;
+    if (v === null || v === undefined) return;
+    var y = Y(v);
+    var pos = (m.cs.posicao !== null && m.cs.posicao !== undefined) ? m.cs.posicao + 'º' : '';
+    pontos += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" fill="' + (m.aberto ? 'var(--branco)' : 'var(--preto-tinta)') + '" stroke="var(--preto-tinta)" stroke-width="1.5"><title>' + esc(m.rotulo) + ': ' + v + (pos ? ', ' + pos : '') + '</title></circle>';
+    if (pos) pontos += '<text class="evo-eixo" x="' + x.toFixed(1) + '" y="' + (y - 9).toFixed(1) + '" text-anchor="middle">' + pos + '</text>';
+  });
+  return '<svg class="evo-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Pontuação mensal do CS e mediana do time">' + grade + ref
+    + '<path d="' + linhaMed + '" fill="none" stroke="var(--cinza-apoio)" stroke-width="2" stroke-dasharray="6 5"/>'
+    + '<path d="' + linhaCS + '" fill="none" stroke="var(--preto-tinta)" stroke-width="2.5"/>'
+    + pontos + rotulos + '</svg>'
+    + '<div style="font-size:11.5px;color:var(--cinza-texto);margin-top:6px;">Linha escura: este CS. Tracejada cinza: mediana do time. Ponto vazado: mês ainda aberto.</div>';
+}
+
+function renderEvolucao() {
+  if (!EVO) return;
+  var meses = EVO.meses;
+  var temPonto = meses.some(function (m) { return m.cs && m.cs.pontuacao !== null && m.cs.pontuacao !== undefined; });
+  document.getElementById('evoGrafico').innerHTML = temPonto
+    ? evoSvgHtml_(meses)
+    : '<div class="vazio">Ainda não há meses com pontuação para comparar.</div>';
+
+  var pendente = meses.some(function (m) { return m.pendente; });
+  var html = '<div class="evo-leitura">'
+    + (pendente ? '<p>Alguns meses ainda estão sendo fechados. Atualize a página.</p>' : '')
+    + EVO.leitura.map(function (f) { return '<p>' + esc(f) + '</p>'; }).join('');
+  if (EVO.maiorQueda) {
+    var q = EVO.maiorQueda;
+    EVO_QUEDA_TEXTO = 'Maior queda: ' + q.label + ', de ' + q.de + '% para ' + q.para + '% da meta.';
+    html += '<p>' + esc(EVO_QUEDA_TEXTO) + '</p>'
+      + '<div class="evo-acao"><button type="button" data-evo-acao="ponto-atencao">Registrar como ponto de atenção</button><span id="evoMsg" style="font-size:12px;color:var(--cinza-texto);"></span></div>';
+  }
+  document.getElementById('evoLeitura').innerHTML = html + '</div>';
+
+  var fechados = meses.filter(function (m) { return !m.aberto && !m.pendente; });
+  var ultimo = fechados.length ? fechados[fechados.length - 1] : null;
+  document.getElementById('evoRecalcular').innerHTML = ultimo
+    ? '<div class="evo-acao"><button type="button" data-evo-acao="recalcular" data-ano="' + ultimo.ano + '" data-mes="' + ultimo.mes + '">Recalcular ' + esc(ultimo.rotulo) + '</button></div>'
+    : '';
+}
+
+function evoAoClicar_(ev) {
+  var alvo = ev.target;
+  if (!alvo || !alvo.closest) return;
+  var janela = alvo.closest('[data-evo-janela]');
+  if (janela) { EVO_JANELA = Number(janela.getAttribute('data-evo-janela')); carregarEvolucao(); return; }
+  var b = alvo.closest('[data-evo-acao]');
+  if (!b) return;
+  var acao = b.getAttribute('data-evo-acao');
+  if (acao === 'ponto-atencao') {
+    var msg = document.getElementById('evoMsg');
+    postUm({ acao: 'salvar_item', id: null, registroId: null, tipo: 'ponto_atencao', texto: EVO_QUEDA_TEXTO, privado: false, prioridade: 'alta', prazo: null, observacao: null })
+      .then(function () { msg.textContent = 'Registrado na 1:1.'; return carregarUmAUm(); })
+      .catch(function (err) { msg.textContent = 'Erro: ' + err.message; });
+  } else if (acao === 'recalcular') {
+    fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '/evolucao', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'reabrir', ano: Number(b.getAttribute('data-ano')), mes: Number(b.getAttribute('data-mes')) })
+    }).then(carregarEvolucao).catch(function (err) {
+      document.getElementById('evoGrafico').innerHTML = evoErro_(err.message);
+    });
+  }
+}
+document.addEventListener('click', evoAoClicar_);
+
 function renderTudoCS(d) {
   DADOS_CS = d;
   renderHeroCS(d); renderRadarCS(d); renderGtdCS(d); renderCriticosCS(d); renderAdvertenciasCS(d);
@@ -670,6 +855,7 @@ function renderTudoCS(d) {
 
 function carregarCS() {
   var mes = document.getElementById('selMesCS').value, ano = document.getElementById('selAnoCS').value;
+  carregarEvolucao();
   fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(renderTudoCS).catch(function (err) {
     document.getElementById('heroCS').innerHTML = erroSecao(err.message);
     ['secRadar', 'secGtd', 'secCriticos', 'secAdvertencias'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
