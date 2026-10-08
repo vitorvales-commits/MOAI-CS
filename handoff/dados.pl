@@ -51,3 +51,13 @@ commit('2026-09-29', '50440cf').
 commit('2026-09-29', '15afbca').
 commit('2026-09-29', '07c0d8a').
 commit('2026-09-29', '941b3a0').
+
+% ---- onda 2 do churn (08/10/2026), detalhe em handoff/historico.pl ----
+tabela(visitas_churn, "Um registro por item do board Visita Churns (18432210313). RLS ligada, select só para is_gestor(). Escrita só pela Edge Function sync-monday (service role). Trigger visitas_churn_manter_grupo mantém group_id quando o membro sai do board.").
+tabela(membro_melhorias, "Fila de melhorias da experiência do membro, criada à mão pelo gestor. RLS ligada, select só para is_gestor(). Escrita só pelas funções membro_melhoria_salvar, membro_melhoria_excluir e membro_melhoria_restaurar (SECURITY DEFINER, checam is_gestor e gravam log_access).").
+coluna_nova(voz_liderado_itens, excluido_em, timestamptz, "Exclusão lógica da sugestão. O trigger voz_materializar não toca nesta coluna, então a sincronização seguinte não traz a sugestão de volta.").
+coluna_nova(voz_liderado_itens, excluido_por, text, "E-mail do gestor que excluiu.").
+funcao(visitas_resultado, "SECURITY DEFINER, checa is_gestor. Uma linha por visita, com retenção em 30, 90 e 180 dias, IEV, situação do membro (membro_situacao) e fidelidade. Base de todos os números da aba de visitas e do relatório.").
+funcao(voz_excluir, "voz_excluir(p_id uuid). Marca excluido_em e excluido_por, erro P0002 se a sugestão não existe.").
+funcao(voz_restaurar, "voz_restaurar(p_id uuid). Zera excluido_em e excluido_por.").
+board(visita_churns, "18432210313", "Visita Churns, workspace Conselhos Estratégicos. Colunas: name (Membro), person (CS responsável), status (Etapa), color_mm7evjh9 (Produto), color_mm7ejsh6 (Local), color_mm7epkwj (Ação principal), color_mm7e48nq (Termômetro ao sair), text_mm7eya7z (Observações da visita), date_mm7eccg9 (Próximo acompanhamento), board_relation_mm7y4zgt (Membro do board de conselhos, 18393363935), board_relation_mm7y7spz (Formulário de saída, 10008640053), date_mm7y6f2a (Data do pedido), date_mm7y4cb4 (Data da visita), date_mm7ybe0t (Data do desfecho), date_mm7yrqq0 (Fim da fidelidade), numeric_mm7ymky2 (MRR em risco), multiple_person_mm7ykjbj (Quem visitou), color_mm7y7q68 (Causa raiz), color_mm7yyvyf (Etapa de origem), color_mm7yyd7k (Duração), color_mm7y4j1c (Algo que nunca tínhamos ouvido), color_mm7ymney (Encontramos a causa raiz), color_mm7ydwcf (A causa era evitável), color_mm7y1pf (Dava para identificar antes), color_mm7y9x5q (Expansão após a visita).");
