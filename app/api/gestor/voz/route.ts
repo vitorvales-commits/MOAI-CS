@@ -4,7 +4,7 @@
 // Nenhum nome de respondente sai nesta resposta.
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
-import { generateVozLiderado, definirStatusVoz, statusVozValido } from '@/lib/voz';
+import { generateVozLiderado, definirStatusVoz, statusVozValido, excluirVoz, restaurarVoz } from '@/lib/voz';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +38,12 @@ export async function POST(req: NextRequest) {
     const status = body?.status;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
       return NextResponse.json({ error: 'Identificador de sugestão inválido.' }, { status: 400 });
+    }
+    if (body?.acao === 'excluir') {
+      return NextResponse.json(await excluirVoz(supabase, id));
+    }
+    if (body?.acao === 'restaurar') {
+      return NextResponse.json(await restaurarVoz(supabase, id));
     }
     if (!statusVozValido(status)) {
       return NextResponse.json({ error: 'Status inválido.' }, { status: 400 });

@@ -385,6 +385,19 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .churn-numero b.texto{font-size:26px;line-height:1.2;}
 .churn-numero .rot{display:block;font-size:13px;font-weight:600;color:var(--preto-tinta);margin-top:4px;}
 .churn-numero .def{display:block;font-size:12px;color:var(--cinza-apoio);margin-top:2px;}
+.churn-subtitulo{font-size:14px;margin:18px 0 8px;}
+.churn-acoes-lista{margin:0;padding-left:18px;}
+.churn-acoes-lista li{margin:4px 0;}
+.churn-tema-linha{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(120px,2fr) minmax(160px,1.4fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #eeeeea;font-size:13px;}
+.churn-barra{display:block;height:10px;background:#eeeeea;border-radius:4px;overflow:hidden;}
+.churn-barra i{display:block;height:100%;background:var(--preto-tinta);}
+.churn-vencida{color:var(--vermelho);font-weight:600;}
+.churn-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0;}
+.churn-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--cinza-apoio);}
+.churn-form input,.churn-form select,.churn-form textarea{font:inherit;font-size:13px;padding:6px 8px;border:1px solid #d9d9d4;border-radius:6px;}
+.churn-detalhe{margin-top:18px;}
+.churn-detalhe summary{cursor:pointer;font-weight:600;padding:6px 0;}
+@media (max-width:700px){.churn-tema-linha{grid-template-columns:1fr;}}
 .churn-nota{font-size:12.5px;color:var(--cinza-apoio);margin:6px 0 14px;min-height:18px;}
 .churn-info{width:22px;height:22px;border-radius:50%;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--cinza-texto);font-size:12px;font-weight:700;cursor:pointer;line-height:1;padding:0;}
 .churn-info:hover{border-color:var(--preto-tinta);}
@@ -811,9 +824,10 @@ export const GESTOR_HTML = `
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
-          <h2>Churn por motivo</h2>
-          <p>Quantos membros saíram e por quê, segundo o formulário de saída.</p>
+          <h2>Churn e voz do membro</h2>
+          <p>Por que os membros saem, o que eles dizem e se a visita de reversão funciona. Os blocos usam o mês e os filtros desta barra.</p>
         </div>
+        <a id="churnBtnRelatorio" class="churn-link" href="#" target="_blank" rel="noopener">Emitir relatório</a>
       </div>
       <div class="churn-filtros">
         <label class="churn-campo">Mês <select class="pill-select" id="churnRef" title="Mês de referência"></select></label>
@@ -835,6 +849,20 @@ export const GESTOR_HTML = `
         <button type="button" class="churn-info" id="churnInfo" aria-label="Como este recorte é calculado" title="Como este recorte é calculado">i</button>
       </div>
       <p class="churn-descricao" id="churnDescricao" hidden></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Situação do mês</h2><p>Carteira, reversão e travamento do mês de referência, com a variação contra o mês anterior.</p></div></div>
+      <div class="churn-numeros" id="churnA1"><div class="gestor-empty">Carregando…</div></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>O que fazer agora</h2><p>As pendências de reversão que pedem ação hoje, da mais atrasada para a menos atrasada.</p></div></div>
+      <ul class="churn-acoes-lista" id="churnA2"><li class="gestor-empty">Carregando…</li></ul>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Por que estão saindo</h2><p>Quantos membros saíram e por quê, segundo o formulário de saída. Base e Produtos valem para os números e o gráfico.</p></div></div>
       <div class="churn-numeros" id="churnNumeros"><div class="gestor-empty">Carregando…</div></div>
       <p class="churn-nota" id="churnNotaRecorde"></p>
       <div class="churn-card">
@@ -847,31 +875,63 @@ export const GESTOR_HTML = `
         <button type="button" class="churn-link" id="churnVerLista" aria-expanded="false">Ver os churns deste mês</button>
         <div class="churn-lista" id="churnLista" hidden></div>
       </div>
+      <h3 class="churn-subtitulo">Motivo declarado versus causa raiz</h3>
+      <div id="churnCruzamento"><p class="churn-nota">Carregando…</p></div>
     </section>
 
     <section class="block">
-      <div class="block-head">
-        <div>
-          <h2>Análise do churn</h2>
-          <p>A IA escreve um rascunho a partir dos números e dos textos anonimizados deste recorte, você edita e salva. O relatório usa somente o texto salvo por você.</p>
-        </div>
-        <span class="churn-status" id="churnStatus">Sem análise</span>
+      <div class="block-head"><div><h2>O que os membros estão falando</h2><p>Temas da voz do membro nos últimos três meses, contra os três meses anteriores. Textos sem conteúdo e os preenchidos pelo CS ficam fora.</p></div>
+        <label class="churn-campo">Fonte <select class="pill-select" id="vozFonte"><option value="todas">Todas</option><option value="saida">Saída</option><option value="nps">NPS</option></select></label>
       </div>
-      <div class="churn-card">
-        <div class="churn-aviso" id="churnAvisoDesatualizada" style="display:none">Entraram ou saíram churns deste recorte depois que esta análise foi gerada ou salva. Vale revisar o texto antes de emitir o relatório.</div>
-        <div class="churn-aviso" id="churnAvisoRascunho" style="display:none">Este é o rascunho mais recente da IA e ainda não foi salvo.<button type="button" id="churnBtnVoltarSalvo">Voltar ao texto salvo</button></div>
-        <div class="churn-aviso" id="churnAvisoIA" style="display:none"></div>
-        <textarea id="churnTexto" placeholder="Escreva aqui por que os membros deste recorte deram churn, ou gere um rascunho com a IA e edite."></textarea>
-        <div class="churn-acoes">
-          <button type="button" id="churnBtnGerar">Gerar rascunho com IA</button>
-          <button type="button" class="primario" id="churnBtnSalvar">Salvar análise</button>
-          <button type="button" id="churnBtnPublicar">Publicar</button>
-          <a id="churnBtnRelatorio" href="#" target="_blank" rel="noopener">Emitir relatório</a>
-        </div>
-        <p class="erro-msg" id="churnErro" style="margin:10px 0 0;"></p>
-        <p class="churn-meta" id="churnMeta"></p>
-      </div>
+      <div id="vozInsights"></div>
+      <div id="vozTemas"><div class="gestor-empty">Carregando…</div></div>
+      <div id="vozTrechos"></div>
+      <p class="churn-nota" id="vozRodape"></p>
     </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>O que fazer para melhorar</h2><p>Melhorias registradas a partir dos temas da voz do membro ou das visitas. Cada uma tem responsável, prazo e status.</p></div>
+        <button type="button" class="primario" id="melhoriaNova">Nova melhoria</button>
+      </div>
+      <div id="melhoriaFatos"></div>
+      <div id="melhoriaForm" hidden></div>
+      <div id="melhoriaQuadro"><div class="gestor-empty">Carregando…</div></div>
+      <div id="melhoriaExcluidas"></div>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Por que as notas são baixas</h2><p>Notas baixas por dimensão, na janela de três meses, com o período anterior. Valores fora da escala não entram.</p></div></div>
+      <div id="notasDimensoes"><div class="gestor-empty">Carregando…</div></div>
+      <h3 class="churn-subtitulo">Conselhos com mais notas baixas</h3>
+      <div id="notasConselhos"></div>
+      <p class="churn-nota" id="notasJustificativas"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Por que não evoluem no desafio</h2><p>Percentual de membros que se dizem travados, por conselho, com presença e ganhos da ata do mês.</p></div></div>
+      <div id="desafioTabela"><div class="gestor-empty">Carregando…</div></div>
+      <div id="desafioFrases"></div>
+      <p class="churn-nota" id="desafioAviso"></p>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><div><h2>Visitas de reversão</h2><p>Visitas dos últimos seis meses: funil, retenção, termômetro ao sair e Índice de Efetividade da Visita.</p></div></div>
+      <div id="visitasFunil"><div class="gestor-empty">Carregando…</div></div>
+      <div id="visitasEficacia"></div>
+      <div id="visitasCalibracao"></div>
+      <div id="visitasIev"></div>
+    </section>
+
+    <details class="block churn-detalhe">
+      <summary>Vale a pena visitar? (perfil)</summary>
+      <div id="visitasPerfil"></div>
+    </details>
+
+    <details class="block churn-detalhe">
+      <summary>Lista de visitas</summary>
+      <div id="visitasLista"></div>
+      <p><a id="visitasCsv" href="#">Exportar em planilha</a></p>
+    </details>
   </div>
 
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
@@ -2199,9 +2259,7 @@ var churnCarregado = false;
 // base: carteira_atual (CS ativos, sem a Comunidade) ou toda_a_rede. produtos nulo = todos.
 var churnEstado_ = { granularidade: 'mes', ref: '', base: 'carteira_atual', cs: '', categoria: '', produtos: null, comunidade: false };
 var churnDados_ = null;
-var churnTextoBase_ = '';
 var churnOpcoesMontadas_ = false;
-var churnConfirmarGerar_ = false;
 var churnOpcoesProdutos_ = [];
 var churnReq_ = 0;
 var churnAgendado_ = null;
@@ -2374,6 +2432,7 @@ function carregarChurn() {
     churnDados_ = data;
     churnPopularOpcoes_(data.opcoes);
     renderChurn_(data);
+    carregarChurnBlocos_(data);
     churnSincronizarUrl_();
     // a lista de auditoria aberta acompanha o filtro
     if (!document.getElementById('churnLista').hidden) churnCarregarLista_();
@@ -2436,7 +2495,6 @@ function renderChurn_(data) {
   var ver = document.getElementById('churnVerLista');
   ver.textContent = t.linkLista;
   renderComunidade_(data.comunidade, t);
-  renderAnaliseChurn_(data.analise, data.iaDisponivel, data.temDados ? 1 : 0);
 }
 
 // Lista de auditoria: os N churns que compõem o número do mês e, à parte, quem ficou de fora.
@@ -2466,109 +2524,327 @@ function churnCarregarLista_() {
   });
 }
 
-function churnEstadoAnalise_(a) {
-  if (!a) return 'vazia';
-  var iaMaisNova = a.textoIa && a.geradoEm && (!a.editadoEm || Date.parse(a.geradoEm) > Date.parse(a.editadoEm));
-  if (a.textoIa && (!a.textoGestor || iaMaisNova)) return 'ia';
-  if (!a.textoGestor) return 'vazia';
-  return a.status === 'publicada' ? 'publicada' : 'salva';
+// ---- churn e voz do membro (onda 2, 08/10/2026): situação, pendências, voz, melhorias, notas, desafio, visitas ----
+var ENDPOINT_VOZ_MEMBRO = '/api/gestor/membro/voz';
+var ENDPOINT_VISITAS = '/api/gestor/visitas';
+var ENDPOINT_MELHORIAS = '/api/gestor/membro/melhorias';
+var CHURN_ETAPAS_ORIGEM = ['Comercial', 'Onboarding', 'Conselho e conselheiro', 'CS', 'Eventos e operação', 'Financeiro', 'Fora da MOAI'];
+var CHURN_STATUS_MELHORIA = [['backlog', 'Backlog'], ['em_andamento', 'Em andamento'], ['realizado', 'Realizado'], ['rejeitado', 'Rejeitado']];
+var churnVozDados_ = null;
+var churnVisitasDados_ = null;
+var churnMelhorias_ = null;
+var churnMelhoriaId_ = null;
+var churnMelhoriasExcluidasAbertas_ = false;
+var churnBlocosReq_ = 0;
+
+function churnPct_(v) { return v === null || v === undefined ? 'amostra pequena' : String(v).replace('.', ',') + '%'; }
+function churnNum_(v) { return v === null || v === undefined ? '-' : String(v).replace('.', ','); }
+function churnMoeda_(v) { return v === null || v === undefined ? '-' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function churnDataBR_(iso) { return iso ? iso.split('-').reverse().join('/') : '-'; }
+function churnSeta_(d) { if (!d) return '='; return d > 0 ? '▲ +' + d : '▼ ' + d; }
+function churnTabela_(cabecalho, linhas) {
+  if (!linhas.length) return '<p class="gestor-empty">Sem dados neste período.</p>';
+  return '<div class="table-wrap"><div class="table-scroll"><table class="churn-tabela"><thead><tr>' +
+    cabecalho.map(function (c) { return '<th>' + churnEsc_(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    linhas.map(function (l) { return '<tr>' + l.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>'; }).join('') +
+    '</tbody></table></div></div>';
 }
 
-function renderAnaliseChurn_(a, iaOk, total) {
-  var estado = churnEstadoAnalise_(a);
-  var rotulos = { vazia: 'Sem análise', ia: 'Rascunho da IA, não salvo', salva: 'Análise salva', publicada: 'Análise publicada' };
-  var st = document.getElementById('churnStatus');
-  st.textContent = rotulos[estado];
-  st.className = 'churn-status' + (estado === 'vazia' ? '' : ' ' + estado);
-
-  var texto = estado === 'ia' ? a.textoIa : ((a && a.textoGestor) || '');
-  document.getElementById('churnTexto').value = texto;
-  // rascunho da IA conta como alteração ainda não salva: nada da IA vira análise sem o gestor salvar
-  churnTextoBase_ = estado === 'ia' ? '' : texto;
-  churnConfirmarGerar_ = false;
-
-  document.getElementById('churnAvisoRascunho').style.display = (estado === 'ia' && a.textoGestor) ? '' : 'none';
-  document.getElementById('churnAvisoDesatualizada').style.display = (a && a.desatualizada) ? '' : 'none';
-  var avisoIA = document.getElementById('churnAvisoIA');
-  var btnGerar = document.getElementById('churnBtnGerar');
-  if (!iaOk) {
-    avisoIA.style.display = '';
-    avisoIA.textContent = 'A geração por IA ainda não está configurada neste ambiente. Você pode escrever e salvar a análise manualmente.';
-    btnGerar.disabled = true;
-  } else {
-    avisoIA.style.display = 'none';
-    btnGerar.disabled = !total;
-  }
-  btnGerar.textContent = 'Gerar rascunho com IA';
-
-  var partes = [];
-  if (a && a.geradoEm) partes.push('Rascunho da IA gerado em ' + churnDataHora_(a.geradoEm) + (a.modeloIa ? ' com ' + a.modeloIa : ''));
-  if (a && a.textoGestor && a.editadoEm) partes.push('Última alteração por ' + a.editadoPor + ' em ' + churnDataHora_(a.editadoEm));
-  document.getElementById('churnMeta').textContent = partes.length ? partes.join('. ') + '.' : '';
-  churnAtualizarBotoes_();
+// Carrega os blocos que dependem do mês e dos filtros (voz, visitas e melhorias). A ordem de resposta
+// é checada pelo contador, para que um mês antigo nunca sobrescreva o atual.
+function carregarChurnBlocos_(dadosTela) {
+  var minha = ++churnBlocosReq_;
+  var ref = churnEstado_.ref;
+  var cs = churnEstado_.cs || '';
+  var fonte = document.getElementById('vozFonte') ? document.getElementById('vozFonte').value : 'todas';
+  var voz = fetchJSON_(ENDPOINT_VOZ_MEMBRO + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs) + '&fonte=' + fonte);
+  var visitas = fetchJSON_(ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(ref));
+  Promise.all([voz, visitas]).then(function (r) {
+    if (minha !== churnBlocosReq_) return;
+    churnVozDados_ = r[0];
+    churnVisitasDados_ = r[1];
+    churnRenderVoz_(r[0]);
+    churnRenderDesafio_(r[0].b5);
+    churnRenderNotas_(r[0].b4);
+    churnRenderVisitas_(r[1]);
+    churnRenderA1_(r[1], r[0], dadosTela);
+    churnRenderA2_(r[1].a2);
+    churnRenderCruzamento_(r[1].c1.cruzamento);
+    churnRenderFatosMelhoria_(r[1].b3);
+  }).catch(function (err) {
+    if (minha !== churnBlocosReq_) return;
+    var msg = '<div class="gestor-erro">Não foi possível carregar este bloco: ' + churnEsc_(err.message) + '. Tente atualizar a página.</div>';
+    ['vozTemas', 'notasDimensoes', 'desafioTabela', 'visitasFunil', 'churnA1'].forEach(function (id) { document.getElementById(id).innerHTML = msg; });
+  });
+  churnCarregarMelhorias_();
 }
 
-function churnAlterado_() {
-  return document.getElementById('churnTexto').value.trim() !== churnTextoBase_.trim();
-}
-function churnAtualizarBotoes_() {
-  var a = churnDados_ && churnDados_.analise;
-  var temTexto = !!document.getElementById('churnTexto').value.trim();
-  var alterado = churnAlterado_();
-  document.getElementById('churnBtnSalvar').disabled = !temTexto || !alterado;
-  document.getElementById('churnBtnPublicar').disabled = alterado || !a || !a.textoGestor || a.status === 'publicada';
-  document.getElementById('churnBtnPublicar').textContent = a && a.status === 'publicada' && !alterado ? 'Publicada' : 'Publicar';
+function churnRenderA1_(visitas, voz, tela) {
+  var pend = visitas.cartoes.pedidosEmAberto;
+  var c4 = voz.cartao4;
+  var r90 = visitas.cartoes.retencao90;
+  document.getElementById('churnA1').innerHTML =
+    '<div class="churn-numero"><b>' + (tela ? tela.totalMes : '-') + '</b><span class="rot">Churns da carteira no mês</span></div>' +
+    '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos em aberto, MRR ' + churnMoeda_(pend.mrr) + '</span><span class="def">' + pend.semMrr + ' sem MRR informado</span></div>' +
+    '<div class="churn-numero"><b>' + churnPct_(r90.pct) + '</b><span class="rot">Reversão sustentada em 90 dias</span><span class="def">' + r90.base + ' visitas maturadas</span></div>' +
+    '<div class="churn-numero"><b>' + churnPct_(c4.atual.pct) + '</b><span class="rot">Membros travados no desafio</span><span class="def">' +
+      (c4.anterior.pct !== null ? 'Mês anterior: ' + churnPct_(c4.anterior.pct) : 'Sem dado do mês anterior') + '</span></div>';
 }
 
-function churnGerar_() {
-  var erro = document.getElementById('churnErro');
-  erro.textContent = '';
-  if (churnAlterado_() && document.getElementById('churnTexto').value.trim() && !churnConfirmarGerar_) {
-    churnConfirmarGerar_ = true;
-    erro.textContent = 'Você tem alterações não salvas no editor. Clique de novo em Gerar rascunho para substituí-las pelo novo rascunho.';
+function churnRenderA2_(lista) {
+  document.getElementById('churnA2').innerHTML = lista.map(function (t) { return '<li>' + churnEsc_(t) + '</li>'; }).join('');
+}
+
+function churnRenderCruzamento_(c) {
+  var el = document.getElementById('churnCruzamento');
+  if (!c || c.ligadas < 5) {
+    el.innerHTML = '<p class="churn-nota">Ainda são ' + (c ? c.ligadas : 0) + ' visitas com formulário ligado; o cruzamento aparece a partir de 5.</p>';
     return;
   }
-  var btn = document.getElementById('churnBtnGerar');
-  btn.disabled = true;
-  btn.textContent = 'Gerando rascunho…';
-  fetchJSON_(ENDPOINT_CHURN + '/analise/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: churnCorpo_({}) })
-    .then(function () { return carregarChurn(); })
-    .catch(function (err) {
-      erro.textContent = err.message;
-      btn.disabled = false;
-      btn.textContent = 'Gerar rascunho com IA';
-    });
+  el.innerHTML = churnTabela_(['Motivo declarado'].concat(c.causas), c.motivos.map(function (m, i) {
+    return [churnEsc_(m)].concat(c.matriz[i].map(function (n) { return churnEsc_(n); }));
+  }));
 }
 
-function churnSalvar_() {
-  var erro = document.getElementById('churnErro');
-  erro.textContent = '';
-  var btn = document.getElementById('churnBtnSalvar');
-  btn.disabled = true;
-  fetchJSON_(ENDPOINT_CHURN + '/analise', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: churnCorpo_({ acao: 'salvar', texto: document.getElementById('churnTexto').value }),
-  }).then(function (r) {
-    churnDados_.analise = r.analise;
-    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.temDados ? 1 : 0);
+function churnRenderVoz_(v) {
+  document.getElementById('vozInsights').innerHTML = v.b2.insights.map(function (t) { return '<div class="voz-insight">' + churnEsc_(t) + '</div>'; }).join('');
+  var max = Math.max.apply(null, v.b2.ranking.map(function (l) { return l.textos; }).concat([1]));
+  document.getElementById('vozTemas').innerHTML = v.b2.ranking.length ? v.b2.ranking.map(function (l) {
+    var saida = l.textos ? Math.round(l.porFonte.saida / l.textos * 100) : 0;
+    return '<div class="churn-tema-linha">' +
+      '<button type="button" class="churn-link" data-ch="trechos" data-tema="' + churnEsc_(l.chave) + '">' + churnEsc_(l.rotulo) + '</button>' +
+      '<span class="churn-barra" style="width:' + Math.round(l.textos / max * 100) + '%"><i class="saida" style="width:' + saida + '%"></i></span>' +
+      '<span>' + l.textos + ' textos, ' + churnSeta_(l.delta) + ' contra o período anterior</span>' +
+      '<button type="button" class="churn-link" data-ch="criarMelhoria" data-tema="' + churnEsc_(l.chave) + '" data-rotulo="' + churnEsc_(l.rotulo) + '">Criar melhoria a partir deste tema</button>' +
+      '</div>';
+  }).join('') : '<p class="gestor-empty">Nenhum tema apareceu nos textos deste período.</p>';
+  document.getElementById('vozRodape').textContent = v.b2.rodape;
+  document.getElementById('vozTrechos').innerHTML = '';
+}
+
+function churnMostrarTrechos_(chave) {
+  var lista = (churnVozDados_.b2.trechos || {})[chave] || [];
+  document.getElementById('vozTrechos').innerHTML = '<h3 class="churn-subtitulo">Trechos anonimizados</h3>' +
+    (lista.length ? lista.map(function (t) {
+      return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(t.fonte === 'saida' ? 'Saída' : 'NPS') + ', ' + churnEsc_(t.mes) + '</cite></blockquote>';
+    }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>');
+}
+
+function churnRenderNotas_(b4) {
+  document.getElementById('notasDimensoes').innerHTML = churnTabela_(['Dimensão', 'Respostas', 'Notas baixas', 'Percentual', 'Período anterior', 'Variação'],
+    b4.dimensoes.map(function (d) {
+      return [churnEsc_(d.rotulo), churnEsc_(d.respostas), churnEsc_(d.baixas), churnPct_(d.percentual), churnPct_(d.percentualAnterior), d.variacao === null ? '-' : churnSeta_(d.variacao) + ' pontos'];
+    }));
+  document.getElementById('notasConselhos').innerHTML = b4.conselhos.length ? churnTabela_(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões', 'Ação'],
+    b4.conselhos.map(function (c) {
+      return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnEsc_(c.baixas), churnPct_(c.percentual), churnEsc_(c.dimensaoMaisPesa), churnEsc_(c.temaSugestoes || '-'), churnEsc_(c.fraseConversa || '-')];
+    })) : '<p class="gestor-empty">Nenhum conselho com amostra suficiente nesta janela.</p>';
+  var j = b4.justificativas;
+  document.getElementById('notasJustificativas').textContent = 'O que dizem os que deram nota baixa: ' + (j.temaSugestoes ? 'o tema mais citado nas sugestões é ' + j.temaSugestoes + '. ' : '') +
+    (j.temaAvaliacoesCs ? 'Nas avaliações de CS, o mais citado é ' + j.temaAvaliacoesCs + '. ' : '') + j.frase;
+}
+
+function churnRenderDesafio_(b5) {
+  document.getElementById('desafioTabela').innerHTML = churnTabela_(['Conselho', 'CS', 'Respostas', 'Travados', 'Presença no mês', 'Ganhos na ata', 'Qualidade das trocas', 'Tema dos travados', 'Ação'],
+    b5.tabela.map(function (c) {
+      return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnPct_(c.percentualTravados), churnPct_(c.presencaPercentual), churnPct_(c.ganhosPercentual), churnNum_(c.qualidadeMedia), churnEsc_(c.temaTravados || '-'), churnEsc_(c.fraseRevisao || '-')];
+    }));
+  document.getElementById('desafioFrases').innerHTML = b5.frases.map(function (t) { return '<div class="voz-insight">' + churnEsc_(t) + '</div>'; }).join('');
+  document.getElementById('desafioAviso').textContent = b5.aviso;
+}
+
+function churnRenderVisitas_(v) {
+  var f = v.c1.funil;
+  var linha = function (rot, val) { return '<div class="churn-numero"><b>' + val + '</b><span class="rot">' + churnEsc_(rot) + '</span></div>'; };
+  document.getElementById('visitasFunil').innerHTML = '<div class="churn-numeros">' +
+    linha('Pedidos', f.pedidos) + linha('Visitados', f.visitados) + linha('Em acompanhamento', f.emAcompanhamento) + linha('Revertidos', f.revertidos) + linha('Perdidos', f.perdidos) +
+    linha('Cobertura', churnPct_(f.cobertura)) + linha('Tempo médio até a visita (dias)', churnNum_(f.tempoMedioVisitaDias)) +
+    linha('Retenção imediata', churnPct_(f.retencaoImediata)) + linha('Retenção em 30 dias', churnPct_(f.retencao30.pct)) + linha('Retenção em 90 dias', churnPct_(f.retencao90.pct)) +
+    linha('Retenção em 180 dias', churnPct_(f.retencao180.pct)) + linha('MRR em risco', churnMoeda_(f.mrrEmRisco)) + linha('MRR preservado em 90 dias', churnMoeda_(f.mrrPreservado)) +
+    linha('Tempo médio até novo risco (dias)', churnNum_(f.tempoMedioNovoRiscoDias)) + '</div>' +
+    '<p class="churn-nota">Dentro da fidelidade a saída tem multa, então parte da reversão pode ser pela multa e não pela visita. Retenção imediata dentro da fidelidade: ' +
+    churnPct_(f.retencaoImediataDentroFidelidade.pct) + ' (' + f.retencaoImediataDentroFidelidade.base + ' casos). Fora: ' + churnPct_(f.retencaoImediataForaFidelidade.pct) + ' (' + f.retencaoImediataForaFidelidade.base + ' casos). Em maturação em 180 dias: ' + f.retencao180.emMaturacao + ' visitas.</p>';
+  document.getElementById('visitasEficacia').innerHTML = '<h3 class="churn-subtitulo">Eficácia por ação principal</h3>' +
+    churnTabela_(['Ação principal', 'Visitas', 'Revertidos', 'Retenção em 90 dias', 'Base'], v.c1.eficaciaAcao.map(function (l) {
+      return [churnEsc_(l.chave), churnEsc_(l.visitas), churnEsc_(l.revertidos), churnPct_(l.retencao90), churnEsc_(l.base90)];
+    })) +
+    '<h3 class="churn-subtitulo">Eficácia por causa raiz</h3>' +
+    churnTabela_(['Causa raiz', 'Visitas', 'Revertidos', 'Retenção em 90 dias', 'Base'], v.c1.eficaciaCausa.map(function (l) {
+      return [churnEsc_(l.chave), churnEsc_(l.visitas), churnEsc_(l.revertidos), churnPct_(l.retencao90), churnEsc_(l.base90)];
+    }));
+  document.getElementById('visitasCalibracao').innerHTML = '<h3 class="churn-subtitulo">Termômetro ao sair e resultado em 90 dias</h3>' +
+    churnTabela_(['Termômetro', 'Retidos', 'Perdidos', 'Em maturação'], v.c1.calibracao.map(function (c) {
+      return [churnEsc_(c.termometro), churnEsc_(c.retido), churnEsc_(c.perdido), churnEsc_(c.emMaturacao)];
+    }));
+  document.getElementById('visitasIev').innerHTML = '<h3 class="churn-subtitulo">Índice de Efetividade da Visita por safra</h3>' +
+    churnTabela_(['Safra (mês da visita)', 'Visitas', 'IEV médio (0 a 6)', 'Situação'], v.c1.iev.map(function (s) {
+      return [churnEsc_(s.safra), churnEsc_(s.visitas), churnNum_(s.iev), churnEsc_(s.status)];
+    }));
+  document.getElementById('visitasPerfil').innerHTML = [['Produto', v.c2.produto], ['Local', v.c2.local], ['Duração', v.c2.duracao], ['Quem visitou', v.c2.visitantes]].map(function (p) {
+    return '<h3 class="churn-subtitulo">' + p[0] + '</h3>' + churnTabela_(['Faixa', 'Maturadas', 'Retenção em 90 dias', 'Dentro da fidelidade', 'Fora da fidelidade'], p[1].map(function (l) {
+      return [churnEsc_(l.faixa), churnEsc_(l.maturadas), churnPct_(l.retencao90), churnPct_(l.dentroFidelidade), churnPct_(l.foraFidelidade)];
+    }));
+  }).join('');
+  document.getElementById('visitasLista').innerHTML = churnTabela_(['Membro', 'CS', 'Etapa', 'Pedido', 'Visita', 'Dias até a visita', 'MRR', 'Ação principal', 'Causa raiz', 'Termômetro', 'Retenção em 90 dias', 'IEV', 'Monday'],
+    v.c3.linhas.map(function (l) {
+      return [churnEsc_(l.membro || '-'), churnEsc_(l.cs || '-'), churnEsc_(l.etapa), churnEsc_(churnDataBR_(l.dataPedido)), churnEsc_(churnDataBR_(l.dataVisita)), churnEsc_(l.diasAteVisita === null ? '-' : l.diasAteVisita), churnEsc_(churnMoeda_(l.mrr)),
+        churnEsc_(l.acaoPrincipal || '-'), churnEsc_(l.causaRaiz || '-'), churnEsc_(l.termometro || '-'), churnEsc_(l.retido90), churnEsc_(l.iev === null ? 'em maturação' : l.iev),
+        '<a href="' + churnEsc_(l.link) + '" target="_blank" rel="noopener">Abrir</a>'];
+    })) + '<p class="churn-nota">' + v.c3.total + ' visitas no período. Uso interno da gestão, com nome do membro.</p>';
+  document.getElementById('visitasCsv').href = ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(v.ref) + '&formato=csv';
+}
+
+// ---- b3: melhorias ----
+function churnRenderFatosMelhoria_(b3) {
+  var topo = b3.etapaOrigemMaisApontada;
+  document.getElementById('melhoriaFatos').innerHTML = '<p class="churn-nota">' +
+    (topo ? 'Etapa de origem mais apontada: ' + churnEsc_(topo.etapa) + ' (' + topo.visitas + ' visitas). ' : 'Sem etapa de origem informada nas visitas. ') +
+    'Em ' + b3.evitaveis + ' de ' + b3.respondidasEvitavel + ' visitas a causa era evitável; em ' + b3.identificaveisAntes + ' dava para identificar antes.</p>';
+}
+
+function churnCarregarMelhorias_() {
+  return fetchJSON_(ENDPOINT_MELHORIAS).then(function (d) {
+    churnMelhorias_ = d;
+    churnRenderMelhorias_();
   }).catch(function (err) {
-    erro.textContent = err.message;
-    churnAtualizarBotoes_();
+    document.getElementById('melhoriaQuadro').innerHTML = '<div class="gestor-erro">Não foi possível carregar a fila de melhorias: ' + churnEsc_(err.message) + '</div>';
   });
 }
 
-function churnPublicar_() {
-  var erro = document.getElementById('churnErro');
-  erro.textContent = '';
-  document.getElementById('churnBtnPublicar').disabled = true;
-  fetchJSON_(ENDPOINT_CHURN + '/analise', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: churnCorpo_({ acao: 'publicar' }),
-  }).then(function (r) {
-    churnDados_.analise = r.analise;
-    renderAnaliseChurn_(r.analise, churnDados_.iaDisponivel, churnDados_.temDados ? 1 : 0);
-  }).catch(function (err) {
-    erro.textContent = err.message;
-    churnAtualizarBotoes_();
+function churnRotuloTema_(chave) {
+  var t = churnVozDados_ && churnVozDados_.b2 && (churnVozDados_.b2.temas || []).filter(function (x) { return x.chave === chave; })[0];
+  return t ? t.rotulo : chave || '-';
+}
+
+function churnRenderMelhorias_() {
+  var d = churnMelhorias_;
+  if (!d) return;
+  var hoje = new Date().toISOString().slice(0, 10);
+  var html = '<div class="voz-grid">';
+  CHURN_STATUS_MELHORIA.forEach(function (c) {
+    var itens = d.ativas.filter(function (m) { return m.status === c[0]; });
+    html += '<div class="voz-col voz-col-' + c[0] + '"><div class="voz-col-head"><span>' + c[1] + '</span><span>' + itens.length + '</span></div>';
+    if (!itens.length) html += '<div class="voz-col-vazio">Nada aqui.</div>';
+    itens.sort(function (x, y) { return (x.prazo || '9999') < (y.prazo || '9999') ? -1 : 1; }).forEach(function (m) {
+      var vencida = m.prazo && m.prazo < hoje && m.status !== 'realizado';
+      var origem = m.origem === 'tema' ? 'Tema: ' + churnRotuloTema_(m.tema_chave) : 'Visita: ' + (m.etapa_origem || '-');
+      html += '<div class="voz-card" data-id="' + churnEsc_(m.id) + '"><div class="voz-card-tags"><span class="voz-tag origem">' + churnEsc_(origem) + '</span></div>' +
+        '<div class="voz-card-texto">' + churnEsc_(m.titulo) + '</div>' +
+        '<div class="voz-card-meta">' + churnEsc_(m.responsavel || 'Sem responsável') + ' · prazo ' + (m.prazo ? '<span' + (vencida ? ' class="churn-vencida"' : '') + '>' + churnEsc_(churnDataBR_(m.prazo)) + '</span>' : 'não definido') + '</div>' +
+        (m.observacao ? '<div class="voz-obs-lida">' + churnEsc_(m.observacao) + '</div>' : '') +
+        '<div class="voz-card-acoes"><select class="pill-select" data-ch="status" aria-label="Status da melhoria">' +
+        CHURN_STATUS_MELHORIA.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === m.status ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') +
+        '</select><button type="button" class="voz-btn-link" data-ch="editar">Editar</button><button type="button" class="voz-btn-link" data-ch="excluir">Excluir</button></div></div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  document.getElementById('melhoriaQuadro').innerHTML = html;
+  var ex = d.excluidas;
+  document.getElementById('melhoriaExcluidas').innerHTML = '<button type="button" class="churn-link" data-ch="verExcluidas">Excluídas (' + ex.length + ')</button>' +
+    (churnMelhoriasExcluidasAbertas_ ? (ex.length ? ex.map(function (m) {
+      return '<div class="voz-card" data-id="' + churnEsc_(m.id) + '"><div class="voz-card-texto">' + churnEsc_(m.titulo) + '</div><div class="voz-card-acoes"><button type="button" class="voz-btn-link" data-ch="restaurar">Restaurar</button></div></div>';
+    }).join('') : '<p class="churn-nota">Nenhuma melhoria excluída.</p>') : '');
+}
+
+function churnTemaOpcoes_(sel) {
+  var temas = (churnVozDados_ && churnVozDados_.b2 && churnVozDados_.b2.temas) || [];
+  return temas.map(function (t) { return '<option value="' + churnEsc_(t.chave) + '"' + (t.chave === sel ? ' selected' : '') + '>' + churnEsc_(t.rotulo) + '</option>'; }).join('');
+}
+
+function churnAbrirFormMelhoria_(m, temaChave, temaRotulo) {
+  var f = document.getElementById('melhoriaForm');
+  var ed = m || {};
+  churnMelhoriaId_ = ed.id || null;
+  var origem = ed.origem || (temaChave ? 'tema' : 'visita');
+  f.hidden = false;
+  f.innerHTML = '<h3 class="churn-subtitulo">' + (m ? 'Editar melhoria' : 'Nova melhoria') + '</h3>' +
+    '<div class="churn-form">' +
+    '<label>Título <input id="melhoriaTitulo" maxlength="160" value="' + churnEsc_(ed.titulo || (temaRotulo ? 'Melhorar: ' + temaRotulo : '')) + '"></label>' +
+    '<label>Origem <select id="melhoriaOrigem"><option value="tema"' + (origem === 'tema' ? ' selected' : '') + '>Tema da voz do membro</option><option value="visita"' + (origem === 'visita' ? ' selected' : '') + '>Visita</option></select></label>' +
+    '<label>Tema <select id="melhoriaTema">' + churnTemaOpcoes_(ed.tema_chave || temaChave) + '</select></label>' +
+    '<label>Etapa de origem <select id="melhoriaEtapa">' + CHURN_ETAPAS_ORIGEM.map(function (e) { return '<option' + (e === ed.etapa_origem ? ' selected' : '') + '>' + churnEsc_(e) + '</option>'; }).join('') + '</select></label>' +
+    '<label>Responsável <input id="melhoriaResp" maxlength="80" value="' + churnEsc_(ed.responsavel || '') + '"></label>' +
+    '<label>Prazo <input type="date" id="melhoriaPrazo" value="' + churnEsc_(ed.prazo || '') + '"></label>' +
+    '<label>Status <select id="melhoriaStatus">' + CHURN_STATUS_MELHORIA.map(function (s) { return '<option value="' + s[0] + '"' + (s[0] === (ed.status || 'backlog') ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') + '</select></label>' +
+    '<label>Observação <textarea id="melhoriaObs" maxlength="600">' + churnEsc_(ed.observacao || '') + '</textarea></label>' +
+    '</div><div class="churn-acoes"><button type="button" class="primario" id="melhoriaSalvar">Salvar melhoria</button><button type="button" id="melhoriaCancelar">Cancelar</button></div>' +
+    '<p class="erro-msg" id="melhoriaErro"></p>';
+  document.getElementById('melhoriaSalvar').addEventListener('click', function () { churnSalvarMelhoria_(null); });
+  document.getElementById('melhoriaCancelar').addEventListener('click', function () { churnFecharFormMelhoria_(); });
+}
+
+function churnFecharFormMelhoria_() {
+  var f = document.getElementById('melhoriaForm');
+  f.hidden = true;
+  f.innerHTML = '';
+  churnMelhoriaId_ = null;
+}
+
+// Salva a melhoria pelo formulário, ou muda só o status de um cartão (sobrescrito por campos)
+function churnSalvarMelhoria_(sobrescrever) {
+  var erro = document.getElementById('melhoriaErro');
+  var corpo;
+  if (sobrescrever) {
+    corpo = sobrescrever;
+  } else {
+    corpo = {
+      titulo: document.getElementById('melhoriaTitulo').value.trim(),
+      origem: document.getElementById('melhoriaOrigem').value,
+      tema_chave: document.getElementById('melhoriaTema').value,
+      etapa_origem: document.getElementById('melhoriaEtapa').value,
+      responsavel: document.getElementById('melhoriaResp').value.trim(),
+      prazo: document.getElementById('melhoriaPrazo').value || null,
+      status: document.getElementById('melhoriaStatus').value,
+      observacao: document.getElementById('melhoriaObs').value.trim(),
+    };
+    if (corpo.origem === 'tema') corpo.etapa_origem = null; else corpo.tema_chave = null;
+  }
+  corpo.acao = 'salvar';
+  corpo.id = churnMelhoriaId_ || corpo.id || null;
+  fetchJSON_(ENDPOINT_MELHORIAS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(function () { churnFecharFormMelhoria_(); return churnCarregarMelhorias_(); })
+    .catch(function (err) { if (erro) erro.textContent = err.message; else alert(err.message); });
+}
+
+function churnAcaoMelhoria_(id, acao) {
+  if (acao === 'excluir' && !confirm('Excluir esta melhoria? Ela sai da fila e pode ser restaurada depois.')) return;
+  fetchJSON_(ENDPOINT_MELHORIAS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: acao, id: id }) })
+    .then(function () { return churnCarregarMelhorias_(); })
+    .catch(function (err) { alert(err.message); });
+}
+
+function churnMelhoriaPorId_(id) {
+  var todas = (churnMelhorias_ && churnMelhorias_.ativas) || [];
+  for (var i = 0; i < todas.length; i++) if (todas[i].id === id) return todas[i];
+  return null;
+}
+
+// Ligações dos blocos novos. Um único ouvinte no painel cuida dos botões e selects gerados.
+function churnLigarBlocos_() {
+  document.getElementById('vozFonte').addEventListener('change', function () { carregarChurnBlocos_(churnDados_); });
+  document.getElementById('melhoriaNova').addEventListener('click', function () { churnAbrirFormMelhoria_(null, '', ''); });
+  var painel = document.getElementById('tab-churn');
+  painel.addEventListener('click', function (ev) {
+    var alvo = ev.target.closest('[data-ch]');
+    if (!alvo) return;
+    var acao = alvo.getAttribute('data-ch');
+    if (acao === 'trechos') churnMostrarTrechos_(alvo.getAttribute('data-tema'));
+    else if (acao === 'criarMelhoria') churnAbrirFormMelhoria_(null, alvo.getAttribute('data-tema'), alvo.getAttribute('data-rotulo'));
+    else if (acao === 'verExcluidas') { churnMelhoriasExcluidasAbertas_ = !churnMelhoriasExcluidasAbertas_; churnRenderMelhorias_(); }
+    else if (acao === 'excluir' || acao === 'restaurar' || acao === 'editar') {
+      var card = alvo.closest('.voz-card');
+      var id = card ? card.getAttribute('data-id') : null;
+      if (acao === 'restaurar') churnAcaoMelhoria_(id, 'restaurar');
+      else if (acao === 'excluir') churnAcaoMelhoria_(id, 'excluir');
+      else { var m = churnMelhoriaPorId_(id); if (m) churnAbrirFormMelhoria_(m, '', ''); }
+    }
+  });
+  painel.addEventListener('change', function (ev) {
+    var alvo = ev.target;
+    if (!alvo || alvo.getAttribute('data-ch') !== 'status') return;
+    var m = churnMelhoriaPorId_(alvo.closest('.voz-card').getAttribute('data-id'));
+    if (m) churnSalvarMelhoria_(Object.assign({}, m, { status: alvo.value, tema_chave: m.tema_chave, etapa_origem: m.etapa_origem, prazo: m.prazo, observacao: m.observacao, responsavel: m.responsavel }));
   });
 }
 
@@ -2628,26 +2904,7 @@ function inicializarChurn() {
       if (wrap && !wrap.contains(ev.target)) churnAbrirProdutos_(false);
     });
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') churnAbrirProdutos_(false); });
-    document.getElementById('churnTexto').addEventListener('input', function () { churnConfirmarGerar_ = false; churnAtualizarBotoes_(); });
-    document.getElementById('churnBtnGerar').addEventListener('click', churnGerar_);
-    document.getElementById('churnBtnSalvar').addEventListener('click', churnSalvar_);
-    document.getElementById('churnBtnPublicar').addEventListener('click', churnPublicar_);
-    document.getElementById('churnBtnVoltarSalvo').addEventListener('click', function () {
-      var a = churnDados_ && churnDados_.analise;
-      if (!a || !a.textoGestor) return;
-      document.getElementById('churnTexto').value = a.textoGestor;
-      churnTextoBase_ = a.textoGestor;
-      document.getElementById('churnAvisoRascunho').style.display = 'none';
-      var st = document.getElementById('churnStatus');
-      st.textContent = a.status === 'publicada' ? 'Análise publicada' : 'Análise salva';
-      st.className = 'churn-status ' + (a.status === 'publicada' ? 'publicada' : 'salva');
-      churnAtualizarBotoes_();
-    });
-    document.getElementById('churnBtnRelatorio').addEventListener('click', function () {
-      if (churnAlterado_()) {
-        document.getElementById('churnErro').textContent = 'O relatório usa o texto salvo. Salve a análise para incluir as alterações do editor.';
-      }
-    });
+    churnLigarBlocos_();
     carregarChurn();
   } catch (err) {
     console.error('Erro ao iniciar Churn:', err);
@@ -2766,6 +3023,7 @@ var vozDados_ = null;
 var vozTemaAtivo_ = '';
 var vozFiltrosMontados_ = false;
 var vozErroCard_ = {};
+var vozMostrarExcluidas_ = false;
 
 function vozTextoSemAcento_(s) {
   return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
@@ -2795,7 +3053,8 @@ function vozCardHtml_(i) {
   if (i.observacao) h += '<div class="voz-obs-lida">' + pulsoEsc_(i.observacao) + '</div>';
   h += '<div class="voz-card-acoes"><select class="pill-select" data-acao="status" aria-label="Status da sugestão">';
   vozDados_.status.forEach(function (st) { h += '<option value="' + st.chave + '"' + (st.chave === i.status ? ' selected' : '') + '>' + pulsoEsc_(st.rotulo) + '</option>'; });
-  h += '</select><button type="button" class="voz-btn-link" data-acao="obs">' + (i.observacao ? 'Editar observação' : 'Observação') + '</button></div>';
+  h += '</select><button type="button" class="voz-btn-link" data-acao="obs">' + (i.observacao ? 'Editar observação' : 'Observação') + '</button>' +
+    '<button type="button" class="voz-btn-link" data-acao="excluir">Excluir</button></div>';
   h += '<div class="voz-obs" hidden><textarea maxlength="600" placeholder="Registre a decisão ou o encaminhamento">' + pulsoEsc_(i.observacao || '') + '</textarea><button type="button" class="pill-select" data-acao="salvarObs">Salvar observação</button></div>';
   if (vozErroCard_[i.id]) h += '<div class="voz-erro">' + pulsoEsc_(vozErroCard_[i.id]) + '</div>';
   return h + '</div>';
@@ -2852,7 +3111,19 @@ function renderVoz_() {
     h += '</div>';
   });
   h += '</div>';
+  h += vozExcluidasHtml_(d.excluidas || []);
   el.innerHTML = h;
+}
+function vozExcluidasHtml_(lista) {
+  var h = '<div class="voz-excluidas"><button type="button" class="voz-btn-link" data-acao="verExcluidas">Excluídas (' + lista.length + ')</button>';
+  if (!vozMostrarExcluidas_) return h + '</div>';
+  if (lista.length === 0) return h + '<div class="voz-col-vazio">Nenhuma sugestão excluída.</div></div>';
+  lista.forEach(function (e) {
+    h += '<div class="voz-card" data-id="' + pulsoEsc_(e.id) + '"><div class="voz-card-tags"><span class="voz-tag origem">' + pulsoEsc_(e.campoRotulo) + '</span><span class="voz-tag">' + pulsoEsc_(e.mes) + '</span></div>' +
+      '<div class="voz-card-texto">' + pulsoEsc_(e.texto) + '</div>' +
+      '<div class="voz-card-acoes"><button type="button" class="voz-btn-link" data-acao="restaurar">Restaurar</button></div></div>';
+  });
+  return h + '</div>';
 }
 function vozMontarFiltros_(d) {
   if (vozFiltrosMontados_) return;
@@ -2887,6 +3158,12 @@ function vozSalvar_(id, status, observacao) {
     .then(function () { return carregarVoz_(true); })
     .catch(function (err) { vozErroCard_[id] = 'Não foi possível salvar: ' + err.message; renderVoz_(); });
 }
+function vozAcaoExclusao_(id, acao) {
+  delete vozErroCard_[id];
+  return fetchJSON_('/api/gestor/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, acao: acao }) })
+    .then(function () { return carregarVoz_(true); })
+    .catch(function (err) { vozErroCard_[id] = 'Não foi possível ' + (acao === 'excluir' ? 'excluir' : 'restaurar') + ': ' + err.message; renderVoz_(); });
+}
 function inicializarVoz_() {
   var sel = document.getElementById('vozMes');
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; sel.appendChild(opt);
@@ -2908,6 +3185,12 @@ function inicializarVoz_() {
     if (acao === 'tema') { vozTemaAtivo_ = vozTemaAtivo_ === alvo.getAttribute('data-tema') ? '' : alvo.getAttribute('data-tema'); document.getElementById('vozTema').value = vozTemaAtivo_; renderVoz_(); }
     else if (acao === 'limparTema') { vozTemaAtivo_ = ''; document.getElementById('vozTema').value = ''; renderVoz_(); }
     else if (acao === 'obs') { var o = alvo.closest('.voz-card').querySelector('.voz-obs'); o.hidden = !o.hidden; }
+    else if (acao === 'excluir') {
+      if (!confirm('Excluir esta sugestão? Ela some do quadro e dos números, e pode ser restaurada depois.')) return;
+      vozAcaoExclusao_(alvo.closest('.voz-card').getAttribute('data-id'), 'excluir');
+    }
+    else if (acao === 'restaurar') { vozAcaoExclusao_(alvo.closest('.voz-card').getAttribute('data-id'), 'restaurar'); }
+    else if (acao === 'verExcluidas') { vozMostrarExcluidas_ = !vozMostrarExcluidas_; renderVoz_(); }
     else if (acao === 'salvarObs') {
       var card = alvo.closest('.voz-card');
       var statusAtual = card.querySelector('select[data-acao="status"]').value;

@@ -220,3 +220,17 @@ export const INSIGHT_REPORT_SEMANAS = 4;
 export const INSIGHT_ADVERTENCIA_ALERTA_PONTOS = 3;
 // Piso para o insight de concentração de GTD: abaixo disto o total de atrasadas é pequeno demais.
 export const INSIGHT_GTD_CONCENTRACAO_MIN_ATRASADAS = 3;
+
+// ============ churn onda 2 (08/10/2026) ============
+// Decisões padrão ainda não confirmadas pelo Vitor. Listadas no resumo final como "a confirmar".
+// Regras de leitura da aba Churn e voz do membro e das visitas de reversão (sem IA em nenhuma delas).
+export const VISITA_SLA_DIAS = 7; // prazo máximo entre o pedido de churn e a visita
+export const VISITA_JANELA_MESES = 6; // janela da lista de visitas e dos números da reversão
+export const VOZ_MEMBRO_JANELA_MESES = 3; // janela da voz do membro, notas e desafio
+export const AMOSTRA_MINIMA = 5; // percentual só aparece com pelo menos esse número de casos
+export const NOTA_BAIXA_ESCALA_10 = 6; // nota menor ou igual a este valor (escala de 0 a 10)
+export const NOTA_BAIXA_ESCALA_5 = 3; // nota menor ou igual a este valor (escala de 1 a 5)
+export const IEV_PONTOS_MAXIMOS = 6; // Índice de Efetividade da Visita, de 0 a 6
+export const FIDELIDADE_MESES = 12; // fidelidade da MOAI: multa proporcional dentro dela
+export const CAUSA_RAIZ_PRAZO_DIAS = 3; // dias da data da visita sem causa raiz antes de cobrar o registro
+

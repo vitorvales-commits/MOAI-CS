@@ -42,7 +42,7 @@ validado(health, "SQL: George 4/50 = 8,0; Vitor 7/43 = 16,3; Mateus 3/20 = 15,0;
 validado(kanban, "Com Mentor Alavanca fora: crítica 13, baixa 49, atenção 55, saudável 136 (era 137), sem apuração 7 (era 8), 260 elegíveis.").
 
 % ---- pendências ----
-pendente(deploy_sync, "Implantar supabase/functions/sync-monday v30 (diff só acrescenta; repositório era idêntico à produção v29). Comando: npx supabase functions deploy sync-monday --project-ref evwdfeumlnxeqnnakdvq. Sem isso, reports novos do board não chegam a reports_individuais.").
+resolvido(deploy_sync, "Sync v30 publicada em 08/10/2026 pelo deploy da onda 2 do churn (versão 30 no Supabase, código idêntico à branch feat/churn_onda2). Ver handoff/historico.pl.").
 pendente(mapeamento_nomes, "Confirmar Rodrigo Nathan (mesma conta Monday de Rodrigo, cs_config diz Rodrigo Queiroz Campos), Amanda Leite e ex CS (Alejandro, Ale, Lucas, Lucas Nicoli, Lorena, Luma, Yasmim, Yas, Vinicius Walviesse). Enquanto isso Rodrigo fica Sem report e sem indicações/matchmakings autodeclarados.").
 pendente(base_status, "Mentor Alavanca e status nulo ficam fora da base até decisão do Vitor.").
 pendente(data_corte, "Definir data de corte (definir_data_corte_reports) e, no mesmo dia, tirar reports_semanais do agendamento da sync.").
