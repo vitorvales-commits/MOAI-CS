@@ -7,7 +7,6 @@
 // semana do mês (semana_do_mes), data de referência (churn_items.data_referencia = data do
 // Monday, senão o dia de criação do item), filtro do recorte (churn_filtrados) e classificação do
 // CS (cs_categoria). O TypeScript só lê e desenha.
-import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ============ recorte ============
@@ -620,52 +619,6 @@ export function rotuloMesCurto(isoData: string): string {
   return `${MESES_CURTOS[m - 1]}/${String(a).slice(2)}`;
 }
 
-// ============ análise salva ============
-
-export interface AnaliseChurn {
-  id: string;
-  status: 'rascunho' | 'publicada';
-  textoIa: string | null;
-  textoGestor: string | null;
-  baseHash: string | null;
-  modeloIa: string | null;
-  geradoEm: string | null;
-  editadoPor: string | null;
-  editadoEm: string | null;
-}
-
-export async function buscarAnalise(supabase: SupabaseClient, r: Recorte): Promise<AnaliseChurn | null> {
-  let q = supabase.from('churn_analises')
-    .select('id, status, texto_ia, texto_gestor, base_hash, modelo_ia, gerado_em, editado_por, editado_em')
-    .eq('periodo_tipo', r.granularidade).eq('data_inicio', r.inicio).eq('data_fim', r.fim);
-  q = r.cs ? q.eq('filtro_cs', r.cs) : q.is('filtro_cs', null);
-  const chaveProd = chaveProdutos(r);
-  q = chaveProd ? q.eq('filtro_produto', chaveProd) : q.is('filtro_produto', null);
-  q = r.csCategoria ? q.eq('filtro_cs_categoria', r.csCategoria) : q.is('filtro_cs_categoria', null);
-  const { data, error } = await q.maybeSingle();
-  if (error) throw new Error('churn_analises: ' + error.message);
-  if (!data) return null;
-  return {
-    id: data.id, status: data.status, textoIa: data.texto_ia, textoGestor: data.texto_gestor, baseHash: data.base_hash,
-    modeloIa: data.modelo_ia, geradoEm: data.gerado_em, editadoPor: data.editado_por, editadoEm: data.editado_em,
-  };
-}
-
-export async function buscarHashRecorte(supabase: SupabaseClient, r: Recorte): Promise<string> {
-  const { data, error } = await supabase.rpc('churn_recorte_hash', argsFiltro(r));
-  if (error) throw new Error('churn_recorte_hash: ' + error.message);
-  return String(data || '');
-}
-
-export function argsRecorteEscrita(r: Recorte) {
-  return {
-    p_periodo_tipo: r.granularidade, p_inicio: r.inicio, p_fim: r.fim,
-    p_filtro_cs: r.cs, p_filtro_produto: chaveProdutos(r), p_filtro_cs_categoria: r.csCategoria,
-  };
-}
-
-// ============ itens identificáveis e anonimização (só gestor) ============
-
 export interface ItemChurn {
   id: number;
   data_referencia: string;
@@ -741,123 +694,13 @@ export function anonimizar(texto: string | null | undefined, termos: string[]): 
   return t;
 }
 
-// ============ IA ============
-
-export function iaDisponivel(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY && !!process.env.ANTHROPIC_MODEL;
-}
-
-const INSTRUCAO_IA = `Você é analista de retenção da MOAI, uma rede de conselhos estratégicos para empresários. Receberá os dados de churn de um recorte já filtrado pelo gestor e deve explicar por que os membros saíram.
-
-Regras obrigatórias de escrita:
-1. Escreva em português formal, em prosa corrida, com parágrafos. Não use listas, marcadores, títulos, negrito, itálico nem qualquer marcação.
-2. Não use travessão nem hífen em nenhuma palavra ou pontuação. Reescreva a frase quando precisar.
-3. Cite sempre as contagens reais que aparecem nos dados, com o total do recorte como referência.
-4. Distinga com clareza o que é fato observado nos dados do que é hipótese sua, dizendo explicitamente quando algo é hipótese.
-5. Nunca invente motivo, número, nome ou citação que não esteja nos dados.
-6. Nunca mencione nome de membro nem de empresa. Os textos já chegam anonimizados; se aparecer a marca [identificação omitida], mantenha a omissão.
-7. Encerre com recomendações práticas de retenção, ligadas aos motivos mais frequentes.
-8. Tamanho entre 350 e 700 palavras.`;
-
-function trecho(s: string | null, max = 400): string {
-  const t = (s || '').replace(/\s+/g, ' ').trim();
-  return t.length > max ? t.slice(0, max) + '...' : t;
-}
-
-export function montarContextoIA(r: Recorte, serie: SerieChurn, itens: ItemChurn[], termos: string[]): string {
-  const linhas: string[] = [];
-  linhas.push(`Recorte: ${descreverRecorte(r)}.`);
-  linhas.push(`Total de churns no recorte: ${serie.total}.`);
-  linhas.push('');
-  linhas.push('Contagem por motivo declarado:');
-  serie.porMotivo.forEach((m) => linhas.push(`${m.rotulo}: ${m.qtd} (${String(m.pct).replace('.', ',')}%)`));
-  linhas.push('');
-  linhas.push(`Contagem por ${serie.granularidade === 'semana' ? 'semana do mês' : 'mês'}:`);
-  serie.periodos.forEach((p) => linhas.push(`${p.rotuloLongo}: ${p.total}`));
-
-  const contar = (f: (i: ItemChurn) => string) => {
-    const m = new Map<string, number>();
-    itens.forEach((i) => m.set(f(i), (m.get(f(i)) || 0) + 1));
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  };
-  linhas.push('');
-  linhas.push('Contagem por produto:');
-  contar((i) => i.produto || 'não informado').forEach(([k, v]) => linhas.push(`${k}: ${v}`));
-  linhas.push('');
-  linhas.push('Contagem por CS responsável (equipe interna, não são membros):');
-  contar((i) => `${i.quem_e_seu_cs || 'não informado'} (${CATEGORIAS_CS.find((c) => c.chave === i.cs_categoria)?.rotulo || 'sem classificação'})`)
-    .forEach(([k, v]) => linhas.push(`${k}: ${v}`));
-
-  const notas = itens.map((i) => i.nota_retorno).filter((n): n is number => n !== null && n !== undefined).map(Number);
-  linhas.push('');
-  if (notas.length) {
-    const media = notas.reduce((s, v) => s + v, 0) / notas.length;
-    const faixa = (a: number, b: number) => notas.filter((n) => n >= a && n <= b).length;
-    linhas.push(`Nota de disposição para voltar à MOAI (0 a 10): ${notas.length} respostas, média ${media.toFixed(1).replace('.', ',')}; `
-      + `${faixa(0, 6)} entre 0 e 6, ${faixa(7, 8)} entre 7 e 8, ${faixa(9, 10)} entre 9 e 10.`);
-  } else {
-    linhas.push('Nota de disposição para voltar à MOAI: nenhuma resposta no recorte.');
-  }
-
-  const blocoTextos = (titulo: string, campo: keyof ItemChurn, limite: number) => {
-    const comTexto = itens.filter((i) => (i[campo] as string | null)?.trim());
-    linhas.push('');
-    linhas.push(`${titulo} (${comTexto.length} respostas${comTexto.length > limite ? `, mostrando ${limite}` : ''}):`);
-    comTexto.slice(-limite).forEach((i) => {
-      linhas.push(`[${infoMotivo(i.motivo_principal).rotulo}; ${i.produto || 'produto não informado'}] ${anonimizar(trecho(i[campo] as string), termos)}`);
-    });
-  };
-  blocoTextos('Explicações dos membros sobre a saída', 'explicacao', 60);
-  blocoTextos('Expectativas que não foram atendidas', 'expectativa_nao_atendida', 40);
-  blocoTextos('Sugestões de melhoria para a rede', 'sugestao_melhoria', 30);
-  return linhas.join('\n');
-}
-
-// A instrução já proíbe marcação e traço; esta limpeza é a garantia de que nada disso chega ao
-// editor mesmo se o modelo escorregar.
-export function limparTextoIA(texto: string): string {
-  return texto
-    .replace(/\*\*|__|`/g, '')
-    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
-    .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, '')
-    .replace(/\s*[—–]\s*/g, ', ')
-    .replace(/(\p{L})-(\p{L})/gu, '$1 $2')
-    .replace(/\s+-\s+/g, ', ')
-    .replace(/,\s*,/g, ',')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-export class IaRecusou extends Error {}
-
-export async function gerarRascunhoIA(contexto: string): Promise<{ texto: string; modelo: string }> {
-  const modelo = process.env.ANTHROPIC_MODEL!;
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 80_000, maxRetries: 1 });
-  const response = await client.messages.create({
-    model: modelo,
-    max_tokens: 16000,
-    system: INSTRUCAO_IA,
-    messages: [{ role: 'user', content: contexto }],
-  });
-  if (response.stop_reason === 'refusal') throw new IaRecusou('A IA recusou gerar o rascunho para este recorte.');
-  const texto = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
-    .trim();
-  if (!texto) throw new Error('A IA não devolveu texto.');
-  return { texto: limparTextoIA(texto), modelo };
-}
-
 // ============ resposta da tela (usada pela rota e pelos testes) ============
 
 export async function respostaTela(supabase: SupabaseClient, recorte: Recorte) {
   await validarCsAtivo(supabase, recorte);
-  const [tela, opcoes, analise, hashAtual] = await Promise.all([
+  const [tela, opcoes] = await Promise.all([
     buscarTela(supabase, recorte),
     buscarOpcoesFiltro(supabase),
-    buscarAnalise(supabase, recorte),
-    buscarHashRecorte(supabase, recorte),
   ]);
   const textos = textosTela(tela, recorte);
   return {
@@ -875,8 +718,6 @@ export async function respostaTela(supabase: SupabaseClient, recorte: Recorte) {
     temDados: tela.serie.total > 0,
     somaSerieMes: tela.serie.periodos.filter((p) => p.inicio.slice(0, 7) === tela.referencia).reduce((t, p) => t + p.total, 0),
     opcoes,
-    analise: analise ? { ...analise, desatualizada: !!analise.baseHash && analise.baseHash !== hashAtual } : null,
-    iaDisponivel: iaDisponivel(),
   };
 }
 

@@ -1,14 +1,14 @@
-// GET /gestor/churn/relatorio?granularidade=&ref=&cs=&produtos=&comunidade=&categoria=&identificado=1:
-// relatório de churn imprimível (onda 1, 30/09/2026), rota própria da visão de gestor. Mesma
-// barreira de app/gestor/page.tsx: sem sessão vai pro /login, sessão sem is_gestor vai pra home,
-// antes de qualquer dado ser consultado. Anonimizado por padrão; identificado=1 é o interruptor
-// da versão identificada, e cada emissão fica registrada em access_audit_log com o modo usado.
+// GET /gestor/churn/relatorio?granularidade=&ref=&cs=&produtos=&comunidade=&categoria=:
+// relatório imprimível de churn e voz do membro (onda 2, 08/10/2026). Sem IA e sem análise salva:
+// os números vêm das mesmas funções que a aba usa (voz do membro e visitas), e o relatório é sempre
+// anonimizado. A barreira de acesso é a mesma de app/gestor/page.tsx: sem sessão vai para /login,
+// sessão sem is_gestor vai para a home, antes de qualquer dado ser consultado. Cada emissão fica
+// registrada em access_audit_log.
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
-import {
-  parseRecorte, RecorteInvalido, buscarItens, buscarTermosIdentificaveis, buscarAnalise, buscarHashRecorte,
-  buscarTela, textosTela, validarCsAtivo,
-} from '@/lib/churn';
+import { parseRecorte, RecorteInvalido, buscarTela, validarCsAtivo } from '@/lib/churn';
+import { carregarVozMembro } from '@/lib/voz-membro-dados';
+import { carregarVisitas } from '@/lib/visitas-dados';
 import { gerarRelatorioChurnHtml } from '@/lib/churn-relatorio-html';
 
 export const dynamic = 'force-dynamic';
@@ -27,27 +27,26 @@ export async function GET(req: NextRequest) {
 
   try {
     const recorte = parseRecorte(url.searchParams);
-    const identificado = url.searchParams.get('identificado') === '1';
     await validarCsAtivo(supabase, recorte);
-    const [telaMensal, telaSemanal, itens, termos, analise, hashAtual] = await Promise.all([
-      buscarTela(supabase, recorte, 'mes'),
-      buscarTela(supabase, recorte, 'semana'),
-      buscarItens(supabase, recorte, { apenasDentro: true }),
-      buscarTermosIdentificaveis(supabase),
-      buscarAnalise(supabase, recorte),
-      buscarHashRecorte(supabase, recorte),
+    const telaMensal = await buscarTela(supabase, recorte, 'mes');
+    const ref = telaMensal.referencia;
+    const [voz, visitas] = await Promise.all([
+      carregarVozMembro(supabase, ref, recorte.cs || '', 'todas'),
+      carregarVisitas(supabase, ref),
     ]);
     await supabase.rpc('log_access', {
-      p_action: identificado ? 'relatorio_churn_identificado' : 'relatorio_churn',
+      p_action: 'relatorio_churn',
       p_result: 'success',
+      p_metadata: { ref, cs: recorte.cs || null },
       p_resource: `${recorte.granularidade}|${recorte.inicio}|${recorte.fim}`,
     });
     const html = gerarRelatorioChurnHtml({
-      recorte, telaMensal, telaSemanal, itens, termos, analise,
-      textosMensal: textosTela(telaMensal, { ...recorte, granularidade: 'mes' }),
-      textosSemanal: textosTela(telaSemanal, { ...recorte, granularidade: 'semana' }),
-      analiseDesatualizada: !!analise?.baseHash && analise.baseHash !== hashAtual,
-      identificado, emitidoPor: email,
+      recorte,
+      telaMensal,
+      voz,
+      visitas: visitas.payload,
+      emitidoPor: email,
+      emitidoEm: new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
     });
     return new NextResponse(html, {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, max-age=0' },

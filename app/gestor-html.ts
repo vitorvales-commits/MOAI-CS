@@ -2766,6 +2766,7 @@ var vozDados_ = null;
 var vozTemaAtivo_ = '';
 var vozFiltrosMontados_ = false;
 var vozErroCard_ = {};
+var vozMostrarExcluidas_ = false;
 
 function vozTextoSemAcento_(s) {
   return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();
@@ -2795,7 +2796,8 @@ function vozCardHtml_(i) {
   if (i.observacao) h += '<div class="voz-obs-lida">' + pulsoEsc_(i.observacao) + '</div>';
   h += '<div class="voz-card-acoes"><select class="pill-select" data-acao="status" aria-label="Status da sugestão">';
   vozDados_.status.forEach(function (st) { h += '<option value="' + st.chave + '"' + (st.chave === i.status ? ' selected' : '') + '>' + pulsoEsc_(st.rotulo) + '</option>'; });
-  h += '</select><button type="button" class="voz-btn-link" data-acao="obs">' + (i.observacao ? 'Editar observação' : 'Observação') + '</button></div>';
+  h += '</select><button type="button" class="voz-btn-link" data-acao="obs">' + (i.observacao ? 'Editar observação' : 'Observação') + '</button>' +
+    '<button type="button" class="voz-btn-link" data-acao="excluir">Excluir</button></div>';
   h += '<div class="voz-obs" hidden><textarea maxlength="600" placeholder="Registre a decisão ou o encaminhamento">' + pulsoEsc_(i.observacao || '') + '</textarea><button type="button" class="pill-select" data-acao="salvarObs">Salvar observação</button></div>';
   if (vozErroCard_[i.id]) h += '<div class="voz-erro">' + pulsoEsc_(vozErroCard_[i.id]) + '</div>';
   return h + '</div>';
@@ -2852,7 +2854,19 @@ function renderVoz_() {
     h += '</div>';
   });
   h += '</div>';
+  h += vozExcluidasHtml_(d.excluidas || []);
   el.innerHTML = h;
+}
+function vozExcluidasHtml_(lista) {
+  var h = '<div class="voz-excluidas"><button type="button" class="voz-btn-link" data-acao="verExcluidas">Excluídas (' + lista.length + ')</button>';
+  if (!vozMostrarExcluidas_) return h + '</div>';
+  if (lista.length === 0) return h + '<div class="voz-col-vazio">Nenhuma sugestão excluída.</div></div>';
+  lista.forEach(function (e) {
+    h += '<div class="voz-card" data-id="' + pulsoEsc_(e.id) + '"><div class="voz-card-tags"><span class="voz-tag origem">' + pulsoEsc_(e.campoRotulo) + '</span><span class="voz-tag">' + pulsoEsc_(e.mes) + '</span></div>' +
+      '<div class="voz-card-texto">' + pulsoEsc_(e.texto) + '</div>' +
+      '<div class="voz-card-acoes"><button type="button" class="voz-btn-link" data-acao="restaurar">Restaurar</button></div></div>';
+  });
+  return h + '</div>';
 }
 function vozMontarFiltros_(d) {
   if (vozFiltrosMontados_) return;
@@ -2887,6 +2901,12 @@ function vozSalvar_(id, status, observacao) {
     .then(function () { return carregarVoz_(true); })
     .catch(function (err) { vozErroCard_[id] = 'Não foi possível salvar: ' + err.message; renderVoz_(); });
 }
+function vozAcaoExclusao_(id, acao) {
+  delete vozErroCard_[id];
+  return fetchJSON_('/api/gestor/voz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id, acao: acao }) })
+    .then(function () { return carregarVoz_(true); })
+    .catch(function (err) { vozErroCard_[id] = 'Não foi possível ' + (acao === 'excluir' ? 'excluir' : 'restaurar') + ': ' + err.message; renderVoz_(); });
+}
 function inicializarVoz_() {
   var sel = document.getElementById('vozMes');
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; sel.appendChild(opt);
@@ -2908,6 +2928,12 @@ function inicializarVoz_() {
     if (acao === 'tema') { vozTemaAtivo_ = vozTemaAtivo_ === alvo.getAttribute('data-tema') ? '' : alvo.getAttribute('data-tema'); document.getElementById('vozTema').value = vozTemaAtivo_; renderVoz_(); }
     else if (acao === 'limparTema') { vozTemaAtivo_ = ''; document.getElementById('vozTema').value = ''; renderVoz_(); }
     else if (acao === 'obs') { var o = alvo.closest('.voz-card').querySelector('.voz-obs'); o.hidden = !o.hidden; }
+    else if (acao === 'excluir') {
+      if (!confirm('Excluir esta sugestão? Ela some do quadro e dos números, e pode ser restaurada depois.')) return;
+      vozAcaoExclusao_(alvo.closest('.voz-card').getAttribute('data-id'), 'excluir');
+    }
+    else if (acao === 'restaurar') { vozAcaoExclusao_(alvo.closest('.voz-card').getAttribute('data-id'), 'restaurar'); }
+    else if (acao === 'verExcluidas') { vozMostrarExcluidas_ = !vozMostrarExcluidas_; renderVoz_(); }
     else if (acao === 'salvarObs') {
       var card = alvo.closest('.voz-card');
       var statusAtual = card.querySelector('select[data-acao="status"]').value;

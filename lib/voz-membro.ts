@@ -1,0 +1,352 @@
+// Voz do membro (churn, onda 2, 08/10/2026). Leitura determinística do que os membros dizem na saída
+// e no NPS: temas por expressão regular, contagens, notas e desafio. Nenhum texto passa por IA.
+//
+// Funções puras, sem acesso a banco nem rede, para rodar com node --experimental-strip-types
+// (tests/voz-membro.test.ts). A rota app/api/gestor/membro/voz/route.ts monta as linhas já filtradas
+// por SQL e a janela, e anonimiza os trechos antes de devolver.
+import { classificarTemasCom, semAcento, TEMA_OUTROS } from './voz.ts';
+import { AMOSTRA_MINIMA, NOTA_BAIXA_ESCALA_10, NOTA_BAIXA_ESCALA_5 } from './constants.ts';
+
+export type FonteVoz = 'saida' | 'nps_sugestao' | 'nps_cs';
+export type TextoVoz = { fonte: FonteVoz; mes: string; texto: string | null };
+
+export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] = [
+  { chave: 'negocios', rotulo: 'Geração de negócios e conexões', termos: /\b(negocio\w*|cliente\w*|venda\w*|vender|indicac\w*|conex\w*|contato\w*|parceri\w*|contrato\w*|networking|matchmaking|oportunidade\w*|fechament\w*|fechar)\b/g },
+  { chave: 'tempo', rotulo: 'Tempo e agenda', termos: /\b(tempo|agenda|horario\w*|rotina|correria|demanda\w*|priorid\w*|prioriz\w*|dispriorizei|comparecer|viage\w*|durante o dia|quinzenal|frequencia)\b/g },
+  { chave: 'distancia', rotulo: 'Distância e deslocamento', termos: /\b(brasilia|goiania|mudanca|mudei|mudando|exterior|outro pais|deslocamento|distancia|presencia\w*|online|remoto)\b/g },
+  { chave: 'financeiro', rotulo: 'Preço e financeiro', termos: /\b(financeir\w*|mensalidade\w*|valor alto|valor da mensalidade|custo\w*|caro|preco\w*|pagar|pagamento\w*|orcament\w*|economia|gasto\w*|taxa\w*)\b/g },
+  { chave: 'cs', rotulo: 'Atuação ou troca de CS', termos: /\b(cs|css|atendimento|acompanhamento|proativ\w*|suporte|empati\w*|atencios\w*|prestativ\w*)\b/g },
+  { chave: 'conselho', rotulo: 'Formato e qualidade do conselho', termos: /\b(conselho\w*|conselheiro\w*|dinamica\w*|metodologia|desafio\w*|maturidade|nive\w*|segmento\w*|desabafo|rotatividade|convidado\w*|empresas participantes|numero de empresas|novos membros)\b/g },
+  { chave: 'eventos', rotulo: 'Eventos e comunidade', termos: /\b(evento\w*|comunidade|workshop\w*|rodada\w*|encontro\w*|palestra\w*)\b/g },
+  { chave: 'estrutura', rotulo: 'Local e estrutura', termos: /\b(local|sala|espaco|ar condicionado|wifi|wi fi|internet|barulho|comida|lanche|cafe|almoco|ventilac\w*|cadeira\w*|caneta\w*|estacionamento|confort\w*|apertad\w*)\b/g },
+  { chave: 'expectativa', rotulo: 'Promessa e expectativa da venda', termos: /\b(prometid\w*|prometer|promessa\w*|foi falado|foi vendido|vendido|proposto|esperava\w*|esperavamos)\b/g },
+  { chave: 'comunicacao', rotulo: 'Comunicação e informação', termos: /\b(comunicac\w*|informac\w*|transparenc\w*|onboarding|perdid\w*|alinhamento)\b/g },
+];
+
+// Respostas que não dizem nada: "não", "ok", "tudo ótimo" etc. Aplicadas ao texto sem acento, em
+// minúsculas e sem espaços nas pontas, e só quando o texto tem até 45 caracteres.
+const NAO_RESPOSTA = /^(n|na|nao|nada|nenhum[a]?|nenhuma sugestao|sem sugest\w*|sem mais|n\/?a|ok|top|show|otimo|excelente|tudo (certo|otimo|perfeito|bem|ok)|ta (otimo|certo|legal|indo muito bem)|esta (otimo|otima|tudo bem|muito bom|muito boa)|foi (bom|otimo|excelente)|nada a acrescentar|nao tenho\b.*|nao sei\b.*|nao saberia\b.*|manter\b.*)[.! ]*$/;
+
+function normalizado(texto: string | null | undefined): string {
+  return semAcento(texto || '').trim();
+}
+
+// Texto preenchido pelo CS e não pelo membro (ex.: "CS deve que responder", "PREENCHIDO PELO CS")
+export function ehPreenchidoPeloCs(texto: string | null | undefined): boolean {
+  const t = normalizado(texto);
+  return /(cs deve|preenchido pelo cs)/.test(t);
+}
+
+// Sem conteúdo: menos de 6 letras ou números, ou resposta curta que só diz que não tem nada a dizer
+export function ehNaoResposta(texto: string | null | undefined): boolean {
+  const t = normalizado(texto);
+  if (!t) return true;
+  if ((t.match(/[a-z0-9]/g) || []).length < 6) return true;
+  return t.length <= 45 && NAO_RESPOSTA.test(t);
+}
+
+export function classificarTemasMembro(texto: string) {
+  return classificarTemasCom(texto, TEMAS_MEMBRO);
+}
+
+// ---- b2: temas da voz do membro ----
+
+export type LinhaTema = {
+  chave: string;
+  rotulo: string;
+  textos: number; // textos distintos com este tema na janela
+  anterior: number; // mesmo número na janela anterior de mesmo tamanho
+  delta: number;
+  porFonte: { saida: number; nps: number };
+};
+
+export type ResumoTemas = {
+  ranking: LinhaTema[];
+  textosAnalisados: number;
+  descartadosVazios: number;
+  preenchidosPeloCs: number;
+  insights: string[];
+};
+
+// Conta uma janela: textos válidos, descartados e preenchidos pelo CS, e os temas de cada texto.
+// Um mesmo texto (normalizado) conta uma vez por tema dentro da janela.
+function contarJanela(textos: TextoVoz[]) {
+  let analisados = 0;
+  let descartados = 0;
+  let preenchidos = 0;
+  const porTema = new Map<string, { rotulo: string; distintos: Set<string>; saida: Set<string>; nps: Set<string> }>();
+  for (const t of textos) {
+    if (t.texto === null || t.texto === undefined) continue;
+    if (t.fonte === 'saida' && ehPreenchidoPeloCs(t.texto)) { preenchidos++; continue; }
+    if (ehNaoResposta(t.texto)) { descartados++; continue; }
+    analisados++;
+    const chaveTexto = normalizado(t.texto);
+    for (const tema of classificarTemasMembro(t.texto)) {
+      if (tema.chave === TEMA_OUTROS.chave) continue;
+      if (!porTema.has(tema.chave)) porTema.set(tema.chave, { rotulo: tema.rotulo, distintos: new Set(), saida: new Set(), nps: new Set() });
+      const e = porTema.get(tema.chave)!;
+      e.distintos.add(chaveTexto);
+      (t.fonte === 'saida' ? e.saida : e.nps).add(chaveTexto);
+    }
+  }
+  return { analisados, descartados, preenchidos, porTema };
+}
+
+// Ranking dos temas, o mais citado primeiro. Insights por regra fixa (ver a especificação do bloco b2):
+// o mais citado; o que mais cresceu se somar pelo menos 3 textos; o mais citado só na saída.
+export function montarTemas(atual: TextoVoz[], anterior: TextoVoz[]): ResumoTemas {
+  const a = contarJanela(atual);
+  const b = contarJanela(anterior);
+  const ranking: LinhaTema[] = Array.from(a.porTema.entries()).map(([chave, e]) => {
+    const antes = b.porTema.get(chave)?.distintos.size || 0;
+    return {
+      chave,
+      rotulo: e.rotulo,
+      textos: e.distintos.size,
+      anterior: antes,
+      delta: e.distintos.size - antes,
+      porFonte: { saida: e.saida.size, nps: e.nps.size },
+    };
+  }).sort((x, y) => y.textos - x.textos || x.rotulo.localeCompare(y.rotulo, 'pt-BR'));
+
+  const insights: string[] = [];
+  const topo = ranking[0];
+  if (topo) insights.push(`O tema mais citado é ${topo.rotulo}, em ${topo.textos} textos.`);
+  const cresceu = ranking.filter((l) => l.delta >= 3).sort((x, y) => y.delta - x.delta)[0];
+  if (cresceu) insights.push(`${cresceu.rotulo} cresceu ${cresceu.delta} textos em relação ao período anterior.`);
+  const soSaida = ranking.filter((l) => l.porFonte.saida > 0).sort((x, y) => y.porFonte.saida - x.porFonte.saida)[0];
+  if (soSaida) insights.push(`Entre quem saiu, o que mais aparece é ${soSaida.rotulo}.`);
+
+  return {
+    ranking,
+    textosAnalisados: a.analisados,
+    descartadosVazios: a.descartados,
+    preenchidosPeloCs: a.preenchidos,
+    insights,
+  };
+}
+
+// ---- b4 e b5: notas e desafio ----
+
+export type RespostaNps = {
+  group_id: string | null;
+  nome_grupo: string | null;
+  cs: string | null;
+  nota_conselheiro: number | null;
+  nota_cs_hoje: number | null;
+  nota_qualidade_trocas: number | null;
+  nota_evolucao_desafios: number | null;
+  continuidade_desafios: string | null;
+  sugestao_texto: string | null;
+  avalia_cs_texto: string | null;
+};
+
+const DIMENSOES = [
+  { chave: 'conselheiro', rotulo: 'Conselheiro (0 a 10)', campo: 'nota_conselheiro' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
+  { chave: 'cs_hoje', rotulo: 'CS hoje (0 a 10)', campo: 'nota_cs_hoje' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_10 },
+  { chave: 'trocas', rotulo: 'Qualidade das trocas (1 a 5)', campo: 'nota_qualidade_trocas' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
+  { chave: 'evolucao', rotulo: 'Evolução no desafio (1 a 5)', campo: 'nota_evolucao_desafios' as const, baixa: (n: number) => n <= NOTA_BAIXA_ESCALA_5 },
+];
+
+// "Este é o meu primeiro conselho" não conta como travamento nem como nota baixa de evolução
+export function ehPrimeiroConselho(r: RespostaNps): boolean {
+  return normalizado(r.continuidade_desafios).startsWith('este e o meu primeiro');
+}
+
+// Travado: "Em partes..." ou "Não vejo..."
+export function ehTravado(r: RespostaNps): boolean {
+  const t = normalizado(r.continuidade_desafios);
+  return t.startsWith('em partes') || t.startsWith('nao vejo');
+}
+
+// Continuidade preenchida e fora do primeiro conselho: base do percentual de travados
+function temContinuidadeValida(r: RespostaNps): boolean {
+  return !!normalizado(r.continuidade_desafios) && !ehPrimeiroConselho(r);
+}
+
+function dimensoesBaixas(r: RespostaNps): string[] {
+  return DIMENSOES.filter((d) => {
+    if (d.chave === 'evolucao' && ehPrimeiroConselho(r)) return false;
+    const n = r[d.campo];
+    return n !== null && n !== undefined && d.baixa(Number(n));
+  }).map((d) => d.chave);
+}
+
+function temNota(r: RespostaNps): boolean {
+  return DIMENSOES.some((d) => r[d.campo] !== null && r[d.campo] !== undefined);
+}
+
+export type LinhaDimensao = { chave: string; rotulo: string; respostas: number; baixas: number; percentual: number | null; percentualAnterior: number | null; variacao: number | null };
+
+// Por dimensão, na janela e na anterior. Percentual só com AMOSTRA_MINIMA respostas válidas.
+export function resumoNotas(atual: RespostaNps[], anterior: RespostaNps[]): LinhaDimensao[] {
+  const medir = (linhas: RespostaNps[], d: (typeof DIMENSOES)[number]) => {
+    const validas = linhas.filter((r) => {
+      if (d.chave === 'evolucao' && ehPrimeiroConselho(r)) return false;
+      const n = r[d.campo];
+      return n !== null && n !== undefined;
+    });
+    const baixas = validas.filter((r) => d.baixa(Number(r[d.campo]))).length;
+    return { respostas: validas.length, baixas };
+  };
+  return DIMENSOES.map((d) => {
+    const x = medir(atual, d);
+    const y = medir(anterior, d);
+    const pct = x.respostas >= AMOSTRA_MINIMA ? Math.round((x.baixas / x.respostas) * 1000) / 10 : null;
+    const pctAnt = y.respostas >= AMOSTRA_MINIMA ? Math.round((y.baixas / y.respostas) * 1000) / 10 : null;
+    return {
+      chave: d.chave,
+      rotulo: d.rotulo,
+      respostas: x.respostas,
+      baixas: x.baixas,
+      percentual: pct,
+      percentualAnterior: pctAnt,
+      variacao: pct !== null && pctAnt !== null ? Math.round((pct - pctAnt) * 10) / 10 : null,
+    };
+  });
+}
+
+export type LinhaConselhoNotas = {
+  groupId: string;
+  conselho: string;
+  cs: string | null;
+  respostas: number;
+  baixas: number;
+  percentual: number;
+  dimensaoMaisPesa: string;
+  temaSugestoes: string | null;
+  fraseConversa: string | null;
+};
+
+// Conselhos com mais notas baixas (só os que têm AMOSTRA_MINIMA respostas), por percentual desc.
+// Frase fixa quando a taxa chega a 30 por cento.
+export function conselhosComNotasBaixas(linhas: RespostaNps[]): LinhaConselhoNotas[] {
+  const grupos = new Map<string, RespostaNps[]>();
+  for (const r of linhas) {
+    if (!r.group_id || !temNota(r)) continue;
+    if (!grupos.has(r.group_id)) grupos.set(r.group_id, []);
+    grupos.get(r.group_id)!.push(r);
+  }
+  const out: LinhaConselhoNotas[] = [];
+  for (const [groupId, rs] of grupos) {
+    if (rs.length < AMOSTRA_MINIMA) continue;
+    const comBaixa = rs.filter((r) => dimensoesBaixas(r).length > 0);
+    const percentual = Math.round((comBaixa.length / rs.length) * 1000) / 10;
+    const contagemDim = new Map<string, number>();
+    comBaixa.forEach((r) => dimensoesBaixas(r).forEach((d) => contagemDim.set(d, (contagemDim.get(d) || 0) + 1)));
+    const dimTop = Array.from(contagemDim.entries()).sort((x, y) => y[1] - x[1])[0];
+    const rotuloDim = dimTop ? DIMENSOES.find((d) => d.chave === dimTop[0])!.rotulo : '—';
+    const textoBaixas = comBaixa.map((r) => r.sugestao_texto).filter((t): t is string => !!t && !ehNaoResposta(t));
+    const temas = classificarTemasDe(textoBaixas);
+    const base = rs[0];
+    out.push({
+      groupId,
+      conselho: base.nome_grupo || groupId,
+      cs: base.cs,
+      respostas: rs.length,
+      baixas: comBaixa.length,
+      percentual,
+      dimensaoMaisPesa: rotuloDim,
+      temaSugestoes: temas,
+      fraseConversa: percentual >= 30 && base.cs ? `Conversar com ${base.cs} sobre ${base.nome_grupo || groupId}` : null,
+    });
+  }
+  return out.sort((x, y) => y.percentual - x.percentual || x.conselho.localeCompare(y.conselho, 'pt-BR'));
+}
+
+// Tema mais citado em um conjunto de textos (rótulo ou null)
+function classificarTemasDe(textos: string[]): string | null {
+  const cont = new Map<string, { rotulo: string; n: number }>();
+  for (const t of textos) for (const tema of classificarTemasMembro(t)) {
+    if (tema.chave === TEMA_OUTROS.chave) continue;
+    const e = cont.get(tema.chave) || { rotulo: tema.rotulo, n: 0 };
+    e.n++;
+    cont.set(tema.chave, e);
+  }
+  const top = Array.from(cont.values()).sort((x, y) => y.n - x.n || x.rotulo.localeCompare(y.rotulo, 'pt-BR'))[0];
+  return top ? top.rotulo : null;
+}
+
+// "O que dizem os que deram nota baixa": temas das sugestões e das avaliações de CS só das respostas com
+// alguma nota baixa, e a contagem das que não trazem justificativa escrita.
+export function justificativasNotaBaixa(linhas: RespostaNps[]) {
+  const comBaixa = linhas.filter((r) => dimensoesBaixas(r).length > 0);
+  const sugestoes = comBaixa.map((r) => r.sugestao_texto).filter((t): t is string => !!t && !ehNaoResposta(t));
+  const avaliacoesCs = comBaixa.map((r) => r.avalia_cs_texto).filter((t): t is string => !!t && !ehNaoResposta(t));
+  const semJustificativa = comBaixa.filter((r) => ehNaoResposta(r.sugestao_texto) && ehNaoResposta(r.avalia_cs_texto)).length;
+  return {
+    total: comBaixa.length,
+    temaSugestoes: classificarTemasDe(sugestoes),
+    temaAvaliacoesCs: classificarTemasDe(avaliacoesCs),
+    frase: `${semJustificativa} de ${comBaixa.length} respostas com nota baixa não trazem justificativa escrita.`,
+  };
+}
+
+// ---- b5: desafio ----
+
+export type LinhaDesafio = {
+  groupId: string;
+  conselho: string;
+  cs: string | null;
+  respostas: number;
+  travados: number;
+  percentualTravados: number;
+  presencaPercentual: number | null;
+  ganhosPercentual: number | null;
+  qualidadeMedia: number | null;
+  temaTravados: string | null;
+  fraseRevisao: string | null;
+};
+
+export type ExtrasConselho = Map<string, { presencaPercentual: number | null; ganhosPercentual: number | null }>;
+
+// Percentual de travados por conselho, com presença e ganhos da ata do mês de referência (vindos da rota).
+export function tabelaDesafio(linhas: RespostaNps[], extras: ExtrasConselho): LinhaDesafio[] {
+  const grupos = new Map<string, RespostaNps[]>();
+  for (const r of linhas) {
+    if (!r.group_id || !temContinuidadeValida(r)) continue;
+    if (!grupos.has(r.group_id)) grupos.set(r.group_id, []);
+    grupos.get(r.group_id)!.push(r);
+  }
+  const out: LinhaDesafio[] = [];
+  for (const [groupId, rs] of grupos) {
+    if (rs.length < AMOSTRA_MINIMA) continue;
+    const travados = rs.filter(ehTravado);
+    const notas = rs.map((r) => r.nota_qualidade_trocas).filter((n): n is number => n !== null && n !== undefined);
+    const ex = extras.get(groupId);
+    const pctTravados = Math.round((travados.length / rs.length) * 1000) / 10;
+    out.push({
+      groupId,
+      conselho: rs[0].nome_grupo || groupId,
+      cs: rs[0].cs,
+      respostas: rs.length,
+      travados: travados.length,
+      percentualTravados: pctTravados,
+      presencaPercentual: ex?.presencaPercentual ?? null,
+      ganhosPercentual: ex?.ganhosPercentual ?? null,
+      qualidadeMedia: notas.length ? Math.round((notas.reduce((s, n) => s + n, 0) / notas.length) * 10) / 10 : null,
+      temaTravados: classificarTemasDe(travados.map((r) => r.sugestao_texto || '').filter((t) => !ehNaoResposta(t))),
+      fraseRevisao: pctTravados >= 40 && rs[0].cs ? `Revisar a condução dos desafios com ${rs[0].cs}` : null,
+    });
+  }
+  return out.sort((x, y) => y.percentualTravados - x.percentualTravados || x.conselho.localeCompare(y.conselho, 'pt-BR'));
+}
+
+// Frases por regra, só quando cada lado tem pelo menos dois conselhos com dado. Abaixo disso não sai frase.
+export function frasesDesafio(tabela: LinhaDesafio[]): string[] {
+  const out: string[] = [];
+  const media = (xs: number[]) => Math.round((xs.reduce((s, n) => s + n, 0) / xs.length) * 10) / 10;
+  const comPresenca = tabela.filter((l) => l.presencaPercentual !== null);
+  const presBaixa = comPresenca.filter((l) => (l.presencaPercentual as number) < 70);
+  const presAlta = comPresenca.filter((l) => (l.presencaPercentual as number) >= 70);
+  if (presBaixa.length >= 2 && presAlta.length >= 2) {
+    out.push(`Nos conselhos com presença abaixo de 70 por cento, ${media(presBaixa.map((l) => l.percentualTravados))} por cento se dizem travados; nos demais, ${media(presAlta.map((l) => l.percentualTravados))} por cento.`);
+  }
+  const comGanho = tabela.filter((l) => l.ganhosPercentual !== null);
+  const ganhoBaixo = comGanho.filter((l) => (l.ganhosPercentual as number) < 50);
+  const ganhoAlto = comGanho.filter((l) => (l.ganhosPercentual as number) >= 50);
+  if (ganhoBaixo.length >= 2 && ganhoAlto.length >= 2) {
+    out.push(`Nos conselhos com ganho registrado abaixo de 50 por cento, ${media(ganhoBaixo.map((l) => l.percentualTravados))} por cento se dizem travados; nos demais, ${media(ganhoAlto.map((l) => l.percentualTravados))} por cento.`);
+  }
+  return out;
+}

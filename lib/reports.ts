@@ -2216,7 +2216,7 @@ function presencaDoMes(ctx: ContextoConselhos, itemsPrincipais: any[], itemsRepo
 // ("Não apresentou.", "Primeira reunião.", "Sem ganhos") — isso não conta como ganho relatado no
 // healthscore (visto nas extrações de Luis Gustavo/Adriana, 24/09/2026).
 const SEM_GANHO_RE = /^-?\s*(n[aã]o apresentou( ganhos?)?|primeira reuni[aã]o|primeiro conselho|n[aã]o houve( ganhos?)?|sem ganhos?|sem informa[çc][õo]es|nenhum|n\/a|-)\.?\s*$/i;
-function ganhoRelatado(ganhos: string | null): boolean {
+export function ganhoRelatado(ganhos: string | null): boolean {
   if (!ganhos || !ganhos.trim()) return false;
   return ganhos.split('\n').some((l) => l.trim() && !SEM_GANHO_RE.test(l.trim()));
 }

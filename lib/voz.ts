@@ -54,8 +54,14 @@ export function semAcento(s: string): string {
 }
 
 export function classificarTemas(texto: string): { chave: string; rotulo: string }[] {
+  return classificarTemasCom(texto, TEMAS_VOZ);
+}
+
+// Mesmo algoritmo para qualquer lista de temas (a voz do membro usa a sua própria). Até dois temas, os
+// de mais ocorrências, empate pela ordem da lista; Outros quando nada casa.
+export function classificarTemasCom(texto: string, temas: { chave: string; rotulo: string; termos: RegExp }[]): { chave: string; rotulo: string }[] {
   const t = semAcento(texto);
-  const pontos = TEMAS_VOZ.map((tema, ordem) => {
+  const pontos = temas.map((tema, ordem) => {
     const m = t.match(new RegExp(tema.termos.source, 'g'));
     return { tema, ordem, n: m ? m.length : 0 };
   }).filter((x) => x.n > 0);
@@ -94,7 +100,9 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 // Função pura. Recebe as linhas ativas de voz_liderado_itens (com pulso_item_id, usado só aqui dentro
 // para contar respostas distintas) e devolve itens, temas e a lista do que o time quer manter. O id
 // da resposta de origem nunca entra no retorno.
-export function montarVoz(linhas: any[], agora: Date = new Date()) {
+export function montarVoz(linhasBrutas: any[], agora: Date = new Date()) {
+  // excluída pelo gestor não conta em nada: nem itens, nem temas, nem insights
+  const linhas = linhasBrutas.filter((r) => !r.excluido_em);
   const comTemas = linhas.map((r) => ({ r, temas: classificarTemas(r.texto) }));
 
   // quem pede ação entra no quadro, quem pede para manter vira insight à parte
@@ -207,9 +215,10 @@ function linhasDoPeriodo<T extends { mes_grupo_titulo: string }>(linhas: T[], me
 
 // GET /api/gestor/voz. Só gestor, garantido pela rota e pela RLS das tabelas.
 export async function generateVozLiderado(sb: SupabaseClient, mes: string, ano: number) {
+  // excluídas saem do quadro, dos números e dos insights; a lista delas vem à parte (listarVozExcluidas)
   const { data: linhasAll, error } = await sb.from('voz_liderado_itens')
     .select('id, pulso_item_id, campo, tipo, mes_grupo_titulo, texto, status, observacao_lider, status_alterado_em, criado_em')
-    .eq('ativo', true).limit(5000);
+    .eq('ativo', true).is('excluido_em', null).limit(5000);
   if (error) throw new Error('Erro ao buscar voz_liderado_itens: ' + error.message);
 
   const { data: pulso, error: errP } = await sb.from('pulso_cs_items').select('id, mes_grupo_titulo, gargalos').limit(5000);
@@ -235,9 +244,39 @@ export async function generateVozLiderado(sb: SupabaseClient, mes: string, ano: 
     status: STATUS_VOZ,
     temasDisponiveis: [...TEMAS_VOZ.map((t) => ({ chave: t.chave, rotulo: t.rotulo })), TEMA_OUTROS],
     campos: Object.entries(CAMPOS_VOZ).map(([chave, rotulo]) => ({ chave, rotulo })),
+    excluidas: await listarVozExcluidas(sb),
   };
 }
 export type VozGestor = Awaited<ReturnType<typeof generateVozLiderado>>;
+
+// Sugestões excluídas pelo gestor, para a lista "Excluídas (N)" com Restaurar. Só o texto da sugestão
+// sai aqui, nunca o nome de quem respondeu.
+export async function listarVozExcluidas(sb: SupabaseClient) {
+  const { data, error } = await sb.from('voz_liderado_itens')
+    .select('id, texto, campo, mes_grupo_titulo, excluido_em')
+    .eq('ativo', true).not('excluido_em', 'is', null)
+    .order('excluido_em', { ascending: false }).limit(500);
+  if (error) throw new Error('Erro ao buscar sugestões excluídas: ' + error.message);
+  return (data || []).map((r: any) => ({
+    id: r.id as string,
+    texto: r.texto as string,
+    campoRotulo: CAMPOS_VOZ[r.campo] || r.campo,
+    mes: r.mes_grupo_titulo as string,
+    excluidoEm: r.excluido_em as string,
+  }));
+}
+
+// Exclusão e restauração são lógicas. A função do banco valida is_gestor e grava a auditoria.
+export async function excluirVoz(sb: SupabaseClient, id: string) {
+  const { error } = await sb.rpc('voz_excluir', { p_id: id });
+  if (error) throw new Error(error.message);
+  return { id, excluida: true };
+}
+export async function restaurarVoz(sb: SupabaseClient, id: string) {
+  const { error } = await sb.rpc('voz_restaurar', { p_id: id });
+  if (error) throw new Error(error.message);
+  return { id, excluida: false };
+}
 
 // Muda o status de uma sugestão. A função do banco valida de novo que o chamador é gestor, confere o
 // status e grava a auditoria. observacao nula mantém a observação atual, texto vazio apaga.

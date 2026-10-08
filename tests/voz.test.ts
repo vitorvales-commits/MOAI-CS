@@ -59,6 +59,15 @@ async function main() {
   ins.forEach((t) => { assert.equal(/[‐-―−]|\s-\s/.test(t), false, 'traço no texto: ' + t); });
   assert.deepEqual(gerarInsights(montarVoz([], agora), [], 0), []);
 
+  // ---- exclusão lógica: excluída não entra no resumo, nos temas nem nos insights ----
+  const comExcluida = montarVoz([
+    { ...base, id: 'e1', pulso_item_id: 20, campo: 'melhorar', tipo: null, texto: 'Sobrecarga de demandas urgentes', status: 'backlog', criado_em: '2026-10-19T00:00:00Z' },
+    { ...base, id: 'e2', pulso_item_id: 21, campo: 'melhorar', tipo: null, texto: 'Sobrecarga de demandas urgentes', status: 'backlog', criado_em: '2026-10-19T00:00:00Z', excluido_em: '2026-10-20T00:00:00Z' },
+  ], agora);
+  assert.equal(comExcluida.resumo.total, 1);
+  assert.deepEqual(comExcluida.itens.map((i) => i.id), ['e1']);
+  assert.equal(comExcluida.temas[0].itens, 1);
+
   // ---- leitura simulada (GET) e gravação (RPC) ----
   const tabelas: Record<string, any[]> = {
     voz_liderado_itens: linhas,
@@ -69,7 +78,7 @@ async function main() {
     ],
   };
   const consulta = (nome: string) => {
-    const q: any = { select: () => q, eq: () => q, limit: async () => ({ data: tabelas[nome], error: null }) };
+    const q: any = { select: () => q, eq: () => q, is: () => q, not: () => q, order: () => q, limit: async () => ({ data: tabelas[nome], error: null }) };
     return q;
   };
   const sb: any = { from: consulta, rpc: async () => ({ data: null, error: null }) };
@@ -81,6 +90,7 @@ async function main() {
   const mesOut = await generateVozLiderado(sb, 'Outubro', 2026);
   assert.equal(mesOut.respostasNoPeriodo, 2);
   assert.equal(JSON.stringify(geral).includes('pulso_item_id'), false);
+  assert.ok(Array.isArray(geral.excluidas));
 
   const chamadas: any[] = [];
   const sbRpc: any = { rpc: async (n: string, a: any) => { chamadas.push([n, a]); return { data: { id: 'a1', status: 'realizado', observacao_lider: 'ok', status_alterado_em: '2026-10-20T00:00:00Z' }, error: null }; } };
