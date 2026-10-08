@@ -97,6 +97,43 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .adv-acoes{margin-left:auto;display:flex;gap:6px;}
 .efeito{padding:12px 14px;border-radius:12px;background:var(--cinza-fundo);font-size:13px;line-height:1.5;margin-bottom:14px;}
 .msg{font-size:12px;font-weight:600;margin-left:8px;}
+.um-topo{display:flex;justify-content:flex-end;margin-bottom:12px;}
+.um-colunas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+@media (max-width:820px){ .um-colunas{grid-template-columns:1fr;} }
+.um-col h3{font-size:14px;margin:0 0 4px;}
+.um-col-sub{font-size:11.5px;color:var(--cinza-texto);margin-bottom:10px;}
+.um-item{border:1px solid var(--cinza-borda);border-radius:14px;padding:12px;margin-bottom:10px;background:var(--branco);}
+.um-item.vencido{border-color:#EBC6C0;background:#FBEEEC;}
+.um-item-texto{font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
+.um-item-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:11.5px;color:var(--cinza-texto);}
+.um-item-acoes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.um-item-acoes select{font:inherit;font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid var(--cinza-borda);background:var(--branco);}
+.um-prio-alta{color:var(--dourado);font-weight:700;}
+.um-vencido{color:var(--vermelho);font-weight:700;}
+.um-privado{font-size:10px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--cinza-superficie);color:var(--cinza-texto);}
+.um-link{color:var(--preto-tinta);font-weight:600;}
+.um-form{border:1px solid var(--cinza-borda);border-radius:16px;padding:16px;margin-bottom:16px;background:var(--cinza-fundo);}
+.um-form label{display:block;font-size:12px;font-weight:700;color:var(--cinza-texto);margin:10px 0 4px;}
+.um-form input,.um-form select,.um-form textarea{width:100%;font:inherit;font-size:13px;padding:8px 10px;border-radius:10px;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);}
+.um-form textarea{min-height:70px;resize:vertical;}
+.um-form-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:600px){ .um-form-linha{grid-template-columns:1fr;} }
+.um-form-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.um-form-msg{font-size:12px;margin-top:8px;color:var(--cinza-texto);}
+.um-granola{white-space:pre-wrap;font-size:12.5px;line-height:1.5;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:12px;padding:12px;max-height:260px;overflow:auto;}
+.um-linha{padding:12px 0;border-bottom:1px solid var(--cinza-superficie);}
+.um-linha:last-child{border-bottom:none;}
+.um-linha-data{font-size:12px;font-weight:700;color:var(--cinza-texto);}
+.um-linha-resumo{font-size:13.5px;line-height:1.5;white-space:pre-wrap;margin-top:4px;}
+.um-linha-privado{font-size:12.5px;line-height:1.5;white-space:pre-wrap;margin-top:8px;padding:10px;border-radius:10px;background:var(--cinza-fundo);}
+.um-acoes-linha{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.um-acoes-linha button,.um-item-acoes button,.um-form-acoes button{background:var(--cinza-superficie);color:var(--preto-tinta);border:none;border-radius:8px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.um-acoes-linha button.perigo,.um-item-acoes button.perigo{background:#FBEEEC;color:var(--vermelho);}
+.um-acoes-linha button:disabled{opacity:.6;cursor:default;}
+details.um-det{margin-top:14px;}
+details.um-det summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--preto-tinta);}
+.um-itens-novos{margin:8px 0 0;padding:0;list-style:none;font-size:12.5px;}
+.um-itens-novos li{padding:6px 0;border-bottom:1px solid var(--cinza-superficie);}
 ${GTD_CHECKLIST_STYLE}
 `;
 
@@ -116,6 +153,15 @@ export const GESTOR_CS_HTML = `
   <section class="block">
     <h2>Radar dos indicadores <span class="sub">Cada eixo vai de 0 a 150, e 100 significa meta batida. Eixo sem meta aparece com marcador vazio.</span></h2>
     <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
+  </section>
+
+  <section class="block" id="secUmAUm">
+    <h2>1:1 <span class="sub">Próximos passos e pontos de atenção em aberto, de todas as conversas.</span></h2>
+    <div class="card">
+      <div class="um-topo"><button class="btn" type="button" data-um="novo">Registrar 1:1</button></div>
+      <div id="umForm"></div>
+      <div id="umLista"><div class="vazio">Carregando…</div></div>
+    </div>
   </section>
 
   <section class="block">
@@ -194,6 +240,7 @@ function renderHeroCS(d) {
     ? '<span class="selo ouro">' + c.posicao + 'º de ' + c.totalRankeados + ' no ranking</span>'
     : '<span class="selo">Sem dados suficientes, fora do ranking</span>';
   if (acima) selos += '<span class="selo alerta">Advertências acima de ' + LIMIAR_ADVERTENCIA_DESTAQUE + ' pontos</span>';
+  selos += '<span id="heroUmSelo">' + umSeloHtml() + '</span>';
   var carteira = c.carteira.numConselhos + (c.carteira.numConselhos === 1 ? ' conselho' : ' conselhos');
   var metaCarteira = c.carteira.semMetaPropria ? 'sem meta própria cadastrada' : 'meta de ' + c.carteira.meta;
   var healthTxt = 'Sem apuração', healthSub = '';
@@ -316,6 +363,306 @@ function renderAdvertenciasCS(d) {
   el.innerHTML = efeito + form + lista;
 }
 
+// ---------- 1:1 (08/10/2026): conduzida e editada só nesta página ----------
+var UM = null;
+var UM_FORM_REGISTRO = null;
+var UM_FORM_GRANOLA = null;
+var UM_FORM_ITENS = [];
+var UM_TIPOS = [
+  { chave: 'passo_lideranca', rotulo: 'A liderança vai fazer' },
+  { chave: 'passo_liderado', rotulo: 'O liderado vai fazer' },
+  { chave: 'ponto_atencao', rotulo: 'Ponto de atenção' }
+];
+var UM_PRIOS = [{ chave: 'alta', rotulo: 'Alta' }, { chave: 'media', rotulo: 'Média' }, { chave: 'baixa', rotulo: 'Baixa' }];
+
+function umErro(msg) { return '<div class="erro-secao">Não foi possível carregar esta seção: ' + esc(msg) + '.</div>'; }
+function umDataSP(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'sem data'; }
+function umIsoDataSP(iso) {
+  return iso ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)) : '';
+}
+function umRotuloTipo(t) { for (var i = 0; i < UM_TIPOS.length; i++) { if (UM_TIPOS[i].chave === t) return UM_TIPOS[i].rotulo; } return t; }
+function umPorId(lista, id) { for (var i = 0; i < (lista || []).length; i++) { if (lista[i].id === id) return lista[i]; } return null; }
+function umItemPorId(id) { return umPorId(UM && UM.itens, id) || umPorId(UM && UM.excluidos, id); }
+function umRegistroPorId(id) { return umPorId(UM && UM.registros, id); }
+function umGravacaoPorId(id) { for (var i = 0; UM && i < UM.granola.length; i++) { if (UM.granola[i].noteId === id) return UM.granola[i]; } return null; }
+
+function umSeloHtml() {
+  if (!UM || !UM.resumo) return '';
+  var r = UM.resumo, s = '';
+  if (r.liderancaVencidos > 0) s += '<a class="selo alerta" href="#secUmAUm">' + r.liderancaVencidos + (r.liderancaVencidos === 1 ? ' compromisso da liderança vencido' : ' compromissos da liderança vencidos') + '</a>';
+  if (r.atencaoAbertos > 0) s += '<a class="selo" href="#secUmAUm">' + r.atencaoAbertos + (r.atencaoAbertos === 1 ? ' ponto de atenção' : ' pontos de atenção') + '</a>';
+  return s;
+}
+
+function postUm(corpo) {
+  return fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '/um-a-um', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+}
+function mostrarErroUm(err) {
+  document.getElementById('umLista').insertAdjacentHTML('afterbegin', umErro(err.message));
+}
+
+function carregarUmAUm() {
+  fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '/um-a-um').then(function (d) {
+    UM = d; renderUmAUm();
+  }).catch(function (err) {
+    document.getElementById('umLista').innerHTML = umErro(err.message);
+  });
+}
+
+function umItemCardHtml(i) {
+  var vencido = !!i.vencido;
+  var meta = '';
+  if (i.visibilidade === 'privado_gestor' && i.tipo === 'passo_lideranca') meta += '<span class="um-privado">Só a liderança</span>';
+  if (i.prioridade === 'alta') meta += '<span class="um-prio-alta">Alta</span>';
+  if (i.prazo) {
+    meta += vencido
+      ? '<span class="um-vencido">vencido há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') + '</span>'
+      : '<span>prazo ' + dataBR(i.prazo) + '</span>';
+  }
+  if (i.dataOrigem) meta += '<span>1:1 de ' + dataBR(i.dataOrigem) + '</span>';
+  var opcoes = (UM.statusOpcoes || []).map(function (s) {
+    return '<option value="' + esc(s.chave) + '"' + (s.chave === i.status ? ' selected' : '') + '>' + esc(s.rotulo) + '</option>';
+  }).join('');
+  return '<div class="um-item' + (vencido ? ' vencido' : '') + '">'
+    + '<div class="um-item-texto">' + esc(i.texto) + '</div>'
+    + (i.observacao ? '<div class="um-item-meta">' + esc(i.observacao) + '</div>' : '')
+    + '<div class="um-item-meta">' + meta + '</div>'
+    + '<div class="um-item-acoes"><select data-um="status" data-id="' + esc(i.id) + '" aria-label="Status do item">' + opcoes + '</select>'
+    + '<button type="button" data-um="editar-item" data-id="' + esc(i.id) + '">Editar</button>'
+    + '<button type="button" class="perigo" data-um="excluir-item" data-id="' + esc(i.id) + '">Excluir</button></div></div>';
+}
+
+function umColunaHtml(titulo, sub, lista, privado) {
+  var corpo = lista.length ? lista.map(umItemCardHtml).join('') : '<div class="vazio">Nenhum item nesta coluna.</div>';
+  return '<div class="um-col"><h3>' + esc(titulo) + '</h3><div class="um-col-sub">' + esc(sub)
+    + (privado ? ' <span class="um-privado">Só a liderança vê</span>' : '') + '</div>' + corpo + '</div>';
+}
+
+function umRegistroHtml(r) {
+  var g = r.granolaNoteId ? umGravacaoPorId(r.granolaNoteId) : null;
+  var link = g && g.webUrl ? ' · <a class="um-link" href="' + esc(g.webUrl) + '" target="_blank" rel="noopener">Abrir no Granola</a>' : '';
+  var transc = g && g.transcricao && g.transcricao.length
+    ? '<details class="um-det"><summary>Transcrição</summary><div class="um-granola">' + g.transcricao.map(function (t) { return esc(t.quem) + ': ' + esc(t.texto); }).join('<br>') + '</div></details>'
+    : '';
+  return '<div class="um-linha"><div class="um-linha-data">1:1 de ' + dataBR(r.data) + link + '</div>'
+    + '<div class="um-linha-resumo">' + (r.resumoCompartilhado ? esc(r.resumoCompartilhado) : 'Sem resumo compartilhado.') + '</div>'
+    + (r.notasPrivadas ? '<div class="um-linha-privado"><strong>Notas só da liderança</strong><br>' + esc(r.notasPrivadas) + '</div>' : '')
+    + transc
+    + '<div class="um-acoes-linha"><button type="button" data-um="editar-registro" data-id="' + esc(r.id) + '">Editar</button>'
+    + '<button type="button" class="perigo" data-um="excluir-registro" data-id="' + esc(r.id) + '">Excluir</button></div></div>';
+}
+
+function umGravacaoHtml(g) {
+  return '<div class="um-linha"><div class="um-linha-data">' + umDataSP(g.dataReuniao) + '</div>'
+    + '<div class="um-linha-resumo"><strong>' + esc(g.titulo || 'Sem título') + '</strong></div>'
+    + '<div class="um-acoes-linha">' + (g.webUrl ? '<a class="um-link" href="' + esc(g.webUrl) + '" target="_blank" rel="noopener">Abrir no Granola</a>' : '')
+    + '<button type="button" data-um="criar-de-gravacao" data-id="' + esc(g.noteId) + '">Criar 1:1 a partir desta gravação</button></div></div>';
+}
+
+function renderUmAUm() {
+  if (!UM) return;
+  var seloEl = document.getElementById('heroUmSelo');
+  if (seloEl) seloEl.innerHTML = umSeloHtml();
+  var abertos = (UM.itens || []).filter(function (i) { return i.status === 'backlog' || i.status === 'em_andamento'; });
+  var fechados = (UM.itens || []).filter(function (i) { return i.status === 'realizado' || i.status === 'rejeitado'; });
+  var doTipo = function (t) { return abertos.filter(function (i) { return i.tipo === t; }); };
+  var html = abertos.length
+    ? '<div class="um-colunas">'
+      + umColunaHtml('A liderança vai fazer', 'Compromissos da liderança com este CS.', doTipo('passo_lideranca'), false)
+      + umColunaHtml('O liderado vai fazer', 'Passos do CS, visíveis para ele.', doTipo('passo_liderado'), false)
+      + umColunaHtml('Pontos de atenção', 'Observações da liderança sobre este CS.', doTipo('ponto_atencao'), true)
+      + '</div>'
+    : '<div class="vazio">Nenhum item em aberto. Registre a próxima 1:1 para definir os próximos passos.</div>';
+  var excluidos = UM.excluidos || [];
+  var livres = (UM.granola || []).filter(function (g) { return !g.ligadaA1a1; });
+  html += '<details class="um-det"><summary>Concluídos e descartados (' + fechados.length + ')</summary>'
+    + (fechados.length ? fechados.map(umItemCardHtml).join('') : '<div class="vazio">Nada concluído ou descartado ainda.</div>') + '</details>';
+  html += '<details class="um-det"><summary>Excluídos (' + excluidos.length + ')</summary>'
+    + (excluidos.length ? excluidos.map(function (i) {
+      return '<div class="um-item"><div class="um-item-texto">' + esc(i.texto) + '</div><div class="um-item-acoes">'
+        + '<button type="button" data-um="restaurar-item" data-id="' + esc(i.id) + '">Restaurar</button></div></div>';
+    }).join('') : '<div class="vazio">Nenhum item excluído.</div>') + '</details>';
+  html += '<details class="um-det"><summary>Histórico de 1:1 (' + (UM.registros || []).length + ')</summary>'
+    + ((UM.registros || []).length ? UM.registros.map(umRegistroHtml).join('') : '<div class="vazio">Ainda não há 1:1 registrada.</div>') + '</details>';
+  html += '<details class="um-det"><summary>Gravações do Granola sem 1:1 ligada (' + livres.length + ')</summary>'
+    + (livres.length ? livres.map(umGravacaoHtml).join('') : '<div class="vazio">Nenhuma gravação sem 1:1 ligada.</div>') + '</details>';
+  document.getElementById('umLista').innerHTML = html;
+}
+
+function umItemFormHtml(item) {
+  var t = item || {};
+  var tipoOpc = UM_TIPOS.map(function (x) {
+    return '<option value="' + x.chave + '"' + ((t.tipo || 'passo_liderado') === x.chave ? ' selected' : '') + '>' + esc(x.rotulo) + '</option>';
+  }).join('');
+  var prioOpc = UM_PRIOS.map(function (x) {
+    return '<option value="' + x.chave + '"' + ((t.prioridade || 'media') === x.chave ? ' selected' : '') + '>' + esc(x.rotulo) + '</option>';
+  }).join('');
+  var acoes = item
+    ? '<button type="button" data-um="salvar-item-editado" data-id="' + esc(item.id) + '">Salvar item</button> <button type="button" data-um="cancelar-item">Cancelar</button>'
+    : '<button type="button" data-um="acrescentar-item">Acrescentar item</button>';
+  return '<label for="umTipo">Tipo</label><select id="umTipo"' + (item ? ' disabled' : '') + '>' + tipoOpc + '</select>'
+    + '<div class="um-form-linha"><div><label for="umPrio">Prioridade</label><select id="umPrio">' + prioOpc + '</select></div>'
+    + '<div><label for="umPrazo">Prazo</label><input type="date" id="umPrazo" value="' + esc(t.prazo || '') + '"></div>'
+    + '<div><label for="umObs">Observação</label><input type="text" id="umObs" maxlength="600" value="' + esc(t.observacao || '') + '"></div></div>'
+    + '<label for="umTexto">Texto do item</label><textarea id="umTexto" maxlength="600">' + esc(t.texto || '') + '</textarea>'
+    + '<label><input type="checkbox" id="umPrivado"' + (t.visibilidade === 'privado_gestor' ? ' checked' : '') + '> Só para a liderança (vale só para passo da liderança)</label>'
+    + '<div class="um-form-acoes">' + acoes + '</div>';
+}
+
+function umLerItemForm() {
+  return {
+    tipo: document.getElementById('umTipo').value,
+    prioridade: document.getElementById('umPrio').value,
+    prazo: document.getElementById('umPrazo').value || null,
+    texto: document.getElementById('umTexto').value.trim(),
+    observacao: document.getElementById('umObs').value.trim() || null,
+    privado: document.getElementById('umPrivado').checked
+  };
+}
+
+function umValidarItem(it) {
+  if (it.texto.length < 3) return 'O texto do item precisa de pelo menos 3 caracteres.';
+  if (it.texto.length > 600) return 'O texto do item passa de 600 caracteres.';
+  return null;
+}
+
+function umRenderItensNovos() {
+  var ul = document.getElementById('umItensNovos');
+  if (!ul) return;
+  ul.innerHTML = UM_FORM_ITENS.map(function (it, idx) {
+    return '<li>' + esc(umRotuloTipo(it.tipo)) + ': ' + esc(it.texto)
+      + ' <button type="button" data-um="remover-item-fila" data-id="' + idx + '">Remover</button></li>';
+  }).join('');
+}
+
+function abrirFormUm(modo, dados) {
+  dados = dados || {};
+  UM_FORM_REGISTRO = modo === 'editar' ? (dados.id || null) : null;
+  UM_FORM_GRANOLA = dados.granolaNoteId || null;
+  UM_FORM_ITENS = [];
+  var g = dados.granolaNoteId ? umGravacaoPorId(dados.granolaNoteId) : null;
+  var blocoGranola = g
+    ? '<label>Resumo da gravação do Granola (somente leitura)</label><div class="um-granola">' + esc(g.resumoMarkdown || 'Esta gravação ainda não tem resumo.') + '</div>'
+    : '';
+  document.getElementById('umForm').innerHTML = '<div class="um-form">'
+    + '<div class="um-form-linha"><div><label for="umData">Data da 1:1</label><input type="date" id="umData" value="' + esc(dados.data || UM.hoje) + '"></div></div>'
+    + blocoGranola
+    + '<label for="umResumo">Resumo que o liderado vê</label><textarea id="umResumo" maxlength="600">' + esc(dados.resumo || dados.resumoCompartilhado || '') + '</textarea>'
+    + '<label for="umNotas">Notas só da liderança</label><textarea id="umNotas" maxlength="600">' + esc(dados.notasPrivadas || '') + '</textarea>'
+    + '<div id="umItemForm" class="um-form-bloco">' + umItemFormHtml(null) + '</div>'
+    + '<ul class="um-itens-novos" id="umItensNovos"></ul>'
+    + '<div class="um-form-acoes"><button type="button" class="btn" data-um="salvar-registro">Salvar 1:1</button><button type="button" data-um="cancelar-form">Cancelar</button></div>'
+    + '<div class="um-form-msg" id="umFormMsg"></div></div>';
+  umRenderItensNovos();
+  document.getElementById('umForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function abrirFormItem(item) {
+  if (!item) return;
+  document.getElementById('umForm').innerHTML = '<div class="um-form">' + umItemFormHtml(item) + '<div class="um-form-msg" id="umFormMsg"></div></div>';
+  document.getElementById('umTexto').focus();
+}
+
+function fecharFormUm() {
+  UM_FORM_REGISTRO = null; UM_FORM_GRANOLA = null; UM_FORM_ITENS = [];
+  document.getElementById('umForm').innerHTML = '';
+}
+
+function acrescentarItemNaFila() {
+  var msg = document.getElementById('umFormMsg');
+  var it = umLerItemForm();
+  var erro = umValidarItem(it);
+  if (erro) { msg.textContent = erro; return; }
+  UM_FORM_ITENS.push(it);
+  document.getElementById('umItemForm').innerHTML = umItemFormHtml(null);
+  umRenderItensNovos();
+  msg.textContent = '';
+}
+
+// Envia os itens da fila um por um; cada item enviado sai da fila, então uma nova tentativa não duplica.
+function enviarFilaUm() {
+  if (!UM_FORM_ITENS.length) return Promise.resolve();
+  var it = UM_FORM_ITENS[0];
+  return postUm({ acao: 'salvar_item', id: null, registroId: UM_FORM_REGISTRO, tipo: it.tipo, texto: it.texto, privado: it.privado, prioridade: it.prioridade, prazo: it.prazo, observacao: it.observacao })
+    .then(function () { UM_FORM_ITENS.shift(); umRenderItensNovos(); return enviarFilaUm(); });
+}
+
+function salvarRegistroUm() {
+  var msg = document.getElementById('umFormMsg');
+  var data = document.getElementById('umData').value;
+  if (!data) { msg.textContent = 'Informe a data da 1:1.'; return; }
+  msg.textContent = 'Salvando';
+  postUm({
+    acao: 'salvar_registro', id: UM_FORM_REGISTRO, data: data,
+    resumo: document.getElementById('umResumo').value.trim() || null,
+    notasPrivadas: document.getElementById('umNotas').value.trim() || null,
+    granolaNoteId: UM_FORM_GRANOLA
+  }).then(function (r) {
+    UM_FORM_REGISTRO = r.id;
+    return enviarFilaUm();
+  }).then(function () {
+    fecharFormUm();
+    return carregarUmAUm();
+  }).catch(function (err) {
+    msg.textContent = 'Erro: ' + err.message;
+    if (UM_FORM_REGISTRO) carregarUmAUm();
+  });
+}
+
+function salvarItemEditado(id) {
+  var msg = document.getElementById('umFormMsg');
+  var it = umLerItemForm();
+  var erro = umValidarItem(it);
+  if (erro) { msg.textContent = erro; return; }
+  postUm({ acao: 'salvar_item', id: id, texto: it.texto, prioridade: it.prioridade, prazo: it.prazo, observacao: it.observacao, privado: it.privado })
+    .then(function () { fecharFormUm(); return carregarUmAUm(); })
+    .catch(function (err) { msg.textContent = 'Erro: ' + err.message; });
+}
+
+function umAoClicar(ev) {
+  var alvo = ev.target;
+  if (!alvo || !alvo.closest) return;
+  var b = alvo.closest('[data-um]');
+  if (!b) return;
+  var acao = b.getAttribute('data-um'), id = b.getAttribute('data-id');
+  if (acao === 'novo') abrirFormUm('novo', {});
+  else if (acao === 'editar-registro') {
+    var r = umRegistroPorId(id);
+    if (r) abrirFormUm('editar', { id: r.id, data: r.data, resumo: r.resumoCompartilhado, notasPrivadas: r.notasPrivadas, granolaNoteId: r.granolaNoteId });
+  }
+  else if (acao === 'criar-de-gravacao') {
+    var g = umGravacaoPorId(id);
+    if (g) abrirFormUm('novo', { data: umIsoDataSP(g.dataReuniao), granolaNoteId: g.noteId });
+  }
+  else if (acao === 'cancelar-form') fecharFormUm();
+  else if (acao === 'acrescentar-item') acrescentarItemNaFila();
+  else if (acao === 'remover-item-fila') { UM_FORM_ITENS.splice(Number(id), 1); umRenderItensNovos(); }
+  else if (acao === 'salvar-registro') salvarRegistroUm();
+  else if (acao === 'editar-item') abrirFormItem(umItemPorId(id));
+  else if (acao === 'salvar-item-editado') salvarItemEditado(id);
+  else if (acao === 'cancelar-item') fecharFormUm();
+  else if (acao === 'excluir-registro') {
+    if (!confirm('Excluir esta 1:1? Os itens dela continuam em aberto.')) return;
+    postUm({ acao: 'excluir_registro', id: id }).then(carregarUmAUm).catch(mostrarErroUm);
+  }
+  else if (acao === 'excluir-item') {
+    if (!confirm('Excluir este item? Ele pode ser restaurado depois.')) return;
+    postUm({ acao: 'excluir_item', id: id }).then(carregarUmAUm).catch(mostrarErroUm);
+  }
+  else if (acao === 'restaurar-item') {
+    postUm({ acao: 'restaurar_item', id: id }).then(carregarUmAUm).catch(mostrarErroUm);
+  }
+}
+
+function umAoMudarStatus(ev) {
+  var alvo = ev.target;
+  if (!alvo || alvo.getAttribute('data-um') !== 'status') return;
+  postUm({ acao: 'status_item', id: alvo.getAttribute('data-id'), status: alvo.value })
+    .then(carregarUmAUm).catch(mostrarErroUm);
+}
+document.addEventListener('click', umAoClicar);
+document.addEventListener('change', umAoMudarStatus);
+
 function renderTudoCS(d) {
   DADOS_CS = d;
   renderHeroCS(d); renderRadarCS(d); renderGtdCS(d); renderCriticosCS(d); renderAdvertenciasCS(d);
@@ -377,6 +724,7 @@ document.addEventListener('click', function (ev) {
   }
   selMes.onchange = aoMudar; selAno.onchange = aoMudar;
   aoMudar();
+  carregarUmAUm();
 })();
 `;
 }

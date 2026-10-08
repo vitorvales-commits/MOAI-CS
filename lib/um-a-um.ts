@@ -27,6 +27,12 @@ export type ItemUmAUm = {
   dataOrigem?: string | null;
 };
 
+// Dias corridos de a até b (AAAA-MM-DD). Positivo quando b é depois de a.
+export function diasEntre(a: string, b: string): number {
+  const ms = Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z');
+  return Math.round(ms / 86400000);
+}
+
 export type RegistroUmAUmCS = { id: string; data: string; resumoCompartilhado: string | null };
 
 const PRIORIDADE_ORDEM: Record<PrioridadeItemUmAUm, number> = { alta: 0, media: 1, baixa: 2 };

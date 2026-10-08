@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
-import { carregarUmAUmCompartilhado, resumoAbertos } from '@/lib/um-a-um';
+import { carregarUmAUmCompartilhado, resumoAbertos, ordenarItensAbertos, itemVencido, diasEntre, type ItemUmAUm } from '@/lib/um-a-um';
 import { hojeSP } from '@/lib/gtd-prazos';
 
 export const dynamic = 'force-dynamic';
@@ -18,13 +18,21 @@ export async function GET(_req: NextRequest, { params }: { params: { nome: strin
     if (!isGestor && nome !== csNome) {
       return NextResponse.json({ error: 'Você só pode consultar a própria 1:1.' }, { status: 403 });
     }
+    const hoje = hojeSP();
     const visao = await carregarUmAUmCompartilhado(supabase, nome);
-    const todos = [...visao.passosLiderado, ...visao.compromissosLideranca];
+    // Mesma ordem da tela do gestor: vencidos, prioridade, prazo. Só itens abertos.
+    const ordenar = (lista: ItemUmAUm[]) => ordenarItensAbertos(lista, hoje).map((i) => {
+      const venc = itemVencido(i, hoje);
+      return { ...i, vencido: venc, diasVencido: venc && i.prazo ? diasEntre(i.prazo, hoje) : null };
+    });
+    const passosLiderado = ordenar(visao.passosLiderado);
+    const compromissosLideranca = ordenar(visao.compromissosLideranca);
     return NextResponse.json({
+      hoje,
       registros: visao.registros,
-      passosLiderado: visao.passosLiderado,
-      compromissosLideranca: visao.compromissosLideranca,
-      resumo: resumoAbertos(todos, hojeSP()),
+      passosLiderado,
+      compromissosLideranca,
+      resumo: resumoAbertos([...passosLiderado, ...compromissosLideranca], hoje),
     });
   } catch (e: any) {
     console.error('cs um-a-um GET', e);

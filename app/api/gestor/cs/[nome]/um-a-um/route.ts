@@ -6,7 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
-import { carregarUmAUmGestor, resumoAbertos, type ItemUmAUm } from '@/lib/um-a-um';
+import { carregarUmAUmGestor, resumoAbertos, ordenarItensAbertos, itemVencido, diasEntre, type ItemUmAUm } from '@/lib/um-a-um';
+import { STATUS_VOZ } from '@/lib/voz';
 import { notasDoCS } from '@/lib/granola-lideranca';
 import { hojeSP } from '@/lib/gtd-prazos';
 
@@ -26,15 +27,23 @@ export async function GET(_req: NextRequest, { params }: { params: { nome: strin
     }
     const hoje = hojeSP();
     const { registros, itens } = await carregarUmAUmGestor(supabase, nome);
-    const abertos: ItemUmAUm[] = itens.filter((i) => !i.excluidoEm);
-    const excluidos = itens.filter((i) => i.excluidoEm);
+    const datas = new Map(registros.map((r) => [r.id, r.data]));
+    const vivos: ItemUmAUm[] = itens.filter((i) => !i.excluidoEm).map((i) => ({ ...i, dataOrigem: i.registroId ? datas.get(i.registroId) ?? null : null }));
+    const excluidos = itens.filter((i) => i.excluidoEm).map((i) => ({ ...i, dataOrigem: i.registroId ? datas.get(i.registroId) ?? null : null }));
+    // Itens abertos já vêm na ordem da tela (vencidos, prioridade, prazo).
+    const ordenados = ordenarItensAbertos(vivos, hoje).map((i) => {
+      const venc = itemVencido(i, hoje);
+      return { ...i, vencido: venc, diasVencido: venc && i.prazo ? diasEntre(i.prazo, hoje) : null };
+    });
     const granola = await notasDoCS(supabase, nome);
     return NextResponse.json({
+      hoje,
       registros,
-      itens: abertos,
+      itens: ordenados,
       excluidos,
-      resumo: resumoAbertos(abertos, hoje),
+      resumo: resumoAbertos(vivos, hoje),
       granola,
+      statusOpcoes: STATUS_VOZ,
     });
   } catch (e: any) {
     console.error('gestor um-a-um GET', e);
