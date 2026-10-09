@@ -747,6 +747,7 @@ export const GESTOR_HTML = `
       <button class="consulta-chip" type="button" data-pergunta="Quais metas o Rodrigo bateu e não bateu">Quais metas o Rodrigo bateu e não bateu</button>
       <button class="consulta-chip" type="button" data-pergunta="O que a Luana não bateu em agosto">O que a Luana não bateu em agosto</button>
       <button class="consulta-chip" type="button" data-pergunta="Metas do time neste mês">Metas do time neste mês</button>
+      <button class="consulta-chip" type="button" data-pergunta="Próximo conselho do André Soares">Próximo conselho do André Soares</button>
     </div>
     <div class="consulta-chips" id="consultaChipsRecentes"></div>
     <div id="consultaRespostaWrap"></div>
