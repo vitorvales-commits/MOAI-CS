@@ -10,7 +10,8 @@
 // nome de respondente do NPS. Sem IA: temas por expressão regular, contagens e regras fixas.
 import { anonimizar, buscarTermosIdentificaveis, infoMotivo } from './churn.ts';
 import { parseTituloConselho, ganhoRelatado } from './reports.ts';
-import { semAcento } from './voz.ts';
+import { semAcento, TEMA_OUTROS } from './voz.ts';
+import { polaridadeDaNota } from './voz-membro/polaridade.ts';
 import {
   classificarTemasMembro, ehNaoResposta, ehPreenchidoPeloCs, ehPrimeiroConselho, ehTravado,
   montarTemas, resumoNotas, conselhosComNotasBaixas, justificativasNotaBaixa, tabelaDesafio, frasesDesafio,
@@ -96,6 +97,48 @@ function leituraDeTemas(atual: TextoVoz[], anterior: TextoVoz[], termos: string[
 }
 
 // ======================================================================================
+// Colunas de elogio e crítica do NPS (revisão out/2026, N3). A polaridade vem da nota de quem escreveu
+// (lib/voz-membro/polaridade.ts): 9 e 10 são elogio; 0 a 6 e 7 e 8 (rótulo neutro) são crítica. A variação
+// de cada tema é do mês de referência contra o mês anterior, escrita por extenso.
+const NOMES_MES_MINUSCULO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function colunasPolares(textos: TextoVoz[], ref: string, dentroAtual: Set<string>, dentroAnterior: Set<string>, termos: string[]) {
+  const mesAnt = addMeses(ref, -1);
+  const nomeAnt = NOMES_MES_MINUSCULO[Number(mesAnt.slice(5, 7)) - 1];
+  const montar = (pol: 'elogio' | 'critica') => {
+    const doPolo = textos.filter((t) => t.texto && polaridadeDaNota(t.nota ?? null)?.polaridade === pol);
+    const atual = doPolo.filter((t) => dentroAtual.has(t.mes));
+    const antes = doPolo.filter((t) => dentroAnterior.has(t.mes));
+    const resumo = montarTemas(atual, antes);
+    const contaMes = (mes: string) => {
+      const m = new Map<string, number>();
+      doPolo.filter((t) => t.mes === mes).forEach((t) => {
+        new Set(classificarTemasMembro(t.texto as string).map((x) => x.chave)).forEach((c) => m.set(c, (m.get(c) || 0) + 1));
+      });
+      return m;
+    };
+    const cRef = contaMes(ref);
+    const cAnt = contaMes(mesAnt);
+    const temas = resumo.ranking.filter((l) => l.chave !== TEMA_OUTROS.chave).slice(0, 5).map((l) => {
+      const variacao = (cRef.get(l.chave) || 0) - (cAnt.get(l.chave) || 0);
+      const variacaoTexto = variacao > 0 ? `${variacao} a mais que em ${nomeAnt}`
+        : variacao < 0 ? `${-variacao} a menos que em ${nomeAnt}`
+        : `mesmo número que em ${nomeAnt}`;
+      return { chave: l.chave, rotulo: l.rotulo, textos: l.textos, variacao, variacaoTexto };
+    });
+    const trechos: Record<string, { texto: string; nota: number | null; mes: string }[]> = {};
+    temas.forEach((tema) => {
+      trechos[tema.chave] = atual
+        .filter((t) => classificarTemasMembro(t.texto as string).some((x) => x.chave === tema.chave))
+        .sort((x, y) => y.mes.localeCompare(x.mes))
+        .map((t) => ({ texto: anonimizar(t.texto as string, termos), nota: t.nota ?? null, mes: t.mes }));
+    });
+    const n = atual.length;
+    return { temas, trechos, rodape: `${n} ${n === 1 ? 'resposta' : 'respostas'} com conteúdo no período.` };
+  };
+  return { elogio: montar('elogio'), critica: montar('critica') };
+}
+
+// ======================================================================================
 // Aba Churn: formulário de saída
 // ======================================================================================
 
@@ -172,7 +215,7 @@ export async function carregarNpsConselhos(supabase: any, ref: string, cs: strin
   const { meses, mesesAnteriores, dentroAtual, dentroAnterior } = periodo(ref);
 
   const [npsRows, grupos, membros, statusRows, atas, termos] = await Promise.all([
-    todas((de, ate) => supabase.from('nps_conselhos_items').select('id, group_id, mes_grupo_titulo, nota_conselheiro, nota_cs_hoje, nota_qualidade_trocas, nota_evolucao_desafios, continuidade_desafios, sugestao_texto, avalia_cs_texto').order('id').range(de, ate)),
+    todas((de, ate) => supabase.from('nps_conselhos_items').select('id, group_id, mes_grupo_titulo, nota_conselho, nota_conselheiro, nota_cs_hoje, nota_qualidade_trocas, nota_evolucao_desafios, continuidade_desafios, sugestao_texto, avalia_cs_texto').order('id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_grupos').select('group_id, titulo, is_repo').order('group_id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_membros').select('id, group_id').order('id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_status_mensal').select('membro_id, status').eq('mes', nomeMes(ref)).order('membro_id').range(de, ate)),
@@ -206,8 +249,8 @@ export async function carregarNpsConselhos(supabase: any, ref: string, cs: strin
       nota_qualidade_trocas: r.nota_qualidade_trocas, nota_evolucao_desafios: r.nota_evolucao_desafios,
       continuidade_desafios: r.continuidade_desafios, sugestao_texto: r.sugestao_texto, avalia_cs_texto: r.avalia_cs_texto,
     } });
-    textosSugestao.push({ fonte: 'nps_sugestao', mes, texto: r.sugestao_texto ?? null });
-    textosCs.push({ fonte: 'nps_cs', mes, texto: r.avalia_cs_texto ?? null });
+    textosSugestao.push({ fonte: 'nps_sugestao', mes, texto: r.sugestao_texto ?? null, nota: r.nota_conselho ?? null });
+    textosCs.push({ fonte: 'nps_cs', mes, texto: r.avalia_cs_texto ?? null, nota: r.nota_cs_hoje ?? null });
   }
   const respAtual = respostas.filter((x) => dentroAtual.has(x.mes)).map((x) => x.r);
   const respAnterior = respostas.filter((x) => dentroAnterior.has(x.mes)).map((x) => x.r);
@@ -215,9 +258,19 @@ export async function carregarNpsConselhos(supabase: any, ref: string, cs: strin
   const respDoMesAnterior = respostas.filter((x) => x.mes === addMeses(ref, -1)).map((x) => x.r);
 
   // ---- o que os membros sugerem: sugestões sobre o conselho e avaliação do CS, separadas ----
+  // Colunas de elogio e crítica (revisão out/2026, N3): a polaridade vem da nota de quem escreveu.
   const sugestoes = {
-    conselho: leituraDeTemas(textosSugestao.filter((t) => dentroAtual.has(t.mes)), textosSugestao.filter((t) => dentroAnterior.has(t.mes)), termos, false),
-    cs: leituraDeTemas(textosCs.filter((t) => dentroAtual.has(t.mes)), textosCs.filter((t) => dentroAnterior.has(t.mes)), termos, false),
+    conselho: { ...leituraDeTemas(textosSugestao.filter((t) => dentroAtual.has(t.mes)), textosSugestao.filter((t) => dentroAnterior.has(t.mes)), termos, false),
+      colunas: colunasPolares(textosSugestao, ref, dentroAtual, dentroAnterior, termos) },
+    cs: { ...leituraDeTemas(textosCs.filter((t) => dentroAtual.has(t.mes)), textosCs.filter((t) => dentroAnterior.has(t.mes)), termos, false),
+      colunas: colunasPolares(textosCs, ref, dentroAtual, dentroAnterior, termos) },
+    // Cobertura em uma linha (C3): conselhos do time com resposta no mês de referência. A data do conselho
+    // não está na tabela de NPS, então o universo são os conselhos ativos (conselhos_grupos).
+    cobertura: { avaliados: new Set(respDoMes.map((r) => r.group_id)).size, total: grupos.filter((g: any) => !g.is_repo).length },
+    semTexto: {
+      conselho: textosSugestao.filter((t) => dentroAtual.has(t.mes) && !t.texto).length,
+      cs: textosCs.filter((t) => dentroAtual.has(t.mes) && !t.texto).length,
+    },
   };
 
   // ---- presença e ganhos por conselho, no mês de referência ----

@@ -177,6 +177,56 @@ export const GESTOR_STYLE = `
 .diverg-media{background:rgba(200,154,46,0.15);color:var(--dourado);}
 .diverg-baixa{background:rgba(61,139,95,0.12);color:var(--verde);}
 
+.acoes-stack{margin-top:28px;}
+.gtd-matriz-wrap{margin-top:14px;}
+.gtd-matriz{width:100%;border-collapse:collapse;font-size:12px;}
+.gtd-matriz th{font-size:10.5px;text-transform:uppercase;letter-spacing:0.03em;color:var(--cinza-apoio);text-align:center;padding:10px 8px;font-weight:600;}
+.gtd-matriz th:first-child{text-align:left;}
+.gtd-matriz td{padding:9px 8px;border-top:1px solid var(--cinza-borda);text-align:center;}
+.gtd-matriz td.name{text-align:left;font-weight:600;white-space:nowrap;}
+.gtd-cel{all:unset;cursor:pointer;display:inline-flex;gap:6px;align-items:baseline;justify-content:center;}
+.gtd-cel:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
+.gtd-atr{color:var(--vermelho);font-weight:700;font-size:15px;}
+.gtd-ven{color:var(--dourado);font-weight:600;font-size:12px;}
+.gtd-vazio{font-size:12.5px;color:var(--cinza-apoio);padding:10px 0;}
+.gtd-det{margin-top:16px;border:1px solid var(--cinza-borda);border-radius:16px;padding:16px 18px;background:var(--branco);}
+.gtd-det-topo{font-size:14px;margin-bottom:4px;}
+.gtd-grupo-tit{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin:14px 0 4px;}
+.npsc-secao{margin-top:18px;}
+.npsc-titulo{font-size:15px;margin:0 0 10px;}
+.npsc-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+@media (max-width:760px){.npsc-grade{grid-template-columns:1fr;}}
+.npsc-col h3{font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin:0 0 8px;}
+.npsc-tema{all:unset;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;width:100%;box-sizing:border-box;padding:9px 0;border-top:1px solid var(--cinza-borda);}
+.npsc-tema:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
+.npsc-tema .nome{font-weight:600;font-size:13px;}
+.npsc-tema .num{font-weight:700;font-size:13px;text-align:right;}
+.npsc-var{grid-column:1 / -1;font-size:12px;color:var(--cinza-texto);}
+.npsc-var.ruim{color:var(--vermelho);font-weight:600;}
+.npsc-var.bom{color:var(--verde);font-weight:600;}
+.ritmo-resumo{font-size:14px;font-weight:600;margin:4px 0 16px;}
+.ritmo-tabela{width:100%;border-collapse:collapse;font-size:12.5px;}
+.ritmo-tabela th{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);text-align:left;padding:10px 10px;font-weight:600;}
+.ritmo-tabela td{padding:9px 10px;border-top:1px solid var(--cinza-borda);vertical-align:middle;min-width:130px;}
+.ritmo-tabela td.name{font-weight:600;white-space:nowrap;min-width:0;}
+.ritmo-btn{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;}
+.ritmo-btn:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
+.ritmo-trilha{position:relative;height:8px;border-radius:999px;background:var(--cinza-superficie);}
+.ritmo-preench{height:100%;border-radius:999px;background:var(--preto-tinta);max-width:100%;}
+.ritmo-preench.ritmo-atencao{background:var(--dourado);}
+.ritmo-preench.ritmo-atras{background:var(--vermelho);}
+.ritmo-marca{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--dourado);}
+.ritmo-texto{display:block;font-size:11px;color:var(--cinza-texto);margin-top:4px;}
+.ritmo-vazio{font-size:11px;color:var(--cinza-apoio);}
+.ritmo-rodape{font-size:11.5px;color:var(--cinza-apoio);margin-top:12px;}
+.ritmo-painel{margin-top:16px;border:1px solid var(--cinza-borda);border-radius:16px;padding:18px;background:var(--branco);}
+.ritmo-painel[hidden]{display:none;}
+.ritmo-painel-topo{font-size:14px;margin-bottom:12px;}
+.ritmo-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 18px;margin:0 0 12px;}
+.ritmo-dl dt{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);}
+.ritmo-dl dd{margin:3px 0 0;font-weight:600;font-size:14px;}
+.ritmo-diverg,.ritmo-acao{font-size:12.5px;color:var(--cinza-texto);margin:8px 0;}
+.ritmo-fechar{border:none;background:var(--preto-tinta);color:var(--branco);border-radius:999px;padding:7px 14px;font-size:12px;cursor:pointer;margin-top:4px;}
 .risk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
 .risk-card{border-radius:20px;padding:20px;border:1px solid var(--cinza-borda);background:var(--branco);}
 .risk-card.nivel-risco{border-color:rgba(192,67,61,0.4);background:rgba(192,67,61,0.05);}
@@ -510,7 +560,28 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 @media (max-width:640px){.voz-grid{grid-template-columns:1fr;} .voz-temas-linha{grid-template-columns:1fr;gap:6px;} .voz-temas-num{text-align:left;}}
 
 /* ===== churn: o que dizem ao sair, quem voltaria e reconquista (08/10/2026) ===== */
-#churnA1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;}
+#churnA1{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;}
+.churn-relatorio-link{margin-left:auto;}
+.motivos-barras{display:grid;gap:12px;}
+.motivo-linha{display:grid;grid-template-columns:minmax(120px,240px) minmax(0,1fr) auto;gap:14px;align-items:center;}
+.motivo-rotulo{font-size:13px;font-weight:600;}
+.motivo-trilha{position:relative;height:12px;border-radius:999px;background:var(--cinza-superficie);}
+.motivo-trilha i{display:block;height:100%;border-radius:999px;background:var(--preto-tinta);}
+.motivo-marca{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1px;border-radius:2px;background:var(--cinza-apoio);}
+.motivo-num{font-size:13px;white-space:nowrap;}
+.motivo-num small{color:var(--cinza-apoio);}
+.pedido-motivo{border:1px solid var(--cinza-borda);border-radius:16px;padding:16px 18px;margin-bottom:12px;background:var(--branco);}
+.pedido-topo{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;font-size:14px;}
+.pedido-topo span{color:var(--cinza-apoio);font-size:12.5px;}
+.pedido-acao{font-size:13px;margin:10px 0;}
+.rec-frase{font-size:14px;margin:6px 0 12px;}
+.rec-funil{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+@media (max-width:760px){.rec-funil{grid-template-columns:repeat(2,minmax(0,1fr));}}
+.rec-etapa{border:1px solid var(--cinza-borda);border-radius:14px;padding:12px;}
+.rec-etapa b{display:block;font-size:20px;}
+.rec-etapa span{font-size:12px;color:var(--cinza-texto);}
+.recorde{color:var(--cinza-apoio);font-size:12px;display:block;margin-top:4px;}
+.churn-tabela tr.massa{cursor:pointer;background:var(--cinza-superficie);}
 @media (max-width:900px){ #churnA1{grid-template-columns:repeat(2,minmax(0,1fr));} }
 .churn-numero b small.de{font-size:18px;color:var(--cinza-apoio);font-family:Inter,sans-serif;font-weight:600;}
 .churn-numero b.alerta{color:var(--vermelho);} .churn-numero .def.alerta{color:var(--vermelho);font-weight:600;}
@@ -705,16 +776,11 @@ export const GESTOR_HTML = `
       </div>
     </section>
 
-    <div class="acoes-grid">
+    <div class="acoes-stack">
       <section class="acoes-card" id="blocoUrgencias" aria-label="Urgências">
         <h2>Urgências</h2>
         <p class="acoes-sub">O que precisa ser feito o quanto antes, com responsável e prazo.</p>
         <div id="urgenciasCorpo"><div class="gestor-empty">Carregando…</div></div>
-      </section>
-      <section class="acoes-card" id="blocoInsights" aria-label="Insights">
-        <h2>Insights</h2>
-        <p class="acoes-sub">O que os números estão dizendo e a primeira ação a tomar.</p>
-        <div id="insightsCorpo"><div class="gestor-empty">Carregando…</div></div>
       </section>
     </div>
 
@@ -741,25 +807,22 @@ export const GESTOR_HTML = `
       <div class="cs-nota" id="csGridNota"></div>
     </section>
 
-    <section class="block">
+    <section class="block" id="blocoRitmo">
       <div class="block-head">
-        <h2>Tabela comparativa</h2>
-        <div class="toggle-group">
-          <button class="toggle-btn active" data-mode="calculado">Só valor real</button>
-          <button class="toggle-btn" data-mode="divergencia">Real × autodeclarado</button>
+        <div>
+          <h2>Ritmo do mês</h2>
+          <p>Realizado de cada CS contra a meta, com o previsto até hoje. Clique numa célula para ver a conta e a ação padrão.</p>
         </div>
       </div>
+      <div class="ritmo-resumo" id="ritmoResumo"><div class="gestor-empty">Carregando…</div></div>
       <div class="table-wrap"><div class="table-scroll">
-        <table>
-          <thead><tr id="tabelaHead"></tr></thead>
-          <tbody id="tabelaBody"></tbody>
+        <table class="ritmo-tabela">
+          <thead id="ritmoHead"></thead>
+          <tbody id="ritmoBody"></tbody>
         </table>
       </div></div>
-    </section>
-
-    <section class="block">
-      <div class="block-head"><h2>Sinalizadores de risco</h2><p>Alertas já calculados no servidor (indicador abaixo da meta ou divergência alta entre o real e o autodeclarado).</p></div>
-      <div class="risk-grid" id="riskGrid"></div>
+      <div class="ritmo-painel" id="ritmoPainel" hidden></div>
+      <div class="ritmo-rodape" id="ritmoRodape"></div>
     </section>
 
     <section class="block">
@@ -984,7 +1047,6 @@ export const GESTOR_HTML = `
           <h2>Churn</h2>
           <p>Por que os membros saem, o que dizem no formulário de saída, quem voltaria e se a visita de reversão funciona. Fonte: board de churn e board de visitas. O NPS dos conselhos tem aba própria.</p>
         </div>
-        <a id="churnBtnRelatorio" class="churn-link" href="#" target="_blank" rel="noopener">Emitir relatório</a>
       </div>
       <div class="churn-filtros">
         <label class="churn-campo">Mês <select class="pill-select" id="churnRef" title="Mês de referência"></select></label>
@@ -1004,6 +1066,7 @@ export const GESTOR_HTML = `
           <button class="toggle-btn" type="button" data-gran="semana">Por semana</button>
         </div>
         <button type="button" class="churn-info" id="churnInfo" aria-label="Como este recorte é calculado" title="Como este recorte é calculado">i</button>
+        <a id="churnBtnRelatorio" class="churn-link churn-relatorio-link" href="#" target="_blank" rel="noopener">Emitir relatório</a>
       </div>
       <p class="churn-descricao" id="churnDescricao" hidden></p>
     </section>
@@ -1015,12 +1078,12 @@ export const GESTOR_HTML = `
 
     <section class="block">
       <div class="block-head"><div><h2>O que fazer agora</h2><p>Pendências de reversão e de reconquista que pedem ação hoje, da mais atrasada para a menos atrasada.</p></div></div>
-      <ul class="churn-acoes-lista" id="churnA2"><li class="gestor-empty">Carregando…</li></ul>
+      <div id="churnA2"><p class="gestor-empty">Carregando…</p></div>
     </section>
 
     <section class="block">
       <div class="block-head"><div><h2>Por que estão saindo</h2><p>Quantos membros saíram e por quê, segundo o formulário de saída. Base e Produtos valem para os números e o gráfico.</p></div></div>
-      <div class="churn-numeros" id="churnNumeros"><div class="gestor-empty">Carregando…</div></div>
+      <div class="motivos-barras" id="churnNumeros"><div class="gestor-empty">Carregando…</div></div>
       <p class="erro-msg" id="churnErro" aria-live="polite"></p>
       <p class="churn-nota" id="churnNotaRecorde"></p>
       <div class="churn-card">
@@ -1035,6 +1098,11 @@ export const GESTOR_HTML = `
       </div>
       <h3 class="churn-subtitulo">Motivo declarado versus causa raiz</h3>
       <div id="churnCruzamento"><p class="churn-nota">Carregando…</p></div>
+    </section>
+
+    <section class="block" id="blocoPedidos">
+      <div class="block-head"><div><h2>O que os churns pedem para melhorar</h2><p>Para cada motivo do mês: quantos churns, o que o formulário de saída sugeriu, a ação padrão e a melhoria pronta para registrar.</p></div></div>
+      <div id="churnPedidos"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
     <section class="block">
@@ -1052,6 +1120,7 @@ export const GESTOR_HTML = `
       <div class="block-head"><div><h2>Rastreio de reconquista</h2><p>Cada ex membro que disse que voltaria vira um contato a acompanhar: status, responsável, próximo contato e observação. Só gestores veem esta lista.</p></div>
         <label class="churn-campo rcq-talvez"><input type="checkbox" id="recTalvez"> Incluir quem deu 7 ou 8</label>
       </div>
+      <div id="reconquistaMes"></div>
       <div id="reconquistaPainel"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
@@ -1292,13 +1361,86 @@ function renderRanking() {
 // mensagem real do erro só nele. Cor só para exceção: CS sem pendência não ganha destaque. Nada
 // aqui é calculado: status de report, prazos de GTD e insights chegam prontos do servidor.
 var ACOES_ = null;
-var INSIGHTS_TODOS_ = false;
 function dmAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
 function dmaAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 function chipsAcoes_(nomes, cor) { return nomes.length ? '<div class="chips-nomes">' + nomes.map(function (n) { return '<span class="chip-nome ' + cor + '">' + escCS_(n) + '</span>'; }).join('') + '</div>' : ''; }
 function quandoAcoes_(i) {
   if (i.status === 'atrasada') return '<span class="quando vermelho">' + i.dias + (i.dias === 1 ? ' dia de atraso' : ' dias de atraso') + '</span>';
   return '<span class="quando ambar">' + (i.dias === 0 ? 'vence hoje' : 'vence em ' + i.dias + (i.dias === 1 ? ' dia' : ' dias')) + '</span>';
+}
+// Matriz de GTD (revisão out/2026, V4): CS nas linhas, etapas nas colunas. Cada célula mostra as
+// atrasadas em vermelho e, ao lado e menor, as que vencem em até 7 dias em âmbar. Clique abre a lista
+// daquela combinação agrupada por conselho. Os dados vêm prontos do servidor (etapasPendentes).
+var GTD_CELULAS_ = [];
+function etapaOrdemGtd_(etapa) {
+  var m = /D\s*([+\-−–])\s*(\d+)/i.exec(String(etapa || ''));
+  if (!m) return 0;
+  return m[1] === '+' ? Number(m[2]) : -Number(m[2]);
+}
+function gtdMatrizHtml_(g) {
+  GTD_CELULAS_ = [];
+  var vistos = {};
+  var colunas = [];
+  g.porCS.forEach(function (c) {
+    (c.itens || []).forEach(function (i) {
+      if (vistos[i.rotulo]) return;
+      vistos[i.rotulo] = true;
+      colunas.push({ rotulo: i.rotulo, ordem: etapaOrdemGtd_(i.etapa) });
+    });
+  });
+  colunas.sort(function (a, b) { return a.ordem - b.ordem; });
+  if (!colunas.length) return '<div class="gtd-vazio">Nenhuma tarefa de GTD atrasada ou a vencer nos ciclos abertos.</div>';
+  var linhas = g.porCS.map(function (c) {
+    var atrasadas = (c.itens || []).filter(function (i) { return i.status === 'atrasada'; }).length;
+    return { c: c, atrasadas: atrasadas };
+  }).sort(function (a, b) { return b.atrasadas - a.atrasadas || String(a.c.cs).localeCompare(String(b.c.cs), 'pt-BR'); });
+  var cabeca = '<tr><th>CS</th>' + colunas.map(function (col) { return '<th>' + escCS_(col.rotulo) + '</th>'; }).join('') + '</tr>';
+  var corpo = linhas.map(function (l) {
+    var itens = l.c.itens || [];
+    var celulas = colunas.map(function (col) {
+      var atr = itens.filter(function (i) { return i.rotulo === col.rotulo && i.status === 'atrasada'; });
+      var ven = itens.filter(function (i) { return i.rotulo === col.rotulo && i.status === 'a_vencer'; });
+      if (!atr.length && !ven.length) return '<td></td>';
+      GTD_CELULAS_.push({ cs: l.c.cs, rotulo: col.rotulo, itens: atr.concat(ven) });
+      return '<td><button class="gtd-cel" type="button" data-id="' + (GTD_CELULAS_.length - 1) + '">'
+        + (atr.length ? '<span class="gtd-atr">' + atr.length + '</span>' : '')
+        + (ven.length ? '<span class="gtd-ven">' + ven.length + '</span>' : '') + '</button></td>';
+    }).join('');
+    return '<tr><td class="name">' + escCS_(l.c.cs) + '</td>' + celulas + '</tr>';
+  }).join('');
+  return '<div class="table-wrap gtd-matriz-wrap"><div class="table-scroll"><table class="gtd-matriz"><thead>' + cabeca + '</thead><tbody>' + corpo + '</tbody></table></div></div>';
+}
+function gtdDetalheHtml_(cel) {
+  var ordenados = cel.itens.slice().sort(function (a, b) {
+    var pa = a.status === 'atrasada' ? 0 : 1, pb = b.status === 'atrasada' ? 0 : 1;
+    return pa - pb || b.dias - a.dias;
+  });
+  var grupos = {};
+  var ordemGrupos = [];
+  ordenados.forEach(function (i) {
+    if (!grupos[i.dataConselho]) { grupos[i.dataConselho] = []; ordemGrupos.push(i.dataConselho); }
+    grupos[i.dataConselho].push(i);
+  });
+  return '<div class="gtd-det"><div class="gtd-det-topo"><b>' + escCS_(cel.cs) + '</b>, ' + escCS_(cel.rotulo) + '</div>'
+    + ordemGrupos.map(function (data) {
+      return '<div class="gtd-grupo"><div class="gtd-grupo-tit">Conselho de ' + dmaAcoes_(data) + '</div>'
+        + grupos[data].map(function (i) {
+          return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b></div>' + quandoAcoes_(i)
+            + '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + '</div></div>';
+        }).join('') + '</div>';
+    }).join('')
+    + '<button class="ritmo-fechar" type="button" onclick="fecharGtdDetalhe_()">Fechar</button></div>';
+}
+function fecharGtdDetalhe_() { document.getElementById('gtdDetalhe').innerHTML = ''; }
+function ligarGtdMatriz_() {
+  var corpo = document.getElementById('urgenciasCorpo');
+  corpo.onclick = function (ev) {
+    var btn = ev.target.closest('.gtd-cel');
+    if (!btn) return;
+    var det = document.getElementById('gtdDetalhe');
+    det.innerHTML = gtdDetalheHtml_(GTD_CELULAS_[Number(btn.dataset.id)]);
+    det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 }
 function renderUrgencias_() {
   var el = document.getElementById('urgenciasCorpo');
@@ -1316,58 +1458,21 @@ function renderUrgencias_() {
   var g = d.gtd;
   html += '<div class="acoes-faixa"><div class="acoes-faixa-titulo">Tarefas de GTD <span>ciclos abertos, até 14 dias depois do conselho</span></div>'
     + '<div class="cont-linha"><span class="cont' + (g.totalAtrasadas ? ' vermelho' : '') + '">Atrasadas ' + g.totalAtrasadas + '</span>'
-    + '<span class="cont' + (g.totalAVencer ? ' ambar' : '') + '">A vencer em 7 dias ' + g.totalAVencer + '</span></div>';
-  html += g.porCS.map(function (c) {
-    if (!c.ciclosAbertos) return '<div class="urg-cs"><div class="urg-cs-muted" style="padding:11px 0 11px 20px;"><b>' + escCS_(c.cs) + '</b>, sem ciclos abertos</div></div>';
-    if (!c.atrasadas && !c.aVencer) return '<div class="urg-cs"><div class="urg-cs-muted" style="padding:11px 0 11px 20px;"><b>' + escCS_(c.cs) + '</b>, sem pendências em ' + c.ciclosAbertos + (c.ciclosAbertos === 1 ? ' ciclo aberto' : ' ciclos abertos') + '</div></div>';
-    var itens = c.itens.map(function (i) {
-      return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b>, ' + escCS_(i.rotulo) + '</div>' + quandoAcoes_(i)
-        + '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + ', conselho em ' + dmAcoes_(i.dataConselho) + (i.vinculado ? '' : ', não vinculado a um conselho ativo') + '</div></div>';
-    }).join('');
-    return '<details class="urg-cs"' + (c.atrasadas && c === g.porCS[0] ? ' open' : '') + '><summary><span class="urg-cs-nome">' + escCS_(c.cs) + '</span>'
-      + (c.atrasadas ? '<span class="cont vermelho">Atrasadas ' + c.atrasadas + '</span>' : '')
-      + (c.aVencer ? '<span class="cont ambar">A vencer ' + c.aVencer + '</span>' : '') + '</summary><div class="urg-lista">' + itens + '</div></details>';
-  }).join('');
-  html += '</div>';
+    + '<span class="cont' + (g.totalAVencer ? ' ambar' : '') + '">A vencer em 7 dias ' + g.totalAVencer + '</span></div>'
+    + gtdMatrizHtml_(g)
+    + '<div id="gtdDetalhe"></div></div>';
   var rodape = 'GTD com posição de ' + dmaAcoes_(ACOES_.carimbos.gtdSnapshot) + '.';
   if (ACOES_.carimbos.ultimoReportCriadoEm) rodape += ' Último report recebido em ' + dmaAcoes_(ACOES_.carimbos.ultimoReportCriadoEm) + '.';
   if (r.reportsSemMapeamento) rodape += ' ' + r.reportsSemMapeamento + ' reports de pessoas sem vínculo com um CS ativo ficam de fora.';
   if (g.rotulosNaoMapeados.length) rodape += ' Etapas sem prazo mapeado: ' + g.rotulosNaoMapeados.map(escCS_).join(', ') + '.';
   document.getElementById('urgenciasCorpo').innerHTML = html + '<div class="acoes-rodape">' + rodape + '</div>';
-}
-function insightHtml_(i) {
-  var sev = { alta: 'Alta', media: 'Média', baixa: 'Baixa' }[i.severidade];
-  return '<div class="ins-item"><div class="ins-topo"><span class="ins-sev ' + i.severidade + '">' + sev + '</span></div>'
-    + '<div class="ins-oque">' + escCS_(i.oQue) + '</div>'
-    + '<div class="ins-num"><b>' + escCS_(i.numero) + '</b> <span>' + escCS_(i.referencia) + '</span></div>'
-    + '<div class="ins-acao"><b>Ação:</b> ' + escCS_(i.acao) + '</div>'
-    + (i.responsaveis.length ? '<div class="ins-quem">Quem age: ' + i.responsaveis.map(escCS_).join(', ') + '</div>' : '<div class="ins-quem">Quem age: o time</div>') + '</div>';
-}
-function renderInsights_() {
-  var el = document.getElementById('insightsCorpo');
-  var n = ACOES_.insights;
-  if (n.erro) { el.innerHTML = '<div class="acoes-erro">Não foi possível carregar os insights: ' + escCS_(n.erro) + '</div>'; return; }
-  var d = n.dado;
-  var html;
-  if (!d.total) html = '<div class="gestor-empty">Nenhum ponto de atenção identificado neste período.</div>';
-  else {
-    html = d.visiveis.map(insightHtml_).join('');
-    if (d.restantes.length) {
-      html += (INSIGHTS_TODOS_ ? d.restantes.map(insightHtml_).join('') : '')
-        + '<button class="ins-mais" type="button" id="insMais">' + (INSIGHTS_TODOS_ ? 'Mostrar menos' : 'Ver todos, mais ' + d.restantes.length) + '</button>';
-    }
-  }
-  el.innerHTML = html + '<div class="acoes-rodape">Regras fixas, sem IA, sobre os dados de ' + escCS_(d.periodo.mes) + ' de ' + d.periodo.ano + ' e do dia de hoje. Gerado em ' + new Date(ACOES_.geradoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '.</div>';
-  var b = document.getElementById('insMais');
-  if (b) b.addEventListener('click', function () { INSIGHTS_TODOS_ = !INSIGHTS_TODOS_; renderInsights_(); });
+  ligarGtdMatriz_();
 }
 function carregarAcoes() {
   fetchJSON_('/api/gestor/visao-geral/acoes').then(function (data) {
-    ACOES_ = data; renderUrgencias_(); renderInsights_();
+    ACOES_ = data; renderUrgencias_();
   }).catch(function (err) {
-    var msg = '<div class="acoes-erro">Não foi possível carregar: ' + escCS_(err.message) + '</div>';
-    document.getElementById('urgenciasCorpo').innerHTML = msg;
-    document.getElementById('insightsCorpo').innerHTML = msg;
+    document.getElementById('urgenciasCorpo').innerHTML = '<div class="acoes-erro">Não foi possível carregar: ' + escCS_(err.message) + '</div>';
   });
 }
 
@@ -1399,7 +1504,7 @@ function renderCardsCS() {
     var pos = temNota ? '<span class="cs-card-pos">' + c.posicao + 'º no ranking</span>' : '<span class="cs-card-pos sem">Fora do ranking</span>';
     var corpo = temNota
       ? '<div><div class="cs-card-score" style="color:' + status.cor + '">' + c.pontuacao + '</div><div class="cs-card-score-lbl">pontos</div></div>'
-      : '<div class="cs-card-semdados">Sem dados suficientes<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
+      : '<div class="cs-card-semdados">' + (c.estado === 'sem_meta' ? 'Sem meta' : 'Sem dados suficientes') + '<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
     var card = document.createElement('div');
     card.className = 'cs-card'; card.tabIndex = 0; card.setAttribute('role', 'link');
     card.setAttribute('aria-label', 'Abrir a página de ' + c.nome);
@@ -1411,68 +1516,99 @@ function renderCardsCS() {
     el.appendChild(card);
   });
   var sem = DADOS.cards.filter(function (c) { return c.estado === 'sem_dados_suficientes'; }).map(function (c) { return c.nome; });
-  document.getElementById('csGridNota').textContent = sem.length
-    ? 'Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '. É preciso ter metas cadastradas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.'
-    : '';
+  var semMeta = DADOS.cards.filter(function (c) { return c.estado === 'sem_meta'; }).map(function (c) { return c.nome; });
+  var notas = [];
+  if (sem.length) notas.push('Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '.');
+  if (semMeta.length) notas.push('Sem meta cadastrada e fora do ranking: ' + semMeta.join(', ') + '. Faltam metas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.');
+  document.getElementById('csGridNota').textContent = notas.join(' ');
 }
 
-function divergTag(manual, calc) {
-  if (manual === null || manual === undefined) return '';
-  if (calc === manual) return '<span class="diverg-tag diverg-baixa">sem divergência</span>';
-  var base = Math.max(calc, 1);
-  var diff = Math.abs(manual - calc) / base;
-  if (diff < 0.3) return '<span class="diverg-tag diverg-baixa">+' + Math.round(diff * 100) + '%</span>';
-  if (diff < 0.6) return '<span class="diverg-tag diverg-media">+' + Math.round(diff * 100) + '%</span>';
-  return '<span class="diverg-tag diverg-alta">+' + Math.round(diff * 100) + '%</span>';
+// ============ Ritmo do mês (revisão out/2026, V3) ============
+// Os dados vêm prontos do servidor (DADOS.ritmo, montarRitmoDoMes em lib/reports.ts). Este código só
+// desenha. Trilha = meta, preenchimento = realizado, traço âmbar = previsto até hoje. Cor só para exceção:
+// vermelho em "Atrás" e âmbar em "Atenção"; o resto fica neutro.
+var RITMO_ROTULO_ = { no_ritmo: 'No ritmo', atencao: 'Atenção', atras: 'Atrás', cedo: 'No prazo', sem_meta: 'Sem meta' };
+var RITMO_LINHAS_ = [];
+function fmtRitmo_(v, unidade) {
+  if (v === null || v === undefined) return 'sem valor';
+  return (Math.round(v * 10) / 10).toLocaleString('pt-BR') + (unidade === '%' ? '%' : '');
 }
-
-function renderTabelaHead() {
-  var thead = document.getElementById('tabelaHead');
-  thead.innerHTML = '<th>CS</th>' + DADOS.indicadoresOrdem.map(function (k) {
-    return '<th class="num">' + (DADOS.labelsIndicador[k] || k) + '</th>';
-  }).join('') + '<th class="num">Score</th>';
+function celulaRitmo_(l, k, idx) {
+  var i = l.itens[k];
+  var unidade = k === 'cumprimentoGtd' ? '%' : '';
+  if (i.status === 'sem_meta') {
+    return '<td><button class="ritmo-btn" type="button" data-cs="' + idx + '" data-ind="' + k + '"><span class="ritmo-vazio">sem meta</span></button></td>';
+  }
+  var meta = i.meta;
+  var real = (i.realizado === null || i.realizado === undefined) ? 0 : i.realizado;
+  var pctReal = Math.min(real / meta, 1) * 100;
+  var marca = (i.previsto === null || i.previsto === undefined) ? null : Math.min(i.previsto / meta, 1) * 100;
+  var cor = i.status === 'atras' ? ' ritmo-atras' : (i.status === 'atencao' ? ' ritmo-atencao' : '');
+  var barra = '<div class="ritmo-trilha"><div class="ritmo-preench' + cor + '" style="width:' + pctReal + '%"></div>'
+    + (marca !== null ? '<div class="ritmo-marca" style="left:' + marca + '%"></div>' : '') + '</div>';
+  var texto = fmtRitmo_(i.realizado, unidade) + ' de ' + fmtRitmo_(meta, unidade);
+  return '<td><button class="ritmo-btn" type="button" data-cs="' + idx + '" data-ind="' + k + '">' + barra
+    + '<span class="ritmo-texto">' + escCS_(texto) + '</span></button></td>';
 }
-function renderTabela(modo) {
-  var body = document.getElementById('tabelaBody'); body.innerHTML = '';
-  var ordenado = [...DADOS.porCS].sort(function (a, b) { return (b.scoreReal || 0) - (a.scoreReal || 0); });
-  ordenado.forEach(function (cs) {
-    var status = classificarScore(cs.scoreReal);
-    var celulas = DADOS.indicadoresOrdem.map(function (k) {
-      var i = cs.indicadores[k];
-      var unidade = i.unidade === '%' ? '%' : '';
-      var valor = i.semApuracao ? 'Sem apuração' : ((i.calculado === null || i.calculado === undefined) ? '—' : (i.calculado.toLocaleString('pt-BR') + unidade));
-      if (i.composicao) return '<td class="num" title="' + String(i.composicao).replace(/"/g, '&quot;') + '">' + valor + '</td>';
-      if (modo === 'divergencia' && i.manual !== null && i.manual !== undefined) {
-        return '<td class="num">' + valor + ' <span style="color:var(--cinza-apoio)">(decl. ' + i.manual + unidade + ')</span>' + divergTag(i.manual, i.calculado) + '</td>';
-      }
-      return '<td class="num">' + valor + '</td>';
-    }).join('');
-    var idxModal = registrarScoreModal_(cs.nome, cs.scoreReal, cs.detalhamento);
-    body.innerHTML += '<tr><td class="name">' + cs.nome + '</td>' + celulas + '<td class="num" style="color:' + status.cor + ';font-weight:700;">' + (cs.scoreReal === null || cs.scoreReal === undefined ? '—' : cs.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></td></tr>';
-  });
+function mostrarRitmoDetalhe_(l, k) {
+  var i = l.itens[k];
+  var unidade = k === 'cumprimentoGtd' ? '%' : '';
+  var acao = (DADOS.ritmo.acoes || {})[k] || '';
+  var pares = [['Realizado', fmtRitmo_(i.realizado, unidade)], ['Meta', fmtRitmo_(i.meta, unidade)]];
+  if (i.base !== 'direto') pares.push(['Previsto até hoje', fmtRitmo_(i.previsto, unidade)]);
+  pares.push(['Situação', RITMO_ROTULO_[i.status] || '']);
+  if (i.base !== 'direto') {
+    pares.push(['Projeção de fechamento', (i.projecao === null || i.projecao === undefined) ? 'disponível a partir de 25% do mês' : fmtRitmo_(i.projecao, unidade)]);
+  }
+  pares.push(['Base do cálculo', i.baseTexto || '']);
+  var divergencia = '';
+  if (i.manual !== null && i.manual !== undefined) {
+    var real = i.realizado || 0;
+    var dif = Math.abs(i.manual - real);
+    if (dif >= 2 && (real === 0 || dif / real >= 0.5)) divergencia = '<p class="ritmo-diverg">Autodeclarado: ' + escCS_(fmtRitmo_(i.manual, unidade)) + '</p>';
+  }
+  var painel = document.getElementById('ritmoPainel');
+  painel.innerHTML = '<div class="ritmo-painel-topo"><b>' + escCS_(l.nome) + '</b>, ' + escCS_(DADOS.labelsIndicador[k] || k) + '</div>'
+    + '<dl class="ritmo-dl">' + pares.map(function (p) { return '<div><dt>' + escCS_(p[0]) + '</dt><dd>' + escCS_(p[1]) + '</dd></div>'; }).join('') + '</dl>'
+    + divergencia
+    + (acao ? '<p class="ritmo-acao"><b>Ação padrão:</b> ' + escCS_(acao) + '</p>' : '')
+    + '<button class="ritmo-fechar" type="button" onclick="fecharRitmoDetalhe_()">Fechar</button>';
+  painel.hidden = false;
+  painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-document.querySelectorAll('.toggle-btn').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.toggle-btn').forEach(function (b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    renderTabela(btn.dataset.mode);
-  });
-});
-
-function renderRiscos() {
-  var el = document.getElementById('riskGrid');
-  el.innerHTML = '';
-  DADOS.porCS.filter(function (cs) { return cs.alertas && cs.alertas.length > 0; }).forEach(function (cs) {
-    var status = classificarScore(cs.scoreReal);
-    var nivel = (status.nivel === 'risco' || status.nivel === 'atencao') ? status.nivel : 'atencao';
-    var card = document.createElement('div'); card.className = 'risk-card nivel-' + nivel;
-    card.innerHTML = '<div class="risk-head"><span class="risk-name">' + cs.nome + '</span><span class="risk-badge ' + nivel + '">' + status.label + '</span></div>'
-      + '<ul class="risk-list">' + cs.alertas.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul>';
-    el.appendChild(card);
-  });
-  if (!el.children.length) el.innerHTML = '<div class="gestor-empty">Nenhum alerta neste período.</div>';
+function fecharRitmoDetalhe_() { document.getElementById('ritmoPainel').hidden = true; }
+function renderRitmo() {
+  var head = document.getElementById('ritmoHead');
+  var body = document.getElementById('ritmoBody');
+  var resumo = document.getElementById('ritmoResumo');
+  var rodape = document.getElementById('ritmoRodape');
+  fecharRitmoDetalhe_();
+  var R = DADOS.ritmo;
+  if (!R) {
+    resumo.innerHTML = '<div class="gestor-empty">O ritmo aparece quando o mês escolhido é o mês atual.</div>';
+    head.innerHTML = ''; body.innerHTML = ''; rodape.textContent = '';
+    return;
+  }
+  if (!R.linhas.length) {
+    resumo.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste mês.</div>';
+    head.innerHTML = ''; body.innerHTML = ''; rodape.textContent = '';
+    return;
+  }
+  RITMO_LINHAS_ = R.linhas;
+  resumo.textContent = R.resumo.noRitmo + ' de ' + R.resumo.comMeta + ' indicadores do time no ritmo hoje';
+  head.innerHTML = '<tr><th>CS</th>' + R.indicadoresOrdem.map(function (k) {
+    return '<th>' + escCS_(DADOS.labelsIndicador[k] || k) + '</th>';
+  }).join('') + '</tr>';
+  body.innerHTML = R.linhas.map(function (l, idx) {
+    return '<tr><td class="name">' + escCS_(l.nome) + '</td>' + R.indicadoresOrdem.map(function (k) { return celulaRitmo_(l, k, idx); }).join('') + '</tr>';
+  }).join('');
+  body.onclick = function (ev) {
+    var btn = ev.target.closest('.ritmo-btn');
+    if (!btn) return;
+    mostrarRitmoDetalhe_(RITMO_LINHAS_[Number(btn.dataset.cs)], btn.dataset.ind);
+  };
+  rodape.textContent = 'Previsto calculado até ' + dmaAcoes_(R.hoje) + '. Dias úteis descontam feriados nacionais. Cases e Matchmakings usam os conselhos realizados da carteira.';
 }
-
 // ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
 // Bloco separado do ranking/radar por CS acima — olha a rede inteira de conselhos ativos no mesmo
 // período selecionado. Os dados já vêm prontos em DADOS.visaoGeralRede (generateVisaoGeralRede em
@@ -1694,9 +1830,7 @@ function carregarVisaoGeral() {
     renderHero();
     renderRanking();
     renderCardsCS();
-    renderTabelaHead();
-    renderTabela('calculado');
-    renderRiscos();
+    renderRitmo();
     renderVisaoRede();
   }).catch(function (err) {
     document.getElementById('rankingList').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
@@ -2690,12 +2824,10 @@ function renderChurn_(data) {
   var t = data.textos;
   document.getElementById('churnDescricao').textContent = 'Recorte: ' + data.descricao + '. A janela do gráfico por mês tem doze meses terminando no mês de referência.';
   document.getElementById('churnInfo').title = 'Recorte: ' + data.descricao;
-  document.getElementById('churnNumeros').innerHTML =
-    '<div class="churn-numero"><b>' + data.totalMes + '</b><span class="rot">' + churnEsc_(t.rotuloNumero) + '</span>' +
-      '<span class="def">' + churnEsc_(t.definicaoNumero) + (t.variacao ? ' ' + churnEsc_(t.variacao) + '.' : '') + '</span></div>' +
-    '<div class="churn-numero"><b class="texto">' + churnEsc_(t.motivoRotulo) + '</b><span class="rot">Motivo mais citado</span>' +
-      '<span class="def">' + (t.motivoFracao ? churnEsc_(t.motivoFracao) + ' churns do mês' : 'Nenhum churn neste mês neste filtro') + '</span></div>';
-  document.getElementById('churnNotaRecorde').textContent = t.notaRecorde || '';
+  churnRenderMotivosBarras_(data);
+  churnRenderPedidos_(data.pedidosMelhoria);
+  // O recorde histórico agora aparece sob o número de churns da situação do mês (K1)
+  document.getElementById('churnNotaRecorde').textContent = '';
   document.getElementById('churnGrafico').innerHTML = data.temDados
     ? data.graficoSvg
     : '<div class="gestor-empty">Nenhum churn neste recorte. Troque o mês de referência ou os filtros.</div>';
@@ -2852,56 +2984,145 @@ function carregarChurnBlocos_() {
   churnCarregarMelhorias_();
 }
 
-// Cada cartão aceita a fonte nula: enquanto carrega mostra "Carregando…", se a fonte falhou mostra
+/// Cada cartão aceita a fonte nula: enquanto carrega mostra "Carregando…", se a fonte falhou mostra
 // "Sem dado" com o motivo, e nunca derruba os outros cartões.
+// Situação do mês (revisão out/2026, K1): churns do mês contra o mês anterior e contra a média dos meses
+// anteriores, e pedidos de churn em aberto com o MRR em risco. O recorde histórico vai como linha discreta
+// sob o número de churns. MRR perdido no mês não tem coluna no board, então não entra.
+function churnComparaTexto_(d, referencia) {
+  if (d > 0) return d + ' a mais ' + referencia;
+  if (d < 0) return (-d) + ' a menos ' + referencia;
+  return 'igual ' + referencia;
+}
 function churnRenderA1_(visitas, voz, tela, rec) {
   var vazio = function (rotulo, erro) {
     return '<div class="churn-numero"><b class="texto">Sem dado</b><span class="rot">' + rotulo + '</span><span class="def">' +
       (erro ? 'Não foi possível carregar: ' + churnEsc_(erro.message || String(erro)) : 'Carregando…') + '</span></div>';
   };
-  var h = tela ? '<div class="churn-numero"><b>' + tela.totalMes + '</b><span class="rot">Churns da carteira no mês</span></div>'
-    : vazio('Churns da carteira no mês', churnTelaErro_);
-  if (voz) {
-    var m = voz.retorno.mes, ma = voz.retorno.mesAnterior;
-    h += '<div class="churn-numero"><b>' + m.voltaria + '<small class="de"> de ' + m.base + '</small></b><span class="rot">Saídas do mês que voltariam</span><span class="def">Nota 9 ou 10 para voltar. Mês anterior: ' + ma.voltaria + ' de ' + ma.base + '</span></div>';
+  var h;
+  if (tela && tela.situacao) {
+    var s = tela.situacao;
+    var partes = [];
+    if (s.churnsMesAnterior !== null && s.churnsMesAnterior !== undefined) partes.push(churnComparaTexto_(s.churnsMes - s.churnsMesAnterior, 'que no mês anterior (' + s.churnsMesAnterior + ')'));
+    partes.push(s.mediaSeisMeses !== null ? 'média de ' + churnNum_(s.mediaSeisMeses) + ' nos últimos ' + s.mesesNaMedia + ' meses' : 'sem histórico suficiente para a média');
+    h = '<div class="churn-numero"><b>' + s.churnsMes + '</b><span class="rot">Churns no mês</span><span class="def">' + churnEsc_(partes.join('; ')) + '.</span>' +
+      (tela.textos && tela.textos.notaRecorde ? '<span class="def recorde">' + churnEsc_(tela.textos.notaRecorde) + '</span>' : '') + '</div>';
   } else {
-    h += vazio('Saídas do mês que voltariam', churnVozErro_);
-  }
-  if (rec) {
-    var r = rec.resumo;
-    h += '<div class="churn-numero"><b' + (r.vencidos ? ' class="alerta"' : '') + '>' + r.abertos + '</b><span class="rot">Reconquistas em aberto</span><span class="def' + (r.vencidos ? ' alerta' : '') + '">' +
-      (r.vencidos ? r.vencidos + ' com contato vencido, ' : '') + r.semContato + ' ainda sem contato, ' + r.voltaram + ' já voltaram</span></div>';
-  } else {
-    h += vazio('Reconquistas em aberto', churnRecErro_);
+    h = vazio('Churns no mês', churnTelaErro_);
   }
   if (visitas) {
     var pend = visitas.cartoes.pedidosEmAberto;
-    h += '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos de churn em aberto</span><span class="def">MRR ' + churnMoeda_(pend.mrr) + (pend.semMrr ? ', ' + pend.semMrr + ' sem MRR informado' : '') + '</span></div>';
+    h += '<div class="churn-numero"><b>' + pend.quantidade + '</b><span class="rot">Pedidos de churn em aberto</span><span class="def">MRR em risco ' + churnMoeda_(pend.mrr) + (pend.semMrr ? ', ' + pend.semMrr + ' sem MRR informado' : '') + '</span></div>';
   } else {
     h += vazio('Pedidos de churn em aberto', churnVisitasErro_);
   }
   document.getElementById('churnA1').innerHTML = h;
+  churnRenderReconquistaMes_();
 }
 
-function churnRenderA2_(lista) {
-  document.getElementById('churnA2').innerHTML = lista.map(function (t) { return '<li>' + churnEsc_(t) + '</li>'; }).join('');
+// Reconquista (K5): a frase do mês e o funil acumulado. A frase substitui o "6 de 18" que estava na situação.
+function churnRenderReconquistaMes_() {
+  var el = document.getElementById('reconquistaMes');
+  if (!el) return;
+  var m = churnVozDados_ && churnVozDados_.retorno ? churnVozDados_.retorno.mes : null;
+  var r = churnRecDados_ ? churnRecDados_.resumo : null;
+  var frase = m ? m.voltaria + ' das ' + m.base + ' respostas do formulário de saída deste mês deram nota 9 ou 10 para voltar.' : '';
+  var etapas = r ? [
+    ['Disseram que voltariam', r.total],
+    ['Contatados', Math.max(r.total - r.semContato, 0)],
+    ['Em negociação', Math.max(r.abertos - r.semContato, 0)],
+    ['Voltaram', r.voltaram],
+  ] : [];
+  el.innerHTML = (frase ? '<p class="rec-frase">' + churnEsc_(frase) + '</p>' : '')
+    + (etapas.length ? '<div class="rec-funil">' + etapas.map(function (p) {
+      return '<div class="rec-etapa"><b>' + p[1] + '</b><span>' + churnEsc_(p[0]) + '</span></div>';
+    }).join('') + '</div>' : '');
 }
-// Pendências de reversão (visitas) e de reconquista juntas, no máximo 6. Enquanto uma das duas fontes
-// não chega, mostra o que já veio; se as duas falharem, o erro aparece no bloco.
+
+var CHURN_TIPO_PENDENCIA_ = { visita: 'Reversão', acompanhamento: 'Reversão', causa: 'Reversão', reconquista: 'Reconquista', reconquista_massa: 'Reconquista' };
+var churnA2Todas_ = false;
+// O que fazer agora (K2): tabela com no máximo dez linhas, da mais atrasada para a menos atrasada. As
+// pendências em massa de reconquista ficam uma linha por CS, no fim, e levam à seção de reconquista.
+function churnRenderA2_(itens) {
+  var el = document.getElementById('churnA2');
+  var ordenados = itens.slice().sort(function (a, b) { return (a.massa - b.massa) || (b.diasParado - a.diasParado); });
+  var mostrados = churnA2Todas_ ? ordenados : ordenados.slice(0, 10);
+  var linhas = mostrados.map(function (i) {
+    var tipo = CHURN_TIPO_PENDENCIA_[i.tipo] || 'Pendência';
+    var dias = i.massa ? '-' : (i.diasParado + (i.diasParado === 1 ? ' dia' : ' dias'));
+    return '<tr' + (i.massa ? ' class="massa" data-ch="verRec" title="Ver a lista de reconquista"' : '') + '><td>' + churnEsc_(tipo) + '</td><td>' + churnEsc_(i.membro) +
+      '</td><td>' + churnEsc_(i.cs) + '</td><td class="num">' + dias + '</td><td>' + churnEsc_(i.proximoPasso) + '</td></tr>';
+  }).join('');
+  el.innerHTML = '<div class="table-wrap"><div class="table-scroll"><table class="churn-tabela"><thead><tr><th>Tipo</th><th>Membro</th><th>CS</th>' +
+    '<th class="num">Dias parado</th><th>Próximo passo</th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>' +
+    (ordenados.length > 10 ? '<p class="churn-nota"><button type="button" class="churn-link" data-ch="a2Todas">' +
+      (churnA2Todas_ ? 'Mostrar só as dez primeiras' : 'Ver todas as ' + ordenados.length + ' pendências') + '</button></p>' : '');
+  el.onclick = function (ev) {
+    var b = ev.target.closest('[data-ch]');
+    if (!b) return;
+    if (b.getAttribute('data-ch') === 'a2Todas') { churnA2Todas_ = !churnA2Todas_; churnRenderA2_(itens); }
+    else if (b.getAttribute('data-ch') === 'verRec') document.getElementById('blocoReconquista').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+}
+// Pendências de reversão (visitas) e de reconquista juntas. Enquanto uma das duas fontes não chega, mostra
+// o que já veio; se as duas falharem, o erro aparece no bloco.
 function churnRenderA2Atual_() {
   var el = document.getElementById('churnA2');
   if (!churnVisitasDados_ && !churnRecDados_) {
     if (churnVisitasErro_ && churnRecErro_) churnErroEm_(['churnA2'], churnVisitasErro_);
-    else el.innerHTML = '<li class="gestor-empty">Carregando…</li>';
+    else el.innerHTML = '<p class="gestor-empty">Carregando…</p>';
     return;
   }
   var itens = [];
-  if (churnVisitasDados_) itens = itens.concat((churnVisitasDados_.a2 || []).filter(function (t) { return !/^Nenhuma pend/.test(t); }));
-  if (churnRecDados_) itens = itens.concat(churnRecDados_.pendencias || []);
-  if (!itens.length) { el.innerHTML = '<li class="gestor-empty">Nenhuma pendência de reversão ou reconquista hoje.</li>'; return; }
-  churnRenderA2_(itens.slice(0, 6));
+  if (churnVisitasDados_) itens = itens.concat((churnVisitasDados_.a2Detalhe || []).map(function (a) {
+    return { tipo: a.tipo, membro: a.membro, cs: a.cs, diasParado: a.diasParado, proximoPasso: a.proximoPasso, massa: false };
+  }));
+  if (churnRecDados_) itens = itens.concat((churnRecDados_.pendenciasDetalhe || []).map(function (p) {
+    return { tipo: p.tipo, membro: p.membro, cs: p.cs, diasParado: p.diasParado, proximoPasso: p.proximoPasso, massa: p.tipo === 'reconquista_massa' };
+  }));
+  if (!itens.length) { el.innerHTML = '<p class="gestor-empty">Nenhuma pendência de reversão ou reconquista hoje.</p>'; return; }
+  churnRenderA2_(itens);
+}
+// Por que estão saindo (K3): barras horizontais por motivo do mês. A barra é o número do mês de referência e
+// a marca escura é o mês anterior, para comparação. O motivo mais citado fica no topo.
+function churnRenderMotivosBarras_(data) {
+  var el = document.getElementById('churnNumeros');
+  var lista = data.motivosMes || [];
+  if (!lista.length) { el.innerHTML = '<p class="gestor-empty">Nenhum churn neste mês neste filtro.</p>'; return; }
+  var max = Math.max.apply(null, lista.map(function (m) { return Math.max(m.atual, m.anterior); }).concat([1]));
+  el.innerHTML = lista.map(function (m) {
+    var largura = Math.round(m.atual / max * 100);
+    var marca = Math.round(m.anterior / max * 100);
+    return '<div class="motivo-linha"><span class="motivo-rotulo">' + churnEsc_(m.rotulo) + '</span>' +
+      '<span class="motivo-trilha"><i style="width:' + largura + '%"></i><b class="motivo-marca" style="left:' + marca + '%"></b></span>' +
+      '<span class="motivo-num"><b>' + m.atual + '</b> <small>mês anterior ' + m.anterior + '</small></span></div>';
+  }).join('');
 }
 
+// O que os churns pedem para melhorar (K4): por motivo do mês, quantos churns, até três trechos do formulário
+// de saída (anonimizados), a ação sugerida e o botão que abre a melhoria já preenchida.
+var churnPedidos_ = [];
+function churnRenderPedidos_(lista) {
+  var el = document.getElementById('churnPedidos');
+  churnPedidos_ = lista || [];
+  if (!churnPedidos_.length) { el.innerHTML = '<p class="gestor-empty">Nenhum churn neste mês neste filtro.</p>'; return; }
+  el.innerHTML = churnPedidos_.map(function (p, idx) {
+    var trechos = p.trechos.length
+      ? p.trechos.map(function (t) { return '<blockquote>' + churnEsc_(t) + '</blockquote>'; }).join('')
+      : '<p class="churn-nota">Nenhum trecho sugerido neste motivo.</p>';
+    return '<div class="pedido-motivo"><div class="pedido-topo"><b>' + churnEsc_(p.rotulo) + '</b><span>' + p.qtd + (p.qtd === 1 ? ' churn' : ' churns') + '</span></div>' +
+      trechos +
+      '<p class="pedido-acao"><b>Ação sugerida:</b> ' + churnEsc_(p.acao) + '</p>' +
+      '<button type="button" class="primario pedido-criar" data-pedido="' + idx + '">Criar melhoria</button></div>';
+  }).join('');
+  el.onclick = function (ev) {
+    var b = ev.target.closest('[data-pedido]');
+    if (!b) return;
+    var p = churnPedidos_[Number(b.getAttribute('data-pedido'))];
+    churnAbrirFormMelhoria_({ titulo: 'Melhorar: ' + p.rotulo, observacao: p.acao + '. Churns de origem: ' + p.ids.join(', ') + '.' }, null, null);
+    document.getElementById('melhoriaForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+}
 function churnRenderCruzamento_(c) {
   var el = document.getElementById('churnCruzamento');
   if (!c || c.ligadas < 5) {
@@ -3294,7 +3515,9 @@ function churnRenderFatosMelhoria_(b3) {
   var topo = b3.etapaOrigemMaisApontada;
   document.getElementById('melhoriaFatos').innerHTML = '<p class="churn-nota">' +
     (topo ? 'Etapa de origem mais apontada: ' + churnEsc_(topo.etapa) + ' (' + topo.visitas + ' visitas). ' : 'Sem etapa de origem informada nas visitas. ') +
-    'Em ' + b3.evitaveis + ' de ' + b3.respondidasEvitavel + ' visitas a causa era evitável; em ' + b3.identificaveisAntes + ' dava para identificar antes.</p>';
+    (b3.respondidasEvitavel
+      ? 'Em ' + b3.evitaveis + ' de ' + b3.respondidasEvitavel + ' visitas a causa era evitável; em ' + b3.identificaveisAntes + ' dava para identificar antes.'
+      : 'As visitas ainda não registram etapa de origem nem causa evitável.') + '</p>';
 }
 
 function churnCarregarMelhorias_() {
@@ -3314,6 +3537,11 @@ function churnRotuloTema_(chave) {
 function churnRenderMelhorias_() {
   var d = churnMelhorias_;
   if (!d) return;
+  // Sem melhoria ativa, o quadro inteiro vira uma linha em vez de quatro colunas vazias (K6)
+  if (!d.ativas.length) {
+    document.getElementById('melhoriaQuadro').innerHTML = '<p class="gestor-empty">Nenhuma melhoria registrada. Crie a primeira a partir de um motivo de saída acima.</p>';
+    return;
+  }
   var hoje = new Date().toISOString().slice(0, 10);
   var html = '<div class="voz-grid">';
   CHURN_STATUS_MELHORIA.forEach(function (c) {
@@ -3353,7 +3581,7 @@ function churnAbrirFormMelhoria_(m, temaChave, temaRotulo) {
   churnMelhoriaId_ = ed.id || null;
   var origem = ed.origem || (temaChave ? 'tema' : 'visita');
   f.hidden = false;
-  f.innerHTML = '<h3 class="churn-subtitulo">' + (m ? 'Editar melhoria' : 'Nova melhoria') + '</h3>' +
+  f.innerHTML = '<h3 class="churn-subtitulo">' + (ed.id ? 'Editar melhoria' : 'Nova melhoria') + '</h3>' +
     '<div class="churn-form">' +
     '<label>Título <input id="melhoriaTitulo" maxlength="160" value="' + churnEsc_(ed.titulo || (temaRotulo ? 'Melhorar: ' + temaRotulo : '')) + '"></label>' +
     '<label>Origem <select id="melhoriaOrigem"><option value="tema"' + (origem === 'tema' ? ' selected' : '') + '>Tema da voz do membro</option><option value="visita"' + (origem === 'visita' ? ' selected' : '') + '>Visita</option></select></label>' +
@@ -3542,19 +3770,51 @@ function npsMontarCs_(lista) {
   var sel = document.getElementById('npsCs');
   (lista || []).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
 }
+// ===== O que os membros sugerem (revisão out/2026, N3 e N4) =====
+// Duas colunas por seção: o que elogiam e o que incomoda ou falta. Cada tema mostra o número de respostas
+// e a variação do mês contra o anterior, por extenso. A cor segue o sentido: subir é ruim na coluna de
+// crítica e bom na de elogio. Os dados e a polaridade chegam prontos do servidor (colunasPolares).
+function npsColunaHtml_(titulo, col, grupo, polo) {
+  var h = '<div class="npsc-col"><h3>' + churnEsc_(titulo) + '</h3>';
+  if (!col.temas.length) h += '<p class="saida-insight vazio">Nenhum tema neste período.</p>';
+  col.temas.forEach(function (l) {
+    var ruim = l.variacao !== 0 && ((l.variacao > 0) === (polo === 'critica'));
+    var bom = l.variacao !== 0 && !ruim;
+    h += '<button type="button" class="npsc-tema" data-nps="trechos" data-grupo="' + churnEsc_(grupo) + '" data-polo="' + polo + '" data-tema="' + churnEsc_(l.chave) + '" title="Ler os trechos deste tema">'
+      + '<span class="nome">' + churnEsc_(l.rotulo) + '</span>'
+      + '<span class="num">' + l.textos + '</span>'
+      + '<span class="npsc-var' + (ruim ? ' ruim' : (bom ? ' bom' : '')) + '">' + churnEsc_(l.variacaoTexto) + '</span></button>';
+  });
+  return h + '<p class="saida-rodape">' + churnEsc_(col.rodape) + '</p></div>';
+}
 function npsRenderSugestoes_(sg) {
-  document.getElementById('npsSugestoes').innerHTML = '<div class="saida-grade dupla">' +
-    temasColunaHtml_({ rotulo: 'Sobre o conselho', pergunta: 'Sugestões deixadas depois do encontro', ranking: sg.conselho.ranking, insights: sg.conselho.insights, rodape: sg.conselho.rodape }, 'nps', 'conselho', false) +
-    temasColunaHtml_({ rotulo: 'Sobre o CS', pergunta: 'Como avalia o CS', ranking: sg.cs.ranking, insights: sg.cs.insights, rodape: sg.cs.rodape }, 'nps', 'cs', false) +
-    '</div>';
+  var secao = function (titulo, dados, grupo) {
+    return '<div class="npsc-secao"><h3 class="npsc-titulo">' + churnEsc_(titulo) + '</h3><div class="npsc-grade">'
+      + npsColunaHtml_('O que elogiam', dados.colunas.elogio, grupo, 'elogio')
+      + npsColunaHtml_('O que incomoda ou falta', dados.colunas.critica, grupo, 'critica')
+      + '</div></div>';
+  };
+  document.getElementById('npsSugestoes').innerHTML = secao('Sobre o conselho', sg.conselho, 'conselho')
+    + secao('Sobre o CS', sg.cs, 'cs')
+    + '<p class="churn-nota">' + churnEsc_(sg.cobertura.avaliados + ' de ' + sg.cobertura.total + ' conselhos do mês já avaliados. Sem sugestão sobre o conselho: '
+      + sg.semTexto.conselho + ' respostas. Sem avaliação do CS: ' + sg.semTexto.cs + ' respostas.') + '</p>';
   document.getElementById('npsTrechos').innerHTML = '';
 }
-function npsMostrarTrechos_(grupo, chave) {
+function trechosNotaHtml_(titulo, lista) {
+  return '<div class="saida-trechos"><h3 class="churn-subtitulo">' + churnEsc_(titulo) + '</h3>' +
+    (lista.length ? lista.map(function (t) {
+      var nota = (t.nota === null || t.nota === undefined) ? '' : 'nota ' + t.nota + ' · ';
+      return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(nota + t.mes.split('-').reverse().join('/')) + '</cite></blockquote>';
+    }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>') + '</div>';
+}
+function npsMostrarTrechos_(grupo, polo, chave) {
   if (!npsDados_) return;
-  var g = npsDados_.sugestoes[grupo];
-  var tema = g.ranking.filter(function (l) { return l.chave === chave; })[0];
+  var col = npsDados_.sugestoes[grupo].colunas[polo];
+  var tema = col.temas.filter(function (l) { return l.chave === chave; })[0];
   var el = document.getElementById('npsTrechos');
-  el.innerHTML = trechosHtml_((grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados', (g.trechos || {})[chave] || []);
+  var titulo = (grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ' · ' + (polo === 'elogio' ? 'o que elogiam' : 'o que incomoda ou falta')
+    + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados';
+  el.innerHTML = trechosNotaHtml_(titulo, (col.trechos || {})[chave] || []);
   el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function carregarNps_() {
@@ -3583,7 +3843,7 @@ function inicializarNps_() {
     document.getElementById('npsCs').addEventListener('change', carregarNps_);
     document.getElementById('tab-nps').addEventListener('click', function (ev) {
       var alvo = ev.target.closest('[data-nps="trechos"]');
-      if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-tema'));
+      if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-polo'), alvo.getAttribute('data-tema'));
     });
     carregarNps_();
   } catch (err) {

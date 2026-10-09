@@ -5,3 +5,6 @@ node_modules/
 *.log
 tsconfig.tsbuildinfo
 supabase/.temp/
+
+# Permissões pessoais do Claude Code neste repo
+.claude/settings.local.json

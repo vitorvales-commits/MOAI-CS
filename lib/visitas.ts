@@ -232,3 +232,22 @@ export function csvVisitas(linhas: VisitaLinha[]): string {
   ].map(celula).join(';'));
   return '﻿' + [cab.join(';'), ...corpo].join('\r\n') + '\r\n';
 }
+
+// Mesma fila de "o que fazer agora", em forma estruturada para a tabela da página de churn (revisão out/2026, K2).
+// Cada item traz o tipo, o membro, o CS, os dias parados e o próximo passo. filaAcoes continua igual.
+export interface AcaoDetalhe { tipo: 'visita' | 'acompanhamento' | 'causa'; membro: string; cs: string; diasParado: number; proximoPasso: string; mrr: number | null }
+export function filaAcoesDetalhe(linhas: VisitaLinha[], hoje: string): AcaoDetalhe[] {
+  const pedidos: AcaoDetalhe[] = linhas
+    .filter((l) => l.etapa === 'pedido' && !l.data_visita && l.data_pedido && diasEntre(l.data_pedido, hoje) > VISITA_SLA_DIAS)
+    .map((l) => ({ tipo: 'visita' as const, membro: l.membro_nome || 'membro sem nome', cs: l.cs_responsavel || 'não informado',
+      diasParado: diasEntre(l.data_pedido as string, hoje), proximoPasso: 'Agendar a visita de reversão', mrr: l.mrr_em_risco ?? null }));
+  const acompanhamentos: AcaoDetalhe[] = linhas
+    .filter((l) => l.etapa === 'acompanhamento' && l.proximo_acompanhamento && l.proximo_acompanhamento < hoje)
+    .map((l) => ({ tipo: 'acompanhamento' as const, membro: l.membro_nome || 'membro sem nome', cs: l.cs_responsavel || 'não informado',
+      diasParado: diasEntre(l.proximo_acompanhamento as string, hoje), proximoPasso: 'Fazer o acompanhamento combinado', mrr: l.mrr_em_risco ?? null }));
+  const causas: AcaoDetalhe[] = linhas
+    .filter((l) => l.etapa === 'visita' && !l.causa_raiz && l.data_visita && diasEntre(l.data_visita, hoje) > CAUSA_RAIZ_PRAZO_DIAS)
+    .map((l) => ({ tipo: 'causa' as const, membro: l.membro_nome || 'membro sem nome', cs: l.cs_responsavel || 'não informado',
+      diasParado: diasEntre(l.data_visita as string, hoje), proximoPasso: 'Registrar a causa raiz da visita', mrr: null }));
+  return [...pedidos, ...acompanhamentos, ...causas].sort((x, y) => y.diasParado - x.diasParado);
+}
