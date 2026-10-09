@@ -110,6 +110,7 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .ind-grid{display:grid;grid-template-columns:minmax(280px,400px) 1fr;gap:22px;align-items:center;}
 @media (max-width:860px){ .ind-grid{grid-template-columns:1fr;} }
 .ind-radar{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.evo-entrada{font-size:12px;color:var(--cinza-texto);margin:0 0 8px;}
 .ind-radar svg{width:100%;max-width:400px;height:auto;overflow:visible;}
 .ind-legenda{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11.5px;color:var(--cinza-texto);}
 .ind-legenda i{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:5px;vertical-align:middle;}
@@ -993,8 +994,8 @@ function evoResumoHtml_(meses) {
     html += '<div class="evo-kpi"><div class="evo-kpi-rot">Pontuação em ' + esc(evoMesCurto_(u)) + '</div><div class="evo-kpi-val">' + u.cs.pontuacao + '</div>'
       + '<div class="evo-kpi-var' + (dPts === null || dPts === 0 ? '' : (dPts > 0 ? ' sobe' : ' cai')) + '">' + (dPts === null ? 'primeiro mês fechado' : (dPts === 0 ? 'igual a ' + esc(evoMesCurto_(a)) : (dPts > 0 ? '▲ ' : '▼ ') + Math.abs(dPts) + ' desde ' + esc(evoMesCurto_(a)))) + '</div></div>';
     if (u.cs.posicao !== null && u.cs.posicao !== undefined) {
-      html += '<div class="evo-kpi"><div class="evo-kpi-rot">Posição em ' + esc(evoMesCurto_(u)) + '</div><div class="evo-kpi-val">' + u.cs.posicao + 'º</div>'
-        + '<div class="evo-kpi-var' + (dPos === null || dPos === 0 ? '' : (dPos > 0 ? ' sobe' : ' cai')) + '">' + (dPos === null ? 'de ' + (u.cs.totalRankeados || '') : (dPos === 0 ? 'mesma posição' : (dPos > 0 ? '▲ subiu ' : '▼ caiu ') + Math.abs(dPos) + (Math.abs(dPos) === 1 ? ' posição' : ' posições'))) + '</div></div>';
+      html += '<div class="evo-kpi"><div class="evo-kpi-rot">Posição em ' + esc(evoMesCurto_(u)) + '</div><div class="evo-kpi-val">' + u.cs.posicao + 'º de ' + (u.cs.totalRankeados || '?') + '</div>'
+        + '<div class="evo-kpi-var' + (dPos === null || dPos === 0 ? '' : (dPos > 0 ? ' sobe' : ' cai')) + '">' + (dPos === null ? 'no ranking' : (dPos === 0 ? 'mesma posição' : (dPos > 0 ? '▲ subiu ' : '▼ caiu ') + Math.abs(dPos) + (Math.abs(dPos) === 1 ? ' posição' : ' posições'))) + '</div></div>';
     }
   }
   if (aberto && aberto.cs && aberto.cs.pontuacao !== null && aberto.cs.pontuacao !== undefined) {
@@ -1090,7 +1091,8 @@ function renderEvolucao() {
     : '<div class="vazio">Ainda não há meses com pontuação para comparar.</div>';
 
   var pendente = meses.some(function (m) { return m.pendente; });
-  var html = '<div class="evo-leitura">';
+  // Mês de entrada quando o CS não estava ativo desde o início da janela (C4)
+  var html = '<div class="evo-leitura">' + (EVO.entradaEm ? '<p class="evo-entrada">Entrou em ' + esc(EVO.entradaEm) + '</p>' : '');
   if (EVO.maiorQueda) {
     var q = EVO.maiorQueda;
     EVO_QUEDA_TEXTO = 'Maior queda: ' + q.label + ', de ' + q.de + '% para ' + q.para + '% da meta.';

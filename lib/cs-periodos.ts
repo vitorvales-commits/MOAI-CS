@@ -65,3 +65,13 @@ export function periodosPorMetas(
     };
   }).sort((a, b) => a.primeiro_mes.localeCompare(b.primeiro_mes) || a.nome_curto.localeCompare(b.nome_curto, 'pt-BR'));
 }
+
+export interface LinhaPeriodo { nome_curto: string; nome_completo: string; primeiro_mes: string; ultimo_mes: string | null }
+
+// Quem era CS no mês AAAA-MM: período que começa até o mês e não termina antes dele (ultimo_mes nulo = ainda ativo).
+export function csDoMes(periodos: LinhaPeriodo[], mesIso: string): LinhaPeriodo[] {
+  const alvo = mesIso.slice(0, 7);
+  return periodos
+    .filter((p) => p.primeiro_mes.slice(0, 7) <= alvo && (p.ultimo_mes === null || p.ultimo_mes.slice(0, 7) >= alvo))
+    .sort((a, b) => a.nome_curto.localeCompare(b.nome_curto, 'pt-BR'));
+}

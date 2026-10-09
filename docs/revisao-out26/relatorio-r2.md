@@ -62,3 +62,9 @@ Excluídas (aparecem nos boards, sem meta): Luma Guadanhim, Yasmim Cardoso Marqu
 - Capturas de tela e validação visual (Fase 8).
 - Fase 4, C3 e C4: reclassificação da fotografia e marcação de entrada na Evolução.
 - Limites da cobertura do NPS: o universo de conselhos realizados vem da agenda, e o vínculo com a resposta é pelo nome do conselheiro no título do grupo.
+
+## Atualização: C3 e C4
+
+- **C3**: a visão geral e a fotografia usam quem era CS em cada mês, a partir de `cs_periodos`. Mês atual ou futuro soma os CS ativos de `cs_config`. Ex CS é calculado com os dados da própria `cs_periodos`. Enquanto a migration não for aplicada, o código usa a lista antiga, então nada quebra.
+- **C4**: a Evolução mostra "Entrou em <mês>" quando o CS entrou depois do início da janela, e a posição aparece como "N.º de M".
+- Os itens de "Não feitos" acima sobre C3 e C4 deixam de valer. O que continua pendente: aplicar a migration e o seed, e as capturas de tela da Fase 8.
