@@ -76,4 +76,43 @@ assert.ok(semEntidade.startsWith('De qual conselho? Escreva o nome do conselheir
 assert.ok(semEntidade.includes('- Conselho Ana Lima: 27/01 às 14h (Terça)'));
 assert.ok(semEntidade.includes('- Conselho André Soares: 20/01 às 14h (Terça)'));
 
+// Parte A: reconhecimento por tokens (plural, "datas", "conselhos") e não por frase literal
+for (const p of [
+  'quais as datas dos próximos conselhos do daniel brayer',
+  'Próximo conselho do André Soares',
+  'quando é o daniel brayer',
+  'datas das reuniões da carteira do Marcos',
+  'proxima reuniao do conselho do Brayer',
+]) assert.ok(reconhecePerguntaReunioes(p), `deveria ser próximas reuniões: ${p}`);
+for (const p of ['quais metas o Rodrigo bateu e não bateu', 'metas do time neste mês']) {
+  assert.equal(reconhecePerguntaReunioes(p), false, `deveria ser metas: ${p}`);
+}
+
+// Parte A: Daniel Brayer com resposta exata, hora sem zero à esquerda ("9h") e sem cancelar "Em conjunto" nem status nulo
+const vinculosBrayer: Vinculos = {
+  conselheiros: ['Daniel Brayer', 'André Soares'],
+  membros: [],
+  css: [],
+};
+const agendaBrayer: ReuniaoAgenda[] = [
+  { conselheiro: 'Daniel Brayer', dataIso: '2026-10-15T12:00:00Z', status: 'Em conjunto' },
+  { conselheiro: 'Daniel Brayer', dataIso: '2026-11-12T12:00:00Z', status: null },
+];
+assert.equal(
+  responderProximasReunioes('quais as datas dos próximos conselhos do daniel brayer', vinculosBrayer, agendaBrayer, '2026-10-09T15:00:00Z'),
+  '📆 Próximas Reuniões:\n\n- 15/10 às 9h (Quinta)\n- 12/11 às 9h (Quinta)',
+);
+assert.equal(resolverEntidade('proxima reuniao do conselho do Brayer', vinculosBrayer)?.nome, 'Daniel Brayer');
+assert.equal(resolverEntidade('quando é o daniel brayer', vinculosBrayer)?.tipo, 'conselheiro');
+
+// Ambiguidade: dois conselheiros com o mesmo primeiro nome
+const vinculosAmbiguos: Vinculos = { conselheiros: ['Daniel Brayer', 'Daniel Souza'], membros: [], css: [] };
+const ambiguo = resolverEntidade('quando é o daniel', vinculosAmbiguos);
+assert.equal(ambiguo?.tipo, 'ambiguo');
+assert.ok(responderProximasReunioes('quando é o daniel', vinculosAmbiguos, [], '2026-10-09T15:00:00Z').startsWith('Encontrei mais de um conselho com esse nome:'));
+
+// Formatação de hora com minutos e dia da semana
+assert.equal(formatarHora(9, '00'), '9h');
+assert.equal(formatarHora(9, '05'), '9h05');
+
 console.log('próximas reuniões: todos os casos passaram');

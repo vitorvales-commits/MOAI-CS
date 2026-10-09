@@ -16,13 +16,15 @@ export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] =
   { chave: 'distancia', rotulo: 'Distância e deslocamento', termos: /\b(brasilia|goiania|mudanca|mudei|mudando|exterior|outro pais|deslocamento|distancia|presencia\w*|online|remoto)\b/g },
   { chave: 'financeiro', rotulo: 'Preço e financeiro', termos: /\b(financeir\w*|mensalidade\w*|valor alto|valor da mensalidade|custo\w*|caro|preco\w*|pagar|pagamento\w*|orcament\w*|economia|gasto\w*|taxa\w*)\b/g },
   { chave: 'cs', rotulo: 'Atuação ou troca de CS', termos: /\b(cs|css|atendimento|acompanhamento|proativ\w*|suporte|empati\w*|atencios\w*|prestativ\w*)\b/g },
-  { chave: 'conselho', rotulo: 'Formato e qualidade do conselho', termos: /\b(conselho\w*|conselheiro\w*|dinamica\w*|metodologia|desafio\w*|maturidade|nive\w*|segmento\w*|desabafo|rotatividade|convidado\w*|empresas participantes|numero de empresas|novos membros)\b/g },
+  { chave: 'conselho', rotulo: 'Formato e qualidade do conselho', termos: /\b(conselho\w*|conselheiro\w*|dinamica\w*|metodologia|desafio\w*|maturidade|nive\w*|segmento\w*|desabafo|rotatividade|convidado\w*|empresas participantes|numero de empresas|novos membros|quorum|poucos? empresas?)\b/g },
   { chave: 'eventos', rotulo: 'Eventos e comunidade', termos: /\b(evento\w*|comunidade|workshop\w*|rodada\w*|encontro\w*|palestra\w*)\b/g },
   // Tecnologia e formulários (revisão out/2026, N2): internet, wifi e cadastro saíram de "Local e estrutura".
   { chave: 'tecnologia', rotulo: 'Tecnologia e formulários', termos: /\b(internet|wifi|wi fi|wi-fi|rede|sinal|celular|cadastro\w*|formulario\w*|site|cpf|app|link)\b/g },
-  { chave: 'estrutura', rotulo: 'Local e estrutura', termos: /\b(local|sala|espaco|ar condicionado|barulho|comida|lanche|cafe|almoco|ventilac\w*|cadeira\w*|caneta\w*|estacionamento|confort\w*|apertad\w*)\b/g },
+  // Comida e coffee (Parte D): saiu de "Local e estrutura", que ganhou privado e reforçou sala, cadeira e barulho.
+  { chave: 'comida', rotulo: 'Comida e coffee', termos: /\b(comida\w*|coffee\w*|cafe|buffet|lanche\w*|almoco|jantar|bebida\w*|taca\w*|cardapio\w*|restaurante\w*|aliment\w*|fruta\w*|pipoca\w*|suco\w*|refri\w*|pao|paes|doces?|acucar\w*|sobremesa\w*|pizza\w*|salgad\w*)\b/g },
+  { chave: 'estrutura', rotulo: 'Local e estrutura', termos: /\b(local|sala\w*|espaco|ar condicionado|barulho|privad\w*|ventilac\w*|cadeira\w*|caneta\w*|estacionamento|confort\w*|apertad\w*)\b/g },
   { chave: 'expectativa', rotulo: 'Promessa e expectativa da venda', termos: /\b(prometid\w*|prometer|promessa\w*|foi falado|foi vendido|vendido|proposto|esperava\w*|esperavamos)\b/g },
-  { chave: 'comunicacao', rotulo: 'Comunicação e informação', termos: /\b(comunicac\w*|informac\w*|transparenc\w*|onboarding|perdid\w*|alinhamento)\b/g },
+  { chave: 'comunicacao', rotulo: 'Comunicação e informação', termos: /\b(comunicac\w*|informac\w*|transparenc\w*|onboarding|perdid\w*|alinhamento|metric\w*)\b/g },
   // Os dois abaixo vieram da leitura das respostas reais do formulário de saída (08/10/2026): boa parte
   // de quem sai explica a saída por vida pessoal ou por mudança na própria empresa, e sem eles esses
   // textos caíam em Outros.

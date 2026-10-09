@@ -696,7 +696,7 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .saida-melhoria{margin-top:8px;align-self:flex-start;font-size:12px;}
 .saida-rodape{margin:auto 0 0;padding-top:10px;font-size:11px;color:var(--cinza-apoio);}
 .saida-trechos{margin-top:16px;}
-.saida-trechos blockquote{margin:0 0 10px;padding:10px 14px;background:var(--branco);border-left:3px solid var(--preto-tinta);border-radius:6px;font-size:13px;}
+.saida-trechos blockquote{margin:0 0 10px;padding:10px 14px;background:var(--branco);border-left:3px solid var(--preto-tinta);border-radius:6px;font-family:inherit;font-style:normal;font-size:13px;}
 .saida-trechos cite{display:block;margin-top:4px;font-style:normal;font-size:11px;color:var(--cinza-apoio);}
 .retorno-topo{display:flex;gap:32px;flex-wrap:wrap;margin-bottom:10px;}
 .retorno-num b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:34px;line-height:1.05;}
@@ -1245,7 +1245,7 @@ export const GESTOR_HTML = `
       <div class="block-head">
         <div>
           <h2>NPS dos conselhos</h2>
-          <p>O que os membros respondem depois de cada conselho: notas de 0 a 10, evolução nos desafios e sugestões. Fonte: board NPS Conselhos Estratégicos. Janela de três meses terminando no mês escolhido, comparada aos três anteriores.</p>
+          <p>O que os membros respondem depois de cada conselho: notas de 0 a 10, evolução nos desafios e sugestões. Fonte: board NPS Conselhos Estratégicos. <span id="npsSubtitulo">Respostas do mês escolhido, comparadas ao mês anterior.</span></p>
         </div>
       </div>
       <div class="churn-filtros">
@@ -1258,7 +1258,7 @@ export const GESTOR_HTML = `
     </section>
 
     <section class="block">
-      <div class="block-head"><div><h2>Como os membros avaliam</h2><p>Nota média de 0 a 10 nos últimos três meses, comparada aos três anteriores. Trocas e evolução são respondidas de 1 a 5 e aparecem multiplicadas por 2 para ficarem na mesma régua.</p></div></div>
+      <div class="block-head"><div><h2>Como os membros avaliam</h2><p>Nota média de 0 a 10 no período escolhido, comparada ao período anterior de mesmo tamanho. Trocas e evolução são respondidas de 1 a 5 e aparecem multiplicadas por 2 para ficarem na mesma régua.</p></div></div>
       <div id="notasDimensoes"><div class="gestor-empty">Carregando…</div></div>
       <div class="aval-mapa">
         <h3 class="churn-subtitulo">Onde a nota cai</h3>
@@ -3462,7 +3462,7 @@ function churnRenderNotas_(b4) {
       '</div>';
   }).join('');
   document.getElementById('notasDimensoes').innerHTML = '<div class="aval-cards">' + cards + '</div>';
-  avalPontos_(b4);
+  avalRenderMapa_(b4, false);
   var j = b4.justificativas;
   document.getElementById('notasJustificativas').textContent = 'O que dizem os que deram nota baixa: ' + (j.temaSugestoes ? 'o tema mais citado nas sugestões é ' + j.temaSugestoes + '. ' : '') +
     (j.temaAvaliacoesCs ? 'Nas avaliações de CS, o mais citado é ' + j.temaAvaliacoesCs + '. ' : '') + j.frase;
@@ -3511,58 +3511,64 @@ function npsRenderCobertura_(c, ref) {
 function npsAbrirCobertura_() {
   var c = npsDados_ && npsDados_.sugestoes && npsDados_.sugestoes.cobertura;
   if (!c) return;
-  var corpo = '<p class="churn-nota">Conselhos previstos no mês que ainda não aconteceram. Eles não têm nota.</p>' +
-    (c.proximos.length ? c.proximos.map(function (p) {
-      return '<div class="nps-prox"><b>' + churnEsc_(p.conselheiro) + '</b><span>acontece em ' + churnEsc_(npsDataCurta_(p.dataIso)) + '</span></div>';
-    }).join('') : '<p class="churn-nota">Nenhum conselho pendente neste mês.</p>');
-  painelLateralAbrir_('Conselhos ainda por acontecer', corpo);
-}
-// Gráfico de pontos "Onde a nota cai": uma faixa por dimensão, um ponto por conselho.
-function avalPontos_(b4) {
-  var el = document.getElementById('notasConselhos');
-  var dims = b4.pontos || [];
-  var total = dims.reduce(function (s, d) { return s + d.pontos.length; }, 0);
-  if (!total) { el.innerHTML = '<p class="gestor-empty">Nenhum conselho com nota neste período.</p>'; return; }
-  var W = 720, x0 = 170, x1 = 690, faixa = 74, topo = 40;
-  var H = topo + dims.length * faixa + 26;
-  function X(v) { return x0 + (Math.max(6, Math.min(10, v)) - 6) / 4 * (x1 - x0); }
-  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Notas médias por conselho em cada dimensão, na escala de 6 a 10">';
-  [6, 7, 8, 9, 10].forEach(function (v) {
-    svg += '<line x1="' + X(v).toFixed(1) + '" y1="' + (topo - 8) + '" x2="' + X(v).toFixed(1) + '" y2="' + (H - 22) + '" stroke="#E2DFDF" stroke-width="1"/>' +
-      '<text x="' + X(v).toFixed(1) + '" y="' + (topo - 14) + '" text-anchor="middle" font-size="11" fill="#807E7E">' + v + '</text>';
-  });
-  dims.forEach(function (d, i) {
-    var y = topo + i * faixa + faixa / 2;
-    svg += '<line x1="' + x0 + '" y1="' + y + '" x2="' + x1 + '" y2="' + y + '" stroke="#F0EEEC" stroke-width="1"/>';
-    svg += '<text x="8" y="' + (y + 4) + '" font-size="12.5" font-weight="700" fill="#1A1A1A">' + churnEsc_(d.rotulo) + '</text>';
-    // Os três pontos mais baixos recebem rótulo com o nome do conselho
-    var menores = d.pontos.map(function (p, k) { return { k: k, media: p.media }; })
-      .sort(function (a, b) { return a.media - b.media; }).slice(0, 3).map(function (x) { return x.k; });
-    d.pontos.forEach(function (p, k) {
-      var jit = ((k % 3) - 1) * 9;
-      var cor = p.media < 9 ? 'var(--vermelho)' : '#9F9F9F';
-      svg += '<circle data-nps-ponto="' + i + '|' + k + '" cx="' + X(p.media).toFixed(1) + '" cy="' + (y + jit).toFixed(1) + '" r="6" fill="' + cor + '" fill-opacity="0.9" stroke="#fff" stroke-width="1.5" tabindex="0" role="button" aria-label="' + churnEsc_(p.conselho) + ', média ' + String(p.media).replace('.', ',') + '"/>';
-    });
-    menores.forEach(function (k) {
-      var p = d.pontos[k];
-      svg += '<text x="' + X(p.media).toFixed(1) + '" y="' + (y - 13).toFixed(1) + '" text-anchor="middle" font-size="10.5" fill="#1A1A1A">' + churnEsc_(avalNomeCurto_(p.conselho)) + '</text>';
-    });
-  });
-  el.innerHTML = '<div class="nps-pontos">' + svg + '</svg></div>' +
-    '<p class="churn-nota">Cada ponto é um conselho. Vermelho: média abaixo de 9. Os três mais baixos de cada dimensão trazem o nome. Clique num ponto para ver as notas.</p>';
-}
-function npsAbrirPonto_(i, k) {
-  var b4 = npsDados_ && npsDados_.b4;
-  if (!b4 || !b4.pontos[i]) return;
-  var p = b4.pontos[i].pontos[k];
-  if (!p) return;
-  var notas = b4.pontos.map(function (dim) {
-    var q = dim.pontos.filter(function (x) { return x.conselho === p.conselho; })[0];
-    return '<div class="nps-pn"><span>' + churnEsc_(dim.rotulo) + '</span><b>' + (q ? String(q.media).replace('.', ',') : 'sem nota') + '</b></div>';
+  var realizados = (c.detalhe || []).map(function (d) {
+    return '<div class="nps-prox"><b>' + churnEsc_(d.conselheiro) + '</b><span>' +
+      (d.avaliado ? 'avaliado, ' + d.respostas + (d.respostas === 1 ? ' resposta' : ' respostas') : 'sem resposta ainda') + '</span></div>';
   }).join('');
-  painelLateralAbrir_(p.conselho, '<p class="churn-nota">CS ' + churnEsc_(p.cs || 'não informado') + ', ' + p.respostas + ' respostas no período.</p>' +
-    '<div class="nps-pn-lista">' + notas + '</div>');
+  var futuros = (c.proximos || []).map(function (p) {
+    return '<div class="nps-prox"><b>' + churnEsc_(p.conselheiro) + '</b><span>acontece em ' + churnEsc_(npsDataCurta_(p.dataIso).slice(0, 5)) + '</span></div>';
+  }).join('');
+  painelLateralAbrir_('Conselhos do mês', '<p class="churn-nota">Realizados até agora, com o estado da resposta do NPS.</p>' +
+    (realizados || '<p class="churn-nota">Nenhum conselho realizado no mês até agora.</p>') +
+    (futuros ? '<p class="churn-nota">Ainda por acontecer. Não têm nota.</p>' + futuros : ''));
 }
+// Textos do período (Parte B): subtítulo do bloco e linha de base com média por conselho realizado
+function npsRenderTextosPeriodo_(d, ref) {
+  var m = d.mediaPorConselho;
+  var sub = document.getElementById('npsSubtitulo');
+  if (sub) sub.textContent = NPS_JANELA_ === 'mes'
+    ? 'Respostas do mês escolhido, comparadas ao mês anterior.'
+    : 'Respostas de ' + npsPeriodoTexto_(ref) + ', comparadas aos três meses anteriores.';
+  var txt = NPS_JANELA_ === 'mes' ? d.respostas.janela + ' respostas de ' + m.mes.conselhos + ' conselhos em ' + npsPeriodoTexto_(ref) + ', média de ' + String(m.mes.media === null ? '-' : m.mes.media).replace('.', ',') + ' por conselho.' + (m.anterior.media === null ? '' : ' O mês anterior teve ' + String(m.anterior.media).replace('.', ',') + ' por conselho.')
+    : d.respostas.janela + ' respostas de ' + npsPeriodoTexto_(ref) + ', de ' + m.mes.conselhos + ' conselhos.';
+  document.getElementById('npsBase').textContent = txt;
+}
+function avalRenderMapa_(b4, todos) {
+  var el = document.getElementById('notasConselhos');
+  if (!b4.conselhos.length) { el.innerHTML = '<p class="gestor-empty">Nenhum conselho com respostas suficientes nesta janela.</p>'; return; }
+  var dims = b4.dimensoesRotulos;
+  var ordem = b4.conselhos.slice().sort(function (a, b) {
+    var x = a.mediaGeral === null ? 99 : a.mediaGeral, y = b.mediaGeral === null ? 99 : b.mediaGeral;
+    return x - y || b.percentual - a.percentual;
+  });
+  var visiveis = todos ? ordem : ordem.slice(0, AVAL_LINHAS_INICIAIS_);
+  var h = '<div class="aval-mapa-grade"><div class="cab esq">Conselho</div>' +
+    dims.map(function (d) { return '<div class="cab"><span class="longo">' + churnEsc_(d.curto) + '</span><span class="curto">' + churnEsc_(d.curto.slice(0, 4)) + '</span></div>'; }).join('') + '<div class="cab esq col-acao">Próximo passo</div>';
+  visiveis.forEach(function (c) {
+    h += '<div class="nome" title="' + churnEsc_(c.conselho) + '">' + churnEsc_(avalNomeCurto_(c.conselho)) + '<span>CS ' + churnEsc_(c.cs || 'não informado') + ', ' + c.respostas + ' respostas</span></div>';
+    dims.forEach(function (d) {
+      var m = c.medias[d.chave];
+      h += '<div class="aval-cel ' + avalNivel_(m) + '" title="' + churnEsc_(d.curto) + ': ' + avalNum_(m) + ' de 10">' + (m === null ? 'sem dado' : avalNum_(m)) + '</div>';
+    });
+    var acao = c.fraseConversa ? 'Conversar com ' + c.cs : (c.percentual > 0 ? c.baixas + ' nota' + (c.baixas === 1 ? '' : 's') + ' baixa' + (c.baixas === 1 ? '' : 's') : 'Sem nota baixa');
+    var dica = (c.temaSugestoes ? 'Tema das sugestões: ' + c.temaSugestoes + '. ' : '') + 'Dimensão que mais pesa: ' + c.dimensaoMaisPesa + '.';
+    h += '<div class="aval-acao col-acao' + (c.fraseConversa ? '' : ' ok') + '" title="' + churnEsc_(dica) + '">' + churnEsc_(acao) + '</div>';
+  });
+  h += '</div>';
+  h += '<div class="aval-escala"><span><i style="background:#F2F2F2"></i>9,5 ou mais</span><span><i style="background:#F6E7C2"></i>9 a 9,4</span><span><i style="background:#E9B84E"></i>8 a 8,9</span><span><i style="background:#C0433D"></i>abaixo de 8</span><span>Passe o mouse sobre o próximo passo para ver o tema das sugestões.</span></div>';
+  if (ordem.length > AVAL_LINHAS_INICIAIS_) {
+    h += '<button type="button" class="aval-mais" id="avalMais">' + (todos ? 'Mostrar só os ' + AVAL_LINHAS_INICIAIS_ + ' com menor nota' : 'Ver os ' + ordem.length + ' conselhos') + '</button>';
+  }
+  h += '<details class="aval-detalhe"><summary>Ver a tabela completa</summary>' +
+    churnTabela_(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões', 'Ação'],
+      b4.conselhos.map(function (c) {
+        return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnEsc_(c.baixas), churnPct_(c.percentual), churnEsc_(c.dimensaoMaisPesa), churnEsc_(c.temaSugestoes || '-'), churnEsc_(c.fraseConversa || '-')];
+      })) + '</details>';
+  el.innerHTML = h;
+  var btn = document.getElementById('avalMais');
+  if (btn) btn.addEventListener('click', function () { avalRenderMapa_(b4, !todos); });
+}
+
 // ===== Por que não evoluem no desafio (08/10/2026) =====
 // Barra única da resposta de continuidade e dispersão presença por travados, um ponto por conselho.
 function desafioBarraHtml_(c) {
@@ -3941,82 +3947,20 @@ function npsMontarCs_(lista) {
   var sel = document.getElementById('npsCs');
   (lista || []).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
 }
-// ===== O que os membros sugerem em gráfico (revisão out/2026, rodada 2, Fase 7) =====
-// Um gráfico com seletor entre "Sobre o conselho" e "Sobre o CS". No conselho, barras horizontais por tema com
-// um traço no mês anterior, e um anel com a proporção sem sugestão. No CS, barras divergentes: crítica para a
-// esquerda, elogio para a direita. O clique numa barra abre o painel lateral com os trechos.
-var NPS_GRUPO_ = 'conselho';
-function npsAnelSemSugestao_(sem, total) {
-  var r = 30, c = 2 * Math.PI * r;
-  var prop = total ? sem / total : 0;
-  return '<svg class="nps-anel" width="78" height="78" viewBox="0 0 78 78" role="img" aria-label="' + Math.round(prop * 100) + '% sem sugestão">' +
-    '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="var(--cinza-superficie)" stroke-width="9"/>' +
-    (prop > 0 ? '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="#9F9F9F" stroke-width="9" stroke-dasharray="' + (prop * c) + ' ' + c + '" transform="rotate(-90 39 39)"/>' : '') +
-    '</svg>';
-}
-function npsGraficoConselho_(c) {
-  var max = Math.max.apply(null, c.temas.map(function (t) { return Math.max(t.mesRef, t.mesAnterior); }).concat([c.outros.mesRef, c.outros.mesAnterior, 1]));
-  var linhas = c.temas.map(function (t) {
-    var w = Math.round(t.mesRef / max * 100), m = Math.round(t.mesAnterior / max * 100);
-    return '<button type="button" class="nps-barra-linha" data-nps="trechos" data-grupo="conselho" data-polo="critica" data-tema="' + churnEsc_(t.chave) + '">' +
-      '<span class="nps-tema">' + churnEsc_(t.rotulo) + '</span>' +
-      '<span class="nps-trilha"><i style="width:' + w + '%"></i><b class="nps-marca" style="left:' + m + '%"></b></span>' +
-      '<span class="nps-num">' + t.mesRef + '</span></button>';
-  }).join('');
-  if (c.outros.mesRef) {
-    linhas += '<div class="nps-barra-linha nps-outros"><span class="nps-tema">Outros</span><span class="nps-trilha"><i style="width:' +
-      Math.round(c.outros.mesRef / max * 100) + '%"></i><b class="nps-marca" style="left:' + Math.round(c.outros.mesAnterior / max * 100) + '%"></b></span><span class="nps-num">' + c.outros.mesRef + '</span></div>';
-  }
-  var pctSem = c.respondentes ? Math.round(c.semSugestao / c.respondentes * 100) : 0;
-  return '<div class="nps-grafico-corpo"><div class="nps-barras">' + (linhas || '<p class="gestor-empty">Nenhuma sugestão neste mês.</p>') + '</div>' +
-    '<div class="nps-anel-wrap">' + npsAnelSemSugestao_(c.semSugestao, c.respondentes) +
-    '<p><b>' + pctSem + '% sem sugestão</b><span>' + c.semSugestao + ' de ' + c.respondentes + ' respostas do mês</span></p></div></div>' +
-    '<p class="nps-legenda"><span><i class="nps-leg-mes"></i>Mês de referência</span><span><i class="nps-leg-ant"></i>Mês anterior</span></p>';
-}
-function npsGraficoCs_(c) {
-  var max = Math.max.apply(null, c.temas.map(function (t) { return Math.max(t.critica, t.elogio, t.criticaAnterior, t.elogioAnterior); }).concat([1]));
-  var linhas = c.temas.map(function (t) {
-    var pc = Math.round(t.critica / max * 100), pe = Math.round(t.elogio / max * 100);
-    var mc = Math.round(t.criticaAnterior / max * 100), me = Math.round(t.elogioAnterior / max * 100);
-    // Cada lado é um botão próprio: a crítica abre os trechos de crítica, o elogio os de elogio
-    return '<div class="nps-div-linha"><span class="nps-tema">' + churnEsc_(t.rotulo) + '</span>' +
-      '<span class="nps-div"><button type="button" class="nps-div-esq" data-nps="trechos" data-grupo="cs" data-polo="critica" data-tema="' + churnEsc_(t.chave) + '" aria-label="Crítica: ' + t.critica + '">' +
-      '<i style="width:' + pc + '%"></i><b class="nps-marca" style="right:' + mc + '%"></b></button>' +
-      '<button type="button" class="nps-div-dir" data-nps="trechos" data-grupo="cs" data-polo="elogio" data-tema="' + churnEsc_(t.chave) + '" aria-label="Elogio: ' + t.elogio + '">' +
-      '<i style="width:' + pe + '%"></i><b class="nps-marca" style="left:' + me + '%"></b></button></span>' +
-      '<span class="nps-num">' + t.critica + ' · ' + t.elogio + '</span></div>';
-  }).join('');
-  return '<div class="nps-cabecalho-div"><span>Crítica</span><span>Elogio</span></div><div class="nps-barras">' +
-    (linhas || '<p class="gestor-empty">Nenhuma avaliação do CS neste mês.</p>') + '</div>' +
-    '<p class="nps-legenda"><span><i class="nps-leg-crit"></i>Crítica</span><span><i class="nps-leg-elog"></i>Elogio</span><span><i class="nps-leg-ant"></i>Mês anterior</span></p>' +
-    '<p class="churn-nota">' + c.respondentes + ' respostas do mês, ' + c.semSugestao + ' sem avaliação aberta.</p>';
-}
 function npsRenderSugestoes_(sg) {
-  var sel = '<div class="toggle-group nps-seletor" role="group" aria-label="Tipo de sugestão">' +
-    '<button type="button" class="toggle-btn' + (NPS_GRUPO_ === 'conselho' ? ' active' : '') + '" data-nps="grupo" data-grupo="conselho">Sobre o conselho</button>' +
-    '<button type="button" class="toggle-btn' + (NPS_GRUPO_ === 'cs' ? ' active' : '') + '" data-nps="grupo" data-grupo="cs">Sobre o CS</button></div>';
-  var corpo = NPS_GRUPO_ === 'conselho' ? npsGraficoConselho_(sg.conselho) : npsGraficoCs_(sg.cs);
-  var subtitulo = NPS_GRUPO_ === 'conselho'
-    ? 'Sugestões de melhoria para o conselho, por tema. Respostas sem sugestão ficam fora dos temas.'
-    : 'Avaliação aberta do CS, por tema: crítica à esquerda, elogio à direita.';
-  document.getElementById('npsSugestoes').innerHTML = sel + '<p class="churn-nota">' + churnEsc_(subtitulo) + '</p>' + corpo +
-    '<p class="churn-nota">Cobertura: ' + sg.cobertura.avaliados + ' de ' + sg.cobertura.total + ' conselhos do mês já avaliados.</p>';
+  document.getElementById('npsSugestoes').innerHTML = '<div class="saida-grade dupla">' +
+    temasColunaHtml_({ rotulo: 'Sobre o conselho', pergunta: 'Sugestões deixadas depois do encontro', ranking: sg.conselho.ranking, insights: sg.conselho.insights, rodape: sg.conselho.rodape }, 'nps', 'conselho', false) +
+    temasColunaHtml_({ rotulo: 'Sobre o CS', pergunta: 'Como avalia o CS', ranking: sg.cs.ranking, insights: sg.cs.insights, rodape: sg.cs.rodape }, 'nps', 'cs', false) +
+    '</div>';
   document.getElementById('npsTrechos').innerHTML = '';
 }
-function npsMostrarTrechos_(grupo, polo, chave) {
+function npsMostrarTrechos_(grupo, chave) {
   if (!npsDados_) return;
   var g = npsDados_.sugestoes[grupo];
-  var lista = grupo === 'conselho' ? (g.trechos[chave] || []) : (g.trechos[polo + '|' + chave] || []);
-  var rotulo = ((g.temas.filter(function (t) { return t.chave === chave; })[0] || {}).rotulo) || '';
-  var corpo = lista.length ? lista.map(function (t) {
-    var partes = [];
-    if (t.nota !== null && t.nota !== undefined) partes.push('nota ' + t.nota);
-    partes.push(t.mes.split('-').reverse().join('/'));
-    if (t.conselho) partes.push(t.conselho);
-    return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(partes.join(' · ')) + '</cite></blockquote>';
-  }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>';
-  var titulo = (grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ': ' + rotulo;
-  painelLateralAbrir_(titulo, '<p class="churn-nota">Trechos anonimizados, do mais recente para o mais antigo.</p>' + corpo);
+  var tema = g.ranking.filter(function (l) { return l.chave === chave; })[0];
+  var el = document.getElementById('npsTrechos');
+  el.innerHTML = trechosHtml_((grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados', (g.trechos || {})[chave] || []);
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 function carregarNps_() {
   var minha = ++npsReq_;
@@ -4028,7 +3972,7 @@ function carregarNps_() {
     if (minha !== npsReq_) return;
     npsDados_ = d;
     npsMontarCs_(d.csDisponiveis);
-    document.getElementById('npsBase').textContent = d.respostas.janela + ' respostas em ' + npsPeriodoTexto_(ref) + ', contra ' + d.respostas.anterior + ' no período anterior de mesmo tamanho.';
+    npsRenderTextosPeriodo_(d, ref);
     npsRenderCobertura_(d.sugestoes.cobertura, ref);
     churnRenderSeguro_(['notasDimensoes'], function () { churnRenderNotas_(d.b4); });
     churnRenderSeguro_(['desafioTabela'], function () { churnRenderDesafio_(d.b5); });
@@ -4045,9 +3989,7 @@ function inicializarNps_() {
     document.getElementById('npsCs').addEventListener('change', carregarNps_);
     document.getElementById('tab-nps').addEventListener('click', function (ev) {
       var alvo = ev.target.closest('[data-nps="trechos"]');
-      if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-polo'), alvo.getAttribute('data-tema'));
-      var ponto = ev.target.closest('[data-nps-ponto]');
-      if (ponto) { var pp = ponto.getAttribute('data-nps-ponto').split('|'); npsAbrirPonto_(Number(pp[0]), Number(pp[1])); }
+      if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-tema'));
       if (ev.target.closest('[data-nps="cobertura"]')) npsAbrirCobertura_();
       var jan = ev.target.closest('[data-janela]');
       if (jan) {
@@ -4055,8 +3997,6 @@ function inicializarNps_() {
         document.querySelectorAll('#npsJanela .toggle-btn').forEach(function (b) { b.classList.toggle('active', b === jan); });
         carregarNps_();
       }
-      var seletor = ev.target.closest('[data-nps="grupo"]');
-      if (seletor) { NPS_GRUPO_ = seletor.getAttribute('data-grupo'); if (npsDados_) npsRenderSugestoes_(npsDados_.sugestoes); }
     });
     carregarNps_();
   } catch (err) {

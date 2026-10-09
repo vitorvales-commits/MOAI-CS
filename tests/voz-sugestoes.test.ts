@@ -24,4 +24,15 @@ assert.ok(classificarTemasMembro('O sinal do celular cai na sala').some((t) => t
 assert.ok(classificarTemasMembro('Melhorar o wi fi').some((t) => t.chave === 'tecnologia'));
 assert.ok(classificarTemasMembro('Sinal fraco no celular').some((t) => t.chave === 'tecnologia'));
 
+// Parte D: respostas curtas que só elogiam ou não dizem nada contam como sem conteúdo; reclamação continua conteúdo
+for (const t of ['Excelente', 'Amei tudo!', 'Sem recomendações', 'Ainda não tenho', 'x']) {
+  assert.equal(ehSemSugestao(t), true, `sem conteúdo: ${t}`);
+}
+assert.equal(ehSemSugestao('Sem internet no terceiro andar'), false, 'reclamação é conteúdo');
+assert.equal(ehSemSugestao('Mais fruta'), false, 'pedido de comida é conteúdo');
+
+// Hífen: "ar-condicionado" e "ar condicionado" caem no mesmo tema
+assert.ok(classificarTemasMembro('Melhorar o ar-condicionado').some((t) => t.chave === 'estrutura'));
+assert.ok(classificarTemasMembro('Melhorar o ar condicionado').some((t) => t.chave === 'estrutura'));
+
 console.log('sugestões do NPS: todos os casos passaram');

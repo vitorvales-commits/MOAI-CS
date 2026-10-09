@@ -60,7 +60,8 @@ export function classificarTemas(texto: string): { chave: string; rotulo: string
 // Mesmo algoritmo para qualquer lista de temas (a voz do membro usa a sua própria). Até dois temas, os
 // de mais ocorrências, empate pela ordem da lista; Outros quando nada casa.
 export function classificarTemasCom(texto: string, temas: { chave: string; rotulo: string; termos: RegExp }[]): { chave: string; rotulo: string }[] {
-  const t = semAcento(texto);
+  // Hífen vira espaço antes de casar, para "ar-condicionado" e "wi-fi" casarem com o mesmo termo sem hífen (Parte D)
+  const t = semAcento(texto).replace(/-/g, ' ');
   const pontos = temas.map((tema, ordem) => {
     const m = t.match(new RegExp(tema.termos.source, 'g'));
     return { tema, ordem, n: m ? m.length : 0 };
