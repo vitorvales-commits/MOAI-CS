@@ -8,7 +8,7 @@ import { classificarTemasCom, semAcento, TEMA_OUTROS } from './voz.ts';
 import { AMOSTRA_MINIMA, NOTA_BAIXA_ESCALA_10, NOTA_BAIXA_ESCALA_5 } from './constants.ts';
 
 export type FonteVoz = 'saida' | 'nps_sugestao' | 'nps_cs';
-export type TextoVoz = { fonte: FonteVoz; mes: string; texto: string | null; nota?: number | null };
+export type TextoVoz = { fonte: FonteVoz; mes: string; texto: string | null; nota?: number | null; conselho?: string | null };
 
 export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] = [
   { chave: 'negocios', rotulo: 'Geração de negócios e conexões', termos: /\b(negocio\w*|cliente\w*|venda\w*|vender|indicac\w*|conex\w*|contato\w*|parceri\w*|contrato\w*|networking|matchmaking|oportunidade\w*|fechament\w*|fechar)\b/g },
@@ -19,7 +19,7 @@ export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] =
   { chave: 'conselho', rotulo: 'Formato e qualidade do conselho', termos: /\b(conselho\w*|conselheiro\w*|dinamica\w*|metodologia|desafio\w*|maturidade|nive\w*|segmento\w*|desabafo|rotatividade|convidado\w*|empresas participantes|numero de empresas|novos membros)\b/g },
   { chave: 'eventos', rotulo: 'Eventos e comunidade', termos: /\b(evento\w*|comunidade|workshop\w*|rodada\w*|encontro\w*|palestra\w*)\b/g },
   // Tecnologia e formulários (revisão out/2026, N2): internet, wifi e cadastro saíram de "Local e estrutura".
-  { chave: 'tecnologia', rotulo: 'Tecnologia e formulários', termos: /\b(internet|wifi|wi fi|rede|cadastro\w*|formulario\w*|site|cpf|app|link)\b/g },
+  { chave: 'tecnologia', rotulo: 'Tecnologia e formulários', termos: /\b(internet|wifi|wi fi|wi-fi|rede|sinal|celular|cadastro\w*|formulario\w*|site|cpf|app|link)\b/g },
   { chave: 'estrutura', rotulo: 'Local e estrutura', termos: /\b(local|sala|espaco|ar condicionado|barulho|comida|lanche|cafe|almoco|ventilac\w*|cadeira\w*|caneta\w*|estacionamento|confort\w*|apertad\w*)\b/g },
   { chave: 'expectativa', rotulo: 'Promessa e expectativa da venda', termos: /\b(prometid\w*|prometer|promessa\w*|foi falado|foi vendido|vendido|proposto|esperava\w*|esperavamos)\b/g },
   { chave: 'comunicacao', rotulo: 'Comunicação e informação', termos: /\b(comunicac\w*|informac\w*|transparenc\w*|onboarding|perdid\w*|alinhamento)\b/g },

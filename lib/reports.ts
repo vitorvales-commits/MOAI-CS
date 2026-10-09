@@ -25,7 +25,7 @@ import {
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
-import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias } from './gtd-prazos';
+import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
 import { ACOES_POR_INDICADOR } from '../config/acoes-por-indicador';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
@@ -3495,6 +3495,8 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
           || (a.status === b.status ? (a.status === 'atrasada' ? b.dias - a.dias : a.dias - b.dias) : (a.status === 'atrasada' ? -1 : 1)));
       return {
         cs: nome, ciclosAbertos: ciclos.length,
+        // Em dia (revisão R2): etapas abertas dos ciclos que ainda não venceram, para o gráfico Fila por CS
+        emDia: ciclos.reduce((soma, l) => soma + (l.etapas || []).filter((e: any) => !e.feito && statusEtapaGTD(e.label, false, l.data_conselho, hoje).status === 'futura').length, 0),
         atrasadas: itens.filter((i) => i.status === 'atrasada').length,
         aVencer: itens.filter((i) => i.status === 'a_vencer').length,
         maiorAtrasoDias: itens.reduce((m, i) => (i.status === 'atrasada' ? Math.max(m, i.dias) : m), 0),

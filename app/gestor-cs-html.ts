@@ -480,39 +480,50 @@ function indReferencia_(serie) {
 }
 
 // Radar do CS: anel da meta destacado, vértices pintados pelo estado e rótulo com o percentual.
-function indRadarSvg_(eixos) {
-  var W = 420, H = 330, cx = 210, cy = 160, rMax = 104, total = eixos.length;
-  function pol(r, i) { var a = (Math.PI * 2 * i / total) - Math.PI / 2; return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
-  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Radar dos indicadores do CS">';
-  svg += '<defs><radialGradient id="indRadarFill" cx="50%" cy="50%" r="60%"><stop offset="0%" stop-color="#C89A2E" stop-opacity="0.15"/><stop offset="100%" stop-color="#C89A2E" stop-opacity="0.45"/></radialGradient></defs>';
-  [50, 150].forEach(function (v) {
-    var pts = ''; for (var i = 0; i < total; i++) { var p = pol(rMax * v / 150, i); pts += p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' '; }
-    svg += '<polygon points="' + pts + '" fill="none" stroke="#E2DFDF" stroke-width="1" stroke-dasharray="3 3"/>';
-  });
-  var ptsMeta = ''; for (var k = 0; k < total; k++) { var pm = pol(rMax * 100 / 150, k); ptsMeta += pm.x.toFixed(1) + ',' + pm.y.toFixed(1) + ' '; }
-  svg += '<polygon points="' + ptsMeta + '" fill="#F7F3E8" stroke="#C89A2E" stroke-width="1.6"/>';
-  for (var j = 0; j < total; j++) { var pe = pol(rMax, j); svg += '<line x1="' + cx + '" y1="' + cy + '" x2="' + pe.x.toFixed(1) + '" y2="' + pe.y.toFixed(1) + '" stroke="#E2DFDF" stroke-width="1"/>'; }
-  var poli = '', marcas = '', rotulos = '';
+// Diagrama de rosa (revisão out/2026, rodada 2, Fase 3). Uma pétala por indicador, todas com o mesmo ângulo.
+// O raio segue a raiz da proporção (R * sqrt(min(p, 1.5) / 1.5)), então a área da pétala é proporcional ao valor.
+// O anel tracejado âmbar marca 100% da meta. Cor pelo estado já calculado; sem meta vira contorno tracejado.
+// Churn (menos é melhor) usa p = 1 quando está dentro do limite.
+function indRoseSvg_(eixos) {
+  var W = 440, H = 340, cx = 220, cy = 170, R = 100, total = eixos.length;
+  var passo = 2 * Math.PI / total;
+  var meia = passo / 2 * 0.92;
+  function pol(r, ang) { var a = ang - Math.PI / 2; return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }; }
+  function raio(p) { return R * Math.sqrt(Math.min(p, 1.5) / 1.5); }
+  function pontoP(e) {
+    if (e.tipoMeta === 'max') { if (e.meta === null || e.meta === undefined || !(e.meta >= 0)) return null; return (Number(e.valor) <= Number(e.meta)) ? 1 : (Number(e.meta) / Number(e.valor)); }
+    if (e.pct === null || e.pct === undefined) return null;
+    return Math.max(0, e.pct) / 100;
+  }
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Diagrama de rosa dos indicadores do CS">';
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" stroke="#E2DFDF" stroke-width="1"/>';
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + raio(1) + '" fill="none" stroke="#C89A2E" stroke-width="1.4" stroke-dasharray="5 4"/>';
+  svg += '<text x="' + cx + '" y="' + (cy - raio(1) - 4).toFixed(1) + '" text-anchor="middle" font-size="10" fill="#8A6D1C" font-weight="700">meta</text>';
+  var petalas = '', rotulos = '';
   eixos.forEach(function (e, i) {
-    var est = indEstado_(e), cor = IND_COR_ESTADO_[est];
-    var lp = pol(rMax + 22, i);
+    var ang = i * passo;
+    var est = indEstado_(e), cor = IND_COR_ESTADO_[est] || '#9F9F9F';
+    var p = pontoP(e);
+    var a0 = ang - meia, a1 = ang + meia;
+    var lp = pol(R + 24, ang);
     var anchor = 'middle'; if (lp.x > cx + 6) anchor = 'start'; else if (lp.x < cx - 6) anchor = 'end';
-    rotulos += '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y - 5).toFixed(1) + '" font-size="11" font-weight="700" fill="#1A1A1A" text-anchor="' + anchor + '">' + esc(e.label) + '</text>'
-      + '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y + 9).toFixed(1) + '" font-size="10.5" font-weight="700" fill="' + cor + '" text-anchor="' + anchor + '">' + (est === 'neutro' ? 'sem meta' : e.pct + '%' + (est === 'ritmo' ? ', no ritmo' : '')) + '</text>';
-    if (est === 'neutro') {
-      var pn = pol(rMax * 100 / 150, i);
-      marcas += '<circle cx="' + pn.x.toFixed(1) + '" cy="' + pn.y.toFixed(1) + '" r="4" fill="#fff" stroke="#9F9F9F" stroke-width="1.3" stroke-dasharray="2 1.5"/>';
+    rotulos += '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y - 4).toFixed(1) + '" font-size="11" font-weight="700" fill="#1A1A1A" text-anchor="' + anchor + '">' + esc(e.label) + '</text>'
+      + '<text x="' + lp.x.toFixed(1) + '" y="' + (lp.y + 9).toFixed(1) + '" font-size="10.5" font-weight="700" fill="' + cor + '" text-anchor="' + anchor + '">'
+      + (p === null ? 'sem meta' : Math.round(p * 100) + '%') + '</text>';
+    if (p === null || est === 'neutro' || est === 'cedo') {
+      // Sem meta ou cedo: só o contorno tracejado cinza, sem preenchimento, no raio do valor sem meta (anel inteiro)
+      var r0 = (p === null) ? R : raio(p);
+      var s = pol(r0, a0), f = pol(r0, a1);
+      petalas += '<path d="M ' + cx + ' ' + cy + ' L ' + s.x.toFixed(1) + ' ' + s.y.toFixed(1) + ' A ' + r0.toFixed(1) + ' ' + r0.toFixed(1) + ' 0 0 1 ' + f.x.toFixed(1) + ' ' + f.y.toFixed(1) + ' Z" fill="none" stroke="#9F9F9F" stroke-width="1.2" stroke-dasharray="3 3"/>';
       return;
     }
-    var p = pol(rMax * Math.max(0, Math.min(150, e.pct)) / 150, i);
-    poli += p.x.toFixed(1) + ',' + p.y.toFixed(1) + ' ';
-    marcas += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="5" fill="' + cor + '" stroke="#fff" stroke-width="1.5"><title>' + esc(e.label) + ': ' + e.pct + '% da meta</title></circle>';
+    var r = raio(p);
+    var a = pol(r, a0), b = pol(r, a1);
+    petalas += '<path d="M ' + cx + ' ' + cy + ' L ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' A ' + r.toFixed(1) + ' ' + r.toFixed(1) + ' 0 0 1 ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1) + ' Z" fill="' + cor + '" fill-opacity="0.78" stroke="' + cor + '" stroke-width="1"/>';
   });
-  if (poli) svg += '<polygon points="' + poli + '" fill="url(#indRadarFill)" stroke="#1A1A1A" stroke-width="2" stroke-linejoin="round"/>';
-  svg += '<text x="' + (cx + 4) + '" y="' + (cy - rMax * 100 / 150 - 4).toFixed(1) + '" font-size="9.5" font-weight="700" fill="#8A6D1C">meta</text>';
-  return svg + marcas + rotulos + '</svg>';
+  svg += petalas + rotulos;
+  return svg + '</svg>';
 }
-
 function indCardHtml_(e) {
   var est = indEstado_(e);
   var r = indRitmo_(e);
@@ -558,7 +569,7 @@ function renderRadarCS(d) {
   var tom = longe.length ? 'critico' : (bem.length === comMeta.length ? 'ok' : 'atencao');
   el.innerHTML = '<div class="ind-resumo"><div class="ind-placar ' + tom + '"><b>' + bem.length + '</b><span>de ' + comMeta.length + (aberto ? ' na meta ou no ritmo' : ' na meta') + '</span></div>'
     + '<div class="ind-resumo-txt">' + frase + aviso + '</div></div>'
-    + '<div class="ind-grid"><div class="ind-radar">' + indRadarSvg_(eixos) + legenda + '</div>'
+    + '<div class="ind-grid"><div class="ind-radar">' + indRoseSvg_(eixos) + legenda + '</div>'
     + '<div class="ind-cards">' + ordenados.map(indCardHtml_).join('') + '</div></div>';
 }
 
