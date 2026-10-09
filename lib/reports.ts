@@ -26,6 +26,8 @@ import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias } from './gtd-prazos';
+import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
+import { ACOES_POR_INDICADOR } from '../config/acoes-por-indicador';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
 import { insightsGestor, type CtxInsights } from './insights';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
@@ -1895,6 +1897,51 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
 // ex-membros); ligado volta a usar getCSListParaAgregados (ativo + inativo + EX_MEMBROS_SEM_CONTA,
 // comportamento original). Os dois vêm da MESMA lista de membros que alimenta ranking e radar juntos
 // (relatorios/porCS abaixo), então o filtro nunca pode pegar um gráfico e esquecer o outro.
+// Ritmo do mês em andamento (revisão out/2026, V3). Só para o mês atual: em meses fechados devolve null.
+// Para cada CS ativo: realizado, meta e previsto até hoje de cada indicador do ritmo (lib/ritmo.ts).
+// Os conselhos do CS no mês vêm de historico_conselhos_items (data_conselho), cada linha é um conselho da carteira.
+const RITMO_BASE_INDICADOR: Record<string, BaseRitmo | 'direto'> = {
+  casesSucesso: 'conselho', matchmakings: 'conselho', rounds: 'util', upsell: 'util', downsell: 'util', indicacoes: 'util', cumprimentoGtd: 'direto',
+};
+export const RITMO_INDICADORES = ['casesSucesso', 'matchmakings', 'rounds', 'upsell', 'downsell', 'indicacoes', 'cumprimentoGtd'];
+
+function montarRitmoDoMes(porCS: any[], dados: DadosBrutos, seletorMes: string, ano: number) {
+  const hoje = hojeSP();
+  const numeroMes = MESES_ORDEM.indexOf(seletorMes) + 1;
+  if (!numeroMes || Number(hoje.slice(0, 4)) !== ano || numeroMes !== Number(hoje.slice(5, 7))) return null;
+  const mes = `${ano}-${String(numeroMes).padStart(2, '0')}`;
+
+  const linhas = porCS.filter((c) => c.ativo && !c.ex).map((c) => {
+    const conselhosMes = (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(c.nome)
+      && h.data_conselho && String(h.data_conselho).slice(0, 7) === mes);
+    const conselhosTotal = conselhosMes.length;
+    const conselhosRealizados = conselhosMes.filter((h: any) => String(h.data_conselho).slice(0, 10) <= hoje).length;
+    const itens: Record<string, any> = {};
+    RITMO_INDICADORES.forEach((chave) => {
+      const i = c.indicadores?.[chave];
+      const base = RITMO_BASE_INDICADOR[chave];
+      const meta = i?.meta ?? null;
+      const realizado = i?.calculado ?? null;
+      const resultado = base === 'direto'
+        ? avaliarMetaCheia(meta, realizado)
+        : calcularRitmo({ indicador: chave, base, mes, hoje, meta, realizado, conselhosTotal, conselhosRealizados });
+      itens[chave] = { ...resultado, meta, realizado, manual: i?.manual ?? null, base };
+    });
+    const atrasados = RITMO_INDICADORES.filter((k) => itens[k].status === 'atras').length;
+    return { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, conselhosTotal, conselhosRealizados, atrasados, itens };
+  }).sort((a, b) => b.atrasados - a.atrasados || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+  const comMeta = linhas.flatMap((l) => RITMO_INDICADORES.map((k) => l.itens[k])).filter((i) => i.status !== 'sem_meta');
+  return {
+    mes,
+    hoje,
+    indicadoresOrdem: RITMO_INDICADORES,
+    resumo: { noRitmo: comMeta.filter((i) => i.status === 'no_ritmo').length, comMeta: comMeta.length },
+    acoes: ACOES_POR_INDICADOR,
+    linhas,
+  };
+}
+
 export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, incluirExMembros: boolean = false) {
   const dados = await getDadosBrutos(sb);
   const membros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
@@ -1923,6 +1970,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
+    ritmo: montarRitmoDoMes(porCS, dados, seletorMes, ano),
     indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos', 'healthDaBase'],
     labelsIndicador: LABELS_INDICADOR,
     radarEixos: RADAR_EIXOS.map((e) => e.label),

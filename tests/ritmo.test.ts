@@ -52,3 +52,12 @@ const cedoDemais = calcularRitmo({ ...base, hoje: '2026-10-05', base: 'util', me
 assert.equal(cedoDemais.projecao, null);
 
 console.log('ritmo: todos os casos passaram');
+
+// Meta cheia (GTD): sem previsto, com faixas de 70% e 100%
+import { avaliarMetaCheia } from '../lib/ritmo.ts';
+assert.equal(avaliarMetaCheia(100, 100).status, 'no_ritmo');
+assert.equal(avaliarMetaCheia(100, 75).status, 'atencao');
+assert.equal(avaliarMetaCheia(100, 40).status, 'atras');
+assert.equal(avaliarMetaCheia(100, null).status, 'atras');
+assert.equal(avaliarMetaCheia(null, 40).status, 'sem_meta');
+console.log('meta cheia: todos os casos passaram');

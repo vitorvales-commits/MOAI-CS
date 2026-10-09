@@ -8,6 +8,7 @@
 // Monday, senão o dia de criação do item), filtro do recorte (churn_filtrados) e classificação do
 // CS (cs_categoria). O TypeScript só lê e desenha.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { acaoParaMotivo } from '../config/acoes-por-motivo';
 
 // ============ recorte ============
 
@@ -696,6 +697,22 @@ export function anonimizar(texto: string | null | undefined, termos: string[]): 
 
 // ============ resposta da tela (usada pela rota e pelos testes) ============
 
+// Pedidos de melhoria por motivo do mês (revisão out/2026, K4): quantos churns, até 3 trechos do que a
+// pessoa sugeriu (anonimizados), a ação sugerida e os ids dos churns de origem para a melhoria.
+export function agruparPedidosMelhoria(itens: ItemChurn[], termos: string[]) {
+  const grupos = new Map<string, { chave: string; rotulo: string; acao: string; qtd: number; ids: number[]; trechos: string[] }>();
+  itens.forEach((i) => {
+    const chave = i.motivo_principal;
+    if (!grupos.has(chave)) grupos.set(chave, { chave, rotulo: infoMotivo(chave).rotulo, acao: acaoParaMotivo(chave), qtd: 0, ids: [], trechos: [] });
+    const g = grupos.get(chave)!;
+    g.qtd++;
+    g.ids.push(i.id);
+    const texto = (i.sugestao_melhoria || '').trim();
+    if (texto && g.trechos.length < 3 && !g.trechos.includes(texto)) g.trechos.push(anonimizar(texto, termos));
+  });
+  return Array.from(grupos.values()).sort((a, b) => b.qtd - a.qtd || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+}
+
 export async function respostaTela(supabase: SupabaseClient, recorte: Recorte) {
   await validarCsAtivo(supabase, recorte);
   const [tela, opcoes] = await Promise.all([
@@ -703,7 +720,32 @@ export async function respostaTela(supabase: SupabaseClient, recorte: Recorte) {
     buscarOpcoesFiltro(supabase),
   ]);
   const textos = textosTela(tela, recorte);
+  // Situação do mês e motivos com o mês anterior (K1 e K3), e pedidos de melhoria por motivo (K4).
+  // A série é sempre mensal, mesmo quando a tela está em semanas.
+  const serieMensal = await buscarSerie(supabase, recorte, 'mes');
+  const refInicio = `${tela.referencia}-01`;
+  const ultimos6 = serieMensal.periodos.filter((p) => p.inicio < refInicio).slice(-6);
+  const periodoDoMes = (mes: string) => serieMensal.periodos.find((p) => p.inicio.slice(0, 7) === mes);
+  const pAtual = periodoDoMes(tela.referencia);
+  const pAnterior = periodoDoMes(mesAnteriorDe(tela.referencia));
+  const chavesMotivo = Array.from(new Set([...Object.keys(pAtual?.porMotivo ?? {}), ...Object.keys(pAnterior?.porMotivo ?? {})]));
+  const motivosMes = chavesMotivo
+    .map((chave) => ({ chave, rotulo: infoMotivo(chave).rotulo, atual: pAtual?.porMotivo[chave] ?? 0, anterior: pAnterior?.porMotivo[chave] ?? 0 }))
+    .sort((a, b) => b.atual - a.atual || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+  const situacao = {
+    churnsMes: tela.totalMes,
+    churnsMesAnterior: tela.totalMesAnterior,
+    mediaSeisMeses: ultimos6.length ? Math.round((ultimos6.reduce((s, p) => s + p.total, 0) / ultimos6.length) * 10) / 10 : null,
+    mesesNaMedia: ultimos6.length,
+  };
+  const { inicio, fim } = intervaloDoMes(tela.referencia);
+  const itensMes = await buscarItens(supabase, recorte, { inicio, fim, apenasDentro: true });
+  const termos = await buscarTermosIdentificaveis(supabase);
+  const pedidosMelhoria = agruparPedidosMelhoria(itensMes, termos);
   return {
+    situacao,
+    motivosMes,
+    pedidosMelhoria,
     recorte,
     descricao: descreverRecorte(recorte),
     query: recorteParaQuery(recorte),

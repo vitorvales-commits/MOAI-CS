@@ -191,6 +191,7 @@ export async function carregarReconquista(supabase: SupabaseClient, incluirTalve
     status: STATUS_RECONQUISTA,
     ...montado,
     pendencias: pendenciasReconquista(soVoltaria),
+    pendenciasDetalhe: pendenciasDetalheReconquista(soVoltaria),
   };
 }
 
@@ -216,4 +217,21 @@ export async function definirReconquista(supabase: SupabaseClient, e: EntradaDef
   });
   if (error) throw new Error(error.message);
   return data;
+}
+
+// Pendências de reconquista em forma estruturada para a tabela "O que fazer agora" (revisão out/2026, K2).
+// Contatos vencidos viram uma linha cada. Quem disse que voltaria e ainda não foi contatado vira uma linha
+// por CS, com a contagem (pedido: "Marcos: 12 ex membros que voltariam sem contato").
+export interface PendenciaReconquistaDetalhe { tipo: 'reconquista' | 'reconquista_massa'; membro: string; cs: string; diasParado: number; quantidade: number | null; proximoPasso: string; churnId: number | null }
+export function pendenciasDetalheReconquista(itens: LinhaReconquista[]): PendenciaReconquistaDetalhe[] {
+  const vencidos: PendenciaReconquistaDetalhe[] = itens.filter((i) => i.vencido)
+    .map((i) => ({ tipo: 'reconquista' as const, membro: i.membro, cs: i.cs || 'não informado', diasParado: i.diasVencido || 0, quantidade: null,
+      proximoPasso: `Retomar o contato${i.responsavel ? `, responsável ${i.responsavel}` : ''}`, churnId: i.churnId }));
+  const porCs = new Map<string, number>();
+  itens.filter((i) => i.status === 'a_contatar' && i.faixa === 'voltaria' && !i.vencido)
+    .forEach((i) => { const cs = i.cs || 'não informado'; porCs.set(cs, (porCs.get(cs) || 0) + 1); });
+  const massa: PendenciaReconquistaDetalhe[] = Array.from(porCs.entries())
+    .map(([cs, qtd]) => ({ tipo: 'reconquista_massa' as const, membro: `${qtd} ${qtd === 1 ? 'ex membro' : 'ex membros'} que voltariam sem contato`, cs, diasParado: 0, quantidade: qtd,
+      proximoPasso: 'Fazer o primeiro contato', churnId: null }));
+  return [...vencidos.sort((a, b) => b.diasParado - a.diasParado), ...massa.sort((a, b) => (b.quantidade || 0) - (a.quantidade || 0))];
 }

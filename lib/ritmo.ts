@@ -95,3 +95,18 @@ export function calcularRitmo(e: EntradaRitmo): ResultadoRitmo {
 
   return { previsto, fracao, status, projecao, baseTexto };
 }
+
+// Indicador sem ritmo (GTD): compara o realizado direto com a meta cheia, sem previsto.
+// Até 70% da meta é "Atrás"; de 70% a 100% é "Atenção"; a partir de 100% é "No ritmo".
+export function avaliarMetaCheia(meta: number | null | undefined, realizado: number | null | undefined): ResultadoRitmo {
+  const baseTexto = 'meta cheia';
+  if (meta === null || meta === undefined || !(meta > 0)) {
+    return { previsto: null, fracao: 1, status: 'sem_meta', projecao: null, baseTexto };
+  }
+  if (realizado === null || realizado === undefined) {
+    return { previsto: meta, fracao: 1, status: 'atras', projecao: null, baseTexto };
+  }
+  const razao = realizado / meta;
+  const status: StatusRitmo = razao >= 1 ? 'no_ritmo' : razao >= RITMO_LIMIAR_ATENCAO ? 'atencao' : 'atras';
+  return { previsto: meta, fracao: 1, status, projecao: null, baseTexto };
+}

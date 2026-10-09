@@ -8,7 +8,7 @@ import { classificarTemasCom, semAcento, TEMA_OUTROS } from './voz.ts';
 import { AMOSTRA_MINIMA, NOTA_BAIXA_ESCALA_10, NOTA_BAIXA_ESCALA_5 } from './constants.ts';
 
 export type FonteVoz = 'saida' | 'nps_sugestao' | 'nps_cs';
-export type TextoVoz = { fonte: FonteVoz; mes: string; texto: string | null };
+export type TextoVoz = { fonte: FonteVoz; mes: string; texto: string | null; nota?: number | null };
 
 export const TEMAS_MEMBRO: { chave: string; rotulo: string; termos: RegExp }[] = [
   { chave: 'negocios', rotulo: 'Geração de negócios e conexões', termos: /\b(negocio\w*|cliente\w*|venda\w*|vender|indicac\w*|conex\w*|contato\w*|parceri\w*|contrato\w*|networking|matchmaking|oportunidade\w*|fechament\w*|fechar)\b/g },

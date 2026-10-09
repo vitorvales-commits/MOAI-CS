@@ -3,7 +3,7 @@
 // Tudo sai da função visitas_resultado (SQL), que já calcula retenção, IEV e situação do membro.
 import { hojeSP } from './gtd-prazos.ts';
 import { infoMotivo } from './churn.ts';
-import { csvVisitas, dentroDaJanelaVisitas, eficacia, calibracao, filaAcoes, funil, ievPorSafra, perfil, type VisitaLinha } from './visitas.ts';
+import { csvVisitas, dentroDaJanelaVisitas, eficacia, calibracao, filaAcoes, filaAcoesDetalhe, funil, ievPorSafra, perfil, type VisitaLinha } from './visitas.ts';
 
 export async function carregarVisitas(supabase: any, ref: string) {
   const { data, error } = await supabase.rpc('visitas_resultado');
@@ -47,6 +47,7 @@ export async function carregarVisitas(supabase: any, ref: string) {
       ref,
       hoje,
       a2: filaAcoes(todas, hoje),
+      a2Detalhe: filaAcoesDetalhe(todas, hoje),
       cartoes: {
         pedidosEmAberto: {
           quantidade: emAberto.length,
