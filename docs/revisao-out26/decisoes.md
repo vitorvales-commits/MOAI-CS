@@ -8,3 +8,12 @@
 6. **Calendário de conselhos (A9)**: usado `historico_conselhos_items` (tem CS e data), porque `agenda_conselhos_items` não tem CS.
 7. **Visitas vazias (A7)**: a taxa de preenchimento não foi calculada (0 de 0). Mensagem de K6 usada no lugar do percentual. Verificar o board no Monday antes de concluir que está vazio.
 8. **Números de reconquista e pedidos de churn (A8)**: "6 de 18" e "85" não aparecem nas tabelas do banco. Não foi possível localizar a origem sem o código da tela de reconquista. Pendência para a Fase 2.
+
+## Fase 2 e lógica das fases 3 a 5
+
+9. **Feriados (V3)**: lista nacional de 2026 em `lib/feriados.ts`. Carnaval e Corpo de Deus ficam de fora (ponto facultativo). Sexta-feira Santa entra.
+10. **Downsell no ritmo (V3)**: o texto manda usar dias úteis para Downsell, mas o mesmo texto diz que Downsell fica contra a meta cheia. Segui a regra de previsto (dias úteis). Confirmar com o gestor.
+11. **Ritmo (V3)**: limiares de 70% (atenção) e 25% (projeção) conforme o texto. Só a função pura está pronta. O layout da tabela ainda não foi feito.
+12. **Polaridade (N1)**: 9 e 10 elogio; 7 e 8 crítica com rótulo neutro; 0 a 6 crítica. Implementada em `lib/voz-membro/polaridade.ts`.
+13. **Tecnologia e formulários (N2)**: tema novo, com internet, wifi, rede, cadastro, formulário, site, CPF, app e link. Saíram de "Local e estrutura".
+14. **Telas não feitas**: V1, V2, V4, N3, N4, K1 a K6 e as capturas de tela da Fase 6 continuam pendentes.
