@@ -1399,7 +1399,7 @@ function renderCardsCS() {
     var pos = temNota ? '<span class="cs-card-pos">' + c.posicao + 'º no ranking</span>' : '<span class="cs-card-pos sem">Fora do ranking</span>';
     var corpo = temNota
       ? '<div><div class="cs-card-score" style="color:' + status.cor + '">' + c.pontuacao + '</div><div class="cs-card-score-lbl">pontos</div></div>'
-      : '<div class="cs-card-semdados">Sem dados suficientes<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
+      : '<div class="cs-card-semdados">' + (c.estado === 'sem_meta' ? 'Sem meta' : 'Sem dados suficientes') + '<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
     var card = document.createElement('div');
     card.className = 'cs-card'; card.tabIndex = 0; card.setAttribute('role', 'link');
     card.setAttribute('aria-label', 'Abrir a página de ' + c.nome);
@@ -1411,9 +1411,11 @@ function renderCardsCS() {
     el.appendChild(card);
   });
   var sem = DADOS.cards.filter(function (c) { return c.estado === 'sem_dados_suficientes'; }).map(function (c) { return c.nome; });
-  document.getElementById('csGridNota').textContent = sem.length
-    ? 'Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '. É preciso ter metas cadastradas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.'
-    : '';
+  var semMeta = DADOS.cards.filter(function (c) { return c.estado === 'sem_meta'; }).map(function (c) { return c.nome; });
+  var notas = [];
+  if (sem.length) notas.push('Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '.');
+  if (semMeta.length) notas.push('Sem meta cadastrada e fora do ranking: ' + semMeta.join(', ') + '. Faltam metas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.');
+  document.getElementById('csGridNota').textContent = notas.join(' ');
 }
 
 function divergTag(manual, calc) {

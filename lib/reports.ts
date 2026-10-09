@@ -1314,9 +1314,14 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   });
   // Cumprimento do GTD do CS: razão pooled (etapas feitas sobre etapas totais dos ciclos atuais dos
   // conselhos dele), não a média das taxas (07/10/2026). Ver taxaGtdAgregada em lib/gtd.ts.
-  // Só ciclos abertos (cicloAberto, até D+14 do conselho): a mesma regra das Urgências.
-  const ciclosAbertosDoCS = (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(cfg.nome) && cicloAberto(h.data_conselho));
-  const cumprimentoGtdMedia = taxaGtdAgregada(ciclosAbertosDoCS.map((h: any) => contarEtapas(h.etapas)));
+  // Conselhos já realizados dentro do período escolhido (data do conselho entre o início do mês e
+  // o fim do período, e não depois de hoje). Antes usava só os ciclos abertos de hoje, o que misturava
+  // conselhos futuros sem etapa feita e ignorava o mês do filtro (revisão out/2026, achado A2).
+  const hojeGtd = hojeSP();
+  const fimGtd = mesFim < hojeGtd ? mesFim : hojeGtd;
+  const conselhosRealizadosDoCS = (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(cfg.nome)
+    && h.data_conselho && h.data_conselho >= mesInicio && h.data_conselho <= fimGtd);
+  const cumprimentoGtdMedia = taxaGtdAgregada(conselhosRealizadosDoCS.map((h: any) => contarEtapas(h.etapas)));
 
   const futurosDoCS = conselhos.filter((c) => c.proximaData && c.proximaDataEhFutura)
     .sort((a, b) => new Date(a.proximaData!).getTime() - new Date(b.proximaData!).getTime());
@@ -1934,9 +1939,12 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
         const c = porCS.find((x) => x.nome === r.nome)!;
         return { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, pontuacao: r.scoreReal as number | null, posicao: r.posicao as number | null, estado: 'com_pontuacao' as string, elegiveis: c.pontuacao.elegiveis, detalhamento: c.detalhamento };
       }),
-      ...porCS.filter((c) => c.ativo && !c.ex && c.pontuacao.estado === 'sem_dados_suficientes').map((c) => (
-        { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, pontuacao: null as number | null, posicao: null as number | null, estado: 'sem_dados_suficientes' as string, elegiveis: c.pontuacao.elegiveis, detalhamento: c.detalhamento }
-      )),
+      // "sem_meta" quando há realizado e faltam metas cadastradas; "sem_dados_suficientes" só quando
+      // não há nem um realizado (revisão out/2026, achado A3: o selo "sem dado" saía por falta de meta).
+      ...porCS.filter((c) => c.ativo && !c.ex && c.pontuacao.estado === 'sem_dados_suficientes').map((c) => {
+        const temRealizado = c.pontuacao.itens.some((i) => i.valorAlcancado !== null && i.valorAlcancado !== undefined);
+        return { nome: c.nome, nomeCompleto: c.nomeCompleto, fotoUrl: c.fotoUrl, pontuacao: null as number | null, posicao: null as number | null, estado: (temRealizado ? 'sem_meta' : 'sem_dados_suficientes') as string, elegiveis: c.pontuacao.elegiveis, detalhamento: c.detalhamento };
+      }),
     ],
   };
 }
