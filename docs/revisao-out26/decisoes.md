@@ -33,3 +33,15 @@
 25. **Lint**: o repo não tem configuração de ESLint, então não há o que rodar. O `next build` passou.
 26. **Capturas de tela (Fase 6)**: não foram feitas. As páginas exigem sessão de gestor autenticada e não há como abri-las com dados reais daqui. Pendente para validação manual em preview.
 27. **Merge**: não feito. A validação visual está pendente, e um merge em `main` publica em produção pela Vercel. O branch padrão é `main` (não existe `master`).
+
+## Correções da rodada 2 (09/10/2026)
+
+- **Não substituir sem pedido explícito**: "Onde a nota cai" (mapa de calor) e "O que os membros sugerem" (dois cartões com temas e trechos) são formatos aprovados pelo dono do produto. Execuções futuras não devem trocá-los por outro tipo de gráfico, nem mover o detalhe para painel lateral, sem pedido explícito.
+- **Parte A, intenção por tokens**: radical removendo o "s" final; tempo (proximo, proxima, quando, data, dia, agenda, calendario, marcado, marcada); evento (conselho, reuniao, reunioe, encontro, sessao). Pergunta com palavra de metas nunca cai em reuniões. "Quando" sozinho com nome vai para a resolução de entidade. Ambiguidade por primeiro nome: "Encontrei mais de um conselho com esse nome:".
+- **Parte B, casamento agenda-grupo**: título "Produto | Nome (CS)"; alias confirmado antes do automático; grupos is_repo só quando não há comum. Até a view existir, o código usa a regra em TypeScript com o alias de João Pedro fixo em `lib/nps-agenda.ts`.
+- **Parte B, período**: a média por conselho usa os conselhos com resposta no mês (avaliados), para outubro e setembro.
+- **Parte C e D**: "Onde a nota cai" e "O que os membros sugerem" voltaram ao formato aprovado, a partir de `e8d8858` e `1181e0b`. O gráfico de pontos e o gráfico de sugestões foram removidos, junto com o código que só eles usavam.
+- **Palavras acrescentadas aos temas (Parte D.3)**: Comida e coffee: comida, coffee, café, buffet, lanche, almoço, jantar, bebida, taça, cardápio, restaurante, alimento, fruta, pipoca, suco, refri, pão, doce, açúcar, sobremesa, pizza, salgado. Local e estrutura: sala, cadeira, ar condicionado, privado, confortável, barulho, estacionamento. Conselho: quórum, poucas empresas. Comunicação: métrica. Hífen vira espaço antes de casar ("ar-condicionado", "wi-fi").
+- **Ausência de sugestão**: além da lista exata, respostas curtas que só elogiam ou não dizem nada (até quatro palavras, começando por tudo, excelente, ótimo, amei, nada, só, etc.) contam como sem conteúdo. Respostas com reclamação ou pedido nunca são descartadas.
+- **Outros**: em setembro de 2026, de 54 sugestões com conteúdo, 9 ficavam sem tema (16,7%). Depois das palavras acima, restam 2 (3,7%); medição feita em SQL com a mesma lógica dos temas.
+- **Aliases não confirmados**: 23 nomes da agenda com candidato de grupo ficam não confirmados no seed; ver relatório.

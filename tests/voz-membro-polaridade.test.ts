@@ -27,12 +27,18 @@ for (const t of tecnologia) {
 
 // Textos de local e estrutura continuam onde estavam
 const estrutura = [
-  'algumas taças de café estavam com sujeira dentro',
+  'Cadeiras estão ficando duras',
   'Local mais privado',
 ];
 for (const t of estrutura) {
   assert.ok(chaves(t).includes('estrutura'), `deveria ser estrutura: ${t}`);
   assert.ok(!chaves(t).includes('tecnologia'), `não deveria ser tecnologia: ${t}`);
 }
+
+// Parte D: Comida e coffee tem prioridade sobre Local e estrutura para comida e taças
+assert.ok(chaves('algumas taças de café estavam com sujeira dentro').includes('comida'), 'taças e café são comida');
+assert.ok(chaves('Mais comida no buffet').includes('comida'), 'comida no buffet');
+assert.ok(chaves('Cadeiras estão ficando duras').includes('estrutura'), 'cadeiras são local e estrutura');
+assert.ok(chaves('Melhorar wifi para responder o nps').includes('tecnologia'), 'wifi é tecnologia');
 
 console.log('polaridade e temas: todos os casos passaram');

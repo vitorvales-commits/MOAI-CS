@@ -1,17 +1,17 @@
-// Intenção "próximas reuniões" da consulta rápida (revisão out/2026, rodada 2, Fase 5). Sem IA: regra fixa.
-// A parte pura (reconhecer, resolver a entidade, filtrar e formatar) não usa banco e é testada em
-// tests/proximas-reunioes.test.ts. O carregamento dos vínculos só faz SELECT.
+// Intenção "próximas reuniões" da consulta rápida (revisão out/2026, rodada 2, Fase 5; reescrita na Parte A da
+// correção). Sem IA: regra fixa. O reconhecimento é por tokens (radical simples, sem acento, minúsculas), e não por
+// frase literal. A parte pura não usa banco; o carregamento só faz SELECT.
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export const TERMOS_PROXIMAS_REUNIOES = [
-  'proximo conselho', 'proxima reuniao', 'proximas reunioes', 'quando e o conselho',
-  'data do conselho', 'agenda do conselho', 'quando acontece',
-];
+// Radicais de tempo e de evento. O "s" final de plural já sai ("proximos" vira "proximo", "datas" vira "data").
+export const TOKENS_TEMPO = ['proximo', 'proxima', 'quando', 'data', 'dia', 'agenda', 'calendario', 'marcado', 'marcada'];
+export const TOKENS_EVENTO = ['conselho', 'reuniao', 'reunioe', 'encontro', 'sessao'];
+// Palavras de metas. Quando aparecem, a pergunta é de metas, mesmo com "quando".
+const TOKENS_METAS = ['meta', 'bateu', 'bater', 'atingiu', 'cumpriu', 'alcancou', 'desempenho', 'indicador', 'resultado'];
 
 export interface ReuniaoAgenda { conselheiro: string; dataIso: string; status: string | null }
 
-// Vínculos já resolvidos: conselheiros (nome do conselho), membros com o conselheiro do grupo deles,
-// e cada CS com os membros da carteira. Um membro sem grupo ativo tem conselheiro nulo.
+// Vínculos já resolvidos: conselheiros (nome do conselho), membros com o conselheiro do grupo, e cada CS com os membros.
 export interface Vinculos {
   conselheiros: string[];
   membros: { nome: string; conselheiro: string | null }[];
@@ -19,7 +19,8 @@ export interface Vinculos {
 }
 
 export type Entidade =
-  | { tipo: 'conselheiro' | 'membro' | 'cs'; nome: string; conselheiros: string[] };
+  | { tipo: 'conselheiro' | 'membro' | 'cs'; nome: string; conselheiros: string[] }
+  | { tipo: 'ambiguo'; nome: string; candidatos: string[] };
 
 const STATUS_CANCELADO = ['cancelado'];
 
@@ -27,9 +28,22 @@ export function normalizarBusca(t: string): string {
   return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+// Quebra em palavras e reduz cada uma ao radical: tira o "s" final de plural quando a palavra tem mais de três letras.
+export function tokensDaPergunta(pergunta: string): string[] {
+  return normalizarBusca(pergunta)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+}
+
+// Verdadeiro com tempo e evento; ou com tempo sozinho, que a resolução de entidade completa depois
+// (ex.: "quando é o Daniel Brayer"). Pergunta de metas nunca entra aqui.
 export function reconhecePerguntaReunioes(pergunta: string): boolean {
-  const p = normalizarBusca(pergunta);
-  return TERMOS_PROXIMAS_REUNIOES.some((t) => p.includes(t));
+  const tokens = tokensDaPergunta(pergunta);
+  const tempo = tokens.some((t) => TOKENS_TEMPO.includes(t));
+  const metas = tokens.some((t) => TOKENS_METAS.includes(t));
+  if (metas) return false;
+  return tempo;
 }
 
 // Um nome aparece na pergunta como palavra inteira, sem acento e sem caixa.
@@ -41,7 +55,17 @@ function contemNome(pergunta: string, nome: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${escapado}($|[^a-z0-9])`).test(p);
 }
 
-// Ordem da especificação: conselheiro, depois membro, depois CS. Entre nomes do mesmo tipo, o mais longo vence.
+// Um nome casa por token quando alguma palavra do nome (com quatro letras ou mais) aparece na pergunta.
+// Assim "Brayer" sozinho casa com "Daniel Brayer".
+function casaPorToken(pergunta: string, nome: string): boolean {
+  const tokensPergunta = new Set(tokensDaPergunta(pergunta));
+  return normalizarBusca(nome).split(' ')
+    .filter((p) => p.length >= 4)
+    .some((p) => tokensPergunta.has(p) || tokensPergunta.has(p.endsWith('s') ? p.slice(0, -1) : p));
+}
+
+// Ordem: conselheiro, membro, CS (nome completo; o mais longo vence). Sem nome completo, tenta por token entre os
+// conselheiros: um só casa e resolve; vários viram ambiguidade, que a resposta trata.
 export function resolverEntidade(pergunta: string, v: Vinculos): Entidade | null {
   const porTamanho = <T extends { nome: string }>(lista: T[]) => [...lista].sort((a, b) => b.nome.length - a.nome.length);
   const conselheiro = porTamanho(v.conselheiros.map((nome) => ({ nome }))).find((c) => contemNome(pergunta, c.nome));
@@ -54,6 +78,9 @@ export function resolverEntidade(pergunta: string, v: Vinculos): Entidade | null
       .filter((c): c is string => !!c))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
     return { tipo: 'cs', nome: cs.nome, conselheiros };
   }
+  const candidatos = v.conselheiros.filter((c) => casaPorToken(pergunta, c)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (candidatos.length === 1) return { tipo: 'conselheiro', nome: candidatos[0], conselheiros: [candidatos[0]] };
+  if (candidatos.length > 1) return { tipo: 'ambiguo', nome: candidatos[0], candidatos };
   return null;
 }
 
@@ -71,7 +98,7 @@ export function partesSP(dataIso: string): { dia: string; mes: string; hora: num
   return { dia: p.day, mes: p.month, hora: Number(p.hour) % 24, minuto: p.minute, semana: SEMANA_PT[p.weekday] || p.weekday };
 }
 
-// "14h" para hora cheia, "14h30" com minutos.
+// "9h" para hora cheia, "14h30" com minutos. A hora nunca tem zero à esquerda.
 export function formatarHora(hora: number, minuto: string): string {
   return minuto === '00' ? `${hora}h` : `${hora}h${minuto}`;
 }
@@ -111,9 +138,15 @@ export function responderProximasReunioes(pergunta: string, v: Vinculos, agenda:
     return 'De qual conselho? Escreva o nome do conselheiro, do membro ou do CS.' +
       (linhas.length ? `\n\n${linhas.join('\n')}` : '');
   }
+  if (entidade.tipo === 'ambiguo') {
+    const atalhos = entidade.candidatos.map((c) => {
+      const datas = proximasDoConselheiro(agenda, c, agoraIso, 1);
+      return `- ${c}${datas.length ? `: ${formatarLinhaReuniao(datas[0]).slice(2)}` : ''}`;
+    });
+    return `Encontrei mais de um conselho com esse nome:\n\n${atalhos.join('\n')}`;
+  }
   if (entidade.tipo !== 'cs') {
-    const datas = proximasDoConselheiro(agenda, entidade.conselheiros[0], agoraIso);
-    return blocoConselho(entidade.conselheiros[0], datas);
+    return blocoConselho(entidade.conselheiros[0], proximasDoConselheiro(agenda, entidade.conselheiros[0], agoraIso));
   }
   // CS com vários conselhos: um bloco por conselho, precedido da linha com o nome do conselho
   if (!entidade.conselheiros.length) return `Nenhum conselho na carteira de ${entidade.nome}.`;
@@ -133,7 +166,13 @@ async function todas(consulta: (de: number, ate: number) => any): Promise<any[]>
   }
   return out;
 }
-const conselheiroDoTitulo = (titulo: string | null) => (titulo || '').split(' [')[0].trim();
+// Nome do conselheiro no título do grupo: entre "| " e " (" (formato atual) ou antes de " [" (formato antigo).
+const conselheiroDoTitulo = (titulo: string | null) => {
+  const t = String(titulo || '');
+  const m = /\|\s*(.+?)(?:\s*\(|$)/.exec(t);
+  if (m && m[1].trim()) return m[1].trim();
+  return t.split(' [')[0].trim();
+};
 
 export async function carregarReunioes(supabase: SupabaseClient): Promise<{ vinculos: Vinculos; agenda: ReuniaoAgenda[] }> {
   const [agendaRows, grupos, membrosRows, historico] = await Promise.all([
@@ -162,7 +201,7 @@ export async function carregarReunioes(supabase: SupabaseClient): Promise<{ vinc
   };
 }
 
-// Intenção registrada em lib/consulta.ts (INTENCOES). Mesmo formato dos demais: reconhece e responde.
+// Intenção registrada em lib/consulta.ts (INTENCOES), antes da de metas.
 export const intencaoProximasReunioes = {
   nome: 'proximas_reunioes',
   reconhece: reconhecePerguntaReunioes,

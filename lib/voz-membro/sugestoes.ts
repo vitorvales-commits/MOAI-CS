@@ -11,6 +11,7 @@ const EQUIVALENTES_SEM_SUGESTAO = new Set([
   'nao', 'n', 'na', 'nada', 'nenhum', 'nenhuma', 'nao tenho', 'nao tenho sugestao', 'nao tenho sugestoes',
   'sem sugestao', 'sem sugestoes', 'nenhuma sugestao', 'nenhuma sugestoes', 'sem mais', 'sem comentarios',
   'nada a acrescentar', 'tudo otimo', 'tudo bem', 'tudo certo', 'tudo perfeito', 'ok', 'n/a', 'na/a', 'nenhum comentario',
+  'ainda nao tenho', 'sem recomendacoes', 'sem recomendacao', 'x', 'xxx',
 ]);
 
 export function normalizarSugestao(t: string): string {
@@ -23,7 +24,9 @@ export function ehSemSugestao(texto: string | null | undefined): boolean {
   if (texto === null || texto === undefined) return true;
   const n = normalizarSugestao(String(texto));
   if (!n) return true;
-  return EQUIVALENTES_SEM_SUGESTAO.has(n);
+  if (EQUIVALENTES_SEM_SUGESTAO.has(n)) return true;
+  // Resposta curta que só elogia ou não diz nada ("excelente", "tudo ótimo", "amei tudo"): conta como sem conteúdo
+  return n.split(' ').length <= 4 && /^(tudo|esta|ta|foi|achei|muito|amei|adorei|excelente|otimo|perfeito|legal|bom|nada|so|xxxx|n|na|ok)\b/.test(n);
 }
 
 // Polaridade de avalia_cs_texto pela nota de hoje do CS.

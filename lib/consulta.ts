@@ -353,7 +353,7 @@ const INTENCOES: IntencaoDef[] = [
 ];
 
 const RESPOSTA_SEM_INTENCAO =
-  'Ainda não sei responder essa pergunta. Hoje sei falar sobre metas batidas e não batidas, por exemplo quais metas o Rodrigo bateu e não bateu, ou metas do time neste mês.';
+  'Ainda não sei responder essa pergunta. Hoje sei falar sobre metas batidas e não batidas e sobre as próximas reuniões de um conselho, por exemplo: quais metas o Rodrigo bateu ou quando é o próximo conselho do André Soares.';
 
 export async function processarPergunta(
   supabase: SupabaseClient,
