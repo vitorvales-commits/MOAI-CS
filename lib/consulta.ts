@@ -7,6 +7,7 @@
 // acrescenta um item nessa lista com reconhece/responder — não mexe na rota
 // nem na tela.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { intencaoProximasReunioes } from './consulta/proximas-reunioes.ts';
 
 export type Filtro = 'ambos' | 'bateu' | 'nao_bateu';
 
@@ -346,6 +347,7 @@ async function responderRecordesTimeIntencao(
 }
 
 const INTENCOES: IntencaoDef[] = [
+  intencaoProximasReunioes,
   { nome: 'recordes_time', reconhece: reconheceRecordesTime, responder: responderRecordesTimeIntencao },
   { nome: 'metas', reconhece: reconheceMetas, responder: responderMetasIntencao },
 ];

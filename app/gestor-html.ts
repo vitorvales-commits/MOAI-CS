@@ -178,6 +178,99 @@ export const GESTOR_STYLE = `
 .diverg-baixa{background:rgba(61,139,95,0.12);color:var(--verde);}
 
 .acoes-stack{margin-top:28px;}
+.nps-seletor{margin:4px 0 6px;}
+.nps-cobertura-wrap{margin:14px 0 6px;}
+.nps-cobertura{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:14px;padding:10px 16px 10px 10px;border:1px solid var(--cinza-borda);border-radius:999px;background:var(--branco);}
+.nps-cobertura:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;}
+.nps-cob-texto b{display:block;font-size:14px;}
+.nps-cob-texto small{display:block;font-size:12px;color:var(--cinza-apoio);}
+.nps-pontos svg{width:100%;height:auto;max-width:760px;display:block;}
+.nps-pontos circle{cursor:pointer;}
+.nps-prox{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--cinza-borda);font-size:13.5px;}
+.nps-prox span{color:var(--cinza-texto);white-space:nowrap;}
+.nps-pn-lista{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.nps-pn{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--cinza-borda);font-size:13.5px;}
+.nps-pn b{font-size:16px;font-family:'Bricolage Grotesque',sans-serif;}
+.nps-grafico-corpo{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:28px;align-items:center;margin-top:10px;}
+@media (max-width:760px){.nps-grafico-corpo{grid-template-columns:1fr;}}
+.nps-barras{display:flex;flex-direction:column;gap:10px;}
+.nps-barra-linha{all:unset;cursor:pointer;display:grid;grid-template-columns:minmax(120px,210px) minmax(0,1fr) 28px;gap:12px;align-items:center;}
+.nps-barra-linha:focus-visible,.nps-div-esq:focus-visible,.nps-div-dir:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
+.nps-outros{cursor:default;}
+.nps-tema{font-size:12.5px;font-weight:600;}
+.nps-trilha{position:relative;height:14px;border-radius:999px;background:var(--cinza-superficie);}
+.nps-trilha i{display:block;height:100%;border-radius:999px;background:var(--preto-tinta);}
+.nps-marca{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--dourado);}
+.nps-num{font-size:12.5px;font-weight:700;text-align:right;}
+.nps-anel-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;}
+.nps-anel-wrap p{margin:0;font-size:13px;}
+.nps-anel-wrap span{display:block;font-size:11.5px;color:var(--cinza-apoio);}
+.nps-cabecalho-div{display:grid;grid-template-columns:minmax(120px,210px) minmax(0,1fr) 28px;gap:12px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin-top:6px;}
+.nps-cabecalho-div span:nth-child(2){display:flex;justify-content:space-between;}
+.nps-div-linha{display:grid;grid-template-columns:minmax(120px,210px) minmax(0,1fr) 60px;gap:12px;align-items:center;margin-bottom:10px;}
+.nps-div{display:grid;grid-template-columns:1fr 1fr;align-items:center;height:14px;gap:0;}
+.nps-div-esq,.nps-div-dir{all:unset;cursor:pointer;position:relative;height:100%;background:var(--cinza-superficie);display:block;}
+.nps-div-esq{display:flex;justify-content:flex-end;border-radius:999px 0 0 999px;}
+.nps-div-dir{border-radius:0 999px 999px 0;}
+.nps-div-esq i{display:block;height:100%;background:var(--vermelho);border-radius:999px 0 0 999px;}
+.nps-div-dir i{display:block;height:100%;background:#4A4A4A;border-radius:0 999px 999px 0;}
+.nps-div-esq .nps-marca,.nps-div-dir .nps-marca{top:-4px;bottom:-4px;}
+.nps-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--cinza-texto);margin:12px 0 0;}
+.nps-legenda span{display:inline-flex;align-items:center;gap:6px;}
+.nps-legenda i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.nps-leg-mes{background:var(--preto-tinta);}
+.nps-leg-ant{background:var(--dourado);}
+.nps-leg-crit{background:var(--vermelho);}
+.nps-leg-elog{background:#4A4A4A;}
+.gtd-graficos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px;margin-top:14px;}
+@media (max-width:900px){.gtd-graficos{grid-template-columns:1fr;}}
+.gtd-grafico h4{font-size:14px;margin:0 0 2px;}
+.gtd-sub{font-size:12px;color:var(--cinza-apoio);margin:0 0 12px;}
+.gtd-linha{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 36px;gap:10px;align-items:center;margin-bottom:9px;}
+.gtd-rotulo{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.gtd-barra{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--cinza-superficie);}
+.gtd-seg{display:block;height:100%;position:relative;}
+.gtd-seg-atrasada{background:var(--vermelho);}
+.gtd-seg-avencer{background:var(--dourado);}
+.gtd-seg-emdia{background:#D9D6D0;}
+.gtd-seg.clicavel{cursor:pointer;}
+.gtd-seg.clicavel:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:2px;}
+.gtd-seg b{position:absolute;right:5px;top:0;line-height:16px;font-size:11px;color:var(--branco);}
+.gtd-total{font-size:12px;text-align:right;color:var(--cinza-texto);}
+.painel-lateral{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--branco);box-shadow:-8px 0 30px rgba(0,0,0,0.12);z-index:50;overflow:auto;padding:20px;box-sizing:border-box;}
+.painel-lateral[hidden]{display:none;}
+.painel-lateral-topo{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;font-size:15px;}
+.painel-fechar{border:none;background:var(--preto-tinta);color:var(--branco);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;}
+.ritmo-topo{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;margin:6px 0 18px;}
+.ritmo-hero b{display:block;font-size:30px;line-height:1.1;font-family:'Bricolage Grotesque',sans-serif;}
+.ritmo-hero span{font-size:13px;color:var(--cinza-texto);}
+.ritmo-dist{display:flex;height:14px;flex:1 1 260px;min-width:200px;border-radius:999px;overflow:hidden;background:var(--cinza-superficie);}
+.ritmo-dist i{display:block;height:100%;}
+.ritmo-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--cinza-texto);width:100%;}
+.ritmo-legenda span{display:inline-flex;align-items:center;gap:6px;}
+.ritmo-legenda i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.ritmo-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
+@media (max-width:980px){.ritmo-grade{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:640px){.ritmo-grade{grid-template-columns:1fr;}}
+.ritmo-card{border:1px solid var(--cinza-borda);border-radius:20px;padding:18px;background:var(--branco);cursor:pointer;display:flex;flex-direction:column;gap:12px;}
+.ritmo-card.com-atras{border-color:rgba(192,67,61,0.45);}
+.ritmo-card:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;}
+.ritmo-cab{display:flex;align-items:center;gap:12px;}
+.ritmo-cab b{font-size:15px;}
+.ritmo-foto{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 44px;}
+.ritmo-foto-ini{display:flex;align-items:center;justify-content:center;color:var(--branco);font-weight:700;font-size:17px;}
+.ritmo-anel-wrap{display:flex;justify-content:center;}
+.ritmo-atras h4{font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin:0 0 8px;}
+.ritmo-ind{margin-bottom:10px;}
+.ritmo-ind-nome{display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;}
+.ritmo-trilha2{position:relative;height:8px;border-radius:999px;background:var(--cinza-superficie);}
+.ritmo-trilha2 i{display:block;height:100%;border-radius:999px;background:var(--vermelho);}
+.ritmo-trilha2 b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--preto-tinta);}
+.ritmo-ind small{display:block;font-size:11.5px;color:var(--cinza-texto);margin-top:3px;}
+.ritmo-mais{font-size:12px;color:var(--cinza-apoio);margin:0;}
+.ritmo-tudo{font-size:13px;color:var(--cinza-texto);margin:0;}
+.ritmo-rodape-cartao{font-size:12px;color:var(--cinza-apoio);border-top:1px solid var(--cinza-borda);padding-top:10px;margin-top:auto;}
+.ritmo-nota{font-size:11.5px;color:var(--cinza-apoio);margin-top:16px;}
 .gtd-matriz-wrap{margin-top:14px;}
 .gtd-matriz{width:100%;border-collapse:collapse;font-size:12px;}
 .gtd-matriz th{font-size:10.5px;text-transform:uppercase;letter-spacing:0.03em;color:var(--cinza-apoio);text-align:center;padding:10px 8px;font-weight:600;}
@@ -747,6 +840,7 @@ export const GESTOR_HTML = `
       <button class="consulta-chip" type="button" data-pergunta="Quais metas o Rodrigo bateu e não bateu">Quais metas o Rodrigo bateu e não bateu</button>
       <button class="consulta-chip" type="button" data-pergunta="O que a Luana não bateu em agosto">O que a Luana não bateu em agosto</button>
       <button class="consulta-chip" type="button" data-pergunta="Metas do time neste mês">Metas do time neste mês</button>
+      <button class="consulta-chip" type="button" data-pergunta="Próximo conselho do André Soares">Próximo conselho do André Soares</button>
     </div>
     <div class="consulta-chips" id="consultaChipsRecentes"></div>
     <div id="consultaRespostaWrap"></div>
@@ -811,18 +905,10 @@ export const GESTOR_HTML = `
       <div class="block-head">
         <div>
           <h2>Ritmo do mês</h2>
-          <p>Realizado de cada CS contra a meta, com o previsto até hoje. Clique numa célula para ver a conta e a ação padrão.</p>
+          <p>Cada CS com a situação dos indicadores de volume e do GTD. Os atrasados aparecem com o realizado e o esperado até hoje. Clique num cartão para abrir o controle de perfis.</p>
         </div>
       </div>
-      <div class="ritmo-resumo" id="ritmoResumo"><div class="gestor-empty">Carregando…</div></div>
-      <div class="table-wrap"><div class="table-scroll">
-        <table class="ritmo-tabela">
-          <thead id="ritmoHead"></thead>
-          <tbody id="ritmoBody"></tbody>
-        </table>
-      </div></div>
-      <div class="ritmo-painel" id="ritmoPainel" hidden></div>
-      <div class="ritmo-rodape" id="ritmoRodape"></div>
+      <div id="ritmoConteudo"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
     <section class="block">
@@ -1165,8 +1251,10 @@ export const GESTOR_HTML = `
       <div class="churn-filtros">
         <label class="churn-campo">Mês <select class="pill-select" id="npsRef" title="Mês de referência"></select></label>
         <label class="churn-campo">CS <select class="pill-select" id="npsCs"><option value="">Todos</option></select></label>
+        <div class="toggle-group" id="npsJanela" role="group" aria-label="Período da análise"><button class="toggle-btn active" type="button" data-janela="mes">Mês</button><button class="toggle-btn" type="button" data-janela="tres">Últimos 3 meses</button></div>
       </div>
       <p class="churn-nota" id="npsBase"></p>
+      <div id="npsCobertura" class="nps-cobertura-wrap"></div>
     </section>
 
     <section class="block">
@@ -1368,78 +1456,114 @@ function quandoAcoes_(i) {
   if (i.status === 'atrasada') return '<span class="quando vermelho">' + i.dias + (i.dias === 1 ? ' dia de atraso' : ' dias de atraso') + '</span>';
   return '<span class="quando ambar">' + (i.dias === 0 ? 'vence hoje' : 'vence em ' + i.dias + (i.dias === 1 ? ' dia' : ' dias')) + '</span>';
 }
-// Matriz de GTD (revisão out/2026, V4): CS nas linhas, etapas nas colunas. Cada célula mostra as
-// atrasadas em vermelho e, ao lado e menor, as que vencem em até 7 dias em âmbar. Clique abre a lista
-// daquela combinação agrupada por conselho. Os dados vêm prontos do servidor (etapasPendentes).
-var GTD_CELULAS_ = [];
+// Tarefas de GTD em dois gráficos de barras empilhadas (revisão out/2026, rodada 2, Fase 2). Nada de tabela:
+// "Fila por CS" mostra cada CS com atrasadas, a vencer e em dia; "Onde o processo trava" mostra cada etapa
+// com atrasadas e a vencer. O clique num segmento abre o painel lateral com as tarefas do recorte.
+var GTD_RECORTE_ = null;
+// Ordem da etapa pelo prazo: D-1 antes de D+2, e assim por diante
 function etapaOrdemGtd_(etapa) {
   var m = /D\s*([+\-−–])\s*(\d+)/i.exec(String(etapa || ''));
   if (!m) return 0;
   return m[1] === '+' ? Number(m[2]) : -Number(m[2]);
 }
+function painelLateralAbrir_(titulo, corpo) {
+  var p = document.getElementById('painelLateral');
+  if (!p) {
+    p = document.createElement('aside');
+    p.id = 'painelLateral';
+    p.className = 'painel-lateral';
+    p.setAttribute('role', 'dialog');
+    p.setAttribute('aria-modal', 'false');
+    p.addEventListener('click', function (ev) { if (ev.target.closest('[data-fechar]')) painelLateralFechar_(); });
+    document.body.appendChild(p);
+  }
+  p.innerHTML = '<div class="painel-lateral-topo"><b>' + escCS_(titulo) + '</b><button type="button" class="painel-fechar" data-fechar="1" aria-label="Fechar">Fechar</button></div>' +
+    '<div class="painel-lateral-corpo">' + corpo + '</div>';
+  p.hidden = false;
+}
+function painelLateralFechar_() { var p = document.getElementById('painelLateral'); if (p) p.hidden = true; }
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') painelLateralFechar_(); });
+
+// Agrega por CS (Fila) e por etapa (Processo). Cada barra mostra segmentos em proporção ao maior total.
+function barraEmpilhadaGtd_(rotulo, segmentos, escala, clicavel) {
+  var total = segmentos.reduce(function (s, x) { return s + x.valor; }, 0);
+  var partes = segmentos.filter(function (x) { return x.valor > 0; }).map(function (x) {
+    var largura = escala ? (x.valor / escala * 100) : 0;
+    var attrs = clicavel && x.chave ? ' data-gtd-seg="' + escCS_(x.chave) + '" tabindex="0" role="button" aria-label="' + escCS_(x.rotulo + ' ' + x.valor) + '"' : '';
+    return '<i class="gtd-seg gtd-seg-' + x.cor + (clicavel && x.chave ? ' clicavel' : '') + '" style="width:' + largura + '%"' + attrs + '>' +
+      (x.cor === 'atrasada' ? '<b>' + x.valor + '</b>' : '') + '</i>';
+  }).join('');
+  return '<div class="gtd-linha"><div class="gtd-rotulo">' + escCS_(rotulo) + '</div><div class="gtd-barra">' + partes +
+    '</div><div class="gtd-total">' + total + '</div></div>';
+}
 function gtdMatrizHtml_(g) {
-  GTD_CELULAS_ = [];
-  var vistos = {};
-  var colunas = [];
+  GTD_RECORTE_ = { porCS: g.porCS };
+  var fila = g.porCS.filter(function (c) { return (c.atrasadas + c.aVencer + (c.emDia || 0)) > 0; });
+  if (!fila.length) return '<div class="gtd-vazio">Nenhuma tarefa de GTD nos ciclos abertos neste período.</div>';
+  var escalaFila = Math.max.apply(null, fila.map(function (c) { return c.atrasadas + c.aVencer + (c.emDia || 0); }).concat([1]));
+  var linhasFila = fila.map(function (c) {
+    return barraEmpilhadaGtd_(c.cs, [
+      { chave: 'atrasada|' + c.cs, valor: c.atrasadas, cor: 'atrasada', rotulo: 'atrasadas' },
+      { chave: 'a_vencer|' + c.cs, valor: c.aVencer, cor: 'avencer', rotulo: 'a vencer em 7 dias' },
+      { chave: null, valor: c.emDia || 0, cor: 'emdia', rotulo: 'em dia' },
+    ], escalaFila, true);
+  }).join('');
+  // Etapas: soma as pendências de todos os CS por rótulo de etapa
+  var porEtapa = {};
+  var ordem = [];
   g.porCS.forEach(function (c) {
     (c.itens || []).forEach(function (i) {
-      if (vistos[i.rotulo]) return;
-      vistos[i.rotulo] = true;
-      colunas.push({ rotulo: i.rotulo, ordem: etapaOrdemGtd_(i.etapa) });
+      if (!porEtapa[i.rotulo]) { porEtapa[i.rotulo] = { atrasadas: 0, aVencer: 0, ordem: etapaOrdemGtd_(i.etapa) }; ordem.push(i.rotulo); }
+      if (i.status === 'atrasada') porEtapa[i.rotulo].atrasadas++; else porEtapa[i.rotulo].aVencer++;
     });
   });
-  colunas.sort(function (a, b) { return a.ordem - b.ordem; });
-  if (!colunas.length) return '<div class="gtd-vazio">Nenhuma tarefa de GTD atrasada ou a vencer nos ciclos abertos.</div>';
-  var linhas = g.porCS.map(function (c) {
-    var atrasadas = (c.itens || []).filter(function (i) { return i.status === 'atrasada'; }).length;
-    return { c: c, atrasadas: atrasadas };
-  }).sort(function (a, b) { return b.atrasadas - a.atrasadas || String(a.c.cs).localeCompare(String(b.c.cs), 'pt-BR'); });
-  var cabeca = '<tr><th>CS</th>' + colunas.map(function (col) { return '<th>' + escCS_(col.rotulo) + '</th>'; }).join('') + '</tr>';
-  var corpo = linhas.map(function (l) {
-    var itens = l.c.itens || [];
-    var celulas = colunas.map(function (col) {
-      var atr = itens.filter(function (i) { return i.rotulo === col.rotulo && i.status === 'atrasada'; });
-      var ven = itens.filter(function (i) { return i.rotulo === col.rotulo && i.status === 'a_vencer'; });
-      if (!atr.length && !ven.length) return '<td></td>';
-      GTD_CELULAS_.push({ cs: l.c.cs, rotulo: col.rotulo, itens: atr.concat(ven) });
-      return '<td><button class="gtd-cel" type="button" data-id="' + (GTD_CELULAS_.length - 1) + '">'
-        + (atr.length ? '<span class="gtd-atr">' + atr.length + '</span>' : '')
-        + (ven.length ? '<span class="gtd-ven">' + ven.length + '</span>' : '') + '</button></td>';
-    }).join('');
-    return '<tr><td class="name">' + escCS_(l.c.cs) + '</td>' + celulas + '</tr>';
+  ordem.sort(function (a, b) { return porEtapa[b].atrasadas - porEtapa[a].atrasadas || porEtapa[b].aVencer - porEtapa[a].aVencer; });
+  var escalaEtapa = Math.max.apply(null, ordem.map(function (r) { return porEtapa[r].atrasadas + porEtapa[r].aVencer; }).concat([1]));
+  var linhasEtapa = ordem.map(function (r) {
+    return barraEmpilhadaGtd_(r, [
+      { chave: 'atrasada|etapa|' + r, valor: porEtapa[r].atrasadas, cor: 'atrasada', rotulo: 'atrasadas' },
+      { chave: 'a_vencer|etapa|' + r, valor: porEtapa[r].aVencer, cor: 'avencer', rotulo: 'a vencer em 7 dias' },
+    ], escalaEtapa, true);
   }).join('');
-  return '<div class="table-wrap gtd-matriz-wrap"><div class="table-scroll"><table class="gtd-matriz"><thead>' + cabeca + '</thead><tbody>' + corpo + '</tbody></table></div></div>';
+  return '<div class="gtd-graficos">' +
+    '<div class="gtd-grafico"><h4>Fila por CS</h4><p class="gtd-sub">Atrasadas, a vencer em 7 dias e em dia, nos ciclos abertos.</p>' + linhasFila + '</div>' +
+    '<div class="gtd-grafico"><h4>Onde o processo trava</h4><p class="gtd-sub">Atrasadas e a vencer por etapa, somando todos os CS.</p>' + (linhasEtapa || '<div class="gtd-vazio">Nenhuma etapa atrasada ou a vencer.</div>') + '</div>' +
+    '</div>';
 }
-function gtdDetalheHtml_(cel) {
-  var ordenados = cel.itens.slice().sort(function (a, b) {
-    var pa = a.status === 'atrasada' ? 0 : 1, pb = b.status === 'atrasada' ? 0 : 1;
-    return pa - pb || b.dias - a.dias;
+function gtdDetalheHtml_(tipo, chave) {
+  // chave: "atrasada|NOME" (CS), "a_vencer|NOME" (CS), "atrasada|etapa|ROTULO" ou "a_vencer|etapa|ROTULO" (etapa)
+  var partes = String(chave).split('|');
+  var status = partes[0];
+  var porEtapa = partes[1] === 'etapa';
+  var alvo = porEtapa ? partes.slice(2).join('|') : partes.slice(1).join('|');
+  var itens = [];
+  GTD_RECORTE_.porCS.forEach(function (c) {
+    if (!porEtapa && c.cs !== alvo) return;
+    (c.itens || []).forEach(function (i) { if (i.status === status && (!porEtapa || i.rotulo === alvo)) itens.push(i); });
   });
-  var grupos = {};
-  var ordemGrupos = [];
-  ordenados.forEach(function (i) {
-    if (!grupos[i.dataConselho]) { grupos[i.dataConselho] = []; ordemGrupos.push(i.dataConselho); }
-    grupos[i.dataConselho].push(i);
-  });
-  return '<div class="gtd-det"><div class="gtd-det-topo"><b>' + escCS_(cel.cs) + '</b>, ' + escCS_(cel.rotulo) + '</div>'
-    + ordemGrupos.map(function (data) {
-      return '<div class="gtd-grupo"><div class="gtd-grupo-tit">Conselho de ' + dmaAcoes_(data) + '</div>'
-        + grupos[data].map(function (i) {
-          return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b></div>' + quandoAcoes_(i)
-            + '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + '</div></div>';
-        }).join('') + '</div>';
-    }).join('')
-    + '<button class="ritmo-fechar" type="button" onclick="fecharGtdDetalhe_()">Fechar</button></div>';
+  itens.sort(function (a, b) { return b.dias - a.dias; });
+  var grupos = {}, ordem = [];
+  itens.forEach(function (i) { if (!grupos[i.dataConselho]) { grupos[i.dataConselho] = []; ordem.push(i.dataConselho); } grupos[i.dataConselho].push(i); });
+  var titulo = (porEtapa ? alvo : alvo) + ' · ' + (status === 'atrasada' ? 'atrasadas' : 'a vencer em 7 dias');
+  var corpo = ordem.length ? ordem.map(function (data) {
+    return '<div class="gtd-grupo"><div class="gtd-grupo-tit">Conselho de ' + dmaAcoes_(data) + '</div>' + grupos[data].map(function (i) {
+      return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b>' + (porEtapa ? ' · ' + escCS_(i.cs) : '') + '</div>' + quandoAcoes_(i) +
+        '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + '</div></div>';
+    }).join('') + '</div>';
+  }).join('') : '<div class="gtd-vazio">Nenhuma tarefa neste recorte.</div>';
+  painelLateralAbrir_(titulo, corpo);
 }
-function fecharGtdDetalhe_() { document.getElementById('gtdDetalhe').innerHTML = ''; }
 function ligarGtdMatriz_() {
   var corpo = document.getElementById('urgenciasCorpo');
   corpo.onclick = function (ev) {
-    var btn = ev.target.closest('.gtd-cel');
-    if (!btn) return;
-    var det = document.getElementById('gtdDetalhe');
-    det.innerHTML = gtdDetalheHtml_(GTD_CELULAS_[Number(btn.dataset.id)]);
-    det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    var seg = ev.target.closest('[data-gtd-seg]');
+    if (!seg) return;
+    gtdDetalheHtml_(null, seg.getAttribute('data-gtd-seg'));
+  };
+  corpo.onkeydown = function (ev) {
+    if (ev.key !== 'Enter') return;
+    var seg = ev.target.closest && ev.target.closest('[data-gtd-seg]');
+    if (seg) gtdDetalheHtml_(null, seg.getAttribute('data-gtd-seg'));
   };
 }
 function renderUrgencias_() {
@@ -1523,91 +1647,91 @@ function renderCardsCS() {
   document.getElementById('csGridNota').textContent = notas.join(' ');
 }
 
-// ============ Ritmo do mês (revisão out/2026, V3) ============
-// Os dados vêm prontos do servidor (DADOS.ritmo, montarRitmoDoMes em lib/reports.ts). Este código só
-// desenha. Trilha = meta, preenchimento = realizado, traço âmbar = previsto até hoje. Cor só para exceção:
-// vermelho em "Atrás" e âmbar em "Atenção"; o resto fica neutro.
+// ============ Ritmo do mês em cartões (revisão out/2026, rodada 2, Fase 1) ============
+// Os dados vêm prontos do servidor (DADOS.ritmo, montarRitmoDoMes em lib/reports.ts). Este código só desenha.
+// Nada de tabela: um resumo com a distribuição do time, e um cartão por CS com anel e os indicadores atrasados.
 var RITMO_ROTULO_ = { no_ritmo: 'No ritmo', atencao: 'Atenção', atras: 'Atrás', cedo: 'No prazo', sem_meta: 'Sem meta' };
-var RITMO_LINHAS_ = [];
+var RITMO_COR_ = { no_ritmo: 'var(--verde)', atencao: 'var(--dourado)', atras: 'var(--vermelho)', cedo: '#B9B6B0', sem_meta: 'var(--cinza-superficie)' };
+var RITMO_STATUS_ORDEM_ = ['no_ritmo', 'atencao', 'atras', 'cedo', 'sem_meta'];
 function fmtRitmo_(v, unidade) {
   if (v === null || v === undefined) return 'sem valor';
   return (Math.round(v * 10) / 10).toLocaleString('pt-BR') + (unidade === '%' ? '%' : '');
 }
-function celulaRitmo_(l, k, idx) {
-  var i = l.itens[k];
+// Anel com a proporção de indicadores no ritmo; o centro mostra "X de Y".
+function anelRitmoSvg_(bom, total) {
+  var r = 27, c = 2 * Math.PI * r;
+  var prop = total ? bom / total : 0;
+  return '<svg class="ritmo-anel" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="' + bom + ' de ' + total + ' indicadores no ritmo">' +
+    '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="var(--cinza-superficie)" stroke-width="8"/>' +
+    (prop > 0 ? '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="var(--verde)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (prop * c) + ' ' + c + '" transform="rotate(-90 36 36)"/>' : '') +
+    '<text x="36" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--preto-tinta)">' + bom + ' de ' + total + '</text></svg>';
+}
+// Um indicador atrasado: barra fina com o realizado, traço no previsto de hoje e o fim da trilha na meta.
+function linhaAtrasRitmo_(k, i) {
   var unidade = k === 'cumprimentoGtd' ? '%' : '';
-  if (i.status === 'sem_meta') {
-    return '<td><button class="ritmo-btn" type="button" data-cs="' + idx + '" data-ind="' + k + '"><span class="ritmo-vazio">sem meta</span></button></td>';
-  }
   var meta = i.meta;
   var real = (i.realizado === null || i.realizado === undefined) ? 0 : i.realizado;
-  var pctReal = Math.min(real / meta, 1) * 100;
-  var marca = (i.previsto === null || i.previsto === undefined) ? null : Math.min(i.previsto / meta, 1) * 100;
-  var cor = i.status === 'atras' ? ' ritmo-atras' : (i.status === 'atencao' ? ' ritmo-atencao' : '');
-  var barra = '<div class="ritmo-trilha"><div class="ritmo-preench' + cor + '" style="width:' + pctReal + '%"></div>'
-    + (marca !== null ? '<div class="ritmo-marca" style="left:' + marca + '%"></div>' : '') + '</div>';
-  var texto = fmtRitmo_(i.realizado, unidade) + ' de ' + fmtRitmo_(meta, unidade);
-  return '<td><button class="ritmo-btn" type="button" data-cs="' + idx + '" data-ind="' + k + '">' + barra
-    + '<span class="ritmo-texto">' + escCS_(texto) + '</span></button></td>';
+  var pReal = Math.min(real / meta, 1) * 100;
+  var pPrev = (i.previsto === null || i.previsto === undefined) ? null : Math.min(i.previsto / meta, 1) * 100;
+  var legenda = i.base === 'direto'
+    ? fmtRitmo_(i.realizado, unidade) + ' de ' + fmtRitmo_(meta, unidade)
+    : fmtRitmo_(i.realizado, unidade) + ', esperado ' + fmtRitmo_(i.previsto, unidade) + ' até hoje';
+  return '<div class="ritmo-ind"><span class="ritmo-ind-nome">' + escCS_(DADOS.labelsIndicador[k] || k) + '</span>' +
+    '<div class="ritmo-trilha2"><i style="width:' + pReal + '%"></i>' + (pPrev !== null ? '<b style="left:' + pPrev + '%"></b>' : '') + '</div>' +
+    '<small>' + escCS_(legenda) + '</small></div>';
 }
-function mostrarRitmoDetalhe_(l, k) {
-  var i = l.itens[k];
-  var unidade = k === 'cumprimentoGtd' ? '%' : '';
-  var acao = (DADOS.ritmo.acoes || {})[k] || '';
-  var pares = [['Realizado', fmtRitmo_(i.realizado, unidade)], ['Meta', fmtRitmo_(i.meta, unidade)]];
-  if (i.base !== 'direto') pares.push(['Previsto até hoje', fmtRitmo_(i.previsto, unidade)]);
-  pares.push(['Situação', RITMO_ROTULO_[i.status] || '']);
-  if (i.base !== 'direto') {
-    pares.push(['Projeção de fechamento', (i.projecao === null || i.projecao === undefined) ? 'disponível a partir de 25% do mês' : fmtRitmo_(i.projecao, unidade)]);
-  }
-  pares.push(['Base do cálculo', i.baseTexto || '']);
-  var divergencia = '';
-  if (i.manual !== null && i.manual !== undefined) {
-    var real = i.realizado || 0;
-    var dif = Math.abs(i.manual - real);
-    if (dif >= 2 && (real === 0 || dif / real >= 0.5)) divergencia = '<p class="ritmo-diverg">Autodeclarado: ' + escCS_(fmtRitmo_(i.manual, unidade)) + '</p>';
-  }
-  var painel = document.getElementById('ritmoPainel');
-  painel.innerHTML = '<div class="ritmo-painel-topo"><b>' + escCS_(l.nome) + '</b>, ' + escCS_(DADOS.labelsIndicador[k] || k) + '</div>'
-    + '<dl class="ritmo-dl">' + pares.map(function (p) { return '<div><dt>' + escCS_(p[0]) + '</dt><dd>' + escCS_(p[1]) + '</dd></div>'; }).join('') + '</dl>'
-    + divergencia
-    + (acao ? '<p class="ritmo-acao"><b>Ação padrão:</b> ' + escCS_(acao) + '</p>' : '')
-    + '<button class="ritmo-fechar" type="button" onclick="fecharRitmoDetalhe_()">Fechar</button>';
-  painel.hidden = false;
-  painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-function fecharRitmoDetalhe_() { document.getElementById('ritmoPainel').hidden = true; }
-function renderRitmo() {
-  var head = document.getElementById('ritmoHead');
-  var body = document.getElementById('ritmoBody');
-  var resumo = document.getElementById('ritmoResumo');
-  var rodape = document.getElementById('ritmoRodape');
-  fecharRitmoDetalhe_();
+function cardRitmo_(l) {
   var R = DADOS.ritmo;
-  if (!R) {
-    resumo.innerHTML = '<div class="gestor-empty">O ritmo aparece quando o mês escolhido é o mês atual.</div>';
-    head.innerHTML = ''; body.innerHTML = ''; rodape.textContent = '';
-    return;
-  }
-  if (!R.linhas.length) {
-    resumo.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste mês.</div>';
-    head.innerHTML = ''; body.innerHTML = ''; rodape.textContent = '';
-    return;
-  }
-  RITMO_LINHAS_ = R.linhas;
-  resumo.textContent = R.resumo.noRitmo + ' de ' + R.resumo.comMeta + ' indicadores do time no ritmo hoje';
-  head.innerHTML = '<tr><th>CS</th>' + R.indicadoresOrdem.map(function (k) {
-    return '<th>' + escCS_(DADOS.labelsIndicador[k] || k) + '</th>';
-  }).join('') + '</tr>';
-  body.innerHTML = R.linhas.map(function (l, idx) {
-    return '<tr><td class="name">' + escCS_(l.nome) + '</td>' + R.indicadoresOrdem.map(function (k) { return celulaRitmo_(l, k, idx); }).join('') + '</tr>';
+  var noRitmo = 0, comMeta = 0, semMeta = 0, atras = [];
+  R.indicadoresOrdem.forEach(function (k) {
+    var i = l.itens[k];
+    if (i.status === 'sem_meta') semMeta++;
+    else { comMeta++; if (i.status === 'no_ritmo') noRitmo++; }
+    if (i.status === 'atras') atras.push({ k: k, i: i });
+  });
+  var foto = l.fotoUrl
+    ? '<img class="ritmo-foto" loading="lazy" src="' + escCS_(l.fotoUrl) + '" alt="Foto de ' + escCS_(l.nome) + '">'
+    : '<div class="ritmo-foto ritmo-foto-ini" style="background:' + corDoNome_(l.nomeCompleto || l.nome) + '">' + escCS_((l.nome || '?').charAt(0).toUpperCase()) + '</div>';
+  var corpo = atras.length
+    ? '<div class="ritmo-atras"><h4>Atrás do ritmo</h4>' + atras.slice(0, 3).map(function (a) { return linhaAtrasRitmo_(a.k, a.i); }).join('') +
+      (atras.length > 3 ? '<p class="ritmo-mais">e mais ' + (atras.length - 3) + '</p>' : '') + '</div>'
+    : '<p class="ritmo-tudo">Tudo no ritmo</p>';
+  return '<article class="ritmo-card' + (atras.length ? ' com-atras' : '') + '" tabindex="0" role="link" data-cs="' + escCS_(l.nome) + '" aria-label="Abrir o controle de perfis de ' + escCS_(l.nome) + '">' +
+    '<header class="ritmo-cab">' + foto + '<b>' + escCS_(l.nome) + '</b></header>' +
+    '<div class="ritmo-anel-wrap">' + anelRitmoSvg_(noRitmo, comMeta) + '</div>' +
+    corpo +
+    '<footer class="ritmo-rodape-cartao">' + noRitmo + ' no ritmo, ' + semMeta + ' sem meta</footer></article>';
+}
+function renderRitmo() {
+  var el = document.getElementById('ritmoConteudo');
+  var R = DADOS.ritmo;
+  if (!R) { el.innerHTML = '<div class="gestor-empty">O ritmo aparece quando o mês escolhido é o mês atual.</div>'; return; }
+  if (!R.linhas.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste mês.</div>'; return; }
+  var dist = { no_ritmo: 0, atencao: 0, atras: 0, cedo: 0, sem_meta: 0 };
+  R.linhas.forEach(function (l) { R.indicadoresOrdem.forEach(function (k) { dist[l.itens[k].status] = (dist[l.itens[k].status] || 0) + 1; }); });
+  var total = RITMO_STATUS_ORDEM_.reduce(function (s, k) { return s + dist[k]; }, 0) || 1;
+  var segmentos = RITMO_STATUS_ORDEM_.map(function (s) {
+    return dist[s] ? '<i style="width:' + (dist[s] / total * 100) + '%;background:' + RITMO_COR_[s] + '" title="' + RITMO_ROTULO_[s] + ': ' + dist[s] + '"></i>' : '';
   }).join('');
-  body.onclick = function (ev) {
-    var btn = ev.target.closest('.ritmo-btn');
-    if (!btn) return;
-    mostrarRitmoDetalhe_(RITMO_LINHAS_[Number(btn.dataset.cs)], btn.dataset.ind);
+  var legenda = RITMO_STATUS_ORDEM_.filter(function (s) { return dist[s]; }).map(function (s) {
+    return '<span><i style="background:' + RITMO_COR_[s] + '"></i>' + RITMO_ROTULO_[s] + ' ' + dist[s] + '</span>';
+  }).join('');
+  // Ordenado pelo número de indicadores atrasados, do maior para o menor (vem assim do servidor; garantido aqui)
+  var linhas = R.linhas.slice().sort(function (a, b) { return b.atrasados - a.atrasados; });
+  el.innerHTML = '<div class="ritmo-topo"><div class="ritmo-hero"><b>' + R.resumo.noRitmo + ' de ' + R.resumo.comMeta +
+    '</b><span>indicadores do time no ritmo hoje</span></div>' +
+    '<div class="ritmo-dist" role="img" aria-label="Distribuição dos status do time">' + segmentos + '</div>' +
+    '<div class="ritmo-legenda">' + legenda + '</div></div>' +
+    '<div class="ritmo-grade">' + linhas.map(cardRitmo_).join('') + '</div>' +
+    '<p class="ritmo-nota">Previsto calculado até ' + dmaAcoes_(R.hoje) + '. Dias úteis descontam feriados nacionais. Cases e Matchmakings usam os conselhos realizados da carteira.</p>';
+  var irParaPerfis = function (ev) {
+    var card = ev.target.closest('[data-cs]');
+    if (!card) return;
+    var aba = document.querySelector('[data-tab="controlePerfis"]');
+    if (aba) aba.click();
   };
-  rodape.textContent = 'Previsto calculado até ' + dmaAcoes_(R.hoje) + '. Dias úteis descontam feriados nacionais. Cases e Matchmakings usam os conselhos realizados da carteira.';
+  el.onclick = irParaPerfis;
+  el.onkeydown = function (ev) { if (ev.key === 'Enter' && ev.target.getAttribute && ev.target.getAttribute('data-cs')) irParaPerfis(ev); };
 }
 // ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
 // Bloco separado do ranking/radar por CS acima — olha a rede inteira de conselhos ativos no mesmo
@@ -3338,7 +3462,7 @@ function churnRenderNotas_(b4) {
       '</div>';
   }).join('');
   document.getElementById('notasDimensoes').innerHTML = '<div class="aval-cards">' + cards + '</div>';
-  avalRenderMapa_(b4, false);
+  avalPontos_(b4);
   var j = b4.justificativas;
   document.getElementById('notasJustificativas').textContent = 'O que dizem os que deram nota baixa: ' + (j.temaSugestoes ? 'o tema mais citado nas sugestões é ' + j.temaSugestoes + '. ' : '') +
     (j.temaAvaliacoesCs ? 'Nas avaliações de CS, o mais citado é ' + j.temaAvaliacoesCs + '. ' : '') + j.frase;
@@ -3356,42 +3480,89 @@ function avalNomeCurto_(titulo) {
   var abre = meio.indexOf('(');
   return (abre >= 0 ? meio.slice(0, abre) : meio).trim() || t;
 }
-function avalRenderMapa_(b4, todos) {
-  var el = document.getElementById('notasConselhos');
-  if (!b4.conselhos.length) { el.innerHTML = '<p class="gestor-empty">Nenhum conselho com respostas suficientes nesta janela.</p>'; return; }
-  var dims = b4.dimensoesRotulos;
-  var ordem = b4.conselhos.slice().sort(function (a, b) {
-    var x = a.mediaGeral === null ? 99 : a.mediaGeral, y = b.mediaGeral === null ? 99 : b.mediaGeral;
-    return x - y || b.percentual - a.percentual;
-  });
-  var visiveis = todos ? ordem : ordem.slice(0, AVAL_LINHAS_INICIAIS_);
-  var h = '<div class="aval-mapa-grade"><div class="cab esq">Conselho</div>' +
-    dims.map(function (d) { return '<div class="cab"><span class="longo">' + churnEsc_(d.curto) + '</span><span class="curto">' + churnEsc_(d.curto.slice(0, 4)) + '</span></div>'; }).join('') + '<div class="cab esq col-acao">Próximo passo</div>';
-  visiveis.forEach(function (c) {
-    h += '<div class="nome" title="' + churnEsc_(c.conselho) + '">' + churnEsc_(avalNomeCurto_(c.conselho)) + '<span>CS ' + churnEsc_(c.cs || 'não informado') + ', ' + c.respostas + ' respostas</span></div>';
-    dims.forEach(function (d) {
-      var m = c.medias[d.chave];
-      h += '<div class="aval-cel ' + avalNivel_(m) + '" title="' + churnEsc_(d.curto) + ': ' + avalNum_(m) + ' de 10">' + (m === null ? 'sem dado' : avalNum_(m)) + '</div>';
-    });
-    var acao = c.fraseConversa ? 'Conversar com ' + c.cs : (c.percentual > 0 ? c.baixas + ' nota' + (c.baixas === 1 ? '' : 's') + ' baixa' + (c.baixas === 1 ? '' : 's') : 'Sem nota baixa');
-    var dica = (c.temaSugestoes ? 'Tema das sugestões: ' + c.temaSugestoes + '. ' : '') + 'Dimensão que mais pesa: ' + c.dimensaoMaisPesa + '.';
-    h += '<div class="aval-acao col-acao' + (c.fraseConversa ? '' : ' ok') + '" title="' + churnEsc_(dica) + '">' + churnEsc_(acao) + '</div>';
-  });
-  h += '</div>';
-  h += '<div class="aval-escala"><span><i style="background:#F2F2F2"></i>9,5 ou mais</span><span><i style="background:#F6E7C2"></i>9 a 9,4</span><span><i style="background:#E9B84E"></i>8 a 8,9</span><span><i style="background:#C0433D"></i>abaixo de 8</span><span>Passe o mouse sobre o próximo passo para ver o tema das sugestões.</span></div>';
-  if (ordem.length > AVAL_LINHAS_INICIAIS_) {
-    h += '<button type="button" class="aval-mais" id="avalMais">' + (todos ? 'Mostrar só os ' + AVAL_LINHAS_INICIAIS_ + ' com menor nota' : 'Ver os ' + ordem.length + ' conselhos') + '</button>';
-  }
-  h += '<details class="aval-detalhe"><summary>Ver a tabela completa</summary>' +
-    churnTabela_(['Conselho', 'CS', 'Respostas', 'Notas baixas', 'Percentual', 'Dimensão que mais pesa', 'Tema das sugestões', 'Ação'],
-      b4.conselhos.map(function (c) {
-        return [churnEsc_(c.conselho), churnEsc_(c.cs || '-'), churnEsc_(c.respostas), churnEsc_(c.baixas), churnPct_(c.percentual), churnEsc_(c.dimensaoMaisPesa), churnEsc_(c.temaSugestoes || '-'), churnEsc_(c.fraseConversa || '-')];
-      })) + '</details>';
-  el.innerHTML = h;
-  var btn = document.getElementById('avalMais');
-  if (btn) btn.addEventListener('click', function () { avalRenderMapa_(b4, !todos); });
+// ===== NPS: período, cobertura e "Onde a nota cai" em pontos (revisão out/2026, rodada 2, Fase 6) =====
+// O mês escolhido governa a página. "Últimos 3 meses" é opcional. A cobertura é um anel no cabeçalho; os
+// conselhos ainda por acontecer aparecem só no painel lateral, sem nota. "Onde a nota cai" é um gráfico de
+// pontos: uma faixa por dimensão, um ponto por conselho, eixo de 6 a 10 compartilhado.
+var NPS_JANELA_ = 'mes';
+function npsPeriodoTexto_(ref) {
+  var m = Number(ref.slice(5, 7)) - 1, ano = Number(ref.slice(0, 4));
+  if (NPS_JANELA_ === 'mes') return CHURN_MESES_[m].toLowerCase() + ' de ' + ano;
+  var im = m - 2, ai = ano;
+  if (im < 0) { im += 12; ai--; }
+  return CHURN_MESES_[im].toLowerCase() + (ai === ano ? '' : ' de ' + ai) + ' a ' + CHURN_MESES_[m].toLowerCase() + ' de ' + ano;
 }
-
+function npsDataCurta_(iso) {
+  return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+}
+function npsRenderCobertura_(c, ref) {
+  var el = document.getElementById('npsCobertura');
+  if (!el) return;
+  var prop = c.realizados ? c.avaliados / c.realizados : 0;
+  var r = 30, cc = 2 * Math.PI * r;
+  var anel = '<svg class="nps-anel" width="78" height="78" viewBox="0 0 78 78" role="img" aria-label="' + c.avaliados + ' de ' + c.realizados + ' conselhos realizados já avaliados">' +
+    '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="var(--cinza-superficie)" stroke-width="9"/>' +
+    (prop > 0 ? '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="var(--verde)" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (prop * cc) + ' ' + cc + '" transform="rotate(-90 39 39)"/>' : '') +
+    '</svg>';
+  el.innerHTML = '<button type="button" class="nps-cobertura" data-nps="cobertura">' + anel +
+    '<span class="nps-cob-texto"><b>' + c.avaliados + ' de ' + c.realizados + ' conselhos realizados já avaliados</b>' +
+    '<small>' + c.previstos + ' previstos em ' + CHURN_MESES_[Number(ref.slice(5, 7)) - 1].toLowerCase() + '</small></span></button>';
+}
+function npsAbrirCobertura_() {
+  var c = npsDados_ && npsDados_.sugestoes && npsDados_.sugestoes.cobertura;
+  if (!c) return;
+  var corpo = '<p class="churn-nota">Conselhos previstos no mês que ainda não aconteceram. Eles não têm nota.</p>' +
+    (c.proximos.length ? c.proximos.map(function (p) {
+      return '<div class="nps-prox"><b>' + churnEsc_(p.conselheiro) + '</b><span>acontece em ' + churnEsc_(npsDataCurta_(p.dataIso)) + '</span></div>';
+    }).join('') : '<p class="churn-nota">Nenhum conselho pendente neste mês.</p>');
+  painelLateralAbrir_('Conselhos ainda por acontecer', corpo);
+}
+// Gráfico de pontos "Onde a nota cai": uma faixa por dimensão, um ponto por conselho.
+function avalPontos_(b4) {
+  var el = document.getElementById('notasConselhos');
+  var dims = b4.pontos || [];
+  var total = dims.reduce(function (s, d) { return s + d.pontos.length; }, 0);
+  if (!total) { el.innerHTML = '<p class="gestor-empty">Nenhum conselho com nota neste período.</p>'; return; }
+  var W = 720, x0 = 170, x1 = 690, faixa = 74, topo = 40;
+  var H = topo + dims.length * faixa + 26;
+  function X(v) { return x0 + (Math.max(6, Math.min(10, v)) - 6) / 4 * (x1 - x0); }
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Notas médias por conselho em cada dimensão, na escala de 6 a 10">';
+  [6, 7, 8, 9, 10].forEach(function (v) {
+    svg += '<line x1="' + X(v).toFixed(1) + '" y1="' + (topo - 8) + '" x2="' + X(v).toFixed(1) + '" y2="' + (H - 22) + '" stroke="#E2DFDF" stroke-width="1"/>' +
+      '<text x="' + X(v).toFixed(1) + '" y="' + (topo - 14) + '" text-anchor="middle" font-size="11" fill="#807E7E">' + v + '</text>';
+  });
+  dims.forEach(function (d, i) {
+    var y = topo + i * faixa + faixa / 2;
+    svg += '<line x1="' + x0 + '" y1="' + y + '" x2="' + x1 + '" y2="' + y + '" stroke="#F0EEEC" stroke-width="1"/>';
+    svg += '<text x="8" y="' + (y + 4) + '" font-size="12.5" font-weight="700" fill="#1A1A1A">' + churnEsc_(d.rotulo) + '</text>';
+    // Os três pontos mais baixos recebem rótulo com o nome do conselho
+    var menores = d.pontos.map(function (p, k) { return { k: k, media: p.media }; })
+      .sort(function (a, b) { return a.media - b.media; }).slice(0, 3).map(function (x) { return x.k; });
+    d.pontos.forEach(function (p, k) {
+      var jit = ((k % 3) - 1) * 9;
+      var cor = p.media < 9 ? 'var(--vermelho)' : '#9F9F9F';
+      svg += '<circle data-nps-ponto="' + i + '|' + k + '" cx="' + X(p.media).toFixed(1) + '" cy="' + (y + jit).toFixed(1) + '" r="6" fill="' + cor + '" fill-opacity="0.9" stroke="#fff" stroke-width="1.5" tabindex="0" role="button" aria-label="' + churnEsc_(p.conselho) + ', média ' + String(p.media).replace('.', ',') + '"/>';
+    });
+    menores.forEach(function (k) {
+      var p = d.pontos[k];
+      svg += '<text x="' + X(p.media).toFixed(1) + '" y="' + (y - 13).toFixed(1) + '" text-anchor="middle" font-size="10.5" fill="#1A1A1A">' + churnEsc_(avalNomeCurto_(p.conselho)) + '</text>';
+    });
+  });
+  el.innerHTML = '<div class="nps-pontos">' + svg + '</svg></div>' +
+    '<p class="churn-nota">Cada ponto é um conselho. Vermelho: média abaixo de 9. Os três mais baixos de cada dimensão trazem o nome. Clique num ponto para ver as notas.</p>';
+}
+function npsAbrirPonto_(i, k) {
+  var b4 = npsDados_ && npsDados_.b4;
+  if (!b4 || !b4.pontos[i]) return;
+  var p = b4.pontos[i].pontos[k];
+  if (!p) return;
+  var notas = b4.pontos.map(function (dim) {
+    var q = dim.pontos.filter(function (x) { return x.conselho === p.conselho; })[0];
+    return '<div class="nps-pn"><span>' + churnEsc_(dim.rotulo) + '</span><b>' + (q ? String(q.media).replace('.', ',') : 'sem nota') + '</b></div>';
+  }).join('');
+  painelLateralAbrir_(p.conselho, '<p class="churn-nota">CS ' + churnEsc_(p.cs || 'não informado') + ', ' + p.respostas + ' respostas no período.</p>' +
+    '<div class="nps-pn-lista">' + notas + '</div>');
+}
 // ===== Por que não evoluem no desafio (08/10/2026) =====
 // Barra única da resposta de continuidade e dispersão presença por travados, um ponto por conselho.
 function desafioBarraHtml_(c) {
@@ -3770,52 +3941,82 @@ function npsMontarCs_(lista) {
   var sel = document.getElementById('npsCs');
   (lista || []).forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
 }
-// ===== O que os membros sugerem (revisão out/2026, N3 e N4) =====
-// Duas colunas por seção: o que elogiam e o que incomoda ou falta. Cada tema mostra o número de respostas
-// e a variação do mês contra o anterior, por extenso. A cor segue o sentido: subir é ruim na coluna de
-// crítica e bom na de elogio. Os dados e a polaridade chegam prontos do servidor (colunasPolares).
-function npsColunaHtml_(titulo, col, grupo, polo) {
-  var h = '<div class="npsc-col"><h3>' + churnEsc_(titulo) + '</h3>';
-  if (!col.temas.length) h += '<p class="saida-insight vazio">Nenhum tema neste período.</p>';
-  col.temas.forEach(function (l) {
-    var ruim = l.variacao !== 0 && ((l.variacao > 0) === (polo === 'critica'));
-    var bom = l.variacao !== 0 && !ruim;
-    h += '<button type="button" class="npsc-tema" data-nps="trechos" data-grupo="' + churnEsc_(grupo) + '" data-polo="' + polo + '" data-tema="' + churnEsc_(l.chave) + '" title="Ler os trechos deste tema">'
-      + '<span class="nome">' + churnEsc_(l.rotulo) + '</span>'
-      + '<span class="num">' + l.textos + '</span>'
-      + '<span class="npsc-var' + (ruim ? ' ruim' : (bom ? ' bom' : '')) + '">' + churnEsc_(l.variacaoTexto) + '</span></button>';
-  });
-  return h + '<p class="saida-rodape">' + churnEsc_(col.rodape) + '</p></div>';
+// ===== O que os membros sugerem em gráfico (revisão out/2026, rodada 2, Fase 7) =====
+// Um gráfico com seletor entre "Sobre o conselho" e "Sobre o CS". No conselho, barras horizontais por tema com
+// um traço no mês anterior, e um anel com a proporção sem sugestão. No CS, barras divergentes: crítica para a
+// esquerda, elogio para a direita. O clique numa barra abre o painel lateral com os trechos.
+var NPS_GRUPO_ = 'conselho';
+function npsAnelSemSugestao_(sem, total) {
+  var r = 30, c = 2 * Math.PI * r;
+  var prop = total ? sem / total : 0;
+  return '<svg class="nps-anel" width="78" height="78" viewBox="0 0 78 78" role="img" aria-label="' + Math.round(prop * 100) + '% sem sugestão">' +
+    '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="var(--cinza-superficie)" stroke-width="9"/>' +
+    (prop > 0 ? '<circle cx="39" cy="39" r="' + r + '" fill="none" stroke="#9F9F9F" stroke-width="9" stroke-dasharray="' + (prop * c) + ' ' + c + '" transform="rotate(-90 39 39)"/>' : '') +
+    '</svg>';
+}
+function npsGraficoConselho_(c) {
+  var max = Math.max.apply(null, c.temas.map(function (t) { return Math.max(t.mesRef, t.mesAnterior); }).concat([c.outros.mesRef, c.outros.mesAnterior, 1]));
+  var linhas = c.temas.map(function (t) {
+    var w = Math.round(t.mesRef / max * 100), m = Math.round(t.mesAnterior / max * 100);
+    return '<button type="button" class="nps-barra-linha" data-nps="trechos" data-grupo="conselho" data-polo="critica" data-tema="' + churnEsc_(t.chave) + '">' +
+      '<span class="nps-tema">' + churnEsc_(t.rotulo) + '</span>' +
+      '<span class="nps-trilha"><i style="width:' + w + '%"></i><b class="nps-marca" style="left:' + m + '%"></b></span>' +
+      '<span class="nps-num">' + t.mesRef + '</span></button>';
+  }).join('');
+  if (c.outros.mesRef) {
+    linhas += '<div class="nps-barra-linha nps-outros"><span class="nps-tema">Outros</span><span class="nps-trilha"><i style="width:' +
+      Math.round(c.outros.mesRef / max * 100) + '%"></i><b class="nps-marca" style="left:' + Math.round(c.outros.mesAnterior / max * 100) + '%"></b></span><span class="nps-num">' + c.outros.mesRef + '</span></div>';
+  }
+  var pctSem = c.respondentes ? Math.round(c.semSugestao / c.respondentes * 100) : 0;
+  return '<div class="nps-grafico-corpo"><div class="nps-barras">' + (linhas || '<p class="gestor-empty">Nenhuma sugestão neste mês.</p>') + '</div>' +
+    '<div class="nps-anel-wrap">' + npsAnelSemSugestao_(c.semSugestao, c.respondentes) +
+    '<p><b>' + pctSem + '% sem sugestão</b><span>' + c.semSugestao + ' de ' + c.respondentes + ' respostas do mês</span></p></div></div>' +
+    '<p class="nps-legenda"><span><i class="nps-leg-mes"></i>Mês de referência</span><span><i class="nps-leg-ant"></i>Mês anterior</span></p>';
+}
+function npsGraficoCs_(c) {
+  var max = Math.max.apply(null, c.temas.map(function (t) { return Math.max(t.critica, t.elogio, t.criticaAnterior, t.elogioAnterior); }).concat([1]));
+  var linhas = c.temas.map(function (t) {
+    var pc = Math.round(t.critica / max * 100), pe = Math.round(t.elogio / max * 100);
+    var mc = Math.round(t.criticaAnterior / max * 100), me = Math.round(t.elogioAnterior / max * 100);
+    // Cada lado é um botão próprio: a crítica abre os trechos de crítica, o elogio os de elogio
+    return '<div class="nps-div-linha"><span class="nps-tema">' + churnEsc_(t.rotulo) + '</span>' +
+      '<span class="nps-div"><button type="button" class="nps-div-esq" data-nps="trechos" data-grupo="cs" data-polo="critica" data-tema="' + churnEsc_(t.chave) + '" aria-label="Crítica: ' + t.critica + '">' +
+      '<i style="width:' + pc + '%"></i><b class="nps-marca" style="right:' + mc + '%"></b></button>' +
+      '<button type="button" class="nps-div-dir" data-nps="trechos" data-grupo="cs" data-polo="elogio" data-tema="' + churnEsc_(t.chave) + '" aria-label="Elogio: ' + t.elogio + '">' +
+      '<i style="width:' + pe + '%"></i><b class="nps-marca" style="left:' + me + '%"></b></button></span>' +
+      '<span class="nps-num">' + t.critica + ' · ' + t.elogio + '</span></div>';
+  }).join('');
+  return '<div class="nps-cabecalho-div"><span>Crítica</span><span>Elogio</span></div><div class="nps-barras">' +
+    (linhas || '<p class="gestor-empty">Nenhuma avaliação do CS neste mês.</p>') + '</div>' +
+    '<p class="nps-legenda"><span><i class="nps-leg-crit"></i>Crítica</span><span><i class="nps-leg-elog"></i>Elogio</span><span><i class="nps-leg-ant"></i>Mês anterior</span></p>' +
+    '<p class="churn-nota">' + c.respondentes + ' respostas do mês, ' + c.semSugestao + ' sem avaliação aberta.</p>';
 }
 function npsRenderSugestoes_(sg) {
-  var secao = function (titulo, dados, grupo) {
-    return '<div class="npsc-secao"><h3 class="npsc-titulo">' + churnEsc_(titulo) + '</h3><div class="npsc-grade">'
-      + npsColunaHtml_('O que elogiam', dados.colunas.elogio, grupo, 'elogio')
-      + npsColunaHtml_('O que incomoda ou falta', dados.colunas.critica, grupo, 'critica')
-      + '</div></div>';
-  };
-  document.getElementById('npsSugestoes').innerHTML = secao('Sobre o conselho', sg.conselho, 'conselho')
-    + secao('Sobre o CS', sg.cs, 'cs')
-    + '<p class="churn-nota">' + churnEsc_(sg.cobertura.avaliados + ' de ' + sg.cobertura.total + ' conselhos do mês já avaliados. Sem sugestão sobre o conselho: '
-      + sg.semTexto.conselho + ' respostas. Sem avaliação do CS: ' + sg.semTexto.cs + ' respostas.') + '</p>';
+  var sel = '<div class="toggle-group nps-seletor" role="group" aria-label="Tipo de sugestão">' +
+    '<button type="button" class="toggle-btn' + (NPS_GRUPO_ === 'conselho' ? ' active' : '') + '" data-nps="grupo" data-grupo="conselho">Sobre o conselho</button>' +
+    '<button type="button" class="toggle-btn' + (NPS_GRUPO_ === 'cs' ? ' active' : '') + '" data-nps="grupo" data-grupo="cs">Sobre o CS</button></div>';
+  var corpo = NPS_GRUPO_ === 'conselho' ? npsGraficoConselho_(sg.conselho) : npsGraficoCs_(sg.cs);
+  var subtitulo = NPS_GRUPO_ === 'conselho'
+    ? 'Sugestões de melhoria para o conselho, por tema. Respostas sem sugestão ficam fora dos temas.'
+    : 'Avaliação aberta do CS, por tema: crítica à esquerda, elogio à direita.';
+  document.getElementById('npsSugestoes').innerHTML = sel + '<p class="churn-nota">' + churnEsc_(subtitulo) + '</p>' + corpo +
+    '<p class="churn-nota">Cobertura: ' + sg.cobertura.avaliados + ' de ' + sg.cobertura.total + ' conselhos do mês já avaliados.</p>';
   document.getElementById('npsTrechos').innerHTML = '';
-}
-function trechosNotaHtml_(titulo, lista) {
-  return '<div class="saida-trechos"><h3 class="churn-subtitulo">' + churnEsc_(titulo) + '</h3>' +
-    (lista.length ? lista.map(function (t) {
-      var nota = (t.nota === null || t.nota === undefined) ? '' : 'nota ' + t.nota + ' · ';
-      return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(nota + t.mes.split('-').reverse().join('/')) + '</cite></blockquote>';
-    }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>') + '</div>';
 }
 function npsMostrarTrechos_(grupo, polo, chave) {
   if (!npsDados_) return;
-  var col = npsDados_.sugestoes[grupo].colunas[polo];
-  var tema = col.temas.filter(function (l) { return l.chave === chave; })[0];
-  var el = document.getElementById('npsTrechos');
-  var titulo = (grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ' · ' + (polo === 'elogio' ? 'o que elogiam' : 'o que incomoda ou falta')
-    + ': ' + (tema ? tema.rotulo : '') + ', trechos anonimizados';
-  el.innerHTML = trechosNotaHtml_(titulo, (col.trechos || {})[chave] || []);
-  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  var g = npsDados_.sugestoes[grupo];
+  var lista = grupo === 'conselho' ? (g.trechos[chave] || []) : (g.trechos[polo + '|' + chave] || []);
+  var rotulo = ((g.temas.filter(function (t) { return t.chave === chave; })[0] || {}).rotulo) || '';
+  var corpo = lista.length ? lista.map(function (t) {
+    var partes = [];
+    if (t.nota !== null && t.nota !== undefined) partes.push('nota ' + t.nota);
+    partes.push(t.mes.split('-').reverse().join('/'));
+    if (t.conselho) partes.push(t.conselho);
+    return '<blockquote>' + churnEsc_(t.texto) + '<cite>' + churnEsc_(partes.join(' · ')) + '</cite></blockquote>';
+  }).join('') : '<p class="churn-nota">Nenhum trecho com conteúdo neste tema.</p>';
+  var titulo = (grupo === 'cs' ? 'Sobre o CS' : 'Sobre o conselho') + ': ' + rotulo;
+  painelLateralAbrir_(titulo, '<p class="churn-nota">Trechos anonimizados, do mais recente para o mais antigo.</p>' + corpo);
 }
 function carregarNps_() {
   var minha = ++npsReq_;
@@ -3823,11 +4024,12 @@ function carregarNps_() {
   var cs = document.getElementById('npsCs').value;
   NPS_IDS_.forEach(function (id) { document.getElementById(id).innerHTML = '<div class="gestor-empty">Carregando…</div>'; });
   ['notasConselhos', 'notasJustificativas', 'desafioFrases', 'desafioAviso', 'npsTrechos', 'npsBase'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
-  fetchJSON_(ENDPOINT_NPS_CONSELHOS + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs)).then(function (d) {
+  fetchJSON_(ENDPOINT_NPS_CONSELHOS + '?ref=' + encodeURIComponent(ref) + '&cs=' + encodeURIComponent(cs) + '&janela=' + encodeURIComponent(NPS_JANELA_)).then(function (d) {
     if (minha !== npsReq_) return;
     npsDados_ = d;
     npsMontarCs_(d.csDisponiveis);
-    document.getElementById('npsBase').textContent = d.respostas.janela + ' respostas nos três meses até ' + CHURN_MESES_[Number(ref.slice(5, 7)) - 1].toLowerCase() + ' de ' + ref.slice(0, 4) + ', contra ' + d.respostas.anterior + ' nos três anteriores.';
+    document.getElementById('npsBase').textContent = d.respostas.janela + ' respostas em ' + npsPeriodoTexto_(ref) + ', contra ' + d.respostas.anterior + ' no período anterior de mesmo tamanho.';
+    npsRenderCobertura_(d.sugestoes.cobertura, ref);
     churnRenderSeguro_(['notasDimensoes'], function () { churnRenderNotas_(d.b4); });
     churnRenderSeguro_(['desafioTabela'], function () { churnRenderDesafio_(d.b5); });
     churnRenderSeguro_(['npsSugestoes'], function () { npsRenderSugestoes_(d.sugestoes); });
@@ -3844,6 +4046,17 @@ function inicializarNps_() {
     document.getElementById('tab-nps').addEventListener('click', function (ev) {
       var alvo = ev.target.closest('[data-nps="trechos"]');
       if (alvo) npsMostrarTrechos_(alvo.getAttribute('data-grupo'), alvo.getAttribute('data-polo'), alvo.getAttribute('data-tema'));
+      var ponto = ev.target.closest('[data-nps-ponto]');
+      if (ponto) { var pp = ponto.getAttribute('data-nps-ponto').split('|'); npsAbrirPonto_(Number(pp[0]), Number(pp[1])); }
+      if (ev.target.closest('[data-nps="cobertura"]')) npsAbrirCobertura_();
+      var jan = ev.target.closest('[data-janela]');
+      if (jan) {
+        NPS_JANELA_ = jan.getAttribute('data-janela');
+        document.querySelectorAll('#npsJanela .toggle-btn').forEach(function (b) { b.classList.toggle('active', b === jan); });
+        carregarNps_();
+      }
+      var seletor = ev.target.closest('[data-nps="grupo"]');
+      if (seletor) { NPS_GRUPO_ = seletor.getAttribute('data-grupo'); if (npsDados_) npsRenderSugestoes_(npsDados_.sugestoes); }
     });
     carregarNps_();
   } catch (err) {

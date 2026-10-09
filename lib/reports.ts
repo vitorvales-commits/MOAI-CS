@@ -25,9 +25,10 @@ import {
 import type { FaixaPresencaChave } from './constants';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
-import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias } from './gtd-prazos';
+import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
 import { ACOES_POR_INDICADOR } from '../config/acoes-por-indicador';
+import { csDoMes, type LinhaPeriodo } from './cs-periodos';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
 import { insightsGestor, type CtxInsights } from './insights';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
@@ -1273,7 +1274,14 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const resumo = resumoParam || (await buscarResumoReports(sb));
 
   const listaCS = await getCSListParaAgregados(sb);
-  const cfg = listaCS.find((c) => c.nome === nomeCS);
+  let cfg: CSConfig | undefined = listaCS.find((c) => c.nome === nomeCS);
+  if (!cfg) {
+    // Ex CS que não está mais em cs_config: calcula com os dados de cs_periodos (C3). Sem user id, o
+    // indicador de matchmakings próprio fica zerado, como já acontece para quem não tem user id.
+    const periodo = (await periodosCsSeguro(sb))?.find((p) => p.nome_curto === nomeCS);
+    if (periodo) cfg = { nome: periodo.nome_curto, nomeCompleto: periodo.nome_completo, userId: null, apelidoConselho: periodo.nome_curto,
+      vezesDestaque: 0, fotoUrl: null, metaCarteira: null, ativo: true, ex: false } as unknown as CSConfig;
+  }
   if (!cfg) throw new Error(`CS "${nomeCS}" não encontrado`);
 
   const agendaMap = buildAgendaMap(dados.agenda);
@@ -1942,9 +1950,46 @@ function montarRitmoDoMes(porCS: any[], dados: DadosBrutos, seletorMes: string, 
   };
 }
 
+// Quem era CS no mês, a partir de cs_periodos (revisão out/2026, C3). Se a tabela ainda não existe ou
+// está vazia, devolve null e o chamador usa a lista de cs_config como antes.
+async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo[] | null> {
+  try {
+    const { data, error } = await sb.from('cs_periodos').select('nome_curto, nome_completo, primeiro_mes, ultimo_mes');
+    if (error || !data || !data.length) return null;
+    return data as LinhaPeriodo[];
+  } catch {
+    return null;
+  }
+}
+
+// Roster do mês: meses fechados usam só quem era CS naquele mês (ex CS incluídos). Mês atual ou futuro soma
+// os CS ativos de cs_config, porque ainda não tem meta lançada para todos. Visão geral do ano não muda.
+async function rosterDoMes(sb: SupabaseClient, base: CSConfig[], seletorMes: string, ano: number, geral: boolean): Promise<CSConfig[]> {
+  const numero = MESES_ORDEM.indexOf(seletorMes) + 1;
+  if (geral || !numero) return base;
+  const mesIso = `${ano}-${String(numero).padStart(2, '0')}`;
+  const periodos = await periodosCsSeguro(sb);
+  if (!periodos) return base;
+  const doMes = csDoMes(periodos, mesIso);
+  if (!doMes.length) return base;
+  const hoje = hojeSP();
+  const mesAtualOuFuturo = mesIso >= hoje.slice(0, 7);
+  const chave = (n: string) => normalizeNome(n);
+  const porNome = new Map<string, CSConfig>();
+  doMes.forEach((p) => porNome.set(chave(p.nome_curto), {
+    nome: p.nome_curto, nomeCompleto: p.nome_completo, userId: null, apelidoConselho: p.nome_curto,
+    vezesDestaque: 0, fotoUrl: null, metaCarteira: null, ativo: true, ex: false,
+  } as unknown as CSConfig));
+  if (mesAtualOuFuturo) {
+    base.filter((c) => c.ativo && !c.ex).forEach((c) => { if (!porNome.has(chave(c.nome))) porNome.set(chave(c.nome), c); });
+  }
+  return Array.from(porNome.values());
+}
+
 export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, incluirExMembros: boolean = false) {
   const dados = await getDadosBrutos(sb);
-  const membros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
+  const baseMembros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
+  const membros = await rosterDoMes(sb, baseMembros, seletorMes, ano, periodoDatas(seletorMes, ano).geral);
   const resumo = await buscarResumoReports(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
@@ -3495,6 +3540,8 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
           || (a.status === b.status ? (a.status === 'atrasada' ? b.dias - a.dias : a.dias - b.dias) : (a.status === 'atrasada' ? -1 : 1)));
       return {
         cs: nome, ciclosAbertos: ciclos.length,
+        // Em dia (revisão R2): etapas abertas dos ciclos que ainda não venceram, para o gráfico Fila por CS
+        emDia: ciclos.reduce((soma, l) => soma + (l.etapas || []).filter((e: any) => !e.feito && statusEtapaGTD(e.label, false, l.data_conselho, hoje).status === 'futura').length, 0),
         atrasadas: itens.filter((i) => i.status === 'atrasada').length,
         aVencer: itens.filter((i) => i.status === 'a_vencer').length,
         maiorAtrasoDias: itens.reduce((m, i) => (i.status === 'atrasada' ? Math.max(m, i.dias) : m), 0),

@@ -59,11 +59,26 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       pctPorMes: meses.map((m) => (m.cs && m.cs.radar[i] ? m.cs.radar[i].pct : null)),
     }));
 
+    // Mês de entrada do CS (C4), quando ele não estava ativo desde o início da janela. Sem a tabela cs_periodos, nulo.
+    let entradaEm: string | null = null;
+    try {
+      const { data } = await supabase.from('cs_periodos').select('primeiro_mes').eq('nome_curto', nome).maybeSingle();
+      const inicio = meses[0]?.ano !== undefined ? `${meses[0].ano}-${String(meses[0].mes).padStart(2, '0')}` : null;
+      const entrada = data?.primeiro_mes ? String(data.primeiro_mes).slice(0, 7) : null;
+      if (entrada && inicio && entrada > inicio) {
+        const [ano, mes] = entrada.split('-').map(Number);
+        entradaEm = `${MESES_ORDEM[mes - 1].toLowerCase()} de ${ano}`;
+      }
+    } catch {
+      entradaEm = null;
+    }
+
     return NextResponse.json({
       meses,
       leitura: leituraEvolucao(serie),
       maiorQueda: maiorQuedaIndicador(eixos, undefined, meses.map((m) => m.aberto)),
       hoje,
+      entradaEm,
     });
   } catch (e: any) {
     console.error('gestor evolucao GET', e);

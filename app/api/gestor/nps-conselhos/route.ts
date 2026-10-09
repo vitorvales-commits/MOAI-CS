@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Mês de referência inválido.' }, { status: 400 });
     }
     const cs = (sp.get('cs') || '').trim();
-    return NextResponse.json(await carregarNpsConselhos(supabase, ref, cs));
+    // janela=tres compara três meses com os três anteriores; por padrão o recorte é o mês escolhido (rodada 2, N1)
+    const modo = sp.get('janela') === 'tres' ? 'tres' : 'mes';
+    return NextResponse.json(await carregarNpsConselhos(supabase, ref, cs, modo));
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     console.error('NPS dos conselhos falhou', e);
