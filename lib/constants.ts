@@ -161,9 +161,6 @@ export const PESO_PONTO_ADVERTENCIA_DECIMOS = 10; // décimos de ponto percentua
 // ============ report individual semanal (07/10/2026) ============
 // Report mais velho que isso aparece com o selo "desatualizado".
 export const REPORT_VALIDADE_DIAS = 14;
-// Quantas semanas para trás o CS ainda pode editar o próprio report (gestor edita qualquer uma).
-// O banco aplica a mesma janela em salvar_report_individual (semana atual menos 7 dias).
-export const REPORT_EDICAO_SEMANAS = 1;
 export const REPORT_COMO_FOI_SEMANA = [
   { valor: 'fluindo', rotulo: 'Fluindo' }, { valor: 'atencao', rotulo: 'Atenção' }, { valor: 'critica', rotulo: 'Crítica' },
 ];
