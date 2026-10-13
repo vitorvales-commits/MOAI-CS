@@ -1236,7 +1236,7 @@ function renderDestaques(data){
   var ind = data.indicadores;
   var chaves = [
     {k:'churn', l:'Churn'}, {k:'casesSucesso', l:'Cases de Sucesso'}, {k:'matchmakings', l:'Matchmakings'},
-    {k:'rounds', l:'Rounds'}, {k:'upsell', l:'Upsell'}, {k:'downsell', l:'Downsell'}, {k:'healthDaBase', l:'Health da Base'}
+    {k:'rounds', l:'Rounds'}, {k:'upsell', l:'Upsell'}, {k:'downsell', l:'Downsell'}, {k:'healthDaBase', l:'Críticos'}
   ];
   var calculados = chaves.map(function(c){ return { l:c.l, ind: ind[c.k], calc: calcIndicador(ind[c.k]) }; })
     .filter(function(x){ return x.ind.alcancado !== null && x.ind.alcancado !== undefined && x.ind.meta !== null && x.ind.meta !== undefined; });
@@ -1314,7 +1314,7 @@ function renderIndicadores(data, resumo){
   document.getElementById('indicadores').innerHTML =
     '<div class="grid3">'+kpiCard('Churn', ind.churn, null, t&&t.churn, blur, rec.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$', t&&t.revenueChurn, blur, rec.revenue_churn)+kpiCard('Cases de Sucesso', ind.casesSucesso, null, t&&t.casesSucesso, blur, rec.cases)+'</div>' +
     '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings, null, t&&t.matchmakings, blur, rec.matchmakings)+kpiCard('Rounds', ind.rounds, null, t&&t.rounds, blur, rec.rounds)+kpiCard('Indicações', ind.indicacoes, null, t&&t.indicacoes, blur, rec.indicacoes)+'</div>' +
-    '<div class="grid3">'+kpiCard('Health da Base', ind.healthDaBase, null, t&&t.healthDaBase, blur, rec.health_base)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur, rec.upsell)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur, rec.downsell)+'</div>' +
+    '<div class="grid3">'+kpiCard('Críticos', ind.healthDaBase, null, t&&t.healthDaBase, blur, rec.health_base)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur, rec.upsell)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur, rec.downsell)+'</div>' +
     gtdCard(ind.cumprimentoGtd);
 }
 function renderSemanal(data){
@@ -2175,7 +2175,7 @@ var INDICADOR_HOME_INFO = {
   cases: { label: 'Cases de Sucesso', unidade: null, chave: 'casesSucesso' },
   matchmakings: { label: 'Matchmakings', unidade: null, chave: 'matchmakings' },
   rounds: { label: 'Rounds', unidade: null, chave: 'rounds' },
-  health_base: { label: 'Health da Base', unidade: null, chave: 'healthDaBase' },
+  health_base: { label: 'Críticos', unidade: null, chave: 'healthDaBase' },
   indicacoes: { label: 'Indicações', unidade: null, chave: 'indicacoes' },
   upsell: { label: 'Upsell', unidade: null, chave: 'upsell' },
   downsell: { label: 'Downsell', unidade: null, chave: 'downsell' },
