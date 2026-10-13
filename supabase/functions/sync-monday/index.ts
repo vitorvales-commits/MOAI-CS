@@ -840,9 +840,8 @@ async function syncReportsSemanais() {
 }
 
 // ---- reports_individuais de origem monday (v30, 07/10/2026) ----
-// O CS é resolvido pelo NOME digitado no item (o respondente), via reports_cs_aliases: o
-// creator_id não serve, porque contas de outras pessoas criaram itens em nome de ex CS. Nome sem
-// alias aplicado entra como nao_mapeado e é registrado como alias pendente para o Vitor.
+// O CS é o do criador do item (cs_config.monday_user_id), resolvido em syncReportsIndividuaisMonday;
+// a semana e o CS finais são recalculados por resolver_semana_reports (migração 20261013).
 // Itens de semana igual ou posterior à data de corte não são mais gravados (vale o nativo).
 const MESES_PT = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 function segundaDaSemana(isoData: string): string {
@@ -890,22 +889,22 @@ function inteiroNaoNegativo(txt: string | null): number | null {
 }
 
 async function syncReportsIndividuaisMonday(items: any[]) {
-  const [aliases, cfg] = await Promise.all([
-    fetchAllFromSupabase('reports_cs_aliases', 'nome_digitado_normalizado,cs_nome,cs_categoria,aplicado'),
+  const [cfg, cs] = await Promise.all([
     fetchAllFromSupabase('configuracoes_globais', 'data_corte_reports_nativos'),
+    fetchAllFromSupabase('cs_config', 'nome,monday_user_id,ativo'),
   ]);
   const corte: string | null = cfg[0]?.data_corte_reports_nativos || null;
-  const aliasPorNome = new Map<string, any>(aliases.map((a: any) => [a.nome_digitado_normalizado, a]));
-  const novosAliases = new Map<string, string>();
+  // Padrão b: o CS é o do criador do item (cs_config.monday_user_id), nunca o nome digitado.
+  const csPorCriador = new Map<number, string>(
+    cs.filter((c: any) => c.ativo && c.monday_user_id).map((c: any) => [Number(c.monday_user_id), c.nome]),
+  );
 
   const rows: any[] = [];
   items.forEach((it) => {
     const { semana, dataReport, aproximada } = semanaDoItem(it);
     if (corte && semana >= corte) return;
-    const nomeNorm = normalizarTexto(it.name || '');
-    const alias = aliasPorNome.get(nomeNorm);
-    const aplicado = alias && alias.aplicado;
-    if (!alias && nomeNorm) novosAliases.set(nomeNorm, it.name);
+    const autor = it.creator_id ? Number(it.creator_id) : null;
+    const csNome = autor !== null ? csPorCriador.get(autor) ?? null : null;
     const criticos = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.criticos));
     const baixo = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.baixo));
     const medio = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.medio));
@@ -915,9 +914,11 @@ async function syncReportsIndividuaisMonday(items: any[]) {
     rows.push({
       monday_item_id: Number(it.id),
       origem: 'monday',
-      cs_nome: aplicado ? alias.cs_nome : null,
+      autor_monday_id: autor,
+      enviado_em: it.created_at || null,
+      cs_nome: csNome,
       cs_nome_original: it.name || null,
-      cs_categoria: aplicado ? alias.cs_categoria : 'nao_mapeado',
+      cs_categoria: csNome ? 'cs_ativo' : 'nao_mapeado',
       semana_inicio: semana,
       data_report: dataReport,
       data_aproximada: aproximada,
@@ -944,19 +945,6 @@ async function syncReportsIndividuaisMonday(items: any[]) {
   });
   await upsert('reports_individuais', rows, 'monday_item_id');
 
-  // Nome novo no board: registra como alias pendente (não aplicado), sem sobrescrever nada.
-  if (novosAliases.size) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/reports_cs_aliases?on_conflict=nome_digitado_normalizado`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal',
-      },
-      body: JSON.stringify([...novosAliases.entries()].map(([k, v]) => ({ nome_digitado_normalizado: k, exemplo_digitado: v, cs_categoria: 'nao_mapeado', aplicado: false, observacao: 'nome novo vindo da sync, aguardando mapeamento' }))),
-    });
-    if (!res.ok) throw new Error(`Supabase insert falhou (reports_cs_aliases): ${res.status} ${await res.text()}`);
-  }
-
   // Item apagado do board sai de reports_individuais. Só linhas de origem monday; o nativo nunca é
   // tocado aqui (pruneOrfaos não serve: varreria a tabela inteira, incluindo o nativo).
   const idsBoard = new Set(items.map((it) => Number(it.id)));
@@ -967,6 +955,17 @@ async function syncReportsIndividuaisMonday(items: any[]) {
     await deleteWhere('reports_individuais', `origem=eq.monday&monday_item_id=in.(${orfaos.join(',')})`);
     console.warn(`[sync-monday] prune: removidas ${orfaos.length} linha(s) monday de reports_individuais (ids: ${orfaos.join(',')})`);
   }
+
+  // Padrões b e c: CS e semana de cada report são recalculados no banco, em ordem de envio. Idempotente.
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolver_semana_reports`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  });
+  if (!res.ok) throw new Error(`Supabase rpc falhou (resolver_semana_reports): ${res.status} ${await res.text()}`);
 }
 
 async function syncMetas() {
