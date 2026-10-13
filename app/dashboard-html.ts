@@ -414,6 +414,11 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .advertencia-resumo.destaque { background:#FBEEEC; border-color:#EBC6C0; }
 .advertencia-resumo.destaque .advertencia-resumo-num { color:#C0433D; }
 /* ===== aba Report, report individual semanal (07/10/2026) ===== */
+.report-reg-linha { display:flex; flex-wrap:wrap; gap:4px; }
+.report-reg { display:inline-block; width:18px; height:18px; border-radius:4px; }
+.report-reg-ok { background:#3D8B5F; }
+.report-reg-atraso { background:#C89A2E; }
+.report-reg-falta { background:#C0433D; }
 .report-topo { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
 .report-semana-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .report-semana-label { font-size:13px; font-weight:800; color:#1A1A1A; }
@@ -2540,11 +2545,33 @@ function renderAbaReport(){
       '<span class="report-selo ' + (rep ? 'ok' : 'pendente') + '">' + (rep ? 'Enviado no Monday' : 'Sem report nesta semana') + '</span>' +
     '</div>' + reportHealthHtml_(d.health) + '</div>' +
     '<p class="report-ajuda">Os reports são preenchidos no board do Monday. Esta aba mostra o que foi enviado. <a href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Abrir no Monday</a></p>';
+  html += reportEstadoHtml_(d) + reportRegularidadeHtml_(d);
   html += rep ? reportLeituraHtml_(rep) : '<div class="empty-state">Nenhum report encontrado para esta semana.</div>';
   html += reportHistoricoHtml_();
   document.getElementById('report').innerHTML = html;
 }
 
+function fmtHorasR_(h){ h = Number(h || 0); if (h >= 48) return Math.floor(h / 24) + ' dias'; return Math.round(h) + ' h'; }
+function reportEstadoHtml_(d){
+  var e = d.estado;
+  if (!e) return '<section class="report-secao"><h3>Estado da semana</h3><div class="empty-state">Este CS não tem report cobrado nesta semana.</div></section>';
+  var txt, cls;
+  if (e.estado === 'enviado_no_prazo') { txt = 'Enviado no prazo'; cls = 'ok'; }
+  else if (e.estado === 'enviado_com_atraso') { txt = 'Enviado com atraso, ' + fmtHorasR_(e.horas_atraso); cls = 'alerta'; }
+  else if (e.estado === 'pendente') { txt = 'Pendente. Prazo: sexta às 19h'; cls = 'pendente'; }
+  else { txt = 'Atrasado há ' + fmtHorasR_(e.horas_atraso); cls = 'alerta'; }
+  return '<section class="report-secao"><h3>Estado da semana</h3><span class="report-selo ' + cls + '">' + escR_(txt) + '</span></section>';
+}
+function reportRegularidadeHtml_(d){
+  var lista = d.regularidade || [];
+  if (!lista.length) return '';
+  var rot = { enviado_no_prazo: 'Enviado no prazo', enviado_com_atraso: 'Enviado com atraso', atrasado: 'Não enviado' };
+  var marcas = lista.map(function(r){
+    var cls = r.estado === 'enviado_no_prazo' ? 'ok' : (r.estado === 'enviado_com_atraso' ? 'atraso' : 'falta');
+    return '<span class="report-reg report-reg-' + cls + '" title="' + escR_(dataCurtaR_(r.semana_inicio) + ': ' + (rot[r.estado] || r.estado)) + '"></span>';
+  }).join('');
+  return '<section class="report-secao"><h3>Regularidade, últimas ' + lista.length + ' semanas</h3><div class="report-reg-linha">' + marcas + '</div></section>';
+}
 function reportLeituraHtml_(rep){
   var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === rep.como_foi_semana; })[0];
   return '<div class="report-leitura">' +

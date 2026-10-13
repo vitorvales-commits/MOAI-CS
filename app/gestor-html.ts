@@ -119,6 +119,22 @@ export const GESTOR_STYLE = `
 .cont{font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px;background:var(--cinza-fundo);color:var(--cinza-texto);}
 .cont.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
 .cont.ambar{background:#FBF1DA;color:#8A6410;border:1px solid #EBD39C;}
+.rep-area-resumo { font-size:14px; margin-bottom:10px; }
+.rep-area-resumo.alerta { color:#8A6410; }
+.rep-area-pilulas { display:flex; flex-wrap:wrap; gap:8px; }
+.rep-pilula { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 10px; border-radius:999px; border:1px solid var(--cinza-borda); background:var(--cinza-superficie); }
+.rep-pilula.enviado_no_prazo { color:var(--verde); }
+.rep-pilula.enviado_com_atraso, .rep-pilula.atrasado { color:var(--vermelho); border-color:#EBC6C0; background:#FBEEEC; }
+.rep-pilula.pendente { color:var(--cinza-texto); }
+.rep-pilula.ambar { border-color:#EBD39C; background:#FBF1DA; color:#8A6410; }
+.rep-cobrar { font-size:11px; font-weight:700; text-decoration:underline; color:inherit; }
+.rep-area-critica { margin-top:10px; font-size:13px; color:var(--vermelho); }
+.health-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+.health-card { border:1px solid var(--cinza-borda); border-radius:10px; padding:12px; background:var(--cinza-superficie); }
+.health-card-nome { font-size:13px; font-weight:700; }
+.health-card-valor { font-size:22px; font-weight:800; margin:4px 0; }
+.health-card-detalhe { font-size:12px; color:var(--cinza-texto); }
+.health-selo { display:inline-block; margin-top:6px; font-size:11px; font-weight:700; color:#8A6410; }
 .chips-nomes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
 .chip-nome{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;}
 .chip-nome.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
@@ -871,6 +887,10 @@ export const GESTOR_HTML = `
     </section>
 
     <div class="acoes-stack">
+      <section class="block" id="blocoReportSemana" aria-label="Report da semana">
+        <div class="block-head"><h2>Report da semana</h2><p>Quem enviou o report desta semana no Monday, com o prazo de sexta às 19h.</p></div>
+        <div id="blocoReportSemanaCorpo"><div class="gestor-empty">Carregando…</div></div>
+      </section>
       <section class="acoes-card" id="blocoUrgencias" aria-label="Urgências">
         <h2>Urgências</h2>
         <p class="acoes-sub">O que precisa ser feito o quanto antes, com responsável e prazo.</p>
@@ -901,6 +921,10 @@ export const GESTOR_HTML = `
       <div class="cs-nota" id="csGridNota"></div>
     </section>
 
+    <section class="block" id="blocoHealthBase" aria-label="Health da Base">
+      <div class="block-head"><h2>Health da Base por CS</h2><p>Críticos declarados no Monday sobre a carteira do CS. Do pior para o melhor.</p></div>
+      <div id="blocoHealthBaseCorpo"><div class="gestor-empty">Carregando…</div></div>
+    </section>
     <section class="block" id="blocoRitmo">
       <div class="block-head">
         <div>
@@ -981,6 +1005,12 @@ export const GESTOR_HTML = `
       <div class="perfis-card">
         <h3>CS ativos</h3>
         <div id="listaCS"></div>
+      </div>
+      <div class="perfis-card">
+        <h3>Somar pontos ativos ao Health da Base</h3>
+        <p class="sync-desc">Desligada, a advertência aparece como selo separado no CS e o Health é só críticos sobre carteira. Ligada, cada ponto ativo soma 1,0 ponto percentual ao Health. Exemplo: 3 críticos de 10 dá 30,0%; com 1 ponto ativo, 31,0%.</p>
+        <label class="toggle-inline"><input type="checkbox" id="chkSomaAdvHealth"><span>Somar pontos ativos ao Health da Base</span></label>
+        <p class="sync-desc" id="advHealthChaveStatus">Carregando…</p>
       </div>
       <div class="perfis-card">
         <h3>Catálogo de advertência</h3>
@@ -1948,6 +1978,84 @@ function inicializarToggleExMembros() {
 }
 inicializarToggleExMembros();
 
+// ============ report da semana e Health da Base na Visão da área (etapa 3, report via Monday) ============
+var ENDPOINT_REPORT_SEMANA_AREA = '/api/gestor/report-semana';
+var ENDPOINT_HEALTH_BASE = '/api/gestor/health-base';
+var ENDPOINT_ADV_SOMA_HEALTH = '/api/gestor/advertencia-soma-health';
+var REPORT_MONDAY_BOARD_URL = 'https://monday.com/boards/18394181332';
+
+function escRA_(s) { return String(s === null || s === undefined ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function fmtHorasArea_(h) { h = Number(h || 0); if (h >= 48) return Math.floor(h / 24) + ' dias'; return Math.round(h) + ' h'; }
+
+function carregarReportArea_() {
+  fetchJSON_(ENDPOINT_REPORT_SEMANA_AREA).then(renderReportSemanaArea_).catch(function (err) {
+    document.getElementById('blocoReportSemanaCorpo').innerHTML = '<div class="gestor-erro">Erro ao carregar o report da semana: ' + escRA_(err.message) + '</div>';
+  });
+  fetchJSON_(ENDPOINT_HEALTH_BASE).then(renderHealthBaseArea_).catch(function (err) {
+    document.getElementById('blocoHealthBaseCorpo').innerHTML = '<div class="gestor-erro">Erro ao carregar o Health da Base: ' + escRA_(err.message) + '</div>';
+  });
+}
+
+function renderReportSemanaArea_(d) {
+  var lista = d.cs || [];
+  if (!lista.length) { document.getElementById('blocoReportSemanaCorpo').innerHTML = '<div class="gestor-empty">Nenhum CS cobrado de report nesta semana.</div>'; return; }
+  var prazo = new Date(lista[0].prazo);
+  var depois = new Date() > prazo;
+  var enviados = lista.filter(function (r) { return r.estado && r.estado.indexOf('enviado') === 0; }).length;
+  var rotulo = { enviado_no_prazo: 'no prazo', enviado_com_atraso: 'com atraso', pendente: 'pendente', atrasado: 'atrasado' };
+  var html = '<div class="rep-area-resumo ' + (depois ? 'alerta' : 'neutro') + '"><b>' + enviados + ' de ' + lista.length + ' enviados</b> · prazo sexta, 19h</div>';
+  html += '<div class="rep-area-pilulas">' + lista.map(function (r) {
+    var txt = rotulo[r.estado] || r.estado;
+    if (r.horas_atraso) txt += ' há ' + fmtHorasArea_(r.horas_atraso);
+    var emFalta = r.estado === 'atrasado' || r.estado === 'pendente';
+    var destaque = depois && emFalta ? ' ambar' : '';
+    var cobrar = emFalta ? ' <a class="rep-cobrar" href="' + REPORT_MONDAY_BOARD_URL + '" target="_blank" rel="noopener">Cobrar</a>' : '';
+    return '<span class="rep-pilula ' + r.estado + destaque + '">' + escRA_(r.cs_nome) + ': ' + escRA_(txt) + cobrar + '</span>';
+  }).join('') + '</div>';
+  lista.filter(function (r) { return r.como_foi_semana === 'critica'; }).forEach(function (r) {
+    html += '<div class="rep-area-critica">Semana crítica declarada por ' + escRA_(r.cs_nome) + (r.risco_se_ignorar ? ': ' + escRA_(r.risco_se_ignorar) : '') + '</div>';
+  });
+  document.getElementById('blocoReportSemanaCorpo').innerHTML = html;
+}
+
+function renderHealthBaseArea_(d) {
+  var lista = (d.cs || []).slice().sort(function (a, b) {
+    var va = a.valor_decimos, vb = b.valor_decimos;
+    if (va === null && vb === null) return a.cs_nome.localeCompare(b.cs_nome);
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return vb - va;
+  });
+  var motivos = { sem_report: 'Sem report', sem_apuracao: 'Sem apuração', inconsistente: 'Inconsistente' };
+  var aviso = { inconsistente: 'Críticos informados acima da carteira, revisar com o CS' };
+  var html = '<div class="health-cards">' + lista.map(function (r) {
+    var tem = r.valor_decimos !== null && r.valor_decimos !== undefined;
+    var valor = tem ? (r.valor_decimos / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : (motivos[r.motivo] || 'Sem apuração');
+    var detalhe = tem ? r.criticos + ' de ' + r.carteira + ' membros' : (aviso[r.motivo] || ('carteira de ' + r.carteira));
+    var selo = (!r.chave_ligada && r.pontos_ativos > 0) ? '<span class="health-selo">Advertência: ' + r.pontos_ativos + ' pts ativos, fora do Health</span>' : '';
+    return '<div class="health-card"><div class="health-card-nome">' + escRA_(r.cs_nome) + '</div><div class="health-card-valor">' + escRA_(valor) + '</div><div class="health-card-detalhe">' + escRA_(detalhe) + '</div>' + selo + '</div>';
+  }).join('') + '</div>';
+  document.getElementById('blocoHealthBaseCorpo').innerHTML = html;
+}
+
+function renderAdvHealthChave_(ligado) {
+  document.getElementById('chkSomaAdvHealth').checked = ligado;
+  document.getElementById('advHealthChaveStatus').textContent = ligado ? 'Ligada: os pontos ativos entram no Health da Base.' : 'Desligada: a advertência aparece como selo separado no CS.';
+}
+function carregarAdvHealthChave_() {
+  fetchJSON_(ENDPOINT_ADV_SOMA_HEALTH).then(function (d) { renderAdvHealthChave_(!!d.ligado); }).catch(function (err) {
+    document.getElementById('advHealthChaveStatus').textContent = 'Erro ao carregar: ' + err.message;
+  });
+}
+function alternarAdvHealthChave_(ev) {
+  var ligado = ev.target.checked;
+  fetchJSON_(ENDPOINT_ADV_SOMA_HEALTH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ligado: ligado }) })
+    .then(function (d) { renderAdvHealthChave_(!!d.ligado); })
+    .catch(function (err) { ev.target.checked = !ligado; document.getElementById('advHealthChaveStatus').textContent = 'Erro ao salvar: ' + err.message; });
+}
+document.getElementById('chkSomaAdvHealth').addEventListener('change', alternarAdvHealthChave_);
+carregarAdvHealthChave_();
+
 function carregarVisaoGeral() {
   fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&incluirExMembros=' + incluirExMembros).then(function (data) {
     DADOS = data;
@@ -1956,6 +2064,7 @@ function carregarVisaoGeral() {
     renderCardsCS();
     renderRitmo();
     renderVisaoRede();
+    carregarReportArea_();
   }).catch(function (err) {
     document.getElementById('rankingList').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
   });

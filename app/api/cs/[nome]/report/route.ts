@@ -29,15 +29,18 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return NextResponse.json({ error: 'Você só pode consultar o próprio report.' }, { status: 403 });
     }
     // Colunas de leitura só: nenhuma coluna de engajamento baixo, médio ou alto é lida aqui.
-    const [histRes, repRes, advertencias] = await Promise.all([
+    const [histRes, repRes, advertencias, statusRes, regRes, healthRes] = await Promise.all([
       supabase.rpc('reports_historico_cs', { p_cs: nome }),
       supabase.from('reports_individuais')
         .select('semana_inicio, origem, como_foi_semana, nota_semana, risco_se_ignorar, por_que, criticos_total, base_total, enviado_em')
         .eq('cs_nome', nome).eq('origem', 'monday').eq('semana_inicio', semana)
         .order('enviado_em', { ascending: false }).limit(1),
       listarAdvertenciasCS(supabase, nome),
+      supabase.rpc('status_report_semana', { p_semana: semana }),
+      supabase.rpc('regularidade_report_cs', { p_cs: nome, p_semanas: 8 }),
+      supabase.rpc('health_base_cs', { p_cs: nome }),
     ]);
-    const erro = histRes.error || repRes.error;
+    const erro = histRes.error || repRes.error || statusRes.error || regRes.error || healthRes.error;
     if (erro) throw new Error(erro.message);
 
     // Pontos ativos em cada semana: advertências aplicadas até o fim da semana e ainda válidas
@@ -52,16 +55,28 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return { ...r, percentualDecimos: percentualCriticosDecimos(r.criticos_total, r.base_total), healthDecimos: h.healthBaseDecimos };
     });
     const ultimo = historico[0] || null;
-    const hAtual = calcularHealthBase(ultimo?.criticos_total ?? null, ultimo?.base_total ?? null, advertencias.pontuacaoAtiva);
-    const health = {
-      ...hAtual,
-      statusReport: ultimo ? statusReport(ultimo.data_report || somarDias(ultimo.semana_inicio, 6)) : 'sem_report',
-      semanaReport: ultimo?.semana_inicio ?? null,
+    // Health da Base vem do banco (health_base_cs), a única fonte. Aqui só se formata para a tela.
+    const hRow = ((healthRes.data || []) as any[])[0] ?? null;
+    const MOTIVOS: Record<string, string> = {
+      sem_report: 'Sem report válido nos últimos 14 dias',
+      sem_apuracao: 'Sem apuração: carteira zerada ou críticos não informados',
+      inconsistente: 'Críticos informados acima da carteira, revisar com o CS',
     };
+    const health = {
+      healthBaseDecimos: hRow?.valor_decimos ?? null,
+      composicao: hRow?.valor_decimos != null
+        ? hRow.criticos + ' de ' + hRow.carteira + ' críticos' + (hRow.chave_ligada && hRow.pontos_ativos ? ' + ' + hRow.pontos_ativos + ' pontos de advertência' : '')
+        : (MOTIVOS[hRow?.motivo] || 'Sem apuração'),
+      statusReport: ultimo ? statusReport(ultimo.data_report || somarDias(ultimo.semana_inicio, 6)) : 'sem_report',
+      semanaReport: hRow?.semana_report ?? null,
+      chaveLigada: !!hRow?.chave_ligada,
+      pontosAtivos: hRow?.pontos_ativos ?? 0,
+    };
+    const estado = ((statusRes.data || []) as any[]).find((r) => r.cs_nome === nome) ?? null;
     const report = (repRes.data || [])[0] ?? null;
     return NextResponse.json({
       cs: nome, semana, semanaAtual,
-      report, historico, health, pontosAtivos: advertencias.pontuacaoAtiva,
+      report, historico, health, estado, regularidade: regRes.data || [], pontosAtivos: advertencias.pontuacaoAtiva,
     });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
