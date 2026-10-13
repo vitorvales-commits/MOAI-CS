@@ -1590,7 +1590,11 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       indicacoes: somaInd('indicacoes'),
       // Health da Base da área: críticos únicos sobre a união da base dos CS ativos (razão
       // ponderada, health_base_area), nunca média ou soma de percentuais. Sem advertência.
-      healthDaBase: { ...healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport), cobertura: coberturaArea(area.linha) },
+      healthDaBase: {
+        ...healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport),
+        cobertura: coberturaArea(area.linha), area: true, semReportValido: !area.temReport, criticosTotal: area.linha.criticos ?? null,
+        membrosTotal: area.linha.base ?? null, detalheCS: area.detalhe, csSemReport: area.linha.cs_sem_report ?? [],
+      },
     },
     churnOrfao,
     casesPorCS,
@@ -2617,7 +2621,20 @@ async function healthBaseArea(sb: SupabaseClient, de: string | null, ate: string
   if (error) throw new Error('Erro ao buscar health_base_area: ' + error.message);
   const linha = (data || [])[0] || { criticos: null, base: null, cs_com_report: 0, cs_obrigados: 0, cs_sem_report: [] as string[] };
   const temReport = Number(linha.cs_com_report) > 0;
-  return { linha, temReport, health: calcularHealthBase(temReport ? linha.criticos : null, temReport ? linha.base : null, 0) };
+  // Composição por CS para o tooltip (fotografia atual; com período não há lista).
+  const detalhe = de || ate ? [] : await detalheCriticosPorCS(sb);
+  return { linha, temReport, detalhe, health: calcularHealthBase(temReport ? linha.criticos : null, temReport ? linha.base : null, 0) };
+}
+
+// Uma linha por CS obrigado com report válido, do maior percentual para o menor. Vem de health_base_cs,
+// a única fonte de Health por CS. Teto de percentual e de carteira são os do banco.
+async function detalheCriticosPorCS(sb: SupabaseClient): Promise<{ nome: string; criticos: number; carteira: number; percentual: number }[]> {
+  const { data, error } = await sb.rpc('health_base_cs', { p_cs: null });
+  if (error) throw new Error('Erro ao buscar health_base_cs: ' + error.message);
+  return (data || [])
+    .filter((r: { criticos: number | null; carteira: number | null; motivo: string | null }) => r.criticos !== null && r.carteira > 0 && !r.motivo)
+    .map((r: { cs_nome: string; criticos: number; carteira: number }) => ({ nome: r.cs_nome, criticos: r.criticos, carteira: r.carteira, percentual: (r.criticos / r.carteira) * 100 }))
+    .sort((a: { percentual: number }, b: { percentual: number }) => b.percentual - a.percentual);
 }
 
 export async function generateVisaoGeralRede(sb: SupabaseClient, seletorMes: string, ano: number) {

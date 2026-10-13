@@ -180,6 +180,11 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .kpi-sub { font-size: 11.5px; color:#9F9F9F; margin-top:8px; }
 .kpi-recorde-badge { display:inline-flex; align-items:center; gap:3px; border-radius:99px; padding:3px 9px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; background:rgba(251,191,36,0.16); color:#fbbf24; margin-left:6px; white-space:nowrap; }
 .kpi-recorde-linha { font-size:10.5px; color:#fbbf24; margin-top:4px; }
+.kpi-barra { height:3px; border-radius:2px; background:rgba(255,255,255,0.08); margin:8px 0 4px; overflow:hidden; }
+.kpi-barra-fill { height:100%; background:#7fe3ac; }
+.kpi-barra.acima .kpi-barra-fill { background:#fbbf24; }
+.kpi-cobertura { font-size:10.5px; color:#6E6C6C; margin-top:4px; }
+.kpi-fonte-texto { font-size:9.5px; color:#6E6C6C; margin-top:8px; }
 .c-g{color:#6ee7b7;}.c-y{color:#fbbf24;}.c-r{color:#f87171;}.c-gray{color:#807E7E;}
 /* Parte B (25/09/2026): linha de contexto do time dentro do card individual, blur configurável pelo gestor */
 .kpi-time-linha { font-size: 11px; color:#7A7878; margin-top:7px; }
@@ -1122,7 +1127,34 @@ function valorKpiTexto_(ind, unidade){
   if (ind.composicao) return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
   return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado;
 }
+// Card Críticos da área (fotografia atual): número principal é o total de críticos, abaixo o denominador
+// e o percentual, barra fina contra a meta (teto: menor é melhor; âmbar só acima da meta) e cobertura só
+// quando incompleta. A composição por CS vai para o tooltip, do maior percentual para o menor.
+// Dentro desta template literal o separador de linha do tooltip é &#10;, nunca barra-n.
+function kpiCriticosArea_(label, ind){
+  var semValido = !!ind.semReportValido || ind.criticosTotal === null || ind.criticosTotal === undefined;
+  var pct = ind.alcancado;
+  var pctTxt = (pct===null||pct===undefined) ? '' : pct.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'%';
+  var principal = semValido ? 'Sem report válido' : String(ind.criticosTotal);
+  var sub = semValido ? 'Nenhum CS enviou report nos últimos 14 dias' : 'de '+ind.membrosTotal+' membros · '+pctTxt;
+  var meta = (ind.meta===null||ind.meta===undefined) ? null : Number(ind.meta);
+  var largura = (!semValido && meta>0 && pct!==null && pct!==undefined) ? Math.min(pct/meta*100, 100) : 0;
+  var acima = !semValido && meta!==null && pct!==null && pct!==undefined && pct>meta;
+  var linhasTooltip = (ind.detalheCS||[]).map(function(c){
+    return c.nome+': '+c.criticos+' de '+c.carteira+' ('+c.percentual.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'%)';
+  });
+  var tooltip = linhasTooltip.length ? linhasTooltip.join('&#10;') : String(ind.composicao||'');
+  var tooltipAttr = ' title="'+tooltip.replace(/"/g,'&quot;')+'" aria-label="'+label+'"';
+  var coberturaLinha = ind.cobertura ? '<div class="kpi-cobertura">'+ind.cobertura+'</div>' : '';
+  return '<div class="kpi kpi-area"'+tooltipAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div></div></div>' +
+    '<div class="kpi-realizado num">'+principal+'</div>' +
+    '<div class="kpi-sub">'+sub+'</div>' +
+    '<div class="kpi-barra'+(acima?' acima':'')+'" aria-hidden="true"><div class="kpi-barra-fill" style="width:'+largura.toFixed(1)+'%"></div></div>' +
+    '<div class="kpi-sub">'+(meta!==null?'meta '+meta:'meta não definida')+'</div>'+coberturaLinha +
+    '<div class="kpi-fonte-texto">Fonte: report semanal no Monday</div></div>';
+}
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
+  if (ind.area) return kpiCriticosArea_(label, ind);
   var c = calcIndicador(ind);
   if (ind.statusReport === 'sem_report') { c.pctLabel = 'Sem report'; c.pillLabel = 'Sem report'; }
   else if (ind.semApuracao) { c.pctLabel = 'Sem apuração'; c.pillLabel = 'Sem apuração'; }
