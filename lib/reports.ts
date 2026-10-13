@@ -3366,14 +3366,12 @@ async function secaoIsolada<T>(rotulo: string, fn: () => Promise<T> | T): Promis
 
 export type CriticosPorProdutoCS =
   | { estado: 'sem_report' }
-  | { estado: 'sem_detalhamento'; semana: string; criticos: number | null; membros: number | null; percentualDecimos: number | null }
-  | { estado: 'com_detalhamento'; semana: string; linhas: LinhaProduto[]; total: { criticos: number; membros: number; percentualDecimos: number | null } };
+  | { estado: 'sem_detalhamento'; semana: string; criticos: number | null; membros: number | null; percentualDecimos: number | null };
 
-// Do report mais recente do CS: com nomes (críticos listados) devolve por produto; importado do
-// Monday (só contagem) devolve o total declarado e o marcador sem_detalhamento; sem report devolve
-// sem_report. Nunca zero no lugar de ausência. Produto é o nível do conselho do membro.
+// Do report mais recente do CS (enviado no Monday, só contagem): devolve o total declarado e o marcador
+// sem_detalhamento; sem report devolve sem_report. Nunca zero no lugar de ausência.
 export async function criticosPorProdutoCS(
-  sb: SupabaseClient, dados: DadosBrutos, csNome: string,
+  sb: SupabaseClient, _dados: DadosBrutos, csNome: string,
 ): Promise<CriticosPorProdutoCS> {
   const { data: reps, error } = await sb.from('reports_individuais')
     .select('id, semana_inicio, base_total, criticos_total').eq('cs_nome', csNome)
@@ -3381,27 +3379,8 @@ export async function criticosPorProdutoCS(
   if (error) throw new Error('Erro ao buscar o report mais recente: ' + error.message);
   if (!reps || reps.length === 0) return { estado: 'sem_report' };
   const rep = reps[0] as any;
-  const { data: crit, error: errCrit } = await sb.from('reports_individuais_criticos').select('membro_id, group_id').eq('report_id', rep.id);
-  if (errCrit) throw new Error('Erro ao buscar os críticos do report: ' + errCrit.message);
-  if (!crit || crit.length === 0) {
-    const c = rep.criticos_total ?? null, b = rep.base_total ?? null;
-    return { estado: 'sem_detalhamento', semana: rep.semana_inicio, criticos: c, membros: b, percentualDecimos: percentualCriticosDecimos(c, b) };
-  }
-  const nivelDoGrupo = (groupId: string) => {
-    const g = dados.conselhosGrupos.find((x: any) => x.group_id === groupId);
-    return (g && parseTituloConselho(g.titulo)?.nivel) || '';
-  };
-  const criticosPorNivel: Record<string, number> = {};
-  crit.forEach((r: any) => { const n = nivelDoGrupo(r.group_id); criticosPorNivel[n] = (criticosPorNivel[n] || 0) + 1; });
-  // Denominador por produto: os membros elegíveis do CS (membros_elegiveis_rede), a mesma base do
-  // Health da Base. Cada membro conta uma vez, no nível do conselho dele.
-  const membrosPorNivel: Record<string, number> = {};
-  (await fetchMembrosElegiveis(sb)).filter((m) => m.cs_nomes.includes(csNome)).forEach((m) => {
-    const n = nivelDoGrupo(m.group_id);
-    membrosPorNivel[n] = (membrosPorNivel[n] || 0) + 1;
-  });
-  const { linhas, total } = consolidarCriticosPorProduto(criticosPorNivel, membrosPorNivel);
-  return { estado: 'com_detalhamento', semana: rep.semana_inicio, linhas, total };
+  const c = rep.criticos_total ?? null, b = rep.base_total ?? null;
+  return { estado: 'sem_detalhamento', semana: rep.semana_inicio, criticos: c, membros: b, percentualDecimos: percentualCriticosDecimos(c, b) };
 }
 
 // Health da Base de um CS com e sem os pontos de advertência ativos, a partir do último report
