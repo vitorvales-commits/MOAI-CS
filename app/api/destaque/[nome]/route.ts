@@ -29,9 +29,11 @@ export async function GET(_req: NextRequest, { params }: { params: { nome: strin
 export async function POST(req: NextRequest, { params }: { params: { nome: string } }) {
   const nome = decodeURIComponent(params.nome);
   try {
-    const { supabase, isGestor, csNome } = await requireMoaiUser();
-    if (!isGestor && nome !== csNome) {
-      return NextResponse.json({ error: 'Você só pode alterar o próprio perfil.' }, { status: 403 });
+    // Correção 13/10/2026: antes o próprio CS podia gravar quantas vezes foi CS Destaque, porque a
+    // regra copiava a da leitura. Reconhecimento é atribuído pela liderança, então a escrita é só de gestor.
+    const { supabase, isGestor } = await requireMoaiUser();
+    if (!isGestor) {
+      return NextResponse.json({ error: 'Só gestor pode alterar o CS Destaque.' }, { status: 403 });
     }
     const body = await req.json();
     const vezes = await setVezesDestaque(supabase, nome, body?.vezes);
