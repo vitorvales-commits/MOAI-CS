@@ -63,7 +63,8 @@ async function main() {
 
   // ---- os scripts embutidos continuam com sintaxe válida ----
   new Function(GESTOR_SCRIPT);
-  const m = DASHBOARD_HTML.match(/<script>([\s\S]*)<\/script>/);
+  // Só o script principal (começa com <script> seguido de quebra de linha): os de configuração da agenda vêm antes, em linha própria.
+  const m = DASHBOARD_HTML.match(/<script>\n([\s\S]*?)<\/script>/);
   assert.ok(m, 'script do dashboard não encontrado');
   new Function(m![1]);
   assert.ok(GESTOR_SCRIPT.includes('/api/gestor/pulso'));
