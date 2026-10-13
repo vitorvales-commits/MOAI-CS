@@ -60,6 +60,8 @@ svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-w
 .logout-link:hover { color:#1A1A1A; background:#E9E9E9; }
 .gestor-topbar-link { font-size: 11px; font-weight:800; color:#C89A2E; text-decoration:none; padding:6px 10px; border-radius:8px; transition: color .15s, background .15s; }
 .gestor-topbar-link:hover { color:#1A1A1A; background:#F0E4C8; }
+.processos-topbar-link { font-size: 11px; font-weight:800; color:#1A1A1A; text-decoration:none; padding:6px 10px; border-radius:8px; border:0.75pt solid #D8D5D5; background:#fff; }
+.processos-topbar-link:hover { border-color:#1A1A1A; }
 select.pickmes { background:#fff; color:#1A1A1A; border: 0.75pt solid #D8D5D5; border-radius: 10px; padding: 7px 12px; font-family:'Inter',sans-serif; font-size: 12px; font-weight: 700; cursor:pointer; transition: border-color .2s; }
 select.pickmes:hover { border-color:#1A1A1A; }
 .sync-wrap { display:flex; align-items:center; gap:8px; }
@@ -110,12 +112,13 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .pessoa-conteudo { padding: 0 28px 40px; max-width:1040px; margin:0 auto; }
 
 /* hero escuro, estilo "jornada individual" */
-.jornada-hero { background:#111111; color:#fff; padding: 40px 28px 34px; margin-bottom: 28px; }
-.jornada-hero-inner { max-width:1040px; margin:0 auto; display:flex; gap:34px; align-items:flex-start; }
+.jornada-hero { background:#111111; color:#fff; padding: 28px 28px 26px; margin-bottom: 0; }
+.jornada-hero-inner { max-width:1040px; margin:0 auto; display:flex; gap:24px; align-items:center; }
+.jornada-txt { min-width:0; }
 .jornada-eyebrow { font-size: 10.5px; font-weight: 800; color:#9F9F9F; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:14px; }
-.jornada-photo { width:130px; height:130px; border-radius:22px; object-fit:cover; background:#242424; flex-shrink:0; }
-.jornada-photo-fallback { width:130px; height:130px; border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:38px; font-weight:800; color:#fff; flex-shrink:0; }
-.jornada-photo-wrap { position:relative; width:130px; height:130px; flex-shrink:0; }
+.jornada-photo { width:92px; height:92px; border-radius:22px; object-fit:cover; background:#242424; flex-shrink:0; }
+.jornada-photo-fallback { width:92px; height:92px; border-radius:22px; display:flex; align-items:center; justify-content:center; font-size:38px; font-weight:800; color:#fff; flex-shrink:0; }
+.jornada-photo-wrap { position:relative; width:92px; height:92px; flex-shrink:0; }
 .jornada-photo-editar { position:absolute; bottom:-6px; right:-6px; width:32px; height:32px; border-radius:50%; background:#fff; color:#1A1A1A; border:2px solid #111111; align-items:center; justify-content:center; font-size:14px; cursor:pointer; }
 .jornada-photo-editar:hover { background:#F5F5F5; }
 /* editor de foto com recorte (brainstorm 29/09/2026) — canvas simples, sem biblioteca externa */
@@ -127,12 +130,12 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .foto-crop-zoom-row input[type=range] { flex:1; }
 .foto-crop-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center; }
 .foto-crop-status { font-size:12px; color:#9F9F9F; }
-.jornada-nome { font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size: 46px; line-height:1.05; letter-spacing:-1px; color:#fff; margin-bottom:12px; }
+.jornada-nome { font-family:'Bricolage Grotesque', sans-serif; font-weight:800; font-size: 34px; line-height:1.05; letter-spacing:-0.6px; color:#fff; margin-bottom:6px; }
 .jornada-sub { font-size: 13.5px; color:#B7B5B5; margin-bottom:4px; }
-.jornada-meta { font-size: 11px; color:#7A7878; margin-top:16px; }
+.jornada-meta { font-size: 11px; color:#7A7878; margin-top:8px; }
 .jornada-proximo { display:inline-flex; align-items:center; gap:8px; margin-top:14px; background:rgba(255,255,255,0.08); border:0.75pt solid rgba(255,255,255,0.14); border-radius:99px; padding:8px 16px 8px 8px; font-size:12px; font-weight:700; color:#e5e5e5; }
 .jornada-badge { margin-left:auto; flex-shrink:0; display:none; flex-direction:column; align-items:center; padding-top:4px; }
-.jornada-badge-img-wrap { position:relative; width:104px; }
+.jornada-badge-img-wrap { position:relative; width:76px; }
 .jornada-badge-img-wrap img { width:100%; height:auto; display:block; filter:drop-shadow(0 6px 18px rgba(212,175,55,0.4)); }
 .jornada-badge-count { position:absolute; bottom:-2px; right:-6px; min-width:26px; height:26px; padding:0 6px; border-radius:99px; background:#111; border:2px solid #D4AF37; color:#F5D273; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; }
 .jornada-badge-label { font-size:9.5px; font-weight:800; color:#D4AF37; text-transform:uppercase; letter-spacing:1px; margin-top:8px; text-align:center; }
@@ -145,6 +148,61 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .destaque-label { font-size: 10px; font-weight: 800; color: #9F9F9F; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom:10px; }
 .destaque-valor { font-size: 14.5px; font-weight:700; color:#fff; line-height:1.4; }
 .destaque-valor.vazio { color:#6E6C6C; font-style:italic; font-weight:500; }
+
+/* ===== leitura de relance da página do CS (13/10/2026) ===== */
+.pessoa-faixa { max-width:1040px; margin:0 auto; padding:22px 28px 26px; display:grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap:16px; align-items:start; }
+.pend-bloco, .mes-bloco { background:#fff; border:0.75pt solid #E3E1E1; border-radius:20px; padding:18px 20px; }
+.pend-cab { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.pend-titulo { font-family:'Bricolage Grotesque',sans-serif; font-size:18px; font-weight:800; color:#1A1A1A; }
+.pend-sub { font-size:11px; font-weight:700; color:#9F9F9F; }
+.pend-lista { display:flex; flex-direction:column; }
+.pend-item { display:flex; align-items:center; gap:12px; padding:11px 0; border-top:0.75pt solid #EFEDED; }
+.pend-item:first-child { border-top:none; }
+.pend-tag { flex:0 0 92px; font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; border-radius:99px; padding:3px 6px; text-align:center; }
+#aba-acompanhamento .empty-state, #aba-reconhecimento .empty-state { padding:18px 20px; text-align:left; }
+.pend-item.atrasado .pend-tag { background:#FBEEEC; color:#C0433D; }
+.pend-item.breve .pend-tag { background:#F4EBD3; color:#7A5C14; }
+.pend-item.info .pend-tag { background:#EFEDED; color:#807E7E; }
+.pend-txt { flex:1; min-width:0; }
+.pend-item-tit { font-size:13px; font-weight:700; color:#1A1A1A; line-height:1.35; overflow-wrap:anywhere; }
+.pend-item-det { font-size:11.5px; color:#807E7E; margin-top:2px; line-height:1.4; }
+.pend-acao { flex:0 0 auto; font-family:'Inter',sans-serif; font-size:11px; font-weight:800; color:#1A1A1A; background:#F5F5F5; border:0.75pt solid #D8D5D5; border-radius:8px; padding:7px 11px; cursor:pointer; text-decoration:none; white-space:nowrap; }
+.pend-acao:hover { border-color:#1A1A1A; }
+.pend-vazio { font-size:12.5px; color:#9F9F9F; padding:10px 0; }
+.pend-vazio.ok { color:#3D8B5F; font-weight:700; }
+.pend-mais { background:none; border:none; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:800; color:#7A5C14; cursor:pointer; padding:8px 0 0; text-align:left; }
+.mes-eyebrow { font-size:10.5px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.8px; }
+.mes-frase { font-size:14px; color:#5D5D5D; margin:8px 0 10px; }
+.mes-frase .num { font-size:30px; color:#1A1A1A; margin-right:4px; }
+.mes-frase.pequeno { font-size:12.5px; }
+.mes-barra { display:flex; gap:3px; height:8px; border-radius:99px; overflow:hidden; background:#EFEDED; margin-bottom:12px; }
+.mes-seg.g { background:#3D8B5F; } .mes-seg.y { background:#C89A2E; } .mes-seg.r { background:#C0433D; }
+.mes-linha { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px; }
+.mes-rot { font-size:10.5px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.5px; width:100%; }
+.mes-rot.ok { color:#3D8B5F; text-transform:none; letter-spacing:0; font-size:12px; }
+.mes-chip { font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; border-radius:99px; padding:5px 10px; cursor:pointer; border:0.75pt solid transparent; }
+.mes-chip.r { background:#FBEEEC; color:#8E2F2A; border-color:#EBC6C0; }
+.mes-chip.y { background:#F7F0DE; color:#7A5C14; border-color:#EADBB4; }
+.mes-chip:hover { border-color:#1A1A1A; }
+.tab-badge { display:inline-block; margin-left:6px; min-width:18px; padding:1px 6px; border-radius:99px; background:#C0433D; color:#fff; font-size:10px; font-weight:800; text-align:center; }
+.tab-badge[hidden] { display:none; }
+@media (max-width: 820px) {
+  .pessoa-faixa { grid-template-columns: 1fr; padding:18px 16px 20px; }
+  .pend-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; align-items:center; }
+  .pend-tag { grid-column:1 / -1; justify-self:start; flex:none; }
+  .pend-txt { grid-column:1; }
+  .pend-acao { grid-column:2; grid-row:2; }
+  .topbar { padding:12px 16px; }
+  .topbar-right { flex-wrap:wrap; }
+  .jornada-hero { padding:22px 16px; }
+  .jornada-hero-inner { gap:16px; }
+  .jornada-photo, .jornada-photo-fallback, .jornada-photo-wrap { width:68px; height:68px; }
+  .jornada-badge-img-wrap { width:52px; }
+  .jornada-badge-label { display:none; }
+  .tabs { overflow-x:auto; padding:0 16px; }
+  .tab { white-space:nowrap; }
+  .jornada-nome { font-size:26px; }
+}
 
 .tabs { display: flex; border-bottom: 0.75pt solid #C6C4C4; margin-bottom: 22px; gap: 4px; padding: 0 28px; max-width:1040px; margin-left:auto; margin-right:auto; }
 .tab { padding: 10px 4px; margin-right:22px; font-size: 12px; font-weight: 700; color: #9F9F9F; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
@@ -603,51 +661,66 @@ ${GTD_CHECKLIST_STYLE}
     <div class="jornada-hero-inner">
       <div class="jornada-photo-wrap">
         <div class="jornada-photo skel" id="pessoaFotoSkel" style="display:none;"></div>
-        <img class="jornada-photo" id="pessoaFoto" style="display:none;">
+        <img class="jornada-photo" id="pessoaFoto" style="display:none;" alt="">
         <div class="jornada-photo-fallback" id="pessoaFotoFallback" style="display:none;"></div>
-        <button class="jornada-photo-editar" id="pessoaFotoEditarBtn" type="button" onclick="abrirEditorFotoCS()" style="display:none;" title="Trocar foto">✎</button>
+        <button class="jornada-photo-editar" id="pessoaFotoEditarBtn" type="button" onclick="abrirEditorFotoCS()" style="display:none;" title="Trocar foto" aria-label="Trocar foto">✎</button>
       </div>
-      <div>
-        <div class="jornada-eyebrow">Jornada individual</div>
+      <div class="jornada-txt">
         <div class="jornada-nome" id="pessoaNome"></div>
         <div class="jornada-sub" id="pessoaSub"></div>
         <div class="jornada-meta" id="pessoaMeta"></div>
-        <div id="pessoaProximoConselho"></div>
-        <div id="pessoaUltimoUmAUm"></div>
       </div>
       <div class="jornada-badge" id="pessoaBadgeDestaque">
         <div class="jornada-badge-img-wrap">
-          <img src="/badges/cs-destaque.png">
-        <div class="jornada-badge-count" id="pessoaBadgeCount"></div>
+          <img src="/badges/cs-destaque.png" alt="">
+          <div class="jornada-badge-count" id="pessoaBadgeCount"></div>
         </div>
         <div class="jornada-badge-label">CS Destaque</div>
       </div>
     </div>
   </div>
-  <div style="padding:0 28px;max-width:1040px;margin:0 auto 22px;"><div id="agendaPessoa"></div></div>
-  <div class="destaques-grid" id="destaquesGrid"></div>
-  <div id="restritoExtras" style="display:none;padding:0 28px;max-width:1040px;margin:0 auto 30px;">
-    <div class="section-title">CS Top 3<div class="line"></div></div>
-    <div id="restritoTop3"></div>
-    <div id="restritoPosicao"></div>
+  <div class="pessoa-faixa">
+    <section class="pend-bloco" aria-labelledby="pendTitulo">
+      <div class="pend-cab"><h2 class="pend-titulo" id="pendTitulo">O que fazer agora</h2><span class="pend-sub" id="pendSub"></span></div>
+      <div class="pend-lista" id="pendLista"><div class="pend-vazio">Carregando suas pendências…</div></div>
+    </section>
+    <section class="mes-bloco" id="mesResumo" aria-label="Resumo das metas do mês"></section>
   </div>
-  <div class="tabs">
-    <div class="tab active" onclick="showTab('indicadores',event)">Indicadores</div>
-    <div class="tab" onclick="showTab('semanal',event)">Cases de Sucesso</div>
-    <div class="tab" onclick="showTab('conselhos',event)">Conselhos</div>
-    <div class="tab" onclick="showTab('umaum',event)">1:1</div>
-    <div class="tab" onclick="showTab('advertencias',event)">Pontos tomados</div>
-    <div class="tab" onclick="showTab('report',event)">Report</div>
-    <div class="tab" onclick="showTab('feedbacks',event)">Feedbacks</div>
+  <div class="tabs" role="tablist">
+    <div class="tab active" role="tab" data-aba="aba-mes" onclick="showTab('aba-mes',event)">Meu mês</div>
+    <div class="tab" role="tab" data-aba="aba-conselhos" onclick="showTab('aba-conselhos',event)">Conselhos e agenda</div>
+    <div class="tab" role="tab" data-aba="aba-acompanhamento" onclick="showTab('aba-acompanhamento',event)">Acompanhamento<span class="tab-badge" id="tabBadgeAcomp" hidden></span></div>
+    <div class="tab" role="tab" data-aba="aba-reconhecimento" onclick="showTab('aba-reconhecimento',event)">Reconhecimento</div>
   </div>
   <div class="pessoa-conteudo">
-    <div id="indicadores" class="panel active"></div>
-    <div id="semanal" class="panel"></div>
-    <div id="conselhos" class="panel"></div>
-    <div id="umaum" class="panel"></div>
-    <div id="advertencias" class="panel"></div>
-    <div id="report" class="panel"></div>
-    <div id="feedbacks" class="panel"></div>
+    <div id="aba-mes" class="panel active">
+      <div id="indicadores"></div>
+      <div class="section-title" style="margin-top:30px;">Cases de sucesso registrados<div class="line"></div></div>
+      <div id="semanal"></div>
+    </div>
+    <div id="aba-conselhos" class="panel">
+      <div id="agendaPessoa"></div>
+      <div class="section-title" style="margin-top:30px;">Carteira de conselhos<div class="line"></div></div>
+      <div id="conselhos"></div>
+    </div>
+    <div id="aba-acompanhamento" class="panel">
+      <div class="section-title">1:1 com a liderança<div class="line"></div></div>
+      <div id="umaum"></div>
+      <div class="section-title" style="margin-top:30px;">Report semanal<div class="line"></div></div>
+      <div id="report"></div>
+      <div class="section-title" style="margin-top:30px;">Pontos tomados<div class="line"></div></div>
+      <div id="advertencias"></div>
+    </div>
+    <div id="aba-reconhecimento" class="panel">
+      <div id="restritoExtras" style="display:none;margin-bottom:30px;">
+        <div class="section-title">Minha posição no time<div class="line"></div></div>
+        <div id="restritoPosicao"></div>
+        <div class="section-title" style="margin-top:22px;">CS Top 3 do mês<div class="line"></div></div>
+        <div id="restritoTop3"></div>
+      </div>
+      <div class="section-title">O que o time diz<div class="line"></div></div>
+      <div id="feedbacks"></div>
+    </div>
   </div>
 </div>
 
@@ -839,6 +912,7 @@ function renderTopbar(){
     '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
     '<span class="live-label"><span class="live-dot"></span>ao vivo</span>' +
     '<span class="sync-wrap"><button class="sync-btn" id="btnSyncTopbar" onclick="sincronizarAgora()">Sincronizar agora</button><span class="sync-status-topbar" id="syncStatusTopbar"></span></span>' +
+    '<a class="processos-topbar-link" href="/processos">Processos</a>' +
     (souGestor ? '<a class="gestor-topbar-link" href="/gestor">Visão da área</a>' : '') +
     '<a class="logout-link" href="/auth/signout">Sair</a>';
   document.getElementById('topbarRight').innerHTML = html;
@@ -967,7 +1041,8 @@ function abrirPessoa(nome){
   if (modoRestritoCS) carregarRelatorioRestrito(nome, currentMes, currentAno);
   else carregarRelatorio(nome, currentMes, currentAno);
   atualizarBadgeDestaque(nome);
-  document.getElementById('pessoaUltimoUmAUm').innerHTML = '';
+  umAUmVisao_ = null; advertenciasCarregadas_ = false; reportEstadoAtual_ = null;
+  renderPendencias();
   document.getElementById('umaum').innerHTML = '<div class="empty-state">Carregando...</div>';
   carregarUmAUm(nome);
   document.getElementById('advertencias').innerHTML = '<div class="empty-state">Carregando...</div>';
@@ -992,8 +1067,7 @@ function renderSkeletonPessoa(){
   document.getElementById('pessoaNome').textContent = currentCS;
   document.getElementById('pessoaSub').textContent = 'Customer Success';
   document.getElementById('pessoaMeta').textContent = 'Carregando ' + currentMes + '/' + currentAno + '...';
-  document.getElementById('pessoaProximoConselho').innerHTML = '';
-  document.getElementById('destaquesGrid').innerHTML = Array(4).fill('<div class="destaque-card skel" style="height:110px;"></div>').join('');
+  document.getElementById('mesResumo').innerHTML = '<div class="skel" style="height:96px;border-radius:18px;"></div>';
   document.getElementById('indicadores').innerHTML = '<div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div><div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div><div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div>';
   document.getElementById('semanal').innerHTML = '<div class="chart-card skel" style="height:180px;"></div><div class="week-grid">'+Array(4).fill('<div class="week-card skel" style="height:90px;"></div>').join('')+'</div>';
   document.getElementById('conselhos').innerHTML = '<div class="council-grid">'+Array(3).fill('<div class="council-card skel" style="height:150px;"></div>').join('')+'</div>';
@@ -1027,7 +1101,7 @@ function carregarRelatorio(nome, mes, ano){
       document.getElementById('semanal').innerHTML = msgErro;
       document.getElementById('conselhos').innerHTML = msgErro;
       document.getElementById('feedbacks').innerHTML = msgErro;
-      document.getElementById('destaquesGrid').innerHTML = '';
+      document.getElementById('mesResumo').innerHTML = '';
     }
   }).getReportPublico(nome, mes, ano);
 }
@@ -1058,7 +1132,7 @@ function carregarRelatorioRestrito(nome, mes, ano){
       document.getElementById('semanal').innerHTML = msgErro;
       document.getElementById('conselhos').innerHTML = msgErro;
       document.getElementById('feedbacks').innerHTML = msgErro;
-      document.getElementById('destaquesGrid').innerHTML = '';
+      document.getElementById('mesResumo').innerHTML = '';
     }
   });
 }
@@ -1153,7 +1227,7 @@ function kpiCriticosArea_(label, ind){
     '<div class="kpi-sub">'+(meta!==null?'meta '+meta:'meta não definida')+'</div>'+coberturaLinha +
     '<div class="kpi-fonte-texto">Fonte: report semanal no Monday</div></div>';
 }
-function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
+function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   if (ind.area) return kpiCriticosArea_(label, ind);
   var c = calcIndicador(ind);
   if (ind.statusReport === 'sem_report') { c.pctLabel = 'Sem report'; c.pillLabel = 'Sem report'; }
@@ -1178,7 +1252,7 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   // A composição (críticos de x, pontos, Health) fica só no tooltip; no corpo do card entra só a cobertura,
   // e apenas quando algum CS obrigado está sem report válido.
   var coberturaLinha = ind.cobertura ? '<div class="kpi-recorde-linha">'+ind.cobertura+'</div>' : '';
-  return '<div class="kpi"'+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
+  return '<div class="kpi"'+(idDom?' id="'+idDom+'"':'')+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
     '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+coberturaLinha+'</div></div></div>';
 }
@@ -1251,58 +1325,145 @@ function renderJornadaHero(data){
   document.getElementById('pessoaNome').textContent = data.cs.nomeCompleto;
   document.getElementById('pessoaSub').textContent = 'Customer Success · Conselho ' + data.cs.apelidoConselho;
   var periodoTxt = data.periodo.geral ? 'Visão Geral · ' + data.periodo.ano : data.periodo.mes + '/' + data.periodo.ano;
-  document.getElementById('pessoaMeta').textContent = periodoTxt.toUpperCase() + ' · ATUALIZADO EM ' + new Date(data.periodo.geradoEm).toLocaleString('pt-BR');
+  document.getElementById('pessoaMeta').textContent = periodoTxt + ' · dados de ' + new Date(data.periodo.geradoEm).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
-  var elProx = document.getElementById('pessoaProximoConselho');
-  var prox = data.cs.proximoConselho;
-  if (prox && prox.dataIso) {
-    var f = formatarDataConselho(prox.dataIso);
-    elProx.innerHTML = f ? ('<div class="jornada-proximo">' + ICONS.calendar.replace('icon','icon') +
-      '<span>Próximo conselho: <strong>' + prox.nome + '</strong> — ' + f.texto + '</span></div>') : '';
-  } else {
-    elProx.innerHTML = '<div class="jornada-proximo" style="opacity:0.6;">'+ICONS.clock+'<span>Sem próxima data confirmada na agenda</span></div>';
+
+}
+// ============ página do CS: leitura de relance (13/10/2026) ============
+// Duas peças acima das abas. "O que fazer agora" junta, por urgência, o que hoje estava espalhado em
+// quatro abas (report, 1:1, GTD dos conselhos, confirmações e pontos). "Resumo do mês" troca os quatro
+// cartões de texto por uma única leitura: quantas metas estão no alvo e quais precisam de atenção.
+// Nada é recalculado aqui: tudo vem dos payloads que a página já carrega.
+var umAUmVisao_ = null;
+var advertenciasCarregadas_ = false;
+var reportEstadoAtual_ = null;
+var PEND_VISIVEIS_ = 5;
+var pendExpandida_ = false;
+var INDICADORES_MES_ = [
+  { k:'churn', l:'Churn', rec:'churn' }, { k:'revenueChurn', l:'Revenue Churn', rec:'revenue_churn', u:'R$' },
+  { k:'casesSucesso', l:'Cases de Sucesso', rec:'cases' }, { k:'matchmakings', l:'Matchmakings', rec:'matchmakings' },
+  { k:'rounds', l:'Rounds', rec:'rounds' }, { k:'indicacoes', l:'Indicações', rec:'indicacoes' },
+  { k:'healthDaBase', l:'Críticos', rec:'health_base' }, { k:'upsell', l:'Upsell', rec:'upsell' }, { k:'downsell', l:'Downsell', rec:'downsell' }
+];
+function hojeIsoLocal_(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function diasEntreIso_(a, b){ return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+function nomeCurtoConselho_(c){ return parseConselhoNome(c.nome).contato || c.nome; }
+
+function coletarPendencias_(){
+  var itens = [];
+  var hoje = hojeIsoLocal_();
+  var data = currentCS ? cachePessoa[chaveP(currentCS, currentMes, currentAno)] : null;
+  var proprio = currentCS === meuCSNome;
+  // Report da semana (prazo sexta às 19h) e semana anterior não enviada.
+  var r = reportEstadoAtual_;
+  if (r && r.estado) {
+    if (r.estado.estado === 'atrasado') itens.push({ g:0, ord:0, titulo:'Report desta semana atrasado', det:'Atrasado há ' + fmtHorasR_(r.estado.horas_atraso) + '. O Health da Base fica sem apuração até o envio.', acao:'<a class="pend-acao" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Enviar no Monday</a>' });
+    else if (r.estado.estado === 'pendente') itens.push({ g:1, ord:0, titulo:'Enviar o report da semana', det:'Prazo: sexta até 19h, no board de report do Monday.', acao:'<a class="pend-acao" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Abrir no Monday</a>' });
   }
+  if (r && r.regularidade) {
+    var anterior = somarDiasR_(r.semana, -7);
+    var regAnt = r.regularidade.filter(function(x){ return String(x.semana_inicio).slice(0,10) === anterior; })[0];
+    if (regAnt && regAnt.estado === 'atrasado') itens.push({ g:0, ord:1, titulo:'Report da semana passada não enviado', det:rotuloSemanaR_(anterior) + '.', acao:'<a class="pend-acao" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Enviar no Monday</a>' });
+  }
+  // Etapas do GTD atrasadas nos ciclos abertos e conselhos dos próximos 7 dias com poucos confirmados.
+  if (data && data.conselhos) {
+    data.conselhos.forEach(function(c, i){
+      var nome = nomeCurtoConselho_(c);
+      if (c.gtd && c.gtd.atual && c.gtd.etapasAtrasadas && c.gtd.etapasAtrasadas.length) {
+        var n = c.gtd.etapasAtrasadas.length;
+        itens.push({ g:0, ord:2, titulo:'GTD de ' + nome + ': ' + n + (n === 1 ? ' etapa atrasada' : ' etapas atrasadas'),
+          det:c.gtd.etapasAtrasadas.slice(0,2).map(function(e){ return String(e).replace(/^\\s*D\\s*[+\\-]\\s*\\d+\\s*/i, ''); }).join(' · ') + (n > 2 ? ' · e mais ' + (n-2) : ''),
+          acao:'<button type="button" class="pend-acao" onclick="abrirConselhoModal(' + i + ')">Ver etapas</button>' });
+      }
+      if (c.proximaData && c.proximaDataEhFutura && !c.congelado) {
+        var dias = diasEntreIso_(hoje, String(c.proximaData).slice(0,10));
+        var qtd = c.confirmadosFuturos ? c.confirmadosFuturos.length : 0;
+        var faixa = semaforoConfirmados_(qtd).chave;
+        if (dias >= 0 && dias <= 7 && (faixa === 'vermelho' || faixa === 'laranja')) {
+          var f = formatarDataConselho(c.proximaData);
+          itens.push({ g: dias <= 2 ? 0 : 1, ord:3 + dias / 10, titulo:'Confirmar presença no conselho ' + nome,
+            det:(f ? f.texto + ' · ' : '') + (qtd === 0 ? 'nenhum confirmado ainda' : qtd + (qtd === 1 ? ' confirmado' : ' confirmados')) + '.',
+            acao:'<button type="button" class="pend-acao" onclick="abrirConselhoModal(' + i + ')">Ver conselho</button>' });
+        }
+      }
+    });
+  }
+  // Próximos passos da 1:1 que cabem ao CS.
+  var v = umAUmVisao_;
+  if (v && v.passosLiderado && v.passosLiderado.length) {
+    var abertosSemUrgencia = 0;
+    v.passosLiderado.forEach(function(it){
+      if (it.vencido) itens.push({ g:0, ord:4, titulo:it.texto, det:'Passo da 1:1 vencido há ' + it.diasVencido + (it.diasVencido === 1 ? ' dia.' : ' dias.'), acao:'<button type="button" class="pend-acao" onclick="irParaAba(&#39;aba-acompanhamento&#39;)">Ver 1:1</button>' });
+      else if (it.prazo && diasEntreIso_(hoje, String(it.prazo).slice(0,10)) <= 7) itens.push({ g:1, ord:4, titulo:it.texto, det:'Passo da 1:1 com prazo em ' + dataBRUmAUm_(it.prazo) + '.', acao:'<button type="button" class="pend-acao" onclick="irParaAba(&#39;aba-acompanhamento&#39;)">Ver 1:1</button>' });
+      else abertosSemUrgencia++;
+    });
+    if (abertosSemUrgencia) itens.push({ g:2, ord:5, titulo:abertosSemUrgencia + (abertosSemUrgencia === 1 ? ' passo da 1:1 em aberto' : ' passos da 1:1 em aberto'), det:'Sem prazo nos próximos 7 dias.', acao:'<button type="button" class="pend-acao" onclick="irParaAba(&#39;aba-acompanhamento&#39;)">Ver 1:1</button>' });
+  }
+  if (advertenciasCarregadas_ && advertenciaPontuacaoAtiva_ > LIMIAR_ADVERTENCIA_DESTAQUE_) {
+    itens.push({ g:1, ord:6, titulo:advertenciaPontuacaoAtiva_ + ' pontos ativos, acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE_, det:'Converse com a liderança sobre o plano para reduzir.', acao:'<button type="button" class="pend-acao" onclick="irParaAba(&#39;aba-acompanhamento&#39;,&#39;advertencias&#39;)">Ver pontos</button>' });
+  }
+  itens.sort(function(a, b){ return a.g - b.g || a.ord - b.ord; });
+  return { itens: itens, proprio: proprio, carregando: !data || umAUmVisao_ === null || reportEstadoAtual_ === null || !advertenciasCarregadas_ };
 }
-function destaqueCard(label, valor){
-  return '<div class="destaque-card"><div class="destaque-label">'+label+'</div><div class="destaque-valor'+(valor?'':' vazio')+'">'+(valor||'Sem informações')+'</div></div>';
+
+function renderPendencias(){
+  var lista = document.getElementById('pendLista');
+  if (!lista) return;
+  var r = coletarPendencias_();
+  var nomeCurto = currentCS || '';
+  document.getElementById('pendTitulo').textContent = r.proprio || modoRestritoCS ? 'O que fazer agora' : 'Pendências de ' + nomeCurto;
+  var urgentes = r.itens.filter(function(x){ return x.g === 0; }).length;
+  document.getElementById('pendSub').textContent = r.itens.length
+    ? (urgentes ? urgentes + (urgentes === 1 ? ' urgente' : ' urgentes') + ' · ' : '') + r.itens.length + ' no total'
+    : '';
+  var badge = document.getElementById('tabBadgeAcomp');
+  var nAcomp = r.itens.filter(function(x){ return x.g < 2 && (x.ord === 0 || x.ord === 1 || x.ord === 4 || x.ord === 6); }).length;
+  if (badge) { badge.hidden = !nAcomp; badge.textContent = nAcomp; }
+  if (!r.itens.length) {
+    lista.innerHTML = r.carregando
+      ? '<div class="pend-vazio">Carregando pendências…</div>'
+      : '<div class="pend-vazio ok">Nada pendente agora: report, GTD, confirmações e passos da 1:1 estão em dia.</div>';
+    return;
+  }
+  var mostrar = pendExpandida_ ? r.itens : r.itens.slice(0, PEND_VISIVEIS_);
+  lista.innerHTML = mostrar.map(function(x){
+    var cls = x.g === 0 ? 'atrasado' : (x.g === 1 ? 'breve' : 'info');
+    var rot = x.g === 0 ? 'Urgente' : (x.g === 1 ? 'Esta semana' : 'Em aberto');
+    return '<div class="pend-item ' + cls + '"><span class="pend-tag">' + rot + '</span>' +
+      '<div class="pend-txt"><div class="pend-item-tit">' + escHtml_(x.titulo) + '</div><div class="pend-item-det">' + escHtml_(x.det) + '</div></div>' + (x.acao || '') + '</div>';
+  }).join('') + (r.itens.length > PEND_VISIVEIS_
+    ? '<button type="button" class="pend-mais" onclick="pendExpandida_=!pendExpandida_;renderPendencias();">' + (pendExpandida_ ? 'Mostrar menos' : 'Ver mais ' + (r.itens.length - PEND_VISIVEIS_)) + '</button>' : '') +
+    (r.carregando ? '<div class="pend-vazio">Ainda carregando parte das informações…</div>' : '');
 }
-function renderDestaques(data){
+
+function renderResumoMes(data){
+  var el = document.getElementById('mesResumo');
   var ind = data.indicadores;
-  var chaves = [
-    {k:'churn', l:'Churn'}, {k:'casesSucesso', l:'Cases de Sucesso'}, {k:'matchmakings', l:'Matchmakings'},
-    {k:'rounds', l:'Rounds'}, {k:'upsell', l:'Upsell'}, {k:'downsell', l:'Downsell'}, {k:'healthDaBase', l:'Críticos'}
-  ];
-  var calculados = chaves.map(function(c){ return { l:c.l, ind: ind[c.k], calc: calcIndicador(ind[c.k]) }; })
-    .filter(function(x){ return x.ind.alcancado !== null && x.ind.alcancado !== undefined && x.ind.meta !== null && x.ind.meta !== undefined; });
-
-  var pontoAtencao = null, conquista = null, compromisso = null;
-  if (!modoGeralAtual) {
-    var piores = calculados.filter(function(x){ return x.calc.pill==='pr'; }).sort(function(a,b){ return a.calc.pct-b.calc.pct; });
-    pontoAtencao = piores.length ? piores[0].l + ' está ' + piores[0].calc.pctLabel.toLowerCase() : null;
-
-    var melhores = calculados.filter(function(x){ return x.calc.pill==='pg'; }).sort(function(a,b){ return b.ind.alcancado-a.ind.alcancado; });
-    conquista = melhores.length ? melhores[0].l + ' com meta batida (' + melhores[0].ind.alcancado + ')' : null;
-
-    var proximos = calculados.filter(function(x){ return x.ind.tipoMeta==='min' && x.calc.pill==='py'; }).sort(function(a,b){ return b.calc.pct-a.calc.pct; });
-    compromisso = proximos.length ? proximos[0].l + ' em ' + proximos[0].calc.pctLabel.toLowerCase() : null;
+  if (data.periodo.geral) {
+    el.innerHTML = '<div class="mes-cab"><span class="mes-eyebrow">Visão geral de ' + data.periodo.ano + '</span></div>' +
+      '<div class="mes-frase">Acumulado do ano, sem comparação com meta. Escolha um mês no topo para ver o que está no alvo.</div>';
+    return;
   }
-
-  var fb = data.feedback;
-  var destaqueFb = null;
-  if (fb && fb.positivos && fb.positivos.length) {
-    var texto = fb.positivos[0];
-    destaqueFb = texto.length > 90 ? texto.slice(0,90) + '…' : texto;
-  } else if (data.pulso && data.pulso.falas && data.pulso.falas.length) {
-    // Pulso de CS (05/10/2026): a partir de outubro a fala vem do pulso.
-    var textoPulso = data.pulso.falas[0];
-    destaqueFb = textoPulso.length > 90 ? textoPulso.slice(0,90) + '…' : textoPulso;
-  }
-
-  document.getElementById('destaquesGrid').innerHTML =
-    destaqueCard('Ponto de atenção', pontoAtencao) +
-    destaqueCard('Maior conquista do mês', conquista) +
-    destaqueCard('Mais próximo da meta', compromisso) +
-    destaqueCard('Destaque em feedback', destaqueFb);
+  var lidos = INDICADORES_MES_.map(function(x){ return { l:x.l, k:x.k, ind:ind[x.k], c:calcIndicador(ind[x.k]) }; })
+    .filter(function(x){ return x.ind && x.ind.meta !== null && x.ind.meta !== undefined && x.ind.alcancado !== null && x.ind.alcancado !== undefined && !x.ind.semApuracao; });
+  var noAlvo = lidos.filter(function(x){ return x.c.pill === 'pg'; });
+  var andamento = lidos.filter(function(x){ return x.c.pill === 'py'; });
+  var atencao = lidos.filter(function(x){ return x.c.pill === 'pr'; }).sort(function(a, b){ return a.c.pct - b.c.pct; });
+  var total = lidos.length;
+  var seg = function(n, cls){ return n ? '<span class="mes-seg ' + cls + '" style="flex:' + n + '"></span>' : ''; };
+  // Meta de mínimo mostra o quanto foi atingido; meta de máximo (churn, críticos) mostra valor contra o limite.
+  var chip = function(x, cls){
+    var v = x.ind.tipoMeta === 'max' ? valorKpiTexto_(x.ind, x.k === 'revenueChurn' ? 'R$' : null) + ' para limite de ' + (x.k === 'revenueChurn' ? 'R$ ' + Number(x.ind.meta).toLocaleString('pt-BR') : x.ind.meta + (x.ind.composicao ? '%' : '')) : x.c.pctLabel.replace(' da meta','');
+    return '<button type="button" class="mes-chip ' + cls + '" onclick="irParaAba(&#39;aba-mes&#39;,&#39;kpi-' + x.k + '&#39;)">' + x.l + ' <b>' + v + '</b></button>';
+  };
+  el.innerHTML = '<div class="mes-cab"><span class="mes-eyebrow">Metas de ' + String(data.periodo.mes).toLowerCase() + '</span></div>' +
+    (total
+      ? '<div class="mes-frase"><b class="num">' + noAlvo.length + '</b> de ' + total + ' no alvo</div>' +
+        '<div class="mes-barra" role="img" aria-label="' + noAlvo.length + ' no alvo, ' + andamento.length + ' em andamento, ' + atencao.length + ' precisam de atenção">' + seg(noAlvo.length,'g') + seg(andamento.length,'y') + seg(atencao.length,'r') + '</div>' +
+        (atencao.length ? '<div class="mes-linha"><span class="mes-rot">Precisam de atenção</span>' + atencao.map(function(x){ return chip(x,'r'); }).join('') + '</div>' : '') +
+        (andamento.length ? '<div class="mes-linha"><span class="mes-rot">Em andamento</span>' + andamento.map(function(x){ return chip(x,'y'); }).join('') + '</div>' : '') +
+        (!atencao.length && !andamento.length ? '<div class="mes-linha"><span class="mes-rot ok">Todas as metas com dado estão no alvo.</span></div>' : '')
+      : '<div class="mes-frase pequeno">Ainda sem metas com dado neste mês.</div>');
 }
 
 // resumo (Parte A/B, 25/09/2026): só existe quando modoRestritoCS=true (payload de
@@ -1312,12 +1473,13 @@ function renderDestaques(data){
 function renderDashboard(data, resumo){
   modoGeralAtual = !!data.periodo.geral;
   renderJornadaHero(data);
-  renderDestaques(data);
+  renderResumoMes(data);
   renderIndicadores(data, resumo); renderSemanal(data); renderConselhos(data); renderFeedback(data);
   if (modoRestritoCS && resumo) {
     renderCSTop(resumo.top3, 'restritoTop3');
     renderMinhaPosicao(resumo);
   }
+  renderPendencias();
   animarMFills();
 }
 function gtdCard(ind){
@@ -1340,16 +1502,20 @@ function recordeIndividualMapa_(data){
   });
   return mapa;
 }
+// Ordem dos cartões: primeiro o que precisa de atenção, depois em andamento, por fim no alvo e sem meta,
+// para que a leitura do mês comece pelo que pede ação (13/10/2026). Visão Geral mantém a ordem fixa.
 function renderIndicadores(data, resumo){
   var ind = data.indicadores;
   var t = resumo ? resumo.indicadoresTime : null;
   var blur = modoRestritoCS && !configRevelarIndicadoresTime;
   var rec = recordeIndividualMapa_(data);
-  document.getElementById('indicadores').innerHTML =
-    '<div class="grid3">'+kpiCard('Churn', ind.churn, null, t&&t.churn, blur, rec.churn)+kpiCard('Revenue Churn', ind.revenueChurn, 'R$', t&&t.revenueChurn, blur, rec.revenue_churn)+kpiCard('Cases de Sucesso', ind.casesSucesso, null, t&&t.casesSucesso, blur, rec.cases)+'</div>' +
-    '<div class="grid3">'+kpiCard('Matchmakings', ind.matchmakings, null, t&&t.matchmakings, blur, rec.matchmakings)+kpiCard('Rounds', ind.rounds, null, t&&t.rounds, blur, rec.rounds)+kpiCard('Indicações', ind.indicacoes, null, t&&t.indicacoes, blur, rec.indicacoes)+'</div>' +
-    '<div class="grid3">'+kpiCard('Críticos', ind.healthDaBase, null, t&&t.healthDaBase, blur, rec.health_base)+kpiCard('Upsell', ind.upsell, null, t&&t.upsell, blur, rec.upsell)+kpiCard('Downsell', ind.downsell, null, t&&t.downsell, blur, rec.downsell)+'</div>' +
-    gtdCard(ind.cumprimentoGtd);
+  var PESO_ = { pr:0, py:1, pg:2, pgray:3 };
+  var lista = INDICADORES_MES_.map(function(x, i){ return { x:x, i:i, peso: modoGeralAtual ? 0 : (PESO_[calcIndicador(ind[x.k]).pill] === undefined ? 3 : PESO_[calcIndicador(ind[x.k]).pill]) }; })
+    .sort(function(a, b){ return a.peso - b.peso || a.i - b.i; });
+  var html = '<div class="grid3">' + lista.map(function(o){
+    return kpiCard(o.x.l, ind[o.x.k], o.x.u || null, t && t[o.x.k], blur, rec[o.x.rec], 'kpi-' + o.x.k);
+  }).join('') + '</div>';
+  document.getElementById('indicadores').innerHTML = html + gtdCard(ind.cumprimentoGtd);
 }
 function renderSemanal(data){
   var ind = data.indicadores.casesSucesso;
@@ -1702,7 +1868,7 @@ function renderFeedback(data){
   var pulso = data.pulso || null;
   var modo = pulso ? pulso.modo : 'legado';
   var vezesAtual = data.cs.vezesDestaque || 0;
-  var html = '<div class="destaque-form-card">' +
+  var html = !souGestor ? '' : '<div class="destaque-form-card">' +
     '<div class="destaque-form-label">'+ICONS.trophy+'CS Destaque</div>' +
     '<div class="destaque-form-desc">Quantas vezes '+data.cs.nomeCompleto+' já foi reconhecido(a) como CS Destaque. Aparece como emblema no topo da página individual.</div>' +
     '<input type="number" min="0" step="1" class="destaque-form-input" id="destaqueInput" value="'+vezesAtual+'">' +
@@ -1794,7 +1960,6 @@ function salvarVezesDestaque(){
 // A 1:1 é conduzida e editada só na página do CS na visão do gestor (/gestor/cs/[nome], bloco 1:1).
 // Aqui, CS e gestor veem a mesma visão compartilhada, que a API já devolve ordenada e sem ponto de
 // atenção, notas privadas ou dados do Granola. Carregada à parte, para não misturar com o payload de /api/cs/[nome].
-var umAUmVisao_ = null;
 var UMAUM_PRIO_LABEL_ = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
 function escUmAUm_(s){
   return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){
@@ -1812,19 +1977,13 @@ function carregarUmAUm(nome){
     renderUltimoUmAUm();
     renderAbaUmAUm();
   }).catch(function(err){
-    umAUmVisao_ = null;
-    document.getElementById('pessoaUltimoUmAUm').innerHTML = '';
+    umAUmVisao_ = { erro: true, registros: [], passosLiderado: [], compromissosLideranca: [] };
+    renderPendencias();
     document.getElementById('umaum').innerHTML = '<div class="empty-state">Não foi possível carregar a 1:1: ' + escUmAUm_(err.message) + '.</div>';
   });
 }
-function renderUltimoUmAUm(){
-  var el = document.getElementById('pessoaUltimoUmAUm');
-  var v = umAUmVisao_;
-  if (!v || !v.registros || !v.registros.length) { el.innerHTML = ''; return; }
-  var n = v.passosLiderado.length;
-  el.innerHTML = '<div class="ultimo-umaum"><div class="ultimo-umaum-titulo">Último 1:1</div>' +
-    '<div class="ultimo-umaum-data">em ' + dataBRUmAUm_(v.registros[0].data) + ' · ' + n + (n === 1 ? ' próximo passo em aberto' : ' próximos passos em aberto') + '</div></div>';
-}
+// O resumo da última 1:1 saiu do topo (13/10/2026): os passos em aberto entram em "O que fazer agora".
+function renderUltimoUmAUm(){ renderPendencias(); }
 function umItemLinhaHtml_(i){
   var meta = '';
   if (i.prioridade === 'alta') meta += '<span style="color:#C89A2E;font-weight:700;">Prioridade alta</span> ';
@@ -1884,7 +2043,9 @@ function carregarAdvertencias(nome){
     advertenciasAtual_ = d.registros || [];
     advertenciaPontuacaoAtiva_ = d.pontuacaoAtiva || 0;
     advertenciaEfeito_ = d.efeito || null;
+    advertenciasCarregadas_ = true;
     renderAbaAdvertencias();
+    renderPendencias();
   }).catch(function(err){
     if (currentCS !== nome) return;
     document.getElementById('advertencias').innerHTML = '<div class="empty-state">Erro ao carregar os pontos tomados: ' + escUmAUm_(err.message) + '</div>';
@@ -2520,10 +2681,20 @@ function renderRankingEquipe(ranking){
 }
 
 function showTab(id, e){
-  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-  e.target.classList.add('active');
+  document.querySelectorAll('#screenPessoa .panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('#screenPessoa .tab').forEach(function(t){
+    var ativa = t.getAttribute('data-aba') === id;
+    t.classList.toggle('active', ativa);
+    t.setAttribute('aria-selected', ativa ? 'true' : 'false');
+  });
+  var painel = document.getElementById(id);
+  if (painel) painel.classList.add('active');
+}
+// Atalho das pendências e do resumo do mês: troca de aba e rola até o alvo.
+function irParaAba(id, alvoId){
+  showTab(id);
+  var alvo = alvoId ? document.getElementById(alvoId) : document.querySelector('#screenPessoa .tabs');
+  if (alvo) alvo.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 // ============ aba Report da página do CS (somente leitura) ============
@@ -2552,7 +2723,9 @@ function carregarReport(nome, semana){
     if (meu !== reportReq_ || currentCS !== nome) return;
     reportDados_ = d;
     reportSemana_ = d.semana;
+    if (d.semana === d.semanaAtual) reportEstadoAtual_ = { estado: d.estado || null, semana: d.semana, regularidade: d.regularidade || [] };
     renderAbaReport();
+    renderPendencias();
   }).catch(function(err){
     if (meu !== reportReq_) return;
     el.innerHTML = '<div class="empty-state">Erro ao carregar o report: ' + escR_(err.message) + '</div>';
@@ -2755,8 +2928,12 @@ function fotoCropPointerUp_(){
   fotoCropArrastando_ = false;
   document.getElementById('fotoCropCanvasWrap').classList.remove('arrastando');
 }
+// Correção 13/10/2026: este script roda antes do HTML do modal de foto (que fica no fim do body), então
+// o elemento ainda não existia, a chamada lançava erro e o arrasto do recorte nunca era ligado. Agora
+// espera o documento terminar de carregar quando o modal ainda não está no DOM.
 (function iniciarFotoCropEventos_(){
   var wrap = document.getElementById('fotoCropCanvasWrap');
+  if (!wrap) { document.addEventListener('DOMContentLoaded', iniciarFotoCropEventos_); return; }
   wrap.addEventListener('mousedown', fotoCropPointerDown_);
   window.addEventListener('mousemove', fotoCropPointerMove_);
   window.addEventListener('mouseup', fotoCropPointerUp_);

@@ -839,6 +839,7 @@ export const GESTOR_HTML = `
       <span class="topbar-title">Visão da área · perfil gestor</span>
     </div>
     <div class="topbar-right">
+      <a href="/processos" class="voltar-btn">Processos</a>
       <select class="pill-select" id="selMesGestor"></select>
       <select class="pill-select" id="selAnoGestor"><option>2026</option><option>2027</option></select>
       <span class="pill">Acesso restrito a gestores</span>
