@@ -842,7 +842,7 @@ async function syncReportsSemanais() {
 // ---- reports_individuais de origem monday (v30, 07/10/2026) ----
 // O CS é o do criador do item (cs_config.monday_user_id), resolvido em syncReportsIndividuaisMonday;
 // a semana e o CS finais são recalculados por resolver_semana_reports (migração 20261013).
-// Itens de semana igual ou posterior à data de corte não são mais gravados (vale o nativo).
+// Sem report nativo: todo item do board entra como origem monday.
 const MESES_PT = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 function segundaDaSemana(isoData: string): string {
   const d = new Date(isoData + 'T12:00:00Z');
@@ -889,11 +889,7 @@ function inteiroNaoNegativo(txt: string | null): number | null {
 }
 
 async function syncReportsIndividuaisMonday(items: any[]) {
-  const [cfg, cs] = await Promise.all([
-    fetchAllFromSupabase('configuracoes_globais', 'data_corte_reports_nativos'),
-    fetchAllFromSupabase('cs_config', 'nome,monday_user_id,ativo'),
-  ]);
-  const corte: string | null = cfg[0]?.data_corte_reports_nativos || null;
+  const cs = await fetchAllFromSupabase('cs_config', 'nome,monday_user_id,ativo');
   // Padrão b: o CS é o do criador do item (cs_config.monday_user_id), nunca o nome digitado.
   const csPorCriador = new Map<number, string>(
     cs.filter((c: any) => c.ativo && c.monday_user_id).map((c: any) => [Number(c.monday_user_id), c.nome]),
@@ -902,7 +898,6 @@ async function syncReportsIndividuaisMonday(items: any[]) {
   const rows: any[] = [];
   items.forEach((it) => {
     const { semana, dataReport, aproximada } = semanaDoItem(it);
-    if (corte && semana >= corte) return;
     const autor = it.creator_id ? Number(it.creator_id) : null;
     const csNome = autor !== null ? csPorCriador.get(autor) ?? null : null;
     const criticos = inteiroNaoNegativo(colText(it.column_values, REPORTS_COLS_EXTRA.criticos));
