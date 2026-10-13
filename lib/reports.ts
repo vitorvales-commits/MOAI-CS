@@ -1590,7 +1590,7 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       indicacoes: somaInd('indicacoes'),
       // Health da Base da área: críticos únicos sobre a união da base dos CS ativos (razão
       // ponderada, health_base_area), nunca média ou soma de percentuais. Sem advertência.
-      healthDaBase: healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport),
+      healthDaBase: { ...healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport), cobertura: coberturaArea(area.linha) },
     },
     churnOrfao,
     casesPorCS,
@@ -2575,14 +2575,26 @@ function healthBaseDoCS(dados: DadosBrutos, resumo: ResumoReport[], csNome: stri
 
 // Formato de indicador consumido pelos cards (mesmo shape dos demais), com uma casa decimal.
 // Sem report: alcancado nulo e statusReport sem_report (tela mostra "Sem report", nunca zero).
+// Para a área (report null, temReport verdadeiro) não há data de um único report: a fotografia é o
+// último report válido de cada CS, então o status é "atual". Antes statusReport(null) virava sem_report
+// e o número principal mostrava "Sem report" mesmo com CS válidos.
 function healthBaseIndicador(h: HealthBase, meta: number | null, report: ResumoReport | null, temReport = !!report) {
   const valor = h.healthBaseDecimos === null ? null : h.healthBaseDecimos / 10;
-  const status = temReport ? statusReport(report?.data_efetiva ?? report?.semana_inicio ?? null) : 'sem_report';
+  const status = !temReport ? 'sem_report' : report ? statusReport(report.data_efetiva ?? report.semana_inicio ?? null) : 'atual';
   const composicao = !temReport ? 'Sem report.' : h.composicao + (status === 'desatualizado' ? ' Report desatualizado.' : '');
   return {
-    meta, tipoMeta: 'max' as const, alcancado: valor, calculado: valor, manual: null, fonte: 'calculado' as const, unidade: '%',
+    meta, tipoMeta: 'max' as const, alcancado: valor, calculado: valor, manual: null, fonte: null, unidade: '%',
     semApuracao: h.semApuracao, statusReport: status, semanaReport: report?.semana_inicio ?? null, composicao, detalhe: h,
+    cobertura: null as string | null,
   };
+}
+
+// Linha de cobertura do card da área: só aparece quando algum CS obrigado ficou de fora.
+function coberturaArea(linha: { cs_obrigados?: number | null; cs_com_report?: number | null; cs_sem_report?: string[] | null }): string | null {
+  const obrigados = Number(linha.cs_obrigados ?? 0);
+  const comReport = Number(linha.cs_com_report ?? 0);
+  if (obrigados === 0 || comReport >= obrigados) return null;
+  return comReport + ' de ' + obrigados + ' CS com report válido';
 }
 
 // Health da Base e Críticos de cada CS no período, para a consulta rápida (lib/consulta.ts).
@@ -2603,7 +2615,7 @@ export async function healthBaseExibidoPorCS(sb: SupabaseClient, de: string, ate
 async function healthBaseArea(sb: SupabaseClient, de: string | null, ate: string | null) {
   const { data, error } = await sb.rpc('health_base_area', { p_de: de, p_ate: ate });
   if (error) throw new Error('Erro ao buscar health_base_area: ' + error.message);
-  const linha = (data || [])[0] || { criticos: null, base: null, cs_com_report: 0 };
+  const linha = (data || [])[0] || { criticos: null, base: null, cs_com_report: 0, cs_obrigados: 0, cs_sem_report: [] as string[] };
   const temReport = Number(linha.cs_com_report) > 0;
   return { linha, temReport, health: calcularHealthBase(temReport ? linha.criticos : null, temReport ? linha.base : null, 0) };
 }

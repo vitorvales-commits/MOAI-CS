@@ -1143,10 +1143,12 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde){
   var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
     ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
   var composicaoAttr = ind.composicao ? ' title="'+String(ind.composicao).replace(/"/g,'&quot;')+'" aria-label="'+label+': '+String(ind.composicao).replace(/"/g,'&quot;')+'"' : '';
-  var composicaoLinha = ind.composicao && !ind.semApuracao ? '<div class="kpi-recorde-linha">'+ind.composicao+'</div>' : '';
+  // A composição (críticos de x, pontos, Health) fica só no tooltip; no corpo do card entra só a cobertura,
+  // e apenas quando algum CS obrigado está sem report válido.
+  var coberturaLinha = ind.cobertura ? '<div class="kpi-recorde-linha">'+ind.cobertura+'</div>' : '';
   return '<div class="kpi"'+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+composicaoLinha+'</div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+coberturaLinha+'</div></div></div>';
 }
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
