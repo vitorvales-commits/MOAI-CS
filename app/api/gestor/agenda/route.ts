@@ -1,3 +1,5 @@
+// OBSOLETA (13/10/2026): a agenda agora vem de /api/agenda, para todos os usuários vinculados. Esta rota
+// só delega para o mesmo gerador até a home do gestor migrar para o componente novo; depois pode sair.
 // GET /api/gestor/agenda?inicio=YYYY-MM-DD&fim=YYYY-MM-DD — agenda visual da home do gestor
 // (Parte C, pedido do Vitor 28/09/2026): conselhos + Rounds no intervalo, restrito a
 // is_gestor()=true no banco (mesmo padrão de /api/gestor/visao-geral).

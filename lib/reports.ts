@@ -22,7 +22,8 @@ import {
   advertenciaAtiva, pontuacaoAtiva as pontuacaoAtivaDe, faixaPresenca, distribuicaoPresenca,
   calcularHealthBase, statusReport, type HealthBase, type DistribuicaoPresenca,
 } from './indicadores-base';
-import type { FaixaPresencaChave } from './constants';
+import type { FaixaPresencaChave, SemaforoChave, AgendaTurnoChave } from './constants';
+import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
@@ -773,16 +774,30 @@ function presencaPorMembroDoMes(itemsPrincipais: any[], itemsRepo: any[], mes: s
 }
 
 export type AgendaConselhoItem = {
+  tipo: 'conselho';
   groupId: string; nomeGrupo: string; cs: string; nivel: string; congelado: boolean;
   dataIso: string; statusAgenda: string | null; passado: boolean;
+  // conselheiro: vínculo agenda -> cadastro (agenda_conselheiro_vinculo). Sem vínculo, id é null e o nome vem da agenda.
+  conselheiroId: number | null; conselheiroNome: string;
+  // dia e hora em Brasília (diaIso YYYY-MM-DD, hhmm HH:MM) e turno da grade
+  diaIso: string; hhmm: string; turno: AgendaTurnoChave;
   presencaPorMembro: { nome: string; status: string | null; reposicao: boolean }[] | null;
+  // presença apurada (só conselho passado): presentes de total de membros listados
+  presenca: { presentes: number; total: number } | null;
   confirmados: { nome: string; mes: string }[] | null;
+  // faixa e cobrança: só conselho ainda não encerrado; null quando já passou
+  confirmadosQtd: number | null; faixa: SemaforoChave | null; precisaCobranca: boolean;
+  prazoCobranca: PrazoCobranca | null;
   // farol da semana (08/10/2026): só para conselho ainda não encerrado; null quando já passou
   membrosEsperados: number | null; naoVao: number | null; aguardando: number | null;
 };
 export type AgendaRoundItem = {
-  id: number; nome: string; inicio: string | null; termino: string | null;
-  status: string | null; local: string | null; cs: string | null;
+  tipo: 'round';
+  id: number; nome: string; tema: string | null; inicio: string | null; termino: string | null;
+  diaIso: string; hhmm: string; turno: AgendaTurnoChave;
+  status: string | null; local: string | null;
+  // cs: texto exibido ("Vitor, Mateus"); csLista: nomes separados, para o filtro Meus no cliente
+  cs: string | null; csLista: string[];
 };
 
 // Bloco novo da home do gestor (Parte C, 28/09/2026): agenda visual semana/mês, conselhos +
@@ -803,6 +818,20 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && !g.titulo.startsWith('Reposições'));
   const grupoPorChave = buildGrupoPorChaveAgenda(gruposAtivos);
   const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
+  // Vínculo agenda -> cadastro (agenda_conselheiro_vinculo + conselheiros). Só leitura: o
+  // preenchimento automático roda no backfill ou por gestor (vincular_conselheiros_agenda), nunca aqui.
+  const [{ data: vinculoRows, error: errVinc }, { data: cadastroRows, error: errCad }] = await Promise.all([
+    sb.from('agenda_conselheiro_vinculo').select('nome_agenda, conselheiro_monday_item_id'),
+    sb.from('conselheiros').select('monday_item_id, nome'),
+  ]);
+  if (errVinc) throw new Error('Erro ao buscar vínculo da agenda: ' + errVinc.message);
+  if (errCad) throw new Error('Erro ao buscar conselheiros: ' + errCad.message);
+  const cadastroPorId = new Map<number, string>((cadastroRows || []).map((c: any) => [Number(c.monday_item_id), c.nome as string]));
+  const vinculoPorNome = new Map<string, number>(
+    (vinculoRows || []).filter((v: any) => v.conselheiro_monday_item_id != null)
+      .map((v: any) => [v.nome_agenda as string, Number(v.conselheiro_monday_item_id)]),
+  );
+  const hojeIso = instanteBRT(agora.toISOString()).diaIso;
 
   const conselhos: AgendaConselhoItem[] = [];
   dados.agenda.forEach((row: any) => {
@@ -825,11 +854,26 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     const esperados = itemsPrincipais.filter((m: any) => { const st = statusDoTitular(m); return st !== null && !STATUS_FORA_DO_FAROL.includes(st); }).length;
     const naoVao = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_NAO_VAI).length;
     const titularesConfirmados = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_CONFIRMADO).length;
+    const { diaIso, minutos } = instanteBRT(row.data_iso);
+    const presencaLinhas = passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null;
+    const confirmadosLista = passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro);
+    const confirmadosQtd = confirmadosLista ? confirmadosLista.length : null;
+    const cobra = confirmadosQtd !== null && precisaCobranca({ confirmados: confirmadosQtd, passado, congelado: grupo.congelado });
+    const conselheiroId = vinculoPorNome.get(row.conselheiro_nome) ?? null;
+    const cadastroNome = conselheiroId !== null ? cadastroPorId.get(conselheiroId) ?? null : null;
     conselhos.push({
+      tipo: 'conselho',
       groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
       dataIso: row.data_iso, statusAgenda: row.status || null, passado,
-      presencaPorMembro: passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null,
-      confirmados: passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro),
+      conselheiroId, conselheiroNome: nomeExibido(row.conselheiro_nome, cadastroNome),
+      diaIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos),
+      presencaPorMembro: presencaLinhas,
+      presenca: presencaLinhas ? { presentes: presencaLinhas.filter((l) => l.status === STATUS_PRESENTE).length, total: presencaLinhas.length } : null,
+      confirmados: confirmadosLista,
+      confirmadosQtd,
+      faixa: confirmadosQtd !== null ? faixaDoSemaforo(confirmadosQtd) : null,
+      precisaCobranca: cobra,
+      prazoCobranca: cobra ? prazoCobranca(diaIso, hojeIso) : null,
       membrosEsperados: passado ? null : esperados,
       naoVao: passado ? null : naoVao,
       aguardando: passado ? null : Math.max(0, esperados - titularesConfirmados - naoVao),
@@ -837,10 +881,8 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
   });
   conselhos.sort((a, b) => new Date(a.dataIso).getTime() - new Date(b.dataIso).getTime());
 
-  // Rounds: cs_responsavel_raw é multi-pessoa (multiple_person_mm3sb795) — texto bruto (ex. "Vitor,
-  // Mateus"), então só pega o primeiro nome pra exibir na pílula, sem tentar casar contra
-  // cs_config (nenhum outro lugar do app faz esse cruzamento pra Rounds, e a pílula é só contexto
-  // visual, não um indicador calculado).
+  // Rounds: cs_responsavel_raw é multi-pessoa (ex. "Vitor, Mateus"). Vai inteiro para o cliente como texto
+  // e lista (csLista), que o filtro Meus compara com o CS da página.
   const rounds: AgendaRoundItem[] = (dados.rounds || [])
     .filter((r: any) => {
       const iso = r.inicio || r.termino;
@@ -848,11 +890,17 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
       const d = new Date(iso);
       return d >= limiteInicio && d < limiteFim;
     })
-    .map((r: any) => ({
-      id: r.id, nome: r.nome || null, inicio: r.inicio || null, termino: r.termino || null,
-      status: r.status || null, local: r.local || null,
-      cs: r.cs_responsavel_raw ? String(r.cs_responsavel_raw).split(',')[0].trim() : null,
-    }))
+    .map((r: any): AgendaRoundItem => {
+      const { diaIso, minutos } = instanteBRT(r.inicio || r.termino);
+      const csLista = csDoRound(r.cs_responsavel_raw);
+      return {
+        tipo: 'round', id: r.id, nome: r.nome || null, tema: r.tema || null,
+        inicio: r.inicio || null, termino: r.termino || null,
+        diaIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos),
+        status: r.status || null, local: r.local || null,
+        cs: csLista.length ? csLista.join(', ') : null, csLista,
+      };
+    })
     .sort((a: AgendaRoundItem, b: AgendaRoundItem) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime());
 
   return { conselhos, rounds };

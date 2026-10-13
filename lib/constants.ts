@@ -241,3 +241,24 @@ export const QUEDA_POSICOES_ALERTA = 2; // queda de posições que vira alerta n
 export const QUEDA_PONTUACAO_ALERTA = 15; // queda de pontos que vira alerta na Visão geral
 export const QUEDA_APROVEITAMENTO_ALERTA_PP = 30; // queda de aproveitamento, em pontos percentuais, que vira alerta
 export const UMAUM_TEXTO_MAX = 600; // limite de texto da 1:1
+
+// Agenda de conselhos (13/10/2026). AGENDA_COR_MODO decide o que pinta o cartão: 'excecao' (padrão)
+// deixa o cartão neutro e só o de alerta (faixa vermelha ou laranja, com cobrança pendente) ganha
+// cor; 'semaforo' pinta o cartão inteiro na cor da faixa, como era antes. A lâmpada usa a cor da
+// faixa nos dois modos. Trocar aqui volta ao visual antigo sem reescrever o componente.
+export const AGENDA_COR_MODO: 'excecao' | 'semaforo' = 'excecao';
+
+// Turnos da grade, em horas de Brasília (minutos desde meia-noite). Lista em ordem crescente de
+// inicioMin: o turno do horário é o último cujo inicioMin é menor ou igual ao horário.
+export type AgendaTurnoChave = 'manha' | 'tarde' | 'noite';
+export const AGENDA_TURNOS: { chave: AgendaTurnoChave; rotulo: string; inicioMin: number }[] = [
+  { chave: 'manha', rotulo: 'Manhã', inicioMin: 0 },
+  { chave: 'tarde', rotulo: 'Tarde', inicioMin: 12 * 60 },
+  { chave: 'noite', rotulo: 'Noite', inicioMin: 18 * 60 },
+];
+
+// Cor do pill de status de round, mesma do painel antigo (fonte única para o componente).
+export const ROUND_STATUS_COR: Record<string, string> = {
+  'Confirmado': '#fdab3d', 'Realizado': '#00c875', 'Cancelado': '#df2f4a',
+  'Agd. confirmação': '#007eb5', 'Adiado': '#9d50dd', 'A Planejar': '#757575',
+};
