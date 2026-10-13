@@ -18,6 +18,7 @@ import {
   REPORT_COMO_FOI_SEMANA, REPORT_STATUS_CHECKLIST, REPORT_CHECKLISTS, REPORT_VALIDADE_DIAS,
 } from '../lib/constants.ts';
 import { casaBusca } from '../lib/indicadores-base.ts';
+import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
 
 export const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="pt-br">
@@ -497,89 +498,9 @@ select.pickmes:hover { border-color:#1A1A1A; }
 
 .advertencia-resumo.destaque .advertencia-resumo-label { color:#C0433D; font-weight:700; }
 
-/* ===== agenda visual (Parte C, 28/09/2026) ===== */
-.agenda-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
-.agenda-nav { display:flex; align-items:center; gap:10px; }
 .agenda-nav-btn { width:32px; height:32px; border-radius:50%; border:0.75pt solid #D8D5D5; background:#fff; color:#1A1A1A; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
 .agenda-nav-btn:hover { background:#F5F5F5; }
-.agenda-periodo-label { font-size:13px; font-weight:800; color:#1A1A1A; min-width:150px; text-transform:capitalize; }
-.agenda-hoje-btn { font-size:11px; font-weight:700; color:#5D5D5D; background:#fff; border:0.75pt solid #D8D5D5; border-radius:999px; padding:6px 14px; cursor:pointer; }
-.agenda-hoje-btn:hover { background:#F5F5F5; }
-.agenda-view-toggle { display:flex; gap:6px; background:#EEECEC; border-radius:999px; padding:3px; }
-.agenda-view-btn { font-size:11.5px; font-weight:700; color:#5D5D5D; background:none; border:none; border-radius:999px; padding:7px 16px; cursor:pointer; }
-.agenda-view-btn.active { background:#1A1A1A; color:#fff; }
-
-.agenda-semana-sem-itens { text-align:center; padding:40px 20px; color:#9F9F9F; font-size:12.5px; background:#fff; border:0.75pt dashed #D8D5D5; border-radius:16px; }
-
-/* visão em lista (de volta em 29/09/2026, opção lado a lado com a grade — não substitui) */
-.agenda-semana-list { display:flex; flex-direction:column; gap:10px; }
-.agenda-item-card { background:#fff; border:0.75pt solid #D8D5D5; border-radius:16px; padding:13px 16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; transition: transform .2s, box-shadow .2s; }
-.agenda-item-card.clicavel { cursor:pointer; }
-.agenda-item-card.clicavel:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); border-color:#1A1A1A; }
-.agenda-item-data { width:50px; flex-shrink:0; text-align:center; }
-.agenda-item-dia { font-family:'Bricolage Grotesque',sans-serif; font-size:19px; font-weight:800; color:#1A1A1A; line-height:1.1; }
-.agenda-item-hora { font-size:10.5px; color:#807E7E; font-weight:700; }
-.agenda-item-corpo { flex:1; min-width:160px; }
-.agenda-item-tipo { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:#807E7E; margin-bottom:2px; }
-.agenda-item-nome { font-size:13.5px; font-weight:700; color:#1A1A1A; }
-.agenda-item-sub { font-size:11.5px; color:#807E7E; margin-top:2px; }
-.agenda-pill { font-size:10px; font-weight:800; padding:5px 11px; border-radius:99px; color:#fff; white-space:nowrap; flex-shrink:0; }
-.agenda-presenca-mini { display:flex; gap:4px; flex-wrap:wrap; max-width:220px; }
-.agenda-presenca-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-
-/* grade de horário da semana (Parte 3, redesign 28/09/2026; janela estendida 29/09/2026) —
-   colunas por dia, eixo de horário fixo 07:00–23:00, cada encontro como bloco posicionado no
-   horário real (estilo Google Calendar Semana), lado a lado com a visão em lista acima. */
-.agenda-semana-grid-wrap { overflow-x:auto; }
-.agenda-semana-grid-inner { min-width:600px; }
-.agenda-semana-header { display:flex; }
-.agenda-semana-header-eixo { width:42px; flex-shrink:0; }
-.agenda-semana-header-dias { flex:1; display:grid; grid-template-columns:repeat(7,1fr); }
-.agenda-semana-cab-dia { text-align:center; font-size:10px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.4px; padding-bottom:8px; }
-.agenda-semana-cab-dia.hoje { color:#1A1A1A; }
-.agenda-semana-cab-num { font-family:'Bricolage Grotesque',sans-serif; font-size:13px; }
-.agenda-semana-corpo { display:flex; }
-.agenda-semana-eixo { width:42px; flex-shrink:0; position:relative; height:800px; }
-.agenda-semana-eixo-hora { position:absolute; right:8px; transform:translateY(-50%); font-size:9px; font-weight:700; color:#9F9F9F; white-space:nowrap; }
-.agenda-semana-dias { flex:1; position:relative; height:800px; display:grid; grid-template-columns:repeat(7,1fr); border:0.75pt solid #D8D5D5; border-radius:12px; background:#fff; overflow:hidden; }
-.agenda-semana-linhas { position:absolute; inset:0; grid-column:1/-1; grid-row:1/-1; z-index:0; }
-.agenda-semana-linha { position:absolute; left:0; right:0; border-top:0.75pt solid #EEECEC; }
-.agenda-semana-coluna { position:relative; z-index:1; border-left:0.75pt solid #EEECEC; }
-.agenda-semana-coluna:first-child { border-left:none; }
-.agenda-semana-coluna.hoje { background:rgba(26,26,26,0.025); }
-.agenda-semana-bloco { position:absolute; border-radius:7px; padding:3px 6px; color:#fff; overflow:hidden; cursor:pointer; box-sizing:border-box; margin:0 2px; transition: box-shadow .15s; }
-.agenda-semana-bloco:hover { box-shadow:0 4px 14px rgba(0,0,0,0.18); z-index:2; }
-.agenda-semana-bloco-hora { font-size:8.5px; font-weight:800; opacity:0.9; line-height:1.2; }
-.agenda-semana-bloco-nome { font-size:10px; font-weight:700; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.agenda-semana-bloco-sub { font-size:8.5px; opacity:0.85; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.agenda-semana-bloco-selo { position:absolute; top:2px; right:3px; font-size:8px; font-weight:800; background:rgba(255,255,255,0.88); color:#1A1A1A; border-radius:99px; padding:1px 5px; line-height:1.4; }
-.agenda-semana-mais { position:absolute; left:4px; right:4px; text-align:center; font-size:8.5px; font-weight:700; color:#9F9F9F; background:#F5F5F5; border-radius:6px; padding:2px 0; z-index:1; }
-.agenda-semana-mais-antes { top:3px; }
-.agenda-semana-mais-depois { bottom:3px; }
-@media (max-width:700px){ .agenda-semana-eixo, .agenda-semana-header-eixo { width:32px; } .agenda-semana-bloco-sub { display:none; } }
-
-/* Sáb/Dom raramente têm conselho ou round (checado nos dados reais em 28/09/2026 — nenhum item
-   cai em dow 0/6) — colunas mais estreitas ganham espaço de leitura pros dias úteis, Parte 4. */
-.agenda-mes-grid { display:grid; grid-template-columns:repeat(5,1fr) 0.62fr 0.62fr; gap:6px; }
-.agenda-mes-cab { text-align:center; font-size:10px; font-weight:800; color:#9F9F9F; text-transform:uppercase; letter-spacing:0.4px; padding-bottom:4px; }
-.agenda-mes-cab.fim-semana { color:#C6C4C4; }
-.agenda-mes-dia { background:#fff; border:0.75pt solid #D8D5D5; border-radius:12px; padding:6px; min-height:78px; max-height:94px; overflow:hidden; display:flex; flex-direction:column; gap:3px; }
-.agenda-mes-dia.fora-do-mes { background:#FAFAFA; border-color:#EEECEC; }
-.agenda-mes-dia.fim-semana { background:#FCFCFC; }
-.agenda-mes-dia.hoje { border-color:#1A1A1A; border-width:1.5pt; }
-.agenda-mes-dia-num { font-size:10.5px; font-weight:800; color:#5D5D5D; }
-.agenda-mes-dia.fora-do-mes .agenda-mes-dia-num { color:#C6C4C4; }
-.agenda-mes-chip { position:relative; font-size:9px; font-weight:700; border-radius:5px; padding:2px 5px 2px 5px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
-.agenda-mes-chip.com-dot { padding-left:12px; }
-.agenda-mes-chip-dot { position:absolute; top:50%; left:5px; width:6px; height:6px; border-radius:50%; transform:translateY(-50%); box-shadow:0 0 0 1px rgba(255,255,255,0.6); }
-.agenda-mes-mais { font-size:8.5px; font-weight:700; color:#9F9F9F; padding:1px 5px; }
-/* semáforo de confirmações (07/10/2026): fundo do bloco = faixa de confirmados; nível vira ponto */
-.agenda-nivel-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; vertical-align:middle; flex-shrink:0; box-shadow:0 0 0 1.5px currentColor; }
-.agenda-legenda { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin:-6px 0 14px; font-size:10.5px; font-weight:700; color:#5D5D5D; }
-.agenda-legenda-titulo { color:#807E7E; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; font-size:9.5px; }
-.agenda-legenda-item { display:inline-flex; align-items:center; gap:5px; }
-.agenda-legenda-cor { width:12px; height:12px; border-radius:4px; display:inline-block; }
-@media (max-width:700px){ .agenda-mes-dia{ min-height:56px; max-height:70px; } .agenda-mes-chip{ font-size:8px; } }
+${AGENDA_CSS}
 
 /* ===== resolver de aliases de NPS (Parte D, 28/09/2026) ===== */
 .resolver-card { background:#fff; border:1px dashed #D8D5D5; border-radius:14px; padding:14px 16px; margin-bottom:10px; }
@@ -638,21 +559,7 @@ ${GTD_CHECKLIST_STYLE}
   <div id="equipeSection">
     <div class="section-title">Agenda<div class="line"></div></div>
     <div id="farolSemana" class="farol-bloco" aria-live="polite"><div class="empty-state">Carregando…</div></div>
-    <div class="agenda-toolbar">
-      <div class="agenda-nav">
-        <button class="agenda-nav-btn" type="button" onclick="agendaNavegar(-1)">&lsaquo;</button>
-        <div class="agenda-periodo-label" id="agendaPeriodoLabel">&nbsp;</div>
-        <button class="agenda-nav-btn" type="button" onclick="agendaNavegar(1)">&rsaquo;</button>
-        <button class="agenda-hoje-btn" type="button" onclick="agendaIrParaHoje()">Hoje</button>
-      </div>
-      <div class="agenda-view-toggle">
-        <button class="agenda-view-btn active" type="button" id="agendaViewSemanaBtn" onclick="agendaMudarVisao('semana')">Semana</button>
-        <button class="agenda-view-btn" type="button" id="agendaViewListaBtn" onclick="agendaMudarVisao('lista')">Lista</button>
-        <button class="agenda-view-btn" type="button" id="agendaViewMesBtn" onclick="agendaMudarVisao('mes')">Mês</button>
-      </div>
-    </div>
-    <div class="agenda-legenda" id="agendaLegenda"></div>
-    <div id="agendaBody"><div class="empty-state">Carregando…</div></div>
+    <div id="agendaHome"></div>
     <div class="section-title" style="margin-top:36px;">Indicadores gerais da área<div class="line"></div></div>
     <div id="equipeIndicadores"></div>
     <div class="section-title" style="margin-top:36px;">Cases de sucesso do time<div class="line"></div></div>
@@ -707,6 +614,7 @@ ${GTD_CHECKLIST_STYLE}
       </div>
     </div>
   </div>
+  <div style="padding:0 28px;max-width:1040px;margin:0 auto 22px;"><div id="agendaPessoa"></div></div>
   <div class="destaques-grid" id="destaquesGrid"></div>
   <div id="restritoExtras" style="display:none;padding:0 28px;max-width:1040px;margin:0 auto 30px;">
     <div class="section-title">CS Top 3<div class="line"></div></div>
@@ -733,6 +641,8 @@ ${GTD_CHECKLIST_STYLE}
   </div>
 </div>
 
+<script>window.AGENDA_CFG = ${agendaConfigJson()};</script>
+<script src="/agenda-cs.js"></script>
 <script>
 ${GTD_CHECKLIST_SCRIPT}
 // ============ RUNTIME_SHIM ============
@@ -825,11 +735,6 @@ function corTextoConfirmacao(qtd){ return semaforoConfirmados_(qtd).corTexto; }
 function legendaSemaforoTexto_(){
   return 'Confirmados: ' + SEMAFORO_CONFIRMADOS_.map(function(f){ return intervaloSemaforo_(f) + ' ' + f.rotulo; }).join(' · ');
 }
-function legendaSemaforoHtml_(){
-  return '<span class="agenda-legenda-titulo">Confirmados</span>' + SEMAFORO_CONFIRMADOS_.map(function(f){
-    return '<span class="agenda-legenda-item"><span class="agenda-legenda-cor" style="background:'+f.corFundo+';"></span>'+(f.ate === null ? f.de + ' ou mais' : f.de + ' a ' + f.ate)+'</span>';
-  }).join('') + '<span class="agenda-legenda-item"><span class="agenda-legenda-cor" style="background:'+AGENDA_PASSADO_COR_.corFundo+';"></span>Encerrado</span>';
-}
 function iniciais(nome){ nome=String(nome||'').trim(); if(!nome) return '?'; var p=nome.split(/\\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 
 var MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -903,7 +808,7 @@ function iniciarHomeGestor(){
   carregarFotosTime();
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
-  carregarAgendaVisual();
+  agendaMontar('agendaHome', {});
   carregarFarolSemana_();
   carregarNpsAliasesPendentes();
   iniciarSeletorRelatorioMensal_();
@@ -1038,6 +943,7 @@ function abrirPessoa(nome){
   document.getElementById('screenHome').style.display = 'none';
   document.getElementById('screenPessoa').style.display = 'block';
   renderTopbar();
+  agendaMontar('agendaPessoa', { csNome: nome });
   document.getElementById('pessoaBadgeDestaque').style.display = 'none';
   document.getElementById('restritoExtras').style.display = modoRestritoCS ? 'block' : 'none';
   var chave = chaveP(nome, currentMes, currentAno);
@@ -1993,10 +1899,7 @@ function escAgenda_(s){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
   });
 }
-var agendaVisao_ = 'semana';
-var agendaAncora_ = new Date();
 var agendaItensClique_ = [];
-var agendaReqSeq_ = 0;
 
 function agendaZerarHora_(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function agendaAddDias_(d, n){ var r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -2009,44 +1912,7 @@ function agendaInicioSemana_(d){
 function agendaFmtYYYYMMDD_(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 // Lista (voltou em 29/09/2026, opção lado a lado com a grade, não substituindo) usa o mesmo
 // período/navegação/rótulo da semana — só o desenho final muda (cards em vez de grade).
-function agendaEhPeriodoDeSemana_(){ return agendaVisao_ === 'semana' || agendaVisao_ === 'lista'; }
-function agendaRangeAtual_(){
-  if (agendaEhPeriodoDeSemana_()) {
-    var inicio = agendaInicioSemana_(agendaAncora_);
-    return { inicio: inicio, fim: agendaAddDias_(inicio, 7) };
-  }
-  var inicio = new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth(), 1);
-  var fim = new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth()+1, 1);
-  return { inicio: inicio, fim: fim };
-}
-function agendaAtualizarLabel_(range){
-  var el = document.getElementById('agendaPeriodoLabel');
-  if (agendaEhPeriodoDeSemana_()) {
-    var fimIncl = agendaAddDias_(range.fim, -1);
-    var mesmoMes = range.inicio.getMonth() === fimIncl.getMonth();
-    el.textContent = range.inicio.getDate() + (mesmoMes ? '' : ' '+MESES_ABREV[range.inicio.getMonth()]) +
-      ' – ' + fimIncl.getDate() + ' ' + MESES_ABREV[fimIncl.getMonth()] + ' ' + fimIncl.getFullYear();
-  } else {
-    el.textContent = MESES[agendaAncora_.getMonth()] + ' ' + agendaAncora_.getFullYear();
-  }
-}
-function agendaNavegar(direcao){
-  agendaAncora_ = agendaEhPeriodoDeSemana_() ? agendaAddDias_(agendaAncora_, direcao*7)
-    : new Date(agendaAncora_.getFullYear(), agendaAncora_.getMonth()+direcao, 1);
-  carregarAgendaVisual();
-}
-function agendaIrParaHoje(){ agendaAncora_ = new Date(); carregarAgendaVisual(); }
-function agendaMudarVisao(v){
-  if (agendaVisao_ === v) return;
-  agendaVisao_ = v;
-  document.getElementById('agendaViewSemanaBtn').classList.toggle('active', v === 'semana');
-  document.getElementById('agendaViewListaBtn').classList.toggle('active', v === 'lista');
-  document.getElementById('agendaViewMesBtn').classList.toggle('active', v === 'mes');
-  carregarAgendaVisual();
-}
 
-var ROUND_STATUS_COR_ = { 'Confirmado':'#fdab3d', 'Realizado':'#00c875', 'Cancelado':'#df2f4a', 'Agd. confirmação':'#007eb5', 'Adiado':'#9d50dd', 'A Planejar':'#757575' };
-function corStatusRound_(status){ return ROUND_STATUS_COR_[status] || '#9F9F9F'; }
 function corStatusPresenca_(status){
   if (status === 'Presente') return '#3D8B5F';
   if (status === 'Ausente' || status === 'Não vai') return '#C0433D';
@@ -2060,37 +1926,9 @@ function nivelExibicao_(nivel){ return nivel === 'Setorial' ? 'Executivo' : nive
 // Paleta categórica por nível (Parte 1, redesign 28/09/2026) — nenhuma dessas cores pode coincidir
 // com corConfirmacao/corStatusRound_ (vermelho/dourado/verde de status da marca), senão a cor do
 // chip fica ambígua entre "isso é tal nível" e "isso precisa de atenção".
-var NIVEL_COR_ = {
-  'Fast Track': '#93C5FD',
-  'Executivo': '#A78BFA',
-  'C-Level': '#F472B6',
-  'C-Level+': '#818CF8',
-  'High End': '#475569',
-};
-function corNivel_(nivel){ return NIVEL_COR_[nivel] || '#9F9F9F'; }
 // Estilo do item na agenda (07/10/2026). Conselho aberto: fundo pelo semáforo de confirmados.
 // Conselho encerrado (término já passou, ver item.passado no servidor): neutro, com a presença.
 // Round: inalterado, cor do status. A cor do nível vira um ponto antes do título.
-function agendaNivelTexto_(nivel){ return String(nivel || 'Nível desconhecido').replace(/-/g, ' '); }
-function agendaEstiloItem_(item){
-  if (item.tipo === 'round') return { corFundo: corStatusRound_(item.statusLabel), corTexto: '#fff', selo: '', descricao: 'Round, ' + (item.statusLabel || 'sem status') };
-  var base = agendaNivelTexto_(item.nivel) + ', CS ' + (item.sub || 'não informado');
-  if (item.passado) {
-    var lista = item.presencaPorMembro || [];
-    var presentes = lista.filter(function(p){ return p.status === 'Presente'; }).length;
-    var pres = lista.length ? presentes + ' de ' + lista.length + ' presentes' : 'sem presença registrada';
-    return { corFundo: AGENDA_PASSADO_COR_.corFundo, corTexto: AGENDA_PASSADO_COR_.corTexto,
-      selo: lista.length ? presentes + '/' + lista.length : '', descricao: base + ', encerrado, ' + pres };
-  }
-  var n = (item.confirmados || []).length;
-  var s = semaforoConfirmados_(n);
-  return { corFundo: s.corFundo, corTexto: s.corTexto, selo: n + '✓',
-    descricao: base + ', ' + n + ' confirmado' + (n === 1 ? '' : 's') + ', faixa ' + s.rotulo + ' ' + s.intervalo };
-}
-function agendaTecla_(ev, idx){ if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); agendaAbrirModal_(idx); } }
-function agendaNivelDotHtml_(item){
-  return item.tipo === 'conselho' ? '<span class="agenda-nivel-dot" style="background:'+corNivel_(item.nivel)+';"></span>' : '';
-}
 function agendaItensUnificados_(d){
   var itens = [];
   (d.conselhos||[]).forEach(function(c){
@@ -2183,231 +2021,6 @@ function renderFarolSemana_(d){
   el.innerHTML = html;
 }
 
-function carregarAgendaVisual(){
-  var legendaEl = document.getElementById('agendaLegenda');
-  if (legendaEl && !legendaEl.innerHTML) legendaEl.innerHTML = legendaSemaforoHtml_();
-  var range = agendaRangeAtual_();
-  agendaAtualizarLabel_(range);
-  var meuSeq = ++agendaReqSeq_;
-  document.getElementById('agendaBody').innerHTML = '<div class="empty-state">Carregando…</div>';
-  fetchJSON_('/api/gestor/agenda?inicio='+agendaFmtYYYYMMDD_(range.inicio)+'&fim='+agendaFmtYYYYMMDD_(range.fim)).then(function(d){
-    if (meuSeq !== agendaReqSeq_) return;
-    if (agendaVisao_ === 'semana') renderAgendaSemana_(d);
-    else if (agendaVisao_ === 'lista') renderAgendaLista_(d);
-    else renderAgendaMes_(d, range);
-  }).catch(function(err){
-    if (meuSeq !== agendaReqSeq_) return;
-    document.getElementById('agendaBody').innerHTML = '<div class="empty-state">Erro ao carregar agenda: '+escAgenda_(err.message)+'</div>';
-  });
-}
-
-// ===== grade de horário da semana (Parte 3, redesign 28/09/2026; ajustes 29/09/2026) =====
-// Janela fixa pra manter a grade estável e comparável de uma semana pra outra (não calculada a
-// partir dos itens — ver combinado com o Vitor). Estendida de 07:00–21:00 pra 07:00–23:00 (ajuste
-// 29/09/2026): duração fixa de conselho (4h) faz um encontro às 19h terminar às 23h, e a janela
-// original cortava esse bloco.
-var AGENDA_SEMANA_INICIO_MIN_ = 7 * 60;
-var AGENDA_SEMANA_FIM_MIN_ = 23 * 60;
-var AGENDA_SEMANA_JANELA_MIN_ = AGENDA_SEMANA_FIM_MIN_ - AGENDA_SEMANA_INICIO_MIN_;
-// Duração fixa pra desenhar o bloco, sempre a partir do horário real de início — não é o dado real
-// (conselho nunca teve duração registrada; round já não usa mais o término real aqui, ajuste
-// 29/09/2026, só pro tamanho do bloco — o término sincronizado continua existindo em item.termino
-// e aparece normal no modal ao clicar).
-var AGENDA_SEMANA_DURACAO_CONSELHO_MIN_ = ${AGENDA_DURACAO_CONSELHO_MIN};
-var AGENDA_SEMANA_DURACAO_ROUND_MIN_ = 120;
-
-function agendaSemanaMinutosDoDia_(dt){ return dt.getHours() * 60 + dt.getMinutes(); }
-
-// "Lanes" no estilo Google Calendar: agrupa itens que se cruzam em clusters e atribui cada um à
-// primeira lane livre (sem conflito de horário); largura do bloco = 100% / lanes do cluster.
-function agendaSemanaCalcularLanes_(eventos){
-  eventos.sort(function(a, b){ return a.inicioMin - b.inicioMin; });
-  var cluster = [], clusterFimMax = -Infinity;
-  function fecharCluster(){
-    if (!cluster.length) return;
-    var lanesFim = [];
-    cluster.forEach(function(ev){
-      var lane = lanesFim.findIndex(function(fim){ return fim <= ev.inicioMin; });
-      if (lane === -1) { lane = lanesFim.length; lanesFim.push(ev.fimMin); } else { lanesFim[lane] = ev.fimMin; }
-      ev.lane = lane;
-    });
-    cluster.forEach(function(ev){ ev.lanes = lanesFim.length; });
-    cluster = []; clusterFimMax = -Infinity;
-  }
-  eventos.forEach(function(ev){
-    if (cluster.length && ev.inicioMin >= clusterFimMax) fecharCluster();
-    cluster.push(ev);
-    clusterFimMax = Math.max(clusterFimMax, ev.fimMin);
-  });
-  fecharCluster();
-  return eventos;
-}
-
-function agendaSemanaBlocoHtml_(ev){
-  var item = ev.item;
-  var topPct = (ev.inicioMin - AGENDA_SEMANA_INICIO_MIN_) / AGENDA_SEMANA_JANELA_MIN_ * 100;
-  var alturaPct = Math.max(2, (ev.fimMin - ev.inicioMin) / AGENDA_SEMANA_JANELA_MIN_ * 100);
-  var larguraPct = 100 / ev.lanes;
-  var esquerdaPct = ev.lane * larguraPct;
-  var est = agendaEstiloItem_(item);
-  var selo = est.selo ? '<span class="agenda-semana-bloco-selo" aria-hidden="true">'+est.selo+'</span>' : '';
-  var hora = String(new Date(item.dataIso).getHours()).padStart(2,'0')+':'+String(new Date(item.dataIso).getMinutes()).padStart(2,'0');
-  var rotulo = hora + ', ' + (item.nome||'Sem nome') + ', ' + est.descricao;
-  return '<div class="agenda-semana-bloco" role="button" tabindex="0" aria-label="'+escAgenda_(rotulo)+'" style="top:'+topPct+'%;height:'+alturaPct+'%;left:'+esquerdaPct+'%;width:'+larguraPct+'%;background:'+est.corFundo+';color:'+est.corTexto+';" ' +
-    'onclick="agendaAbrirModal_('+ev.idx+')" onkeydown="agendaTecla_(event,'+ev.idx+')" title="'+escAgenda_(rotulo)+'">' +
-    selo +
-    '<div class="agenda-semana-bloco-hora">'+hora+'</div>' +
-    '<div class="agenda-semana-bloco-nome">'+agendaNivelDotHtml_(item)+escAgenda_(item.nome||'—')+'</div>' +
-    (item.sub ? '<div class="agenda-semana-bloco-sub">'+escAgenda_(item.sub)+'</div>' : '') +
-  '</div>';
-}
-
-function agendaSemanaColunaHtml_(idxs, hoje){
-  var antes = 0, depois = 0, dentro = [];
-  idxs.forEach(function(idx){
-    var item = agendaItensClique_[idx];
-    var dt = new Date(item.dataIso);
-    var inicioMin = agendaSemanaMinutosDoDia_(dt);
-    var duracaoMin = item.tipo === 'round' ? AGENDA_SEMANA_DURACAO_ROUND_MIN_ : AGENDA_SEMANA_DURACAO_CONSELHO_MIN_;
-    var fimMin = inicioMin + duracaoMin;
-    if (inicioMin < AGENDA_SEMANA_INICIO_MIN_) { antes++; return; }
-    if (inicioMin >= AGENDA_SEMANA_FIM_MIN_) { depois++; return; }
-    dentro.push({ idx:idx, item:item, inicioMin:inicioMin, fimMin:Math.min(fimMin, AGENDA_SEMANA_FIM_MIN_) });
-  });
-  agendaSemanaCalcularLanes_(dentro);
-  var html = '<div class="agenda-semana-coluna'+(hoje?' hoje':'')+'">';
-  if (antes > 0) html += '<div class="agenda-semana-mais agenda-semana-mais-antes">+'+antes+' antes</div>';
-  html += dentro.map(agendaSemanaBlocoHtml_).join('');
-  if (depois > 0) html += '<div class="agenda-semana-mais agenda-semana-mais-depois">+'+depois+' depois</div>';
-  html += '</div>';
-  return html;
-}
-
-function renderAgendaSemana_(d){
-  agendaItensClique_ = agendaItensUnificados_(d);
-  var el = document.getElementById('agendaBody');
-  if (!agendaItensClique_.length) { el.innerHTML = '<div class="agenda-semana-sem-itens">Nenhum conselho ou round nesta semana.</div>'; return; }
-
-  var inicioSemana = agendaInicioSemana_(agendaAncora_);
-  var hojeChave = agendaFmtYYYYMMDD_(new Date());
-  var diaLabels = ['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
-  var porDia = [[],[],[],[],[],[],[]];
-  agendaItensClique_.forEach(function(item, idx){
-    var diaIdx = Math.round((agendaZerarHora_(new Date(item.dataIso)) - inicioSemana) / 86400000);
-    if (diaIdx >= 0 && diaIdx < 7) porDia[diaIdx].push(idx);
-  });
-
-  var cabDiasHtml = '', colunasHtml = '';
-  for (var k = 0; k < 7; k++) {
-    var diaData = agendaAddDias_(inicioSemana, k);
-    var ehHoje = agendaFmtYYYYMMDD_(diaData) === hojeChave;
-    cabDiasHtml += '<div class="agenda-semana-cab-dia'+(ehHoje?' hoje':'')+'">'+diaLabels[k]+' <span class="agenda-semana-cab-num">'+String(diaData.getDate()).padStart(2,'0')+'</span></div>';
-    colunasHtml += agendaSemanaColunaHtml_(porDia[k], ehHoje);
-  }
-
-  var eixoHtml = '', linhasHtml = '';
-  for (var h = 7; h <= 23; h++) {
-    var pct = (h*60 - AGENDA_SEMANA_INICIO_MIN_) / AGENDA_SEMANA_JANELA_MIN_ * 100;
-    linhasHtml += '<div class="agenda-semana-linha" style="top:'+pct+'%;"></div>';
-    if ((h - 7) % 2 === 0) eixoHtml += '<div class="agenda-semana-eixo-hora" style="top:'+pct+'%;">'+String(h).padStart(2,'0')+':00</div>';
-  }
-
-  el.innerHTML =
-    '<div class="agenda-semana-grid-wrap"><div class="agenda-semana-grid-inner">' +
-      '<div class="agenda-semana-header"><div class="agenda-semana-header-eixo"></div><div class="agenda-semana-header-dias">'+cabDiasHtml+'</div></div>' +
-      '<div class="agenda-semana-corpo">' +
-        '<div class="agenda-semana-eixo">'+eixoHtml+'</div>' +
-        '<div class="agenda-semana-dias"><div class="agenda-semana-linhas">'+linhasHtml+'</div>'+colunasHtml+'</div>' +
-      '</div>' +
-    '</div></div>';
-}
-
-// ===== visão em lista (de volta em 29/09/2026, opção lado a lado com a grade de semana, não
-// substituindo — o Vitor quer as duas) — mesmo card vertical de antes do redesign de 28/09/2026
-// (resgatado do histórico do git), com uma faixa colorida de 4px na esquerda (cor do nível do
-// conselho ou do status do round, mesma paleta já usada no mês e na grade) pra ficar visualmente
-// consistente com as outras duas visões. Mesmo período/navegação da semana (agendaEhPeriodoDeSemana_).
-function agendaItemCardHtml_(item, i){
-  var dt = new Date(item.dataIso);
-  var dia = String(dt.getDate()).padStart(2,'0');
-  var hora = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-  var est = agendaEstiloItem_(item);
-  var corFaixa = est.corFundo;
-  var pill = '';
-  if (item.tipo === 'round') {
-    pill = '<span class="agenda-pill" style="background:'+corStatusRound_(item.statusLabel)+';">'+escAgenda_(item.statusLabel||'—')+'</span>';
-  } else if (item.passado) {
-    var lista = item.presencaPorMembro || [];
-    var presentes = lista.filter(function(p){ return p.status === 'Presente'; }).length;
-    if (lista.length) pill = '<span class="agenda-pill" style="background:'+est.corFundo+';color:'+est.corTexto+';">'+presentes+'/'+lista.length+' presentes</span>';
-  } else {
-    var qtd = (item.confirmados||[]).length;
-    pill = '<span class="agenda-pill" style="background:'+est.corFundo+';color:'+est.corTexto+';">'+qtd+' confirmado'+(qtd===1?'':'s')+'</span>';
-  }
-  var presencaMini = '';
-  if (item.passado && (item.presencaPorMembro||[]).length) {
-    presencaMini = '<div class="agenda-presenca-mini">' + item.presencaPorMembro.map(function(p){
-      return '<span class="agenda-presenca-dot" style="background:'+corStatusPresenca_(p.status)+';" title="'+escAgenda_(p.nome)+' · '+escAgenda_(p.status||'—')+'"></span>';
-    }).join('') + '</div>';
-  }
-  var rotuloCard = (item.nome||'Sem nome') + ', ' + est.descricao;
-  return '<div class="agenda-item-card clicavel" role="button" tabindex="0" aria-label="'+escAgenda_(rotuloCard)+'" title="'+escAgenda_(rotuloCard)+'" style="border-left:6px solid '+corFaixa+';" onclick="agendaAbrirModal_('+i+')" onkeydown="agendaTecla_(event,'+i+')">' +
-    '<div class="agenda-item-data"><div class="agenda-item-dia">'+dia+'</div><div class="agenda-item-hora">'+MESES_ABREV[dt.getMonth()]+' · '+hora+'</div></div>' +
-    '<div class="agenda-item-corpo"><div class="agenda-item-tipo">'+(item.tipo==='round'?'Round':'Conselho')+'</div>' +
-      '<div class="agenda-item-nome">'+agendaNivelDotHtml_(item)+escAgenda_(item.nome||'—')+'</div>' +
-      (item.sub ? '<div class="agenda-item-sub">'+escAgenda_(item.sub)+'</div>' : '') +
-      presencaMini +
-    '</div>' + pill +
-  '</div>';
-}
-function renderAgendaLista_(d){
-  agendaItensClique_ = agendaItensUnificados_(d);
-  var el = document.getElementById('agendaBody');
-  if (!agendaItensClique_.length) { el.innerHTML = '<div class="agenda-semana-sem-itens">Nenhum conselho ou round nesta semana.</div>'; return; }
-  el.innerHTML = '<div class="agenda-semana-list">' + agendaItensClique_.map(agendaItemCardHtml_).join('') + '</div>';
-}
-
-function renderAgendaMes_(d, range){
-  var itens = agendaItensUnificados_(d);
-  agendaItensClique_ = itens;
-  var porDia = {};
-  itens.forEach(function(item, i){
-    var chave = agendaFmtYYYYMMDD_(new Date(item.dataIso));
-    if (!porDia[chave]) porDia[chave] = [];
-    porDia[chave].push(i);
-  });
-
-  var diaSemanaPrimeiro = range.inicio.getDay();
-  var offsetSeg = diaSemanaPrimeiro === 0 ? 6 : diaSemanaPrimeiro - 1;
-  var inicioGrade = agendaAddDias_(range.inicio, -offsetSeg);
-  var hojeChave = agendaFmtYYYYMMDD_(new Date());
-  var mesAlvo = agendaAncora_.getMonth();
-
-  var html = '<div class="agenda-mes-grid">';
-  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach(function(rotulo, ridx){ html += '<div class="agenda-mes-cab'+(ridx>=5?' fim-semana':'')+'">'+rotulo+'</div>'; });
-  for (var c=0; c<42; c++) {
-    var diaCel = agendaAddDias_(inicioGrade, c);
-    var chave = agendaFmtYYYYMMDD_(diaCel);
-    var foraDoMes = diaCel.getMonth() !== mesAlvo;
-    var ehFimDeSemana = c % 7 >= 5;
-    var idxs = porDia[chave] || [];
-    html += '<div class="agenda-mes-dia'+(foraDoMes?' fora-do-mes':'')+(chave===hojeChave?' hoje':'')+(ehFimDeSemana?' fim-semana':'')+'"><div class="agenda-mes-dia-num">'+diaCel.getDate()+'</div>';
-    idxs.slice(0,2).forEach(function(idx){
-      var item = itens[idx];
-      var est = agendaEstiloItem_(item);
-      var dot = item.tipo === 'conselho' ? '<span class="agenda-mes-chip-dot" style="background:'+corNivel_(item.nivel)+';"></span>' : '';
-      var dt = new Date(item.dataIso);
-      var horaChip = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
-      var rotuloChip = horaChip + ', ' + (item.nome||'Sem nome') + ', ' + est.descricao;
-      var seloChip = est.selo ? ' · ' + est.selo : '';
-      html += '<div class="agenda-mes-chip'+(dot?' com-dot':'')+'" role="button" tabindex="0" aria-label="'+escAgenda_(rotuloChip)+'" style="background:'+est.corFundo+';color:'+est.corTexto+';" onclick="agendaAbrirModal_('+idx+')" onkeydown="agendaTecla_(event,'+idx+')" title="'+escAgenda_(rotuloChip)+'">'+dot+horaChip+' '+escAgenda_(item.nome)+seloChip+'</div>';
-    });
-    if (idxs.length > 2) html += '<div class="agenda-mes-mais">+'+(idxs.length-2)+' mais</div>';
-    html += '</div>';
-  }
-  html += '</div>';
-  document.getElementById('agendaBody').innerHTML = html;
-}
 
 function agendaAbrirModal_(i){
   var item = agendaItensClique_[i];

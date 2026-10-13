@@ -241,6 +241,10 @@ export const GESTOR_CS_HTML = `
 
   <section class="hero" id="heroCS"><div class="vazio" style="background:rgba(255,255,255,0.08);color:#E9E9E9;">Carregando…</div></section>
 
+  <section class="block" id="secAgenda">
+    <div id="agendaCs"></div>
+  </section>
+
   <section class="block">
     <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
     <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
