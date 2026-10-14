@@ -3,7 +3,8 @@
 // dentro da home e a página do CS aberta pelo gestor (app/gestor/cs/[nome]) carregam esse mesmo
 // arquivo. Este módulo não repete limiares: as faixas vêm de SEMAFORO_CONFIRMADOS e os turnos de
 // AGENDA_TURNOS em lib/constants.ts.
-import { SEMAFORO_CONFIRMADOS, AGENDA_TURNOS, AGENDA_COR_MODO, ROUND_STATUS_COR, AGENDA_PASSADO_COR } from './constants';
+import { SEMAFORO_CONFIRMADOS, AGENDA_TURNOS, ROUND_STATUS_COR } from './constants';
+import { agendaFaixaCss } from './agenda-faixa';
 
 // Config lida pelo script do cliente. JSON escapado para caber dentro de <script>.
 export function agendaConfigJson(): string {
@@ -11,13 +12,11 @@ export function agendaConfigJson(): string {
     faixas: SEMAFORO_CONFIRMADOS,
     turnos: AGENDA_TURNOS,
     roundCor: ROUND_STATUS_COR,
-    corModo: AGENDA_COR_MODO,
-    passadoCor: AGENDA_PASSADO_COR,
   };
   return JSON.stringify(cfg).replace(/</g, '\\u003c');
 }
 
-// Cor da faixa de exceção: vermelho e laranja são as únicas que pintam o cartão de alerta.
+// Cores de faixa vêm dos tokens em lib/agenda-faixa.ts; o restante é o estilo do componente.
 export const AGENDA_CSS = `
 .ag-bloco { font-family:'Inter',sans-serif; color:#1A1A1A; text-align:left; }
 .ag-cab { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
@@ -43,9 +42,6 @@ export const AGENDA_CSS = `
 .ag-celula.hoje { background:rgba(244,162,27,0.07); }
 .ag-card { font:inherit; font-size:12px; text-align:left; width:100%; display:block; min-width:0; background:#fff; color:#1A1A1A; border:0.75pt solid #D8D5D5; border-radius:10px; padding:8px 9px; cursor:pointer; transition:box-shadow .15s; }
 .ag-card:hover { box-shadow:0 6px 16px rgba(20,33,61,0.10); }
-.ag-card.alerta { border-color:var(--ag-faixa); background:var(--ag-fundo); }
-.ag-card.semaforo { background:var(--ag-faixa); color:var(--ag-texto); border-color:var(--ag-faixa); }
-.ag-card.semaforo .ag-sub, .ag-card.semaforo .ag-cobranca { color:inherit; opacity:0.92; }
 .ag-card.passado .ag-sub { color:#64748B; }
 .ag-card.passado .ag-nome { color:#3A3A3A; }
 .ag-card.round { border-left:4px solid #14213D; }
@@ -57,7 +53,7 @@ export const AGENDA_CSS = `
 .ag-texto { min-width:0; flex:1; }
 .ag-nome { font-size:12.5px; font-weight:700; line-height:1.3; overflow-wrap:anywhere; }
 .ag-sub { font-size:10.5px; color:#5D5D5D; line-height:1.35; margin-top:2px; overflow-wrap:anywhere; }
-.ag-cobranca { font-size:10.5px; font-weight:800; margin-top:4px; color:var(--ag-faixa-texto,#8A2A24); }
+.ag-cobranca { font-size:10.5px; font-weight:800; margin-top:4px; }
 .ag-pill { font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:99px; color:#fff; display:inline-block; white-space:nowrap; }
 .ag-lista { display:flex; flex-direction:column; gap:14px; }
 .ag-lista-dia-titulo { font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11.5px; font-weight:600; color:#14213D; text-transform:uppercase; margin-bottom:6px; }
@@ -72,6 +68,7 @@ export const AGENDA_CSS = `
 .ag-modal dd { margin:0; overflow-wrap:anywhere; }
 .ag-modal ul { margin:4px 0 0; padding-left:18px; font-size:12.5px; }
 .ag-modal-fechar { font:inherit; font-size:12px; font-weight:700; color:#fff; background:#14213D; border:0; border-radius:999px; padding:8px 16px; cursor:pointer; margin-top:8px; }
+${agendaFaixaCss()}
 @media (max-width:700px) {
   .ag-grade { display:none; }
   .ag-seletor-visao { display:none; }

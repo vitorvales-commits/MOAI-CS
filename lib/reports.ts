@@ -742,19 +742,20 @@ function calendarioBRT(iso: string): { ano: number; mesIdx: number; dia: number 
 // confirmadosFuturos em parseConselhoItems, que varre os 12 meses atrás do próximo pendente) —
 // função própria, pequena, em vez de reaproveitar aquela e ter que desfazer o dedup entre meses.
 // Deduplicado por nome entre titulares e reposição (07/10/2026): a mesma pessoa listada nos dois
-// grupos conta uma vez só, e o número do selo e a cor do semáforo saem desta mesma lista.
+// grupos conta uma vez só, e o número do selo e a cor do semáforo saem desta mesma lista. reposicao
+// marca quem veio do grupo de reposição do conselho (sem titular confirmado com o mesmo nome).
 function confirmadosDoMes(itemsPrincipais: any[], itemsRepo: any[], mes: string, statusPorMembro: Map<number, Map<string, string>>) {
-  const confirmados: { nome: string; mes: string }[] = [];
+  const confirmados: { nome: string; mes: string; reposicao: boolean }[] = [];
   const vistos = new Set<string>();
-  const incluir = (item: any) => {
+  const incluir = (item: any, reposicao: boolean) => {
     if (statusPorMembro.get(item.id)?.get(mes) !== STATUS_CONFIRMADO) return;
     const chave = normalizeNome(item.nome);
     if (vistos.has(chave)) return;
     vistos.add(chave);
-    confirmados.push({ nome: item.nome, mes });
+    confirmados.push({ nome: item.nome, mes, reposicao });
   };
-  itemsPrincipais.forEach(incluir);
-  itemsRepo.forEach(incluir);
+  itemsPrincipais.forEach((i) => incluir(i, false));
+  itemsRepo.forEach((i) => incluir(i, true));
   return confirmados;
 }
 // Presença por membro num mês específico — reaproveita o mesmo statusPorMembro já usado em
@@ -784,7 +785,7 @@ export type AgendaConselhoItem = {
   presencaPorMembro: { nome: string; status: string | null; reposicao: boolean }[] | null;
   // presença apurada (só conselho passado): presentes de total de membros listados
   presenca: { presentes: number; total: number } | null;
-  confirmados: { nome: string; mes: string }[] | null;
+  confirmados: { nome: string; mes: string; reposicao: boolean }[] | null;
   // faixa e cobrança: só conselho ainda não encerrado; null quando já passou
   confirmadosQtd: number | null; faixa: SemaforoChave | null; precisaCobranca: boolean;
   prazoCobranca: PrazoCobranca | null;

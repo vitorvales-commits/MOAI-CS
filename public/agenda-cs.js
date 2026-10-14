@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  var CFG = global.AGENDA_CFG || { faixas: [], turnos: [], roundCor: {}, corModo: 'excecao', passadoCor: { corFundo: '#64748B', corTexto: '#FFFFFF' } };
+  var CFG = global.AGENDA_CFG || { faixas: [], turnos: [], roundCor: {} };
   var DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   var DIAS_LONGOS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   var MESES_CURTOS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
@@ -28,6 +28,7 @@
     return null;
   }
   function capitalizar(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  function plural(n, singular, plural) { return n + ' ' + (n === 1 ? singular : plural); }
   function nivelTexto(nivel) {
     var n = nivel === 'Setorial' ? 'Executivo' : nivel;
     return String(n || 'Nível desconhecido').replace(/-/g, ' ');
@@ -89,21 +90,16 @@
     return base + '. ' + n + verbo + ' de cobrança: ' + mostrados + resto + '.';
   }
 
+  // Token de faixa do cartão (data-faixa). Encerrado fica neutro. Sem dado de confirmação (nenhum titular
+  // com status no mês e nenhum confirmado) usa sem_dados; a faixa do servidor não muda.
   function estiloConselho(st, c) {
     var faixa = c.passado || !c.faixa ? null : faixaDe(c.faixa);
-    var fora = st.escopo === 'equipe' && st.csNome && c.cs !== st.csNome;
-    var alerta = !c.passado && c.precisaCobranca && !fora;
-    var classes = [];
-    var estilo = '';
-    if (c.passado) {
-      classes.push('passado');
-      estilo = '--ag-faixa:' + CFG.passadoCor.corFundo + ';--ag-texto:' + CFG.passadoCor.corTexto + ';';
-    } else if (faixa) {
-      estilo = '--ag-faixa:' + faixa.corFundo + ';--ag-texto:' + faixa.corTexto + ';--ag-faixa-texto:' + faixa.corFundo + ';--ag-fundo:' + (faixa.chave === 'vermelho' ? '#FDF1F0' : '#FFF6F0') + ';';
-      if (CFG.corModo === 'semaforo') classes.push('semaforo');
-      else if (alerta) classes.push('alerta');
-    }
-    return { classes: classes.join(' '), estilo: estilo, faixa: faixa, alerta: alerta };
+    var semDados = !c.passado && c.membrosEsperados === 0 && c.confirmadosQtd === 0;
+    var chave = c.passado ? null : (semDados || !c.faixa ? 'sem_dados' : c.faixa);
+    return { chave: chave, faixa: faixa, passado: !!c.passado };
+  }
+  function lampa(e) {
+    return '<span class="ag-lamp"' + (e.chave ? ' data-faixa="' + e.chave + '"' : '') + ' aria-hidden="true"></span>';
   }
 
   function cardConselho(st, c, idx) {
@@ -117,7 +113,7 @@
     } else {
       var esperados = c.membrosEsperados;
       var txt = (c.confirmadosQtd == null ? '' : c.confirmadosQtd) + (esperados == null ? '' : '/' + esperados);
-      contagem = '<span class="ag-direita"><span class="ag-lamp" style="background:' + (e.faixa ? e.faixa.corFundo : '#9F9F9F') + ';" aria-hidden="true"></span>' + esc(txt) + '</span>';
+      contagem = '<span class="ag-direita">' + lampa(e) + esc(txt) + '</span>';
       if (c.precisaCobranca && c.prazoCobranca) {
         linhaCobranca = '<div class="ag-cobranca">' + (c.prazoCobranca.tipo === 'hoje' ? 'Cobrar hoje' : 'Cobrar até ' + ddmm(c.prazoCobranca.diaIso)) + '</div>';
       }
@@ -129,7 +125,7 @@
       + (c.passado ? ', encerrado, presença ' + (c.presenca ? c.presenca.presentes + ' de ' + c.presenca.total : 'não apurada')
         : ', confirmados ' + c.confirmadosQtd + ', esperados ' + (c.membrosEsperados == null ? 'não informados' : c.membrosEsperados) + ', faixa ' + (e.faixa ? e.faixa.rotulo : 'sem faixa')
           + (c.precisaCobranca ? ', precisa de cobrança' : ''));
-    return '<button type="button" class="ag-card ' + e.classes + '" style="' + e.estilo + '" data-ag="card" data-ag-idx="' + idx + '" aria-label="' + esc(rotulo) + '">'
+    return '<button type="button" class="ag-card' + (e.passado ? ' passado' : '') + '"' + (e.chave ? ' data-faixa="' + e.chave + '"' : '') + ' data-ag="card" data-ag-idx="' + idx + '" aria-label="' + esc(rotulo) + '">'
       + '<div class="ag-topo"><span>' + esc(c.hhmm) + '</span>' + contagem + '</div>'
       + '<div class="ag-corpo-card">' + foto + '<div class="ag-texto"><div class="ag-nome">' + esc(c.conselheiroNome) + '</div>'
       + '<div class="ag-sub">' + sub + '</div>' + linhaCobranca + '</div></div></button>';
@@ -209,9 +205,10 @@
     var h = '';
     CFG.faixas.forEach(function (f) {
       var intervalo = f.ate === null ? f.de + ' ou mais' : f.de + ' a ' + f.ate;
-      h += '<span class="ag-legenda-item"><span class="ag-lamp" style="background:' + f.corFundo + ';"></span>' + esc(capitalizar(f.rotulo)) + ' ' + esc(intervalo) + '</span>';
+      h += '<span class="ag-legenda-item"><span class="ag-lamp" data-faixa="' + f.chave + '"></span>' + esc(capitalizar(f.rotulo)) + ' ' + esc(intervalo) + '</span>';
     });
-    h += '<span class="ag-legenda-item"><span class="ag-lamp" style="background:' + CFG.passadoCor.corFundo + ';"></span>Encerrado</span>';
+    h += '<span class="ag-legenda-item"><span class="ag-lamp" data-faixa="sem_dados"></span>Sem dados</span>';
+    h += '<span class="ag-legenda-item"><span class="ag-lamp encerrado"></span>Encerrado</span>';
     return h;
   }
 
@@ -299,13 +296,18 @@
         }).join('');
         corpo = linhas + (pres ? '<ul>' + pres + '</ul>' : '');
       } else {
-        linhas += '<dt>Faixa</dt><dd>' + esc(e.faixa ? capitalizar(e.faixa.rotulo) : 'sem faixa') + ', ' + item.confirmadosQtd + ' confirmados de ' + (item.membrosEsperados == null ? 'não informados' : item.membrosEsperados) + ' esperados</dd>';
+        var titulares = (item.confirmados || []).filter(function (c) { return !c.reposicao; });
+        var reposicoes = (item.confirmados || []).filter(function (c) { return c.reposicao; });
+        var esperados = item.membrosEsperados == null ? ', esperados não informados' : ' de ' + plural(item.membrosEsperados, 'esperado', 'esperados');
+        linhas += '<dt>Faixa</dt><dd>' + esc(e.faixa ? capitalizar(e.faixa.rotulo) : 'Sem dados') + ', ' + plural(titulares.length, 'confirmado', 'confirmados') + ' e ' + plural(reposicoes.length, 'reposição', 'reposições') + esperados + '</dd>';
         if (item.precisaCobranca && item.prazoCobranca) {
           linhas += '<dt>Cobrança</dt><dd>' + (item.prazoCobranca.tipo === 'hoje' ? 'Cobrar hoje' : 'Cobrar até ' + ddmm(item.prazoCobranca.diaIso)) + '</dd>';
         }
         linhas += '</dl>';
-        var confirmados = (item.confirmados || []).map(function (c) { return '<li>' + esc(c.nome) + '</li>'; }).join('');
-        corpo = linhas + '<div class="ag-sub">Confirmados</div>' + (confirmados ? '<ul>' + confirmados + '</ul>' : '<div class="ag-sub">Ninguém confirmou ainda.</div>');
+        var listaTitulares = titulares.map(function (c) { return '<li>' + esc(c.nome) + '</li>'; }).join('');
+        var listaRepos = reposicoes.map(function (c) { return '<li>' + esc(c.nome) + '</li>'; }).join('');
+        corpo = linhas + '<div class="ag-sub">Confirmados</div>' + (listaTitulares ? '<ul>' + listaTitulares + '</ul>' : '<div class="ag-sub">Ninguém confirmou ainda.</div>')
+          + '<div class="ag-sub">Reposições</div>' + (listaRepos ? '<ul>' + listaRepos + '</ul>' : '<div class="ag-sub">Nenhuma reposição para este conselho.</div>');
       }
     }
     fundo.innerHTML = '<div class="ag-modal" role="dialog" aria-modal="true" aria-labelledby="agendaModalTitulo">'
