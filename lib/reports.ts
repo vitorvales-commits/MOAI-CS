@@ -1592,8 +1592,13 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       // ponderada, health_base_area), nunca média ou soma de percentuais. Sem advertência.
       healthDaBase: {
         ...healthBaseIndicador(area.health, metaTimeResolvida('healthDaBase'), null, area.temReport),
-        cobertura: coberturaArea(area.linha), area: true, semReportValido: !area.temReport, criticosTotal: area.linha.criticos ?? null,
-        membrosTotal: area.linha.base ?? null, detalheCS: area.detalhe, csSemReport: area.linha.cs_sem_report ?? [],
+        // Card Críticos no componente padrão: número principal e meta são contagens (meta 20 = até 20
+        // críticos), então alcancado vira o total de críticos únicos. O percentual sobre a base vai à parte.
+        alcancado: area.linha.criticos ?? null, unidade: null,
+        percentualBase: area.health.healthBaseDecimos === null ? null : area.health.healthBaseDecimos / 10,
+        observacaoSemValor: 'Nenhum report válido nos últimos 14 dias',
+        cobertura: coberturaArea(area.linha), membrosTotal: area.linha.base ?? null,
+        detalheCS: area.detalhe, csSemReport: area.linha.cs_sem_report ?? [],
       },
     },
     churnOrfao,

@@ -238,11 +238,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .kpi-sub { font-size: 11.5px; color:#9F9F9F; margin-top:8px; }
 .kpi-recorde-badge { display:inline-flex; align-items:center; gap:3px; border-radius:99px; padding:3px 9px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; background:rgba(251,191,36,0.16); color:#fbbf24; margin-left:6px; white-space:nowrap; }
 .kpi-recorde-linha { font-size:10.5px; color:#fbbf24; margin-top:4px; }
-.kpi-barra { height:3px; border-radius:2px; background:rgba(255,255,255,0.08); margin:8px 0 4px; overflow:hidden; }
-.kpi-barra-fill { height:100%; background:#7fe3ac; }
-.kpi-barra.acima .kpi-barra-fill { background:#fbbf24; }
 .kpi-cobertura { font-size:10.5px; color:#6E6C6C; margin-top:4px; }
-.kpi-fonte-texto { font-size:9.5px; color:#6E6C6C; margin-top:8px; }
 .c-g{color:#6ee7b7;}.c-y{color:#fbbf24;}.c-r{color:#f87171;}.c-gray{color:#807E7E;}
 /* Parte B (25/09/2026): linha de contexto do time dentro do card individual, blur configurável pelo gestor */
 .kpi-time-linha { font-size: 11px; color:#7A7878; margin-top:7px; }
@@ -1198,37 +1194,10 @@ function valorKpiTexto_(ind, unidade){
   if (ind.statusReport === 'sem_report') return 'Sem report';
   if (ind.semApuracao) return 'Sem apuração';
   if (ind.alcancado===null||ind.alcancado===undefined) return '—';
-  if (ind.composicao) return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
+  if (ind.composicao && ind.unidade === '%') return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
   return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado;
 }
-// Card Críticos da área (fotografia atual): número principal é o total de críticos, abaixo o denominador
-// e o percentual, barra fina contra a meta (teto: menor é melhor; âmbar só acima da meta) e cobertura só
-// quando incompleta. A composição por CS vai para o tooltip, do maior percentual para o menor.
-// Dentro desta template literal o separador de linha do tooltip é &#10;, nunca barra-n.
-function kpiCriticosArea_(label, ind){
-  var semValido = !!ind.semReportValido || ind.criticosTotal === null || ind.criticosTotal === undefined;
-  var pct = ind.alcancado;
-  var pctTxt = (pct===null||pct===undefined) ? '' : pct.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'%';
-  var principal = semValido ? 'Sem report válido' : String(ind.criticosTotal);
-  var sub = semValido ? 'Nenhum CS enviou report nos últimos 14 dias' : 'de '+ind.membrosTotal+' membros · '+pctTxt;
-  var meta = (ind.meta===null||ind.meta===undefined) ? null : Number(ind.meta);
-  var largura = (!semValido && meta>0 && pct!==null && pct!==undefined) ? Math.min(pct/meta*100, 100) : 0;
-  var acima = !semValido && meta!==null && pct!==null && pct!==undefined && pct>meta;
-  var linhasTooltip = (ind.detalheCS||[]).map(function(c){
-    return c.nome+': '+c.criticos+' de '+c.carteira+' ('+c.percentual.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'%)';
-  });
-  var tooltip = linhasTooltip.length ? linhasTooltip.join('&#10;') : String(ind.composicao||'');
-  var tooltipAttr = ' title="'+tooltip.replace(/"/g,'&quot;')+'" aria-label="'+label+'"';
-  var coberturaLinha = ind.cobertura ? '<div class="kpi-cobertura">'+ind.cobertura+'</div>' : '';
-  return '<div class="kpi kpi-area"'+tooltipAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div></div></div>' +
-    '<div class="kpi-realizado num">'+principal+'</div>' +
-    '<div class="kpi-sub">'+sub+'</div>' +
-    '<div class="kpi-barra'+(acima?' acima':'')+'" aria-hidden="true"><div class="kpi-barra-fill" style="width:'+largura.toFixed(1)+'%"></div></div>' +
-    '<div class="kpi-sub">'+(meta!==null?'meta '+meta:'meta não definida')+'</div>'+coberturaLinha +
-    '<div class="kpi-fonte-texto">Fonte: report semanal no Monday</div></div>';
-}
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
-  if (ind.area) return kpiCriticosArea_(label, ind);
   var c = calcIndicador(ind);
   if (ind.statusReport === 'sem_report') { c.pctLabel = 'Sem report'; c.pillLabel = 'Sem report'; }
   else if (ind.semApuracao) { c.pctLabel = 'Sem apuração'; c.pillLabel = 'Sem apuração'; }
@@ -1248,13 +1217,24 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   var recordeBadge = (recorde && recorde.emRecorde) ? '<span class="kpi-recorde-badge">Recorde</span>' : '';
   var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
     ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
-  var composicaoAttr = ind.composicao ? ' title="'+String(ind.composicao).replace(/"/g,'&quot;')+'" aria-label="'+label+': '+String(ind.composicao).replace(/"/g,'&quot;')+'"' : '';
-  // A composição (críticos de x, pontos, Health) fica só no tooltip; no corpo do card entra só a cobertura,
-  // e apenas quando algum CS obrigado está sem report válido.
-  var coberturaLinha = ind.cobertura ? '<div class="kpi-recorde-linha">'+ind.cobertura+'</div>' : '';
+  // Tooltip: composição por CS (nome, críticos, carteira, percentual), do maior percentual para o menor, quando
+  // o indicador traz detalheCS; senão, a composição resumida. Dentro desta template literal o separador de linha é &#10;.
+  var tooltipCard = (ind.detalheCS && ind.detalheCS.length)
+    ? ind.detalheCS.slice().sort(function(a,b){ return b.percentual - a.percentual; }).map(function(c){
+        return c.nome+': '+c.criticos+' de '+c.carteira+' ('+c.percentual.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'%)';
+      }).join('&#10;')
+    : String(ind.composicao||'');
+  var composicaoAttr = tooltipCard ? ' title="'+tooltipCard.replace(/"/g,'&quot;')+'" aria-label="'+label+': '+tooltipCard.replace(/"/g,'&quot;')+'"' : '';
+  // Terceira linha, no lugar do recorde: sem valor, a observação do indicador; com cobertura incompleta, a cobertura;
+  // com percentual da base, '7,0% da base de 256 membros' na cor neutra da segunda linha.
+  var semValor = ind.statusReport === 'sem_report' || ind.alcancado===null || ind.alcancado===undefined;
+  var terceiraLinha = (semValor && ind.observacaoSemValor) ? '<div class="kpi-sub">'+ind.observacaoSemValor+'</div>'
+    : ind.cobertura ? '<div class="kpi-cobertura">'+ind.cobertura+'</div>'
+    : (ind.percentualBase!==null && ind.percentualBase!==undefined) ? '<div class="kpi-sub">'+ind.percentualBase.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'% da base de '+ind.membrosTotal+' membros</div>'
+    : recordeLinha;
   return '<div class="kpi"'+(idDom?' id="'+idDom+'"':'')+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+recordeLinha+coberturaLinha+'</div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+terceiraLinha+'</div></div></div>';
 }
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
