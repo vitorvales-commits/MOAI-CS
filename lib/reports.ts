@@ -333,7 +333,18 @@ export async function removerCsFoto(sb: SupabaseClient, csNome: string): Promise
 // conta — getCSListParaAgregados já traz os três juntos).
 export type CSNaoVinculado = { nome: string; ocorrenciasPorOrigem: { origem: string; qtd: number }[]; totalOcorrencias: number };
 
+// Correção 19/10/2026 (caso Amanda): a fonte mais forte de que alguém é CS é ser dono de carteira,
+// isto é, aparecer entre parênteses no título de um conselho ativo ("Executivo | Murilo (Amanda)").
+// Essa fonte não era lida, então uma CS nova com carteira só surgia se por acaso aparecesse nos
+// campos de texto dos outros boards, e no fim de uma lista dominada por ruído. Agora a carteira é
+// lida primeiro, conta como prioridade na ordenação, e valores que não são pessoas são ignorados.
+const ORIGEM_CARTEIRA = 'Carteira (título do conselho)';
+const NAO_PESSOAS_CS = new Set(['comunidade', 'n/d', 'high end', 'comercial', 'membro excluido', 'contato moai', 'externo']);
+
 const FONTES_CS_NAO_VINCULADO: { origem: string; textos: (dados: DadosBrutos) => (string | null)[] }[] = [
+  { origem: ORIGEM_CARTEIRA, textos: (d) => d.conselhosGrupos
+      .filter((g: any) => !g.is_repo && !g.congelado)
+      .map((g: any) => parseTituloConselho(g.titulo)?.cs || null) },
   { origem: 'Conselheiros (CS responsável)', textos: (d) => d.conselheiros.map((c: any) => c.cs_responsavel) },
   { origem: 'Rounds', textos: (d) => d.rounds.map((r: any) => r.cs_responsavel_raw) },
   { origem: 'Cases de Sucesso', textos: (d) => d.cases.map((c: any) => c.cs_raw) },
@@ -346,13 +357,14 @@ export function detectarCSNaoVinculados(dados: DadosBrutos, csConhecidos: CSConf
   csConhecidos.forEach((c) => {
     if (c.nomeCompleto) conhecidos.add(normalizeNome(c.nomeCompleto));
     if (c.nome) conhecidos.add(normalizeNome(c.nome));
+    if (c.apelidoConselho) conhecidos.add(normalizeNome(c.apelidoConselho));
   });
   const porNome = new Map<string, { nomeOriginal: string; origens: Map<string, number> }>();
   FONTES_CS_NAO_VINCULADO.forEach(({ origem, textos }) => {
     textos(dados).forEach((texto) => {
       (texto || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((nomeBruto) => {
         const norm = normalizeNome(nomeBruto);
-        if (!norm || conhecidos.has(norm)) return;
+        if (!norm || conhecidos.has(norm) || NAO_PESSOAS_CS.has(norm)) return;
         if (!porNome.has(norm)) porNome.set(norm, { nomeOriginal: nomeBruto, origens: new Map() });
         const entrada = porNome.get(norm)!;
         entrada.origens.set(origem, (entrada.origens.get(origem) || 0) + 1);
@@ -365,7 +377,11 @@ export function detectarCSNaoVinculados(dados: DadosBrutos, csConhecidos: CSConf
       ocorrenciasPorOrigem: [...e.origens.entries()].map(([origem, qtd]) => ({ origem, qtd })),
       totalOcorrencias: [...e.origens.values()].reduce((s, n) => s + n, 0),
     }))
-    .sort((a, b) => b.totalOcorrencias - a.totalOcorrencias);
+    .sort((a, b) => {
+      const ca = a.ocorrenciasPorOrigem.some((o) => o.origem === ORIGEM_CARTEIRA) ? 1 : 0;
+      const cb = b.ocorrenciasPorOrigem.some((o) => o.origem === ORIGEM_CARTEIRA) ? 1 : 0;
+      return cb - ca || b.totalOcorrencias - a.totalOcorrencias;
+    });
 }
 
 // Passa pela função SECURITY DEFINER vincular_cs (mesmo padrão de setVezesDestaque/setCSAtivo) —
