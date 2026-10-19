@@ -23,6 +23,7 @@ import {
   calcularHealthBase, statusReport, type HealthBase, type DistribuicaoPresenca,
 } from './indicadores-base';
 import type { FaixaPresencaChave, SemaforoChave, AgendaTurnoChave } from './constants';
+import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato } from './agenda-nomes';
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
@@ -692,26 +693,39 @@ function buildMembrosEStatusMaps(dados: { conselhosMembros: any[]; conselhosStat
   return { membrosPorGrupo, statusPorMembro };
 }
 
+// Chave do mapa é chaveAgenda (lib/agenda-nomes.ts): sem anotações entre parênteses ou colchetes.
 function buildAgendaMap(agendaRows: any[]) {
   const map = new Map<string, { dataIso: string; status: string | null }[]>();
   agendaRows.forEach((r) => {
     if (!r.data_iso) return;
-    const chave = normalizeNome(r.conselheiro_nome);
+    const chave = chaveAgenda(r.conselheiro_nome);
+    if (!chave) return;
     if (!map.has(chave)) map.set(chave, []);
     map.get(chave)!.push({ dataIso: r.data_iso, status: r.status || null });
   });
   return map;
 }
-const APELIDOS_AGENDA_NORM: Record<string, string> = {};
-Object.keys(APELIDOS_AGENDA).forEach((k) => { APELIDOS_AGENDA_NORM[normalizeNome(k)] = normalizeNome(APELIDOS_AGENDA[k]); });
+const APELIDOS_AGENDA_NORM = normalizarApelidos(APELIDOS_AGENDA);
+
+// Todos os encontros da agenda de um contato de grupo: o próprio nome e seus apelidos ou nomes
+// anteriores (sucessão), cada um casado de forma exata ou tolerante (ver lib/agenda-nomes.ts).
+function registrosDaAgendaDoContato(contato: string, agendaMap: Map<string, { dataIso: string; status: string | null }[]>) {
+  const usadas = new Set<string>();
+  const registros: { dataIso: string; status: string | null }[] = [];
+  chavesDoContato(contato, APELIDOS_AGENDA_NORM).forEach((k) => {
+    const achada = acharChaveTolerante(k, agendaMap.keys());
+    if (!achada || usadas.has(achada)) return;
+    usadas.add(achada);
+    registros.push(...(agendaMap.get(achada) || []));
+  });
+  return registros;
+}
 
 function proximaDataConselho(tituloGrupo: string, agendaMap: Map<string, { dataIso: string; status: string | null }[]>) {
   const contato = extrairContatoDoTitulo(tituloGrupo);
   if (!contato) return null;
-  const chaveContato = normalizeNome(contato);
-  const chaveAlias = APELIDOS_AGENDA_NORM[chaveContato];
-  const registros = agendaMap.get(chaveContato) || (chaveAlias ? agendaMap.get(chaveAlias) : null);
-  if (!registros || registros.length === 0) return null;
+  const registros = registrosDaAgendaDoContato(contato, agendaMap);
+  if (registros.length === 0) return null;
   const agora = new Date();
   const futuros = registros.filter((r) => r.status !== AGENDA_STATUS_CANCELADO && new Date(r.dataIso) >= agora)
     .sort((a, b) => new Date(a.dataIso).getTime() - new Date(b.dataIso).getTime());
@@ -736,10 +750,7 @@ function buildGrupoPorChaveAgenda(gruposAtivos: any[]) {
       groupId: g.group_id, nomeGrupo: g.titulo.replace(/\[?congelado\]?/i, '').trim(),
       cs: parsed.cs, nivel: parsed.nivel, congelado: !!g.congelado, repoGroupId: g.repo_group_id || null,
     };
-    const chaveContato = normalizeNome(parsed.contato);
-    map.set(chaveContato, info);
-    const chaveAlias = APELIDOS_AGENDA_NORM[chaveContato];
-    if (chaveAlias) map.set(chaveAlias, info);
+    chavesDoContato(parsed.contato, APELIDOS_AGENDA_NORM).forEach((k) => map.set(k, info));
   });
   return map;
 }
@@ -855,7 +866,8 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     if (!row.data_iso) return;
     const d = new Date(row.data_iso);
     if (d < limiteInicio || d >= limiteFim) return;
-    const grupo = grupoPorChave.get(normalizeNome(row.conselheiro_nome));
+    const chaveGrupo = acharChaveTolerante(chaveAgenda(row.conselheiro_nome), grupoPorChave.keys());
+    const grupo = chaveGrupo ? grupoPorChave.get(chaveGrupo) : undefined;
     if (!grupo) return; // sem grupo ativo correspondente (nome não bate/conselho arquivado) — fica de fora, não quebra a agenda
     const itemsPrincipais = membrosPorGrupo.get(grupo.groupId) || [];
     const itemsRepo = grupo.repoGroupId ? (membrosPorGrupo.get(grupo.repoGroupId) || []) : [];
@@ -2157,10 +2169,8 @@ function anoDaAta(mesAta: string, contatoConselho: string | null, agendaMap: Map
   const semFuturo = (ano: number) => (ano > agora.getFullYear() || (ano === agora.getFullYear() && mesIdx > agora.getMonth())) ? Math.min(ano, agora.getFullYear()) - (mesIdx > agora.getMonth() ? 1 : 0) : ano;
   if (mesIdx === -1) return anoFallback;
   if (!contatoConselho) return semFuturo(anoFallback);
-  const chave = normalizeNome(contatoConselho);
-  const chaveAlias = APELIDOS_AGENDA_NORM[chave];
-  const registros = agendaMap.get(chave) || (chaveAlias ? agendaMap.get(chaveAlias) : null);
-  const candidatos = (registros || []).map((r) => new Date(r.dataIso))
+  const registros = registrosDaAgendaDoContato(contatoConselho, agendaMap);
+  const candidatos = registros.map((r) => new Date(r.dataIso))
     .filter((d) => d.getMonth() === mesIdx && d <= agora).map((d) => d.getFullYear());
   if (candidatos.length === 0) return semFuturo(anoFallback);
   return Math.max(...candidatos);
