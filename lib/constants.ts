@@ -63,9 +63,14 @@ export const EX_MEMBROS_SEM_CONTA = [
   { nome: 'Yasmim', nomeCompleto: 'Yasmim', userId: null as number | null, apelidoConselho: null as string | null, vezesDestaque: 0 },
 ];
 
-// 11 conselheiros cujo nome está escrito diferente entre o board de Gestão (apelido curto) e o
-// board de Agenda (nome completo) — ver nota v12 no Code.gs original.
-export const APELIDOS_AGENDA: Record<string, string> = {
+// Apelidos e sucessões entre o contato do título do grupo (board de Gestão) e o nome usado no board
+// de Agenda. Valor com um nome ou com vários. A regra de casamento (anotações entre parênteses ou
+// colchetes ignoradas, tolerância a erro de grafia) mora em lib/agenda-nomes.ts; aqui entra só o
+// que nenhuma regra resolve sozinha: apelido curto e troca de conselheiro no mesmo grupo.
+// Sucessão (19/10/2026): Henrique Guimarães substitui André Fróes no grupo novo_grupo74947
+// ("Executivo | Henrique Guimaraes (Vitor)"); os encontros antigos da agenda, digitados como
+// André Fróes, continuam pertencendo a esse conselho.
+export const APELIDOS_AGENDA: Record<string, string | string[]> = {
   'Alan': 'Alan Nogales',
   'Gallo': 'Eduardo Gallo',
   'Gui Figueiredo': 'Guilherme Figueiredo',
@@ -77,6 +82,9 @@ export const APELIDOS_AGENDA: Record<string, string> = {
   'Murilo': 'Murilo Hypólito',
   'Thiago Correa': 'Thiago Correia',
   'Tati Moura': 'Tatiana Moura',
+  'Carlos Júnior': 'Carlos Jr',
+  'Kadydja': 'Kadydja Albuquerque',
+  'Henrique Guimaraes': ['Henrique Guimarães', 'André Fróes'],
 };
 
 // Buckets do "Status de Pagamento" (coluna color_mm5bzhq3 do board de Gestão dos Conselhos) pro
