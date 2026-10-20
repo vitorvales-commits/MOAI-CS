@@ -5,7 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateVisaoGestor, generateVisaoGeralRede } from '@/lib/reports';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
-import { variacaoDoRanking } from '@/lib/evolucao-dados';
+import { variacaoDoRanking, serieScoreArea } from '@/lib/evolucao-dados';
+import { EVOLUCAO_JANELA_PADRAO } from '@/lib/constants';
 import { hojeSP } from '@/lib/gtd-prazos';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +39,13 @@ export async function GET(req: NextRequest) {
       return null;
     });
     const ranking = data.ranking.map((r) => ({ ...r, variacao: variacoes ? variacoes.get(r.nome) ?? null : null }));
-    return NextResponse.json({ ...data, ranking, visaoGeralRede });
+    // Série do score da área (redesenho v3): média e mediana por mês, para o KPI e a mediana do Mapa do time.
+    // Campo aditivo; se falhar, vira nulo com a mensagem real e o resto da resposta segue.
+    const serieArea = await serieScoreArea(supabase, mes, ano, hojeSP(), EVOLUCAO_JANELA_PADRAO)
+      .then((pontos) => ({ pontos, erro: null as string | null }))
+      .catch((e) => { console.error('visao-geral serie', e); return { pontos: null, erro: (e && e.message) || String(e) }; });
+
+    return NextResponse.json({ ...data, ranking, visaoGeralRede, serieArea });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

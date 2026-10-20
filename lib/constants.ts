@@ -264,3 +264,10 @@ export const ROUND_STATUS_COR: Record<string, string> = {
   'Confirmado': '#fdab3d', 'Realizado': '#00c875', 'Cancelado': '#df2f4a',
   'Agd. confirmação': '#007eb5', 'Adiado': '#9d50dd', 'A Planejar': '#757575',
 };
+
+// ============ Visão da área, redesenho v3 (20/10/2026) ============
+// Faixas de cor da pontuação no Mapa do time (mesmo corte que a Visão da área já usava).
+export const SCORE_FAIXA_SAUDAVEL = 75; // pontuação a partir daqui é saudável
+export const SCORE_FAIXA_ATENCAO = 55; // abaixo disso a pontuação é risco; entre este valor e o saudável, atenção
+// Indicadores atrás do ritmo no mês a partir dos quais a linha do CS pede ação imediata (abaixo disso, acompanhar).
+export const MAPA_RITMO_ATRASADOS_ACAO = 3;

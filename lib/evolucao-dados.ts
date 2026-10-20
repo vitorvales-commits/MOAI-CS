@@ -5,7 +5,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateVisaoGestor, RADAR_EIXOS } from './reports';
 import { MESES_ORDEM, FECHAMENTO_DIA_CORTE, FECHAMENTO_MAX_POR_REQUISICAO, EVOLUCAO_MES_INICIAL } from './constants';
-import { mesAberto, linhasFechamento, variacaoRanking, type MesRef, type LinhaFechamento } from './evolucao';
+import { mesAberto, linhasFechamento, variacaoRanking, mesesDaJanela, mediana, type MesRef, type LinhaFechamento } from './evolucao';
 
 export type MesEvolucao = {
   ano: number;
@@ -102,4 +102,28 @@ export async function variacaoDoRanking(
     ));
   }
   return mapa;
+}
+
+// Série do score da área para os KPIs da Visão da área: média e mediana das pontuações de cada mês, nos
+// n meses que terminam no mês escolhido. Sem pontuação no mês, média e mediana nulas (nunca zero).
+// Mês pendente de fechamento entra com nulos. Visão Geral (sem mês) devolve lista vazia.
+export async function serieScoreArea(
+  sb: SupabaseClient,
+  mesNome: string,
+  ano: number,
+  hoje: string,
+  n: number,
+): Promise<{ rotulo: string; aberto: boolean; scoreMedio: number | null; mediana: number | null }[]> {
+  const idx = MESES_ORDEM.indexOf(mesNome);
+  if (idx === -1) return [];
+  const meses = await obterMesesTime(sb, mesesDaJanela(ano, idx + 1, n), hoje);
+  return meses.map((m) => {
+    const notas = (m.linhas || []).map((l) => l.pontuacao).filter((v): v is number => typeof v === 'number');
+    return {
+      rotulo: m.rotulo,
+      aberto: m.aberto,
+      scoreMedio: notas.length ? Math.round(notas.reduce((a, b) => a + b, 0) / notas.length) : null,
+      mediana: mediana(notas),
+    };
+  });
 }
