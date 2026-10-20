@@ -1067,7 +1067,7 @@ function iniciarInicioCS() {
   var agora = new Date();
   var h = agora.getHours();
   document.getElementById('inSaudacao').textContent = (h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite')) + ', ' + inPrimeiroNome_(meuCSNome);
-  var dataTxt = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var dataTxt = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', '');
   document.getElementById('inData').textContent = dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1);
   currentCS = null;
   renderTopbar();
