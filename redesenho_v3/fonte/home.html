@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Início · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/*BASE*/
+/* Faixa do mês: uma frase que diz o que fazer */
+.mes{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#141414,#1A1A1A 50%,#272727);color:#fff;display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));align-items:stretch}
+.mes::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 8% -20%,rgba(200,154,46,.4),transparent 55%),radial-gradient(circle at 100% 120%,rgba(61,139,95,.3),transparent 55%)}
+.mes > *{position:relative;padding:22px 24px}
+.mes > * + *{border-left:1px solid rgba(255,255,255,.1)}
+.mes-ey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.mes h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;line-height:1.25;margin:8px 0 0;letter-spacing:-0.01em}
+.mes h2 em{font-style:normal;color:var(--gold)}
+.mes-l{font-size:12px;color:#B5B2B2;font-weight:600}
+.mes-n{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:34px;font-weight:700;line-height:1;margin:8px 0 6px}
+.mes-n small{font-family:'Inter',sans-serif;font-size:13px;color:#9F9F9F;margin-left:3px}
+.mes-f{font-size:12px;color:#B5B2B2}
+.mes-prog{height:4px;border-radius:99px;background:rgba(255,255,255,.14);margin-top:10px;overflow:hidden}
+.mes-prog span{display:block;height:100%;background:var(--gold)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.col{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* Agenda em linha do tempo */
+.dia{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:12px 18px;border-top:1px solid var(--line)}
+.dia-d{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding-top:3px}
+.dia-d b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;letter-spacing:-0.02em;color:var(--ink);line-height:1.05;text-transform:none}
+.dia.hoje .dia-d,.dia.hoje .dia-d b{color:var(--gold-ink)}
+.ev{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border-radius:10px}
+.ev + .ev{margin-top:4px}
+.ev:hover{background:#FAFAF9}
+.ev-h{font-size:12.5px;font-weight:700}
+.ev b{display:block;font-size:13.5px;font-weight:600}
+.ev small{font-size:12px;color:var(--ink2)}
+.ev.conselho{box-shadow:inset 3px 0 0 var(--ink)}
+.ev.round{box-shadow:inset 3px 0 0 #B5B2B2}
+.vazio{font-size:12.5px;color:var(--ink3);padding:8px 10px}
+
+/* Tarefas */
+.task{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 18px;border-top:1px solid var(--line)}
+.task input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--ink);cursor:pointer}
+.task label{cursor:pointer}
+.task b{display:block;font-size:13.5px;font-weight:600}
+.task small{font-size:12px;color:var(--ink2)}
+
+/* Metas com ritmo */
+.meta{padding:13px 18px;border-top:1px solid var(--line)}
+.meta-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.meta-top b{font-size:13.5px;font-weight:600}
+.meta-top span{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px}
+.meta-top span small{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--ink3)}
+.meta-dica{font-size:12px;color:var(--ink2);margin-top:7px}
+.meta-dica.atras{color:var(--gold-ink);font-weight:600}
+
+/* Carteira */
+.carteira{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:0 18px 18px}
+.cons{border:1px solid var(--line);border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+.cons:hover{border-color:var(--ink)}
+.cons-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cons-top b{font-size:13.5px;font-weight:600}
+.cons-l{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)}
+.cons-l strong{color:var(--ink);font-weight:600}
+.cons.alerta{border-color:#EBC6C0;background:#FFFCFB}
+
+@media (max-width:1100px){.mes{grid-template-columns:1fr 1fr}.mes > :first-child{grid-column:1 / -1}.mes > :nth-child(2){border-left:0}.mes > :nth-child(n+2){border-top:1px solid rgba(255,255,255,.1)}.grid{grid-template-columns:1fr}}
+@media (max-width:560px){.mes > *{padding:18px}.mes > :nth-child(4){grid-column:1 / -1;border-left:0}.dia{grid-template-columns:48px minmax(0,1fr);gap:10px;padding:12px 14px}.ev{grid-template-columns:44px minmax(0,1fr)}.ev > .tag{grid-column:2;justify-self:start}}
+</style>
+</head>
+<body>
+<!--ICONS-->
+<div class="app">
+<header class="dock-wrap"><nav class="dock" aria-label="Navegação principal"><a class="dock-brand" href="#"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span><div class="grp on"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Meu trabalho"><svg aria-hidden="true"><use href="#i-home"/></svg><span class="grp-lbl">Início</span></button><div class="menu" role="menu"><span class="menu-h">Meu trabalho</span><a class="mi on" href="home.html" role="menuitem"><span class="ico"><svg><use href="#i-home"/></svg></span><span><b>Início</b><small>Seu dia e seu mês</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-cal"/></svg></span><span><b>Agenda</b><small>Conselhos e rounds</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-layers"/></svg></span><span><b>Meus conselhos</b><small>Membros, presença e GTD</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Desempenho"><svg aria-hidden="true"><use href="#i-target"/></svg><span class="grp-lbl">Desempenho</span></button><div class="menu" role="menu"><span class="menu-h">Desempenho</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-target"/></svg></span><span><b>Meus indicadores</b><small>Metas contra o realizado</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-shield"/></svg></span><span><b>Pontos tomados</b><small>Advertências ativas</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Report"><svg aria-hidden="true"><use href="#i-file"/></svg><span class="grp-lbl">Report</span><span class="nbadge gold">1</span></button><div class="menu" role="menu"><span class="menu-h">Report</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-file"/></svg></span><span><b>Report semanal</b><small>Vence sexta às 19h</small></span><span class="nbadge gold">1</span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Gestor"><svg aria-hidden="true"><use href="#i-area"/></svg><span class="grp-lbl">Gestor</span></button><div class="menu" role="menu"><span class="menu-h">Gestor</span><a class="mi" href="gestor.html" role="menuitem"><span class="ico"><svg><use href="#i-area"/></svg></span><span><b>Visão da área</b><small>Se você também é gestor</small></span></a></div></div><span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" aria-label="Buscar conselho ou membro" placeholder="Buscar conselho ou membro"><kbd>Ctrl K</kbd></label><span class="dsync" title="Monday sincronizado às 12:07"><i></i>12:07</span><span class="av" style="background:#7A5A1C;color:#fff" aria-label="Perfil">A</span></nav></header>
+<div class="work">
+    <header class="top">
+      <div>
+        <div class="crumb">Terça, 20 de outubro</div>
+        <h1>Bom dia, Amanda</h1>
+      </div>
+      <div class="top-r">
+        <a class="btn pri" href="#"><svg><use href="#i-file"/></svg>Enviar report da semana</a>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- Nível 1: o mês numa frase -->
+      <section class="mes" aria-labelledby="h-mes">
+        <div>
+          <span class="mes-ey">Seu outubro</span>
+          <h2 id="h-mes">No ritmo em 6 de 7 metas. Para fechar o mês, foque em <em>Cases</em>: faltam 3, cerca de 2 por semana.</h2>
+        </div>
+        <div><span class="mes-l">Pontuação</span><span class="mes-n">72<small>/100</small></span><span class="mes-f">&#9650; 6 vs setembro · acima da mediana</span></div>
+        <div><span class="mes-l">Dias restantes</span><span class="mes-n">11<small>de 31</small></span><div class="mes-prog"><span style="width:65%"></span></div></div>
+        <div><span class="mes-l">Pontos tomados</span><span class="mes-n">3<small>ativos</small></span><span class="mes-f">Próximo vence em 02/11</span></div>
+      </section>
+
+      <div class="grid">
+        <div class="col">
+          <!-- Nível 2: o que fazer -->
+          <section class="panel" aria-labelledby="h-tar">
+            <div class="ph"><div><h2 id="h-tar">Tarefas do GTD</h2><p>Das etapas dos seus conselhos, por prazo.</p></div><span class="count">4</span><div class="r"><a class="link" href="#">Todas</a></div></div>
+            <div class="task"><input type="checkbox" id="t1"><label for="t1"><b>Confirmação no grupo</b><small>Fast Track 04 · encontro quinta</small></label><span class="tag red">Atrasada</span></div>
+            <div class="task"><input type="checkbox" id="t2"><label for="t2"><b>Verificar a jornada dos membros</b><small>Fast Track 04 · encontro quinta</small></label><span class="tag gold">Hoje</span></div>
+            <div class="task"><input type="checkbox" id="t3"><label for="t3"><b>Follow do encaminhamento</b><small>Executivo 02 · 3 membros</small></label><span class="tag">Amanhã</span></div>
+            <div class="task"><input type="checkbox" id="t4"><label for="t4"><b>Registrar matchmakings</b><small>C Level 01 · conselho de 15/10</small></label><span class="tag">Sex 23</span></div>
+          </section>
+
+          <section class="panel" aria-labelledby="h-ag">
+            <div class="ph"><div><h2 id="h-ag">Próximos 7 dias</h2><p>Conselhos e rounds com quem já confirmou.</p></div><div class="r"><a class="link" href="#">Agenda completa</a></div></div>
+            <div class="dia hoje"><div class="dia-d">Hoje<b>20</b></div><div><div class="vazio">Nenhum encontro hoje. Bom dia para fechar as tarefas do Fast Track 04.</div></div></div>
+            <div class="dia"><div class="dia-d">Qua<b>21</b></div><div>
+              <a class="ev round" href="#"><span class="ev-h">14h</span><span><b>Round Executivo 02</b><small>Online · 2h</small></span><span class="tag">Agendado</span></a>
+            </div></div>
+            <div class="dia"><div class="dia-d">Qui<b>22</b></div><div>
+              <a class="ev conselho" href="#"><span class="ev-h">19h</span><span><b>Conselho Fast Track 04</b><small>5 de 14 confirmados · GTD 2 de 9</small></span><span class="tag gold">Confirmar</span></a>
+            </div></div>
+            <div class="dia"><div class="dia-d">Ter<b>27</b></div><div>
+              <a class="ev conselho" href="#"><span class="ev-h">8h</span><span><b>Conselho C Level 01</b><small>9 de 12 confirmados</small></span><span class="tag green">No caminho</span></a>
+              <a class="ev round" href="#"><span class="ev-h">16h</span><span><b>Round Fast Track 07</b><small>Presencial · Brasília</small></span><span class="tag">Agendado</span></a>
+            </div></div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="panel" aria-labelledby="h-metas">
+            <div class="ph"><div><h2 id="h-metas">Metas de outubro</h2><p>O traço marca onde você deveria estar hoje.</p></div><div class="r"><a class="link" href="#">Detalhar</a></div></div>
+            <div class="meta"><div class="meta-top"><b>Cases</b><span>2<small> de 5</small></span></div><div class="bar"><span class="gold" style="width:40%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica atras">Atrás do ritmo. Faltam 3, cerca de 2 por semana.</div></div>
+            <div class="meta"><div class="meta-top"><b>Upsell</b><span>1<small> de 2</small></span></div><div class="bar"><span style="width:50%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">Falta 1. Executivo 02 tem oportunidade mapeada.</div></div>
+            <div class="meta"><div class="meta-top"><b>Matchmakings</b><span>7<small> de 10</small></span></div><div class="bar"><span style="width:70%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. Faltam 3.</div></div>
+            <div class="meta"><div class="meta-top"><b>Rounds</b><span>3<small> de 4</small></span></div><div class="bar"><span style="width:75%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. 1 agendado para 27/10.</div></div>
+            <div class="meta"><div class="meta-top"><b>Indicações</b><span>4<small> de 5</small></span></div><div class="bar"><span style="width:80%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. Falta 1.</div></div>
+            <div class="meta"><div class="meta-top"><b>Carteira e churn</b><span style="color:var(--green)">ok</span></div><div class="meta-dica" style="margin-top:0">9 de 9 conselhos, nenhum churn no mês.</div></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Nível 3: carteira -->
+      <section class="panel" aria-labelledby="h-cart">
+        <div class="ph"><div><h2 id="h-cart">Minha carteira</h2><p>9 conselhos, os que pedem atenção primeiro.</p></div><div class="r"><div class="seg"><button type="button" class="on">Atenção</button><button type="button">Próximo encontro</button><button type="button">Produto</button></div></div></div>
+        <div class="carteira">
+          <a class="cons alerta" href="#"><div class="cons-top"><b>Fast Track 04</b><span class="dot red"></span></div><div class="cons-l"><span>Presença</span><strong>64%</strong></div><div class="cons-l"><span>GTD</span><strong style="color:var(--red)">2 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>Qui 22/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Executivo 02</b><span class="dot gold"></span></div><div class="cons-l"><span>Presença</span><strong>81%</strong></div><div class="cons-l"><span>GTD</span><strong>4 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>29/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>C Level 01</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>88%</strong></div><div class="cons-l"><span>GTD</span><strong>5 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>27/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Fast Track 07</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>79%</strong></div><div class="cons-l"><span>GTD</span><strong>7 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>12/11</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Executivo 05</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>92%</strong></div><div class="cons-l"><span>GTD</span><strong>8 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>14/11</strong></div></a>
+          <a class="cons" href="#" style="justify-content:center;align-items:center;color:var(--ink2);font-weight:600;border-style:dashed">Mais 4 conselhos &rarr;</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>/*SPARK*/</script>
+</body>
+</html>

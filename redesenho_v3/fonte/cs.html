@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amanda · Time · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/*BASE*/
+.cs-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+
+/* Ficha do CS */
+.ficha{position:sticky;top:90px;overflow:hidden}
+.ficha-top{position:relative;padding:22px 20px 20px;background:linear-gradient(135deg,#141414,#272727);color:#fff}
+.ficha-top::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 10% 0%,rgba(200,154,46,.35),transparent 60%),radial-gradient(circle at 100% 100%,rgba(61,139,95,.25),transparent 55%)}
+.ficha-top > *{position:relative}
+.foto{width:72px;height:72px;border-radius:18px;font-size:30px;background:#7A5A1C;box-shadow:0 0 0 3px rgba(200,154,46,.5)}
+.ficha-top h2{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;margin:14px 0 2px;letter-spacing:-0.02em}
+.ficha-top p{margin:0;font-size:12.5px;color:#C6C4C4}
+.gauge{display:flex;align-items:center;gap:14px;margin-top:18px}
+.gauge svg{width:96px;height:58px;flex:none}
+.gauge b{font-family:'Bricolage Grotesque',sans-serif;font-size:13px}
+.g-txt{font-size:12px;color:#C6C4C4;line-height:1.5}
+.g-txt strong{color:#fff;font-weight:700}
+.ficha-sec{padding:16px 20px;border-top:1px solid var(--line)}
+.ficha-sec h3{margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:4px 0}
+.kv b{font-weight:700}
+.stack{display:flex;height:8px;border-radius:99px;overflow:hidden;background:#EDEBEB;margin:8px 0 6px}
+.stack span{display:block;height:100%}
+.ficha-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:16px 20px;border-top:1px solid var(--line)}
+
+/* Abas de conteúdo */
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--line2);overflow-x:auto}
+.tabs a{padding:10px 0;font-size:13.5px;font-weight:600;color:var(--ink3);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--gold)}
+.tabs a span{font-size:11px;background:var(--bg);border-radius:99px;padding:1px 6px;margin-left:5px;color:var(--ink2)}
+
+/* Onde estão os pontos */
+.insight{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:10px;background:var(--gold-soft);color:var(--gold-ink);font-size:13px;margin:0 18px 16px}
+.insight svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;margin-top:1px}
+.insight strong{color:#5E440A}
+.contrib{display:grid;grid-template-columns:120px minmax(0,1fr) 120px;gap:14px;align-items:center;padding:9px 18px}
+.contrib + .contrib{border-top:1px solid var(--line)}
+.c-nome{font-size:13px;font-weight:600}
+.c-nome small{display:block;font-size:11px;font-weight:500;color:var(--ink3)}
+.c-track{position:relative;height:18px}
+.c-max{position:absolute;inset:0 auto 0 0;border-radius:5px;background:repeating-linear-gradient(135deg,#F3E4C3 0 5px,#FAF3E3 5px 10px);box-shadow:inset 0 0 0 1px #EBD39C}
+.c-got{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--ink)}
+.c-num{text-align:right;font-size:12.5px;color:var(--ink2)}
+.c-num b{color:var(--ink);font-weight:700}
+.c-num em{font-style:normal;color:var(--gold-ink);font-weight:700}
+.c-legend{display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.c-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+
+.duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.sinal{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 18px;border-top:1px solid var(--line)}
+.sinal .dot{margin-top:6px}
+.sinal h4{margin:0;font-size:13.5px;font-weight:600;line-height:1.35}
+.sinal p{margin:2px 0 0;font-size:12px;color:var(--ink2)}
+.gt{display:grid;grid-template-columns:minmax(0,1fr) 110px 44px;gap:12px;align-items:center;padding:11px 18px;border-top:1px solid var(--line)}
+.gt b{font-size:13px;font-weight:600}
+.gt small{display:block;font-size:11.5px;color:var(--ink3)}
+.gt .pct{font-weight:700;text-align:right}
+
+@media (max-width:1100px){.cs-grid{grid-template-columns:1fr}.ficha{position:static}.duas{grid-template-columns:1fr}}
+@media (max-width:560px){.contrib{grid-template-columns:90px minmax(0,1fr);}.c-num{grid-column:2;text-align:left;margin-top:-4px}}
+</style>
+</head>
+<body>
+<!--ICONS-->
+<div class="app">
+<header class="dock-wrap"><nav class="dock" aria-label="Navegação principal"><a class="dock-brand" href="#"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span><div class="grp on"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Gestão"><svg aria-hidden="true"><use href="#i-users"/></svg><span class="grp-lbl">Time · Amanda</span></button><div class="menu" role="menu"><span class="menu-h">Gestão</span><a class="mi" href="gestor.html" role="menuitem"><span class="ico"><svg><use href="#i-area"/></svg></span><span><b>Visão da área</b><small>Situação e fila de ação</small></span><span class="nbadge">5</span></a><a class="mi on" href="cs.html" role="menuitem"><span class="ico"><svg><use href="#i-users"/></svg></span><span><b>Time</b><small>Página de cada CS</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-layers"/></svg></span><span><b>Conselhos</b><small>Rede, presença e GTD</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-target"/></svg></span><span><b>Metas e destaques</b><small>Metas do mês e recordes</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Saúde da base"><svg aria-hidden="true"><use href="#i-shield"/></svg><span class="grp-lbl">Saúde</span></button><div class="menu" role="menu"><span class="menu-h">Saúde da base</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-shield"/></svg></span><span><b>Churn e reconquista</b><small>Saídas, motivos e retorno</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-pulse"/></svg></span><span><b>NPS e Pulso de CS</b><small>Voz do membro e do time</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-flag"/></svg></span><span><b>Fila da liderança</b><small>Pedidos para a liderança</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Sistema"><svg aria-hidden="true"><use href="#i-gear"/></svg><span class="grp-lbl">Sistema</span></button><div class="menu" role="menu"><span class="menu-h">Sistema</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-gear"/></svg></span><span><b>Controle de perfis</b><small>Vínculos e permissões</small></span></a><a class="mi" href="home.html" role="menuitem"><span class="ico"><svg><use href="#i-home"/></svg></span><span><b>Ver como CS</b><small>A home que o CS enxerga</small></span></a></div></div><span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" aria-label="Pergunte: o que a Luana não bateu?" placeholder="Pergunte: o que a Luana não bateu?"><kbd>Ctrl K</kbd></label><span class="dsync" title="Monday sincronizado às 12:07"><i></i>12:07</span><span class="av" style="background:var(--gold);color:var(--side)" aria-label="Perfil">V</span></nav></header>
+<div class="work">
+    <header class="top">
+      <div>
+        <div class="crumb"><a href="gestor.html">Time</a><span>/</span><span>Amanda</span></div>
+        <h1>Amanda</h1>
+      </div>
+      <div class="top-r">
+        <div class="seg" role="group" aria-label="Trocar de CS"><button type="button">&larr; Marcos</button><button type="button">Mateus &rarr;</button></div>
+        <div class="seg" role="group" aria-label="Período"><button type="button">Set</button><button type="button" class="on">Out 2026</button></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="cs-grid">
+        <!-- Ficha fixa: leitura de relance -->
+        <aside class="panel ficha" aria-label="Ficha da Amanda">
+          <div class="ficha-top">
+            <span class="av foto">A</span>
+            <h2>Amanda</h2>
+            <p>9 conselhos · 128 membros</p>
+            <div class="gauge">
+              <svg viewBox="0 0 96 58" role="img" aria-label="Pontuação 72 de 100, mediana 66">
+                <path d="M8 52a40 40 0 0 1 80 0" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="9" stroke-linecap="round"/>
+                <path d="M8 52a40 40 0 0 1 80 0" fill="none" stroke="#C89A2E" stroke-width="9" stroke-linecap="round" stroke-dasharray="125.7" stroke-dashoffset="35.2"/>
+                <line x1="64.9" y1="21.3" x2="70.2" y2="11.7" stroke="#fff" stroke-width="2"/>
+                <text x="48" y="50" text-anchor="middle" fill="#fff" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="22">72</text>
+              </svg>
+              <div class="g-txt"><strong>3º de 6</strong> no ranking<br>&#9650; 6 vs setembro<br>Mediana do time 66</div>
+            </div>
+          </div>
+          <div class="ficha-sec">
+            <h3>Health da base</h3>
+            <div class="kv"><span>Total</span><b style="color:var(--red)">10,8%</b></div>
+            <div class="stack" aria-hidden="true"><span style="width:39%;background:var(--ink)"></span><span style="width:15%;background:var(--gold)"></span></div>
+            <div class="kv faint" style="font-size:12px"><span><span class="dot" style="display:inline-block;background:var(--ink);margin-right:5px"></span>7,8% críticos</span><span><span class="dot gold" style="display:inline-block;margin-right:5px"></span>3,0 advertência</span></div>
+          </div>
+          <div class="ficha-sec">
+            <h3>Acompanhamento</h3>
+            <div class="kv"><span>Pontos ativos</span><span class="tag gold">3 de 3</span></div>
+            <div class="kv"><span>GTD</span><b>58% <span class="faint" style="font-weight:500">área 56%</span></b></div>
+            <div class="kv"><span>Último 1:1</span><b>08/10</b></div>
+            <div class="kv"><span>Combinados abertos</span><b>4</b></div>
+          </div>
+          <div class="ficha-acoes">
+            <a class="btn gold" href="#"><svg><use href="#i-plus"/></svg>Registrar 1:1</a>
+            <a class="btn" href="#">Advertência</a>
+          </div>
+        </aside>
+
+        <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+          <nav class="tabs" aria-label="Seções da página do CS">
+            <a class="on" href="#">Diagnóstico</a><a href="#">Indicadores</a><a href="#">GTD<span>9</span></a><a href="#">Base e advertências</a><a href="#">1:1<span>4</span></a>
+          </nav>
+
+          <!-- Nível 2: onde estão os pontos -->
+          <section class="panel" aria-labelledby="h-pontos">
+            <div class="ph"><div><h2 id="h-pontos">Onde estão os 28 pontos que faltam</h2><p>Cada barra é o peso do indicador. Preto é o que ela já fez; o hachurado é o que ainda falta.</p></div></div>
+            <div class="insight"><svg><use href="#i-warn"/></svg><span><strong>Cases sozinho responde por 11 dos 28 pontos.</strong> Dois cases a mais em outubro levam a pontuação de 72 para 79 e a Amanda para o 2º lugar.</span></div>
+            <div class="contrib"><div class="c-nome">Cases<small>2 de 5 · peso 18</small></div><div class="c-track"><span class="c-max" style="width:100%"></span><span class="c-got" style="width:40%"></span></div><div class="c-num"><b>7,4</b> de 18,6 · <em>&#8722;11,1</em></div></div>
+            <div class="contrib"><div class="c-nome">Upsell<small>1 de 2 · peso 12</small></div><div class="c-track"><span class="c-max" style="width:67%"></span><span class="c-got" style="width:33%"></span></div><div class="c-num"><b>6,2</b> de 12,4 · <em>&#8722;6,2</em></div></div>
+            <div class="contrib"><div class="c-nome">Matchmakings<small>7 de 10 · peso 18</small></div><div class="c-track"><span class="c-max" style="width:100%"></span><span class="c-got" style="width:70%"></span></div><div class="c-num"><b>13,0</b> de 18,6 · <em>&#8722;5,6</em></div></div>
+            <div class="contrib"><div class="c-nome">Rounds<small>3 de 4 · peso 12</small></div><div class="c-track"><span class="c-max" style="width:67%"></span><span class="c-got" style="width:50%"></span></div><div class="c-num"><b>9,3</b> de 12,4 · <em>&#8722;3,1</em></div></div>
+            <div class="contrib"><div class="c-nome">Indicações<small>4 de 5 · peso 12</small></div><div class="c-track"><span class="c-max" style="width:67%"></span><span class="c-got" style="width:53%"></span></div><div class="c-num"><b>9,9</b> de 12,4 · <em>&#8722;2,5</em></div></div>
+            <div class="contrib"><div class="c-nome">Carteira<small>9 de 9 · peso 15</small></div><div class="c-track"><span class="c-max" style="width:83%"></span><span class="c-got" style="width:83%"></span></div><div class="c-num"><b>15,5</b> de 15,5</div></div>
+            <div class="contrib"><div class="c-nome">Churn<small>0, máximo 1 · peso 10</small></div><div class="c-track"><span class="c-max" style="width:56%"></span><span class="c-got" style="width:56%"></span></div><div class="c-num"><b>10,3</b> de 10,3</div></div>
+            <div class="contrib" style="color:var(--ink3)"><div class="c-nome" style="color:var(--ink3)">Downsell<small>sem meta</small></div><div class="c-track"><span class="c-max" style="width:17%;background:none;box-shadow:inset 0 0 0 1px var(--line2)"></span></div><div class="c-num">fora da conta</div></div>
+            <div class="c-legend"><span><i style="background:var(--ink)"></i>Pontos conquistados</span><span><i style="background:repeating-linear-gradient(135deg,#F3E4C3 0 3px,#FAF3E3 3px 6px);box-shadow:inset 0 0 0 1px #EBD39C"></i>Pontos em aberto</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>
+          </section>
+
+          <div class="duas">
+            <section class="panel" aria-labelledby="h-1a1">
+              <div class="ph"><h2 id="h-1a1">Para o próximo 1:1</h2><span class="count">3</span><div class="r"><a class="link" href="#">Pauta completa</a></div></div>
+              <div class="sinal"><span class="dot gold"></span><div><h4>Plano para 2 cases até 31/10</h4><p>2 matchmakings de setembro ainda sem follow.</p></div><a class="btn sm" href="#">Levar</a></div>
+              <div class="sinal"><span class="dot red"></span><div><h4>Fast Track 04 em 2 dias com GTD 2 de 9</h4><p>Confirmação no grupo e jornada atrasadas.</p></div><a class="btn sm" href="#">Levar</a></div>
+              <div class="sinal"><span class="dot"></span><div><h4>Upsell no Executivo 02</h4><p>Combinado em 08/10, vence 25/10.</p></div><a class="btn sm" href="#">Levar</a></div>
+            </section>
+            <section class="panel" aria-labelledby="h-gtd">
+              <div class="ph"><h2 id="h-gtd">GTD que pede atenção</h2><div class="r"><a class="link" href="#">Todos os 9</a></div></div>
+              <div class="gt"><span><b>Fast Track 04</b><small>encontro 22/10 · 2 atrasadas</small></span><span class="bar"><span class="red" style="width:22%"></span></span><span class="pct" style="color:var(--red)">22%</span></div>
+              <div class="gt"><span><b>Executivo 02</b><small>encontro 29/10 · 1 atrasada</small></span><span class="bar"><span class="gold" style="width:44%"></span></span><span class="pct">44%</span></div>
+              <div class="gt"><span><b>C Level 01</b><small>encontro 05/11</small></span><span class="bar"><span style="width:56%"></span></span><span class="pct">56%</span></div>
+              <div class="gt" style="color:var(--ink3);font-size:12px"><span>Outros 6 conselhos acima de 75%</span><span></span><span></span></div>
+            </section>
+          </div>
+
+          <section class="panel" aria-labelledby="h-evo">
+            <div class="ph"><div><h2 id="h-evo">Evolução</h2><p>Pontuação mensal contra a mediana do time.</p></div><div class="r"><div class="seg"><button type="button">3m</button><button type="button" class="on">6m</button><button type="button">12m</button></div></div></div>
+            <div class="pb">
+              <svg viewBox="0 0 760 170" width="100%" role="img" aria-label="Pontuação de maio a outubro: 58, 61, 63, 60, 66, 72; mediana de 60 a 66">
+                <g font-family="Inter, sans-serif" font-size="11" fill="#878585">
+                  <line x1="34" x2="750" y1="20" y2="20" stroke="#ECEAEA"/><text x="0" y="24">100</text>
+                  <line x1="34" x2="750" y1="80" y2="80" stroke="#ECEAEA"/><text x="10" y="84">70</text>
+                  <line x1="34" x2="750" y1="140" y2="140" stroke="#ECEAEA"/><text x="10" y="144">40</text>
+                  <text x="50" y="164">Mai</text><text x="186" y="164">Jun</text><text x="322" y="164">Jul</text><text x="458" y="164">Ago</text><text x="594" y="164">Set</text><text x="720" y="164" fill="#1A1A1A" font-weight="700">Out</text>
+                </g>
+                <polygon fill="rgba(200,154,46,.12)" points="60,104 196,98 332,94 468,100 604,88 732,76 732,140 60,140"/>
+                <polyline fill="none" stroke="#878585" stroke-width="1.5" stroke-dasharray="3 4" points="60,100 196,96 332,92 468,94 604,90 732,88"/>
+                <polyline fill="none" stroke="#C89A2E" stroke-width="2.5" stroke-linejoin="round" points="60,104 196,98 332,94 468,100 604,88 732,76"/>
+                <circle cx="732" cy="76" r="5" fill="#C89A2E" stroke="#fff" stroke-width="2"/>
+                <text x="732" y="64" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="14" fill="#1A1A1A">72</text>
+                <text x="604" y="108" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" fill="#878585">mediana</text>
+              </svg>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>/*SPARK*/</script>
+</body>
+</html>

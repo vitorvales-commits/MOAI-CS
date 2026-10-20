@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visão da área · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Sistema visual v3 do dash de CS MOAI. Marca preservada, navegação em dock de vidro no topo. */
+:root{
+  --bg:#F3F2F0; --surface:#FFFFFF; --ink:#1A1A1A; --ink2:#5D5D5D; --ink3:#878585;
+  --line:#ECEAEA; --line2:#DAD7D7; --side:#141414;
+  --gold:#C89A2E; --gold-soft:#F7EFDC; --gold-ink:#8A6410;
+  --red:#C0433D; --red-soft:#FBECEA; --red-ink:#A3342F;
+  --green:#3D8B5F; --green-soft:#E8F2EC;
+  --r:14px; --r-s:9px;
+  --glass:rgba(255,255,255,.66); --glass-strong:rgba(255,255,255,.84);
+  --glass-edge:rgba(255,255,255,.75);
+  --spring:cubic-bezier(.2,.9,.25,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;min-height:100vh;position:relative}
+/* Luz ambiente da marca, para o vidro ter o que refratar */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(900px 520px at 8% -8%,rgba(200,154,46,.16),transparent 60%),radial-gradient(800px 520px at 100% 0%,rgba(61,139,95,.10),transparent 60%),radial-gradient(700px 600px at 50% 110%,rgba(200,154,46,.08),transparent 60%)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+.disp{font-family:'Bricolage Grotesque','Inter',sans-serif;letter-spacing:-0.02em}
+.muted{color:var(--ink2)} .faint{color:var(--ink3)}
+
+/* Dock de vidro flutuante */
+.dock-wrap{position:sticky;top:0;z-index:50;padding:14px 24px 0}
+.dock{position:relative;isolation:isolate;max-width:1312px;margin:0 auto;height:58px;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-radius:20px;border:1px solid var(--glass-edge);box-shadow:0 10px 34px rgba(20,20,20,.10),0 1px 2px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9)}
+/* O vidro mora num pseudo elemento: assim o menu filho também consegue desfocar o que está atrás */
+.dock::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%)}
+.dock-brand{display:flex;align-items:center;gap:9px;padding:0 8px 0 2px}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(145deg,#1F1F1F,#141414);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.brand-txt{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16px;letter-spacing:.03em}
+.brand-txt small{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;letter-spacing:0;color:var(--ink3);margin-left:4px}
+.dock-sep{width:1px;height:24px;background:rgba(26,26,26,.1);margin:0 6px}
+.dock-fill{flex:1}
+
+.grp{position:relative}
+.grp-btn{position:relative;display:flex;align-items:center;gap:0;height:40px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:var(--ink2);cursor:pointer;font-size:13px;font-weight:600;transition:background .18s ease,color .18s ease,transform .1s ease-out}
+.grp-btn:active{transform:scale(.96)}
+.grp-btn svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grp-lbl{max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transition:max-width .32s var(--spring),opacity .2s ease,margin .32s var(--spring)}
+.grp:hover .grp-btn,.grp:focus-within .grp-btn{background:rgba(26,26,26,.06);color:var(--ink)}
+.grp:hover .grp-lbl,.grp:focus-within .grp-lbl,.grp.on .grp-lbl{max-width:180px;opacity:1;margin-left:8px}
+.grp.on .grp-btn{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(20,20,20,.18),inset 0 1px 0 rgba(255,255,255,.12)}
+.grp.on .grp-btn svg{stroke:var(--gold)}
+.nbadge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.grp.on .nbadge{position:static;margin-left:8px;box-shadow:none}
+.nbadge.gold{background:var(--gold);color:var(--side)}
+
+/* Menu do grupo: nasce do ícone que o abriu */
+.menu{position:absolute;top:calc(100% + 12px);left:0;min-width:280px;padding:8px;border-radius:18px;background:var(--glass-strong);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:0 24px 60px rgba(20,20,20,.18),0 2px 6px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9);transform-origin:24px 0;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.96);filter:blur(6px);transition:opacity .16s ease .12s,transform .3s var(--spring) .12s,filter .2s ease .12s,visibility 0s linear .42s}
+.menu::before{content:"";position:absolute;left:0;right:0;top:-14px;height:14px}
+.grp:hover .menu,.grp:focus-within .menu,.grp.aberto .menu{opacity:1;visibility:visible;transform:none;filter:none;transition-delay:0s}
+.menu-h{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:8px 10px 6px}
+.mi{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:11px;transition:background .15s ease}
+.mi:hover{background:rgba(26,26,26,.06)}
+.mi:active{transform:scale(.985)}
+.mi .ico{width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(20,20,20,.08),inset 0 0 0 1px rgba(26,26,26,.06)}
+.mi .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mi b{display:block;font-size:13.5px;font-weight:600;letter-spacing:-0.005em}
+.mi small{display:block;font-size:12px;color:var(--ink2)}
+.mi.on .ico{background:var(--ink)} .mi.on .ico svg{stroke:var(--gold)}
+.mi .nbadge{position:static;margin-left:auto;box-shadow:none}
+
+/* Busca que se expande */
+.dsearch{display:flex;align-items:center;gap:8px;height:40px;width:40px;padding:0 11px;border-radius:12px;color:var(--ink2);cursor:text;overflow:hidden;transition:width .36s var(--spring),background .2s ease}
+.dsearch svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2}
+.dsearch input{border:0;outline:0;background:transparent;font:inherit;font-size:13px;color:var(--ink);flex:1;min-width:0;opacity:0;transition:opacity .2s ease}
+.dsearch kbd{font-family:inherit;font-size:10.5px;color:var(--ink3);border:1px solid rgba(26,26,26,.14);border-radius:5px;padding:1px 5px;opacity:0}
+.dsearch:hover,.dsearch:focus-within{width:300px;background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(26,26,26,.08)}
+.dsearch:hover input,.dsearch:focus-within input,.dsearch:hover kbd,.dsearch:focus-within kbd{opacity:1}
+.dsync{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);padding:0 10px}
+.dsync i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(61,139,95,.2)}
+.dock .av{width:34px;height:34px;font-size:13px;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+
+/* Cabeçalho da página, abaixo do dock */
+.work{padding:0 24px}
+.top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:28px 0 0;max-width:1312px;margin:0 auto;width:100%}
+.crumb{font-size:12.5px;color:var(--ink3);display:flex;gap:6px;align-items:center}
+.crumb a:hover{color:var(--ink)}
+.top h1{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:700;margin:2px 0 0;letter-spacing:-0.025em;line-height:1.1}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.content{padding:22px 0 64px;display:flex;flex-direction:column;gap:22px;max-width:1312px;margin:0 auto;width:100%}
+
+.seg{display:inline-flex;background:rgba(26,26,26,.06);border-radius:11px;padding:3px}
+.seg button{border:0;background:transparent;font-size:12.5px;font-weight:600;color:var(--ink2);padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .18s ease,color .18s ease}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* Painéis sólidos: o conteúdo é sólido, o vidro fica para a moldura */
+.panel{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,20,20,.04),0 6px 18px rgba(20,20,20,.03)}
+.ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px 12px}
+.ph h2{font-size:15px;font-weight:700;margin:0;letter-spacing:-0.01em}
+.ph p{margin:2px 0 0;font-size:12.5px;color:var(--ink2)}
+.ph .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pb{padding:0 18px 18px}
+.count{font-size:11.5px;font-weight:700;background:var(--bg);color:var(--ink2);border-radius:99px;padding:2px 8px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.kpi-l{font-size:12px;font-weight:600;color:var(--ink2);display:flex;justify-content:space-between;gap:8px}
+.kpi-v{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.kpi-n{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:32px;line-height:1;letter-spacing:-0.025em}
+.kpi-n small{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);margin-left:3px;letter-spacing:0}
+.kpi-f{font-size:12px;color:var(--ink2)}
+.delta{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 7px;background:var(--bg);color:var(--ink2)}
+.delta.bad{background:var(--red-soft);color:var(--red-ink)}
+.delta.good{background:var(--green-soft);color:var(--green)}
+.kpi.alert{box-shadow:inset 0 0 0 1px #F1D3CF,0 1px 2px rgba(20,20,20,.04)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--bg);color:var(--ink2);white-space:nowrap}
+.tag.red{background:var(--red-soft);color:var(--red-ink)}
+.tag.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.tag.green{background:var(--green-soft);color:var(--green)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ink3)}
+.dot.red{background:var(--red)} .dot.gold{background:var(--gold)} .dot.green{background:var(--green)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;font-size:12.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;transition:transform .1s ease-out,border-color .15s ease}
+.btn:hover{border-color:var(--ink)}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(20,20,20,.16)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--side)}
+.btn.sm{height:28px;padding:0 10px;font-size:12px;border-radius:8px}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;flex:none}
+.bar{position:relative;height:6px;border-radius:99px;background:#EDEBEB;overflow:hidden}
+.bar > span{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--ink)}
+.bar > span.gold{background:var(--gold)} .bar > span.red{background:var(--red)} .bar > span.green{background:var(--green)}
+.pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
+.link{font-size:12.5px;font-weight:600;color:var(--ink2)}
+.link:hover{color:var(--ink)}
+
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:820px){
+  .dock-wrap{padding:10px 12px 0}
+  .dock{gap:2px;padding:0 6px 0 8px;height:54px}
+  .brand-txt,.dsync,.dock-sep{display:none}
+  .grp.on .grp-lbl,.grp:hover .grp-lbl,.grp:focus-within .grp-lbl{max-width:0;opacity:0;margin-left:0}
+  .grp{position:static}
+  .menu{left:12px;right:12px;top:72px;position:fixed;min-width:0}
+  .dsearch:hover,.dsearch:focus-within{width:40px;background:transparent;box-shadow:none}
+  .work{padding:0 16px}
+  .top h1{font-size:24px}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:14px}
+  .kpi-n{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important}
+  .menu{transform:none;filter:none}
+}
+@media (prefers-reduced-transparency:reduce){
+  .dock::before,.menu{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+
+/* Mapa do time: uma linha por CS, células tingidas só quando há exceção */
+.mapa{overflow-x:auto}
+.mrow{display:grid;grid-template-columns:minmax(150px,1.3fr) 140px repeat(5,minmax(68px,1fr));align-items:stretch;min-width:720px;border-top:1px solid var(--line)}
+.mrow > *{padding:11px 12px;display:flex;align-items:center}
+.mrow.head{border-top:0}
+.mrow.head > *{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding-top:4px;padding-bottom:10px}
+.mrow.head > .sort{color:var(--ink)}
+a.mrow:hover{background:#FAFAF9}
+.who{gap:10px}
+.who .av{width:32px;height:32px;font-size:13px}
+.who b{display:block;font-size:13.5px;font-weight:600;color:var(--ink)}
+.mrow.fora .who b{color:var(--ink3)}
+.who span{font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.sc{gap:10px}
+.sc b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;width:28px}
+.sc .bar{flex:1}
+.med{position:absolute;top:-3px;bottom:-3px;left:68%;width:2px;background:var(--ink);opacity:.35}
+.cell{justify-content:center;font-weight:600;font-size:13px;border-left:1px solid var(--line);flex-direction:column;gap:1px;text-align:center}
+.cell small{font-size:11px;font-weight:500;color:var(--ink3)}
+.cell.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.cell.gold small{color:var(--gold-ink);opacity:.8}
+.cell.red{background:var(--red-soft);color:var(--red-ink)}
+.cell.red small{color:var(--red-ink);opacity:.8}
+.cell.ok{color:var(--ink3);font-weight:500}
+.mrow.fora{color:var(--ink3)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.spark{width:76px;height:24px}
+
+/* Fila de ação: caixa de entrada */
+.fila{position:sticky;top:90px}
+.filtros{display:flex;gap:6px;padding:0 18px 12px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:4px 12px;padding:14px 18px;border-top:1px solid var(--line)}
+.item .dot{margin-top:6px}
+.item h3{margin:0;font-size:13.5px;font-weight:600;line-height:1.35}
+.item p{margin:2px 0 0;font-size:12.5px;color:var(--ink2)}
+.item-meta{grid-column:2;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--ink3)}
+.item-meta .btn{margin-left:auto}
+.fila-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between}
+
+.rede{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:0;align-items:center}
+.rede > div{padding:16px 18px;border-left:1px solid var(--line)}
+.rede > div:first-child{border-left:0}
+.rede b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;margin-top:2px}
+.rede span{font-size:12px;color:var(--ink2)}
+.rede a{padding:0 18px}
+
+@media (max-width:1180px){.layout{grid-template-columns:1fr}.fila{position:static}}
+@media (max-width:700px){.rede{grid-template-columns:1fr 1fr}.rede > div:nth-child(3){border-left:0}.rede > div{border-top:1px solid var(--line)}.rede a{padding:14px 18px;grid-column:1 / -1}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+<symbol id="i-area" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 4.9"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6L12 3Z"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4.5M12 17.5v.5"/></symbol>
+</svg>
+
+<div class="app">
+<header class="dock-wrap"><nav class="dock" aria-label="Navegação principal"><a class="dock-brand" href="#"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span><div class="grp on"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Gestão"><svg aria-hidden="true"><use href="#i-area"/></svg><span class="grp-lbl">Visão da área</span><span class="nbadge">5</span></button><div class="menu" role="menu"><span class="menu-h">Gestão</span><a class="mi on" href="gestor.html" role="menuitem"><span class="ico"><svg><use href="#i-area"/></svg></span><span><b>Visão da área</b><small>Situação e fila de ação</small></span><span class="nbadge">5</span></a><a class="mi" href="cs.html" role="menuitem"><span class="ico"><svg><use href="#i-users"/></svg></span><span><b>Time</b><small>Página de cada CS</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-layers"/></svg></span><span><b>Conselhos</b><small>Rede, presença e GTD</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-target"/></svg></span><span><b>Metas e destaques</b><small>Metas do mês e recordes</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Saúde da base"><svg aria-hidden="true"><use href="#i-shield"/></svg><span class="grp-lbl">Saúde</span></button><div class="menu" role="menu"><span class="menu-h">Saúde da base</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-shield"/></svg></span><span><b>Churn e reconquista</b><small>Saídas, motivos e retorno</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-pulse"/></svg></span><span><b>NPS e Pulso de CS</b><small>Voz do membro e do time</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-flag"/></svg></span><span><b>Fila da liderança</b><small>Pedidos para a liderança</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Sistema"><svg aria-hidden="true"><use href="#i-gear"/></svg><span class="grp-lbl">Sistema</span></button><div class="menu" role="menu"><span class="menu-h">Sistema</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-gear"/></svg></span><span><b>Controle de perfis</b><small>Vínculos e permissões</small></span></a><a class="mi" href="home.html" role="menuitem"><span class="ico"><svg><use href="#i-home"/></svg></span><span><b>Ver como CS</b><small>A home que o CS enxerga</small></span></a></div></div><span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" aria-label="Pergunte: o que a Luana não bateu?" placeholder="Pergunte: o que a Luana não bateu?"><kbd>Ctrl K</kbd></label><span class="dsync" title="Monday sincronizado às 12:07"><i></i>12:07</span><span class="av" style="background:var(--gold);color:var(--side)" aria-label="Perfil">V</span></nav></header>
+<div class="work">
+    <header class="top">
+      <div>
+        <div class="crumb">Gestão</div>
+        <h1>Visão da área</h1>
+      </div>
+      <div class="top-r">
+        <div class="seg" role="group" aria-label="Período"><button type="button">Set</button><button type="button" class="on">Out 2026</button><button type="button">Tri</button></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- Nível 1 -->
+      <section class="kpis" aria-label="Leitura de relance">
+        <div class="panel kpi">
+          <div class="kpi-l">Score médio da área <span class="delta good">&#9650; 2</span></div>
+          <div class="kpi-v"><span class="kpi-n">68<small>/100</small></span><svg class="spark" data-v="61,63,64,62,66,68" aria-hidden="true"></svg></div>
+          <div class="kpi-f">Mediana 68 · 6 CS no ranking</div>
+        </div>
+        <div class="panel kpi alert">
+          <div class="kpi-l">CS em risco <span class="delta bad">+1</span></div>
+          <div class="kpi-v"><span class="kpi-n" style="color:var(--red)">2<small>de 7</small></span><span style="display:flex;margin-right:4px"><span class="av" style="width:26px;height:26px;font-size:11px;background:#5D3A35;border:2px solid #fff">V</span><span class="av" style="width:26px;height:26px;font-size:11px;background:#4A3B36;border:2px solid #fff;margin-left:-8px">M</span></span></div>
+          <div class="kpi-f">Vilker e Mateus, abaixo do ritmo</div>
+        </div>
+        <div class="panel kpi">
+          <div class="kpi-l">Membros críticos <span class="delta bad">&#9650; 0,9 p.p.</span></div>
+          <div class="kpi-v"><span class="kpi-n">7,6%</span><svg class="spark" data-v="6.1,6.4,6.0,6.5,6.7,7.6" data-bad="1" aria-hidden="true"></svg></div>
+          <div class="kpi-f">Referência 7% · 34 de 446 membros</div>
+        </div>
+        <div class="panel kpi">
+          <div class="kpi-l">Real × autodeclarado <span class="delta good">&#9660; 3</span></div>
+          <div class="kpi-v"><span class="kpi-n">9<small>pts</small></span><svg class="spark" data-v="15,14,12,13,12,9" aria-hidden="true"></svg></div>
+          <div class="kpi-f">Divergência média, quanto menor melhor</div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <!-- Nível 2: diagnóstico -->
+        <div style="display:flex;flex-direction:column;gap:22px;min-width:0">
+          <section class="panel" aria-labelledby="h-mapa">
+            <div class="ph">
+              <div><h2 id="h-mapa">Mapa do time</h2><p>Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
+              <div class="r"><div class="seg" role="group" aria-label="Ordenar"><button type="button" class="on">Prioridade</button><button type="button">Ranking</button></div></div>
+            </div>
+            <div class="mapa">
+              <div class="mrow head"><span>CS</span><span class="sort">Pontuação</span><span class="cell">Ritmo</span><span class="cell">GTD</span><span class="cell">Críticos</span><span class="cell">Advert.</span><span class="cell">Report</span></div>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#5D3A35">V</span><span><b>Vilker</b><span>6º · ▼ 8 no mês</span></span></span><span class="sc"><b style="color:var(--red)">55</b><span class="bar"><span class="red" style="width:55%"></span><i class="med"></i></span></span><span class="cell red">4 atrás<small>de 8</small></span><span class="cell red">33%<small>área 56%</small></span><span class="cell gold">9,1%</span><span class="cell red">4 pts<small>limite 3</small></span><span class="cell gold">Pendente</span></a>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#4A3B36">M</span><span><b>Mateus</b><span>4º · ▼ 5 no mês</span></span></span><span class="sc"><b style="color:var(--red)">64</b><span class="bar"><span class="red" style="width:64%"></span><i class="med"></i></span></span><span class="cell red">3 atrás<small>de 8</small></span><span class="cell gold">41%</span><span class="cell red">12,5%</span><span class="cell ok">0</span><span class="cell gold">Pendente</span></a>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#3D5248">R</span><span><b>Rodrigo</b><span>5º · ▼ 1 no mês</span></span></span><span class="sc"><b>61</b><span class="bar"><span style="width:61%"></span><i class="med"></i></span></span><span class="cell gold">2 atrás<small>de 8</small></span><span class="cell ok">66%</span><span class="cell ok">6,0%</span><span class="cell ok">1 pt</span><span class="cell ok">Enviado</span></a>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#7A5A1C">A</span><span><b>Amanda</b><span>3º · ▲ 6 no mês</span></span></span><span class="sc"><b>72</b><span class="bar"><span style="width:72%"></span><i class="med"></i></span></span><span class="cell gold">1 atrás<small>Cases</small></span><span class="cell ok">58%</span><span class="cell gold">7,8%</span><span class="cell gold">3 pts<small>no limite</small></span><span class="cell ok">Enviado</span></a>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#272727">M</span><span><b>Marcos</b><span>2º · ▼ 2 no mês</span></span></span><span class="sc"><b>76</b><span class="bar"><span style="width:76%"></span><i class="med"></i></span></span><span class="cell ok">No ritmo</span><span class="cell ok">69%</span><span class="cell ok">5,8%</span><span class="cell ok">0</span><span class="cell ok">Enviado</span></a>
+              <a class="mrow" href="cs.html"><span class="who"><span class="av" style="background:#2F4A3D">G</span><span><b>George</b><span>1º · ▲ 3 no mês</span></span></span><span class="sc"><b>81</b><span class="bar"><span class="green" style="width:81%"></span><i class="med"></i></span></span><span class="cell ok">No ritmo</span><span class="cell ok">74%</span><span class="cell ok">4,2%</span><span class="cell ok">0</span><span class="cell ok">Enviado</span></a>
+              <a class="mrow fora" href="cs.html"><span class="who"><span class="av" style="background:#9A9797">L</span><span><b>Luana</b><span>Fora do ranking</span></span></span><span class="sc" style="font-size:12px">1 de 3 metas mínimas</span><span class="cell ok">n/d</span><span class="cell ok">62%</span><span class="cell ok">5,0%</span><span class="cell ok">0</span><span class="cell ok">Enviado</span></a>
+            </div>
+            <div class="legend"><span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Agir agora</span><span><i style="background:var(--gold-soft);box-shadow:inset 0 0 0 1px #EBD39C"></i>Acompanhar</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1px var(--line2)"></i>Dentro do esperado</span><span style="margin-left:auto">Traço na barra: mediana do time</span></div>
+          </section>
+
+          <!-- Nível 3 -->
+          <section class="panel" aria-labelledby="h-rede">
+            <div class="ph"><div><h2 id="h-rede">Rede de conselhos</h2><p>Todos os conselhos ativos, sem recorte por CS.</p></div></div>
+            <div class="rede" style="border-top:1px solid var(--line)">
+              <div><span>Conselhos ativos</span><b>67</b></div>
+              <div><span>Membros na rede</span><b>446</b></div>
+              <div><span>Presença acumulada</span><b>78%</b></div>
+              <div><span>Abaixo de 70%</span><b style="color:var(--gold-ink)">4</b></div>
+              <a class="link" href="#">Abrir conselhos &rarr;</a>
+            </div>
+          </section>
+        </div>
+
+        <!-- Nível 2: ação -->
+        <aside class="panel fila" aria-labelledby="h-fila">
+          <div class="ph"><h2 id="h-fila">Fila de ação</h2><span class="count">9</span><div class="r"><a class="link" href="#">Ver todas</a></div></div>
+          <div class="filtros"><button type="button" class="chip on">Esta semana 5</button><button type="button" class="chip">Críticas 2</button><button type="button" class="chip">Comigo 2</button></div>
+          <div class="item"><span class="dot red"></span><div><h3>Vilker passou do limite de advertência</h3><p>4 pontos ativos. Health da base vai a 13,1%.</p></div>
+            <div class="item-meta"><span>Comigo</span><span>·</span><span>até 24/10</span><a class="btn sm pri" href="cs.html">Abrir 1:1</a></div></div>
+          <div class="item"><span class="dot red"></span><div><h3>Mateus 3 indicadores atrás do ritmo</h3><p>Cases 1 de 4 esperados, matchmakings 3 de 7, rounds 1 de 3.</p></div>
+            <div class="item-meta"><span>Mateus</span><span>·</span><span>até 24/10</span><a class="btn sm" href="cs.html">Ver CS</a></div></div>
+          <div class="item"><span class="dot gold"></span><div><h3>Report da semana pendente</h3><p>Mateus e Vilker. Prazo sexta, 19h.</p></div>
+            <div class="item-meta"><span>2 CS</span><span>·</span><span>sex 23/10</span><a class="btn sm" href="#">Cobrar</a></div></div>
+          <div class="item"><span class="dot gold"></span><div><h3>Conselho em 2 dias com GTD em 1 de 9</h3><p>Fernando Zago, carteira do Vilker.</p></div>
+            <div class="item-meta"><span>Vilker</span><span>·</span><span>até 22/10</span><a class="btn sm" href="#">Ver conselho</a></div></div>
+          <div class="item"><span class="dot gold"></span><div><h3>4 conselhos abaixo de 70% de presença</h3><p>2 do Rodrigo, 1 do Mateus, 1 da Amanda.</p></div>
+            <div class="item-meta"><span>3 CS</span><span>·</span><span>próximo encontro</span><a class="btn sm" href="#">Ver lista</a></div></div>
+          <div class="fila-foot"><span class="faint" style="font-size:12px">Gerada pelas regras do painel, sem IA</span><a class="link" href="#">Mais 4 &rarr;</a></div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+<script>document.querySelectorAll('svg.spark').forEach(function(s){
+  var v=s.dataset.v.split(',').map(Number),W=76,H=24,p=3,mn=Math.min.apply(0,v),mx=Math.max.apply(0,v),r=(mx-mn)||1;
+  var pts=v.map(function(x,i){return [p+i*(W-2*p)/(v.length-1),H-p-(x-mn)/r*(H-2*p)];});
+  var c=s.dataset.bad?'#C0433D':'#1A1A1A',l=pts[pts.length-1];
+  s.setAttribute('viewBox','0 0 '+W+' '+H);
+  s.innerHTML='<polyline fill="none" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="'+pts.map(function(q){return q.join(',');}).join(' ')+'"/><circle cx="'+l[0]+'" cy="'+l[1]+'" r="2.4" fill="'+c+'"/>';
+});
+document.querySelectorAll('.seg,.filtros').forEach(function(g){
+  g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});});
+});
+/* Dock: abre por hover, foco ou toque; fecha com Esc ou clique fora */
+(function(){
+  var grps=[].slice.call(document.querySelectorAll('.grp'));
+  function fechar(ex){grps.forEach(function(g){if(g!==ex){g.classList.remove('aberto');g.querySelector('.grp-btn').setAttribute('aria-expanded','false');}});}
+  grps.forEach(function(g){
+    var b=g.querySelector('.grp-btn');
+    g.addEventListener('mouseenter',function(){b.setAttribute('aria-expanded','true');});
+    g.addEventListener('mouseleave',function(){if(!g.classList.contains('aberto'))b.setAttribute('aria-expanded','false');});
+    b.addEventListener('click',function(e){e.stopPropagation();var abre=!g.classList.contains('aberto');fechar(g);g.classList.toggle('aberto',abre);b.setAttribute('aria-expanded',String(abre));});
+  });
+  document.addEventListener('click',function(e){if(!e.target.closest('.grp'))fechar();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){fechar();if(document.activeElement)document.activeElement.blur();}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){var i=document.querySelector('.dsearch input');if(i){e.preventDefault();i.focus();}}});
+})();
+</script>
+</body>
+</html>

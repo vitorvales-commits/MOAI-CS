@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Início · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Sistema visual v3 do dash de CS MOAI. Marca preservada, navegação em dock de vidro no topo. */
+:root{
+  --bg:#F3F2F0; --surface:#FFFFFF; --ink:#1A1A1A; --ink2:#5D5D5D; --ink3:#878585;
+  --line:#ECEAEA; --line2:#DAD7D7; --side:#141414;
+  --gold:#C89A2E; --gold-soft:#F7EFDC; --gold-ink:#8A6410;
+  --red:#C0433D; --red-soft:#FBECEA; --red-ink:#A3342F;
+  --green:#3D8B5F; --green-soft:#E8F2EC;
+  --r:14px; --r-s:9px;
+  --glass:rgba(255,255,255,.66); --glass-strong:rgba(255,255,255,.84);
+  --glass-edge:rgba(255,255,255,.75);
+  --spring:cubic-bezier(.2,.9,.25,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;min-height:100vh;position:relative}
+/* Luz ambiente da marca, para o vidro ter o que refratar */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(900px 520px at 8% -8%,rgba(200,154,46,.16),transparent 60%),radial-gradient(800px 520px at 100% 0%,rgba(61,139,95,.10),transparent 60%),radial-gradient(700px 600px at 50% 110%,rgba(200,154,46,.08),transparent 60%)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+.disp{font-family:'Bricolage Grotesque','Inter',sans-serif;letter-spacing:-0.02em}
+.muted{color:var(--ink2)} .faint{color:var(--ink3)}
+
+/* Dock de vidro flutuante */
+.dock-wrap{position:sticky;top:0;z-index:50;padding:14px 24px 0}
+.dock{position:relative;isolation:isolate;max-width:1312px;margin:0 auto;height:58px;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-radius:20px;border:1px solid var(--glass-edge);box-shadow:0 10px 34px rgba(20,20,20,.10),0 1px 2px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9)}
+/* O vidro mora num pseudo elemento: assim o menu filho também consegue desfocar o que está atrás */
+.dock::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%)}
+.dock-brand{display:flex;align-items:center;gap:9px;padding:0 8px 0 2px}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(145deg,#1F1F1F,#141414);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.brand-txt{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:16px;letter-spacing:.03em}
+.brand-txt small{font-family:'Inter',sans-serif;font-weight:600;font-size:11px;letter-spacing:0;color:var(--ink3);margin-left:4px}
+.dock-sep{width:1px;height:24px;background:rgba(26,26,26,.1);margin:0 6px}
+.dock-fill{flex:1}
+
+.grp{position:relative}
+.grp-btn{position:relative;display:flex;align-items:center;gap:0;height:40px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:var(--ink2);cursor:pointer;font-size:13px;font-weight:600;transition:background .18s ease,color .18s ease,transform .1s ease-out}
+.grp-btn:active{transform:scale(.96)}
+.grp-btn svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.grp-lbl{max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transition:max-width .32s var(--spring),opacity .2s ease,margin .32s var(--spring)}
+.grp:hover .grp-btn,.grp:focus-within .grp-btn{background:rgba(26,26,26,.06);color:var(--ink)}
+.grp:hover .grp-lbl,.grp:focus-within .grp-lbl,.grp.on .grp-lbl{max-width:180px;opacity:1;margin-left:8px}
+.grp.on .grp-btn{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(20,20,20,.18),inset 0 1px 0 rgba(255,255,255,.12)}
+.grp.on .grp-btn svg{stroke:var(--gold)}
+.nbadge{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.grp.on .nbadge{position:static;margin-left:8px;box-shadow:none}
+.nbadge.gold{background:var(--gold);color:var(--side)}
+
+/* Menu do grupo: nasce do ícone que o abriu */
+.menu{position:absolute;top:calc(100% + 12px);left:0;min-width:280px;padding:8px;border-radius:18px;background:var(--glass-strong);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:0 24px 60px rgba(20,20,20,.18),0 2px 6px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9);transform-origin:24px 0;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.96);filter:blur(6px);transition:opacity .16s ease .12s,transform .3s var(--spring) .12s,filter .2s ease .12s,visibility 0s linear .42s}
+.menu::before{content:"";position:absolute;left:0;right:0;top:-14px;height:14px}
+.grp:hover .menu,.grp:focus-within .menu,.grp.aberto .menu{opacity:1;visibility:visible;transform:none;filter:none;transition-delay:0s}
+.menu-h{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:8px 10px 6px}
+.mi{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:11px;transition:background .15s ease}
+.mi:hover{background:rgba(26,26,26,.06)}
+.mi:active{transform:scale(.985)}
+.mi .ico{width:34px;height:34px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(20,20,20,.08),inset 0 0 0 1px rgba(26,26,26,.06)}
+.mi .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mi b{display:block;font-size:13.5px;font-weight:600;letter-spacing:-0.005em}
+.mi small{display:block;font-size:12px;color:var(--ink2)}
+.mi.on .ico{background:var(--ink)} .mi.on .ico svg{stroke:var(--gold)}
+.mi .nbadge{position:static;margin-left:auto;box-shadow:none}
+
+/* Busca que se expande */
+.dsearch{display:flex;align-items:center;gap:8px;height:40px;width:40px;padding:0 11px;border-radius:12px;color:var(--ink2);cursor:text;overflow:hidden;transition:width .36s var(--spring),background .2s ease}
+.dsearch svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2}
+.dsearch input{border:0;outline:0;background:transparent;font:inherit;font-size:13px;color:var(--ink);flex:1;min-width:0;opacity:0;transition:opacity .2s ease}
+.dsearch kbd{font-family:inherit;font-size:10.5px;color:var(--ink3);border:1px solid rgba(26,26,26,.14);border-radius:5px;padding:1px 5px;opacity:0}
+.dsearch:hover,.dsearch:focus-within{width:300px;background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(26,26,26,.08)}
+.dsearch:hover input,.dsearch:focus-within input,.dsearch:hover kbd,.dsearch:focus-within kbd{opacity:1}
+.dsync{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);padding:0 10px}
+.dsync i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(61,139,95,.2)}
+.dock .av{width:34px;height:34px;font-size:13px;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+
+/* Cabeçalho da página, abaixo do dock */
+.work{padding:0 24px}
+.top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:28px 0 0;max-width:1312px;margin:0 auto;width:100%}
+.crumb{font-size:12.5px;color:var(--ink3);display:flex;gap:6px;align-items:center}
+.crumb a:hover{color:var(--ink)}
+.top h1{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:700;margin:2px 0 0;letter-spacing:-0.025em;line-height:1.1}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.content{padding:22px 0 64px;display:flex;flex-direction:column;gap:22px;max-width:1312px;margin:0 auto;width:100%}
+
+.seg{display:inline-flex;background:rgba(26,26,26,.06);border-radius:11px;padding:3px}
+.seg button{border:0;background:transparent;font-size:12.5px;font-weight:600;color:var(--ink2);padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .18s ease,color .18s ease}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* Painéis sólidos: o conteúdo é sólido, o vidro fica para a moldura */
+.panel{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,20,20,.04),0 6px 18px rgba(20,20,20,.03)}
+.ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 18px 12px}
+.ph h2{font-size:15px;font-weight:700;margin:0;letter-spacing:-0.01em}
+.ph p{margin:2px 0 0;font-size:12.5px;color:var(--ink2)}
+.ph .r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pb{padding:0 18px 18px}
+.count{font-size:11.5px;font-weight:700;background:var(--bg);color:var(--ink2);border-radius:99px;padding:2px 8px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.kpi{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.kpi-l{font-size:12px;font-weight:600;color:var(--ink2);display:flex;justify-content:space-between;gap:8px}
+.kpi-v{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.kpi-n{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:32px;line-height:1;letter-spacing:-0.025em}
+.kpi-n small{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);margin-left:3px;letter-spacing:0}
+.kpi-f{font-size:12px;color:var(--ink2)}
+.delta{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 7px;background:var(--bg);color:var(--ink2)}
+.delta.bad{background:var(--red-soft);color:var(--red-ink)}
+.delta.good{background:var(--green-soft);color:var(--green)}
+.kpi.alert{box-shadow:inset 0 0 0 1px #F1D3CF,0 1px 2px rgba(20,20,20,.04)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:7px;background:var(--bg);color:var(--ink2);white-space:nowrap}
+.tag.red{background:var(--red-soft);color:var(--red-ink)}
+.tag.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.tag.green{background:var(--green-soft);color:var(--green)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ink3)}
+.dot.red{background:var(--red)} .dot.gold{background:var(--gold)} .dot.green{background:var(--green)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border-radius:10px;font-size:12.5px;font-weight:600;border:1px solid var(--line2);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;transition:transform .1s ease-out,border-color .15s ease}
+.btn:hover{border-color:var(--ink)}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(20,20,20,.16)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--side)}
+.btn.sm{height:28px;padding:0 10px;font-size:12px;border-radius:8px}
+.btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;flex:none}
+.bar{position:relative;height:6px;border-radius:99px;background:#EDEBEB;overflow:hidden}
+.bar > span{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--ink)}
+.bar > span.gold{background:var(--gold)} .bar > span.red{background:var(--red)} .bar > span.green{background:var(--green)}
+.pace{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
+.link{font-size:12.5px;font-weight:600;color:var(--ink2)}
+.link:hover{color:var(--ink)}
+
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:820px){
+  .dock-wrap{padding:10px 12px 0}
+  .dock{gap:2px;padding:0 6px 0 8px;height:54px}
+  .brand-txt,.dsync,.dock-sep{display:none}
+  .grp.on .grp-lbl,.grp:hover .grp-lbl,.grp:focus-within .grp-lbl{max-width:0;opacity:0;margin-left:0}
+  .grp{position:static}
+  .menu{left:12px;right:12px;top:72px;position:fixed;min-width:0}
+  .dsearch:hover,.dsearch:focus-within{width:40px;background:transparent;box-shadow:none}
+  .work{padding:0 16px}
+  .top h1{font-size:24px}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:14px}
+  .kpi-n{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important}
+  .menu{transform:none;filter:none}
+}
+@media (prefers-reduced-transparency:reduce){
+  .dock::before,.menu{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* Faixa do mês: uma frase que diz o que fazer */
+.mes{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#141414,#1A1A1A 50%,#272727);color:#fff;display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));align-items:stretch}
+.mes::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 8% -20%,rgba(200,154,46,.4),transparent 55%),radial-gradient(circle at 100% 120%,rgba(61,139,95,.3),transparent 55%)}
+.mes > *{position:relative;padding:22px 24px}
+.mes > * + *{border-left:1px solid rgba(255,255,255,.1)}
+.mes-ey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.mes h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;line-height:1.25;margin:8px 0 0;letter-spacing:-0.01em}
+.mes h2 em{font-style:normal;color:var(--gold)}
+.mes-l{font-size:12px;color:#B5B2B2;font-weight:600}
+.mes-n{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:34px;font-weight:700;line-height:1;margin:8px 0 6px}
+.mes-n small{font-family:'Inter',sans-serif;font-size:13px;color:#9F9F9F;margin-left:3px}
+.mes-f{font-size:12px;color:#B5B2B2}
+.mes-prog{height:4px;border-radius:99px;background:rgba(255,255,255,.14);margin-top:10px;overflow:hidden}
+.mes-prog span{display:block;height:100%;background:var(--gold)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.col{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* Agenda em linha do tempo */
+.dia{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:12px 18px;border-top:1px solid var(--line)}
+.dia-d{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding-top:3px}
+.dia-d b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;letter-spacing:-0.02em;color:var(--ink);line-height:1.05;text-transform:none}
+.dia.hoje .dia-d,.dia.hoje .dia-d b{color:var(--gold-ink)}
+.ev{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 10px;border-radius:10px}
+.ev + .ev{margin-top:4px}
+.ev:hover{background:#FAFAF9}
+.ev-h{font-size:12.5px;font-weight:700}
+.ev b{display:block;font-size:13.5px;font-weight:600}
+.ev small{font-size:12px;color:var(--ink2)}
+.ev.conselho{box-shadow:inset 3px 0 0 var(--ink)}
+.ev.round{box-shadow:inset 3px 0 0 #B5B2B2}
+.vazio{font-size:12.5px;color:var(--ink3);padding:8px 10px}
+
+/* Tarefas */
+.task{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 18px;border-top:1px solid var(--line)}
+.task input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--ink);cursor:pointer}
+.task label{cursor:pointer}
+.task b{display:block;font-size:13.5px;font-weight:600}
+.task small{font-size:12px;color:var(--ink2)}
+
+/* Metas com ritmo */
+.meta{padding:13px 18px;border-top:1px solid var(--line)}
+.meta-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.meta-top b{font-size:13.5px;font-weight:600}
+.meta-top span{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px}
+.meta-top span small{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--ink3)}
+.meta-dica{font-size:12px;color:var(--ink2);margin-top:7px}
+.meta-dica.atras{color:var(--gold-ink);font-weight:600}
+
+/* Carteira */
+.carteira{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:0 18px 18px}
+.cons{border:1px solid var(--line);border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+.cons:hover{border-color:var(--ink)}
+.cons-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cons-top b{font-size:13.5px;font-weight:600}
+.cons-l{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)}
+.cons-l strong{color:var(--ink);font-weight:600}
+.cons.alerta{border-color:#EBC6C0;background:#FFFCFB}
+
+@media (max-width:1100px){.mes{grid-template-columns:1fr 1fr}.mes > :first-child{grid-column:1 / -1}.mes > :nth-child(2){border-left:0}.mes > :nth-child(n+2){border-top:1px solid rgba(255,255,255,.1)}.grid{grid-template-columns:1fr}}
+@media (max-width:560px){.mes > *{padding:18px}.mes > :nth-child(4){grid-column:1 / -1;border-left:0}.dia{grid-template-columns:48px minmax(0,1fr);gap:10px;padding:12px 14px}.ev{grid-template-columns:44px minmax(0,1fr)}.ev > .tag{grid-column:2;justify-self:start}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
+<symbol id="i-area" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.6c2.6.2 4.4 1.9 5 4.9"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6L12 3Z"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4.5M12 17.5v.5"/></symbol>
+</svg>
+
+<div class="app">
+<header class="dock-wrap"><nav class="dock" aria-label="Navegação principal"><a class="dock-brand" href="#"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span><div class="grp on"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Meu trabalho"><svg aria-hidden="true"><use href="#i-home"/></svg><span class="grp-lbl">Início</span></button><div class="menu" role="menu"><span class="menu-h">Meu trabalho</span><a class="mi on" href="home.html" role="menuitem"><span class="ico"><svg><use href="#i-home"/></svg></span><span><b>Início</b><small>Seu dia e seu mês</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-cal"/></svg></span><span><b>Agenda</b><small>Conselhos e rounds</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-layers"/></svg></span><span><b>Meus conselhos</b><small>Membros, presença e GTD</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Desempenho"><svg aria-hidden="true"><use href="#i-target"/></svg><span class="grp-lbl">Desempenho</span></button><div class="menu" role="menu"><span class="menu-h">Desempenho</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-target"/></svg></span><span><b>Meus indicadores</b><small>Metas contra o realizado</small></span></a><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-shield"/></svg></span><span><b>Pontos tomados</b><small>Advertências ativas</small></span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Report"><svg aria-hidden="true"><use href="#i-file"/></svg><span class="grp-lbl">Report</span><span class="nbadge gold">1</span></button><div class="menu" role="menu"><span class="menu-h">Report</span><a class="mi" href="#" role="menuitem"><span class="ico"><svg><use href="#i-file"/></svg></span><span><b>Report semanal</b><small>Vence sexta às 19h</small></span><span class="nbadge gold">1</span></a></div></div><div class="grp"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="Gestor"><svg aria-hidden="true"><use href="#i-area"/></svg><span class="grp-lbl">Gestor</span></button><div class="menu" role="menu"><span class="menu-h">Gestor</span><a class="mi" href="gestor.html" role="menuitem"><span class="ico"><svg><use href="#i-area"/></svg></span><span><b>Visão da área</b><small>Se você também é gestor</small></span></a></div></div><span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" aria-label="Buscar conselho ou membro" placeholder="Buscar conselho ou membro"><kbd>Ctrl K</kbd></label><span class="dsync" title="Monday sincronizado às 12:07"><i></i>12:07</span><span class="av" style="background:#7A5A1C;color:#fff" aria-label="Perfil">A</span></nav></header>
+<div class="work">
+    <header class="top">
+      <div>
+        <div class="crumb">Terça, 20 de outubro</div>
+        <h1>Bom dia, Amanda</h1>
+      </div>
+      <div class="top-r">
+        <a class="btn pri" href="#"><svg><use href="#i-file"/></svg>Enviar report da semana</a>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- Nível 1: o mês numa frase -->
+      <section class="mes" aria-labelledby="h-mes">
+        <div>
+          <span class="mes-ey">Seu outubro</span>
+          <h2 id="h-mes">No ritmo em 6 de 7 metas. Para fechar o mês, foque em <em>Cases</em>: faltam 3, cerca de 2 por semana.</h2>
+        </div>
+        <div><span class="mes-l">Pontuação</span><span class="mes-n">72<small>/100</small></span><span class="mes-f">&#9650; 6 vs setembro · acima da mediana</span></div>
+        <div><span class="mes-l">Dias restantes</span><span class="mes-n">11<small>de 31</small></span><div class="mes-prog"><span style="width:65%"></span></div></div>
+        <div><span class="mes-l">Pontos tomados</span><span class="mes-n">3<small>ativos</small></span><span class="mes-f">Próximo vence em 02/11</span></div>
+      </section>
+
+      <div class="grid">
+        <div class="col">
+          <!-- Nível 2: o que fazer -->
+          <section class="panel" aria-labelledby="h-tar">
+            <div class="ph"><div><h2 id="h-tar">Tarefas do GTD</h2><p>Das etapas dos seus conselhos, por prazo.</p></div><span class="count">4</span><div class="r"><a class="link" href="#">Todas</a></div></div>
+            <div class="task"><input type="checkbox" id="t1"><label for="t1"><b>Confirmação no grupo</b><small>Fast Track 04 · encontro quinta</small></label><span class="tag red">Atrasada</span></div>
+            <div class="task"><input type="checkbox" id="t2"><label for="t2"><b>Verificar a jornada dos membros</b><small>Fast Track 04 · encontro quinta</small></label><span class="tag gold">Hoje</span></div>
+            <div class="task"><input type="checkbox" id="t3"><label for="t3"><b>Follow do encaminhamento</b><small>Executivo 02 · 3 membros</small></label><span class="tag">Amanhã</span></div>
+            <div class="task"><input type="checkbox" id="t4"><label for="t4"><b>Registrar matchmakings</b><small>C Level 01 · conselho de 15/10</small></label><span class="tag">Sex 23</span></div>
+          </section>
+
+          <section class="panel" aria-labelledby="h-ag">
+            <div class="ph"><div><h2 id="h-ag">Próximos 7 dias</h2><p>Conselhos e rounds com quem já confirmou.</p></div><div class="r"><a class="link" href="#">Agenda completa</a></div></div>
+            <div class="dia hoje"><div class="dia-d">Hoje<b>20</b></div><div><div class="vazio">Nenhum encontro hoje. Bom dia para fechar as tarefas do Fast Track 04.</div></div></div>
+            <div class="dia"><div class="dia-d">Qua<b>21</b></div><div>
+              <a class="ev round" href="#"><span class="ev-h">14h</span><span><b>Round Executivo 02</b><small>Online · 2h</small></span><span class="tag">Agendado</span></a>
+            </div></div>
+            <div class="dia"><div class="dia-d">Qui<b>22</b></div><div>
+              <a class="ev conselho" href="#"><span class="ev-h">19h</span><span><b>Conselho Fast Track 04</b><small>5 de 14 confirmados · GTD 2 de 9</small></span><span class="tag gold">Confirmar</span></a>
+            </div></div>
+            <div class="dia"><div class="dia-d">Ter<b>27</b></div><div>
+              <a class="ev conselho" href="#"><span class="ev-h">8h</span><span><b>Conselho C Level 01</b><small>9 de 12 confirmados</small></span><span class="tag green">No caminho</span></a>
+              <a class="ev round" href="#"><span class="ev-h">16h</span><span><b>Round Fast Track 07</b><small>Presencial · Brasília</small></span><span class="tag">Agendado</span></a>
+            </div></div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="panel" aria-labelledby="h-metas">
+            <div class="ph"><div><h2 id="h-metas">Metas de outubro</h2><p>O traço marca onde você deveria estar hoje.</p></div><div class="r"><a class="link" href="#">Detalhar</a></div></div>
+            <div class="meta"><div class="meta-top"><b>Cases</b><span>2<small> de 5</small></span></div><div class="bar"><span class="gold" style="width:40%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica atras">Atrás do ritmo. Faltam 3, cerca de 2 por semana.</div></div>
+            <div class="meta"><div class="meta-top"><b>Upsell</b><span>1<small> de 2</small></span></div><div class="bar"><span style="width:50%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">Falta 1. Executivo 02 tem oportunidade mapeada.</div></div>
+            <div class="meta"><div class="meta-top"><b>Matchmakings</b><span>7<small> de 10</small></span></div><div class="bar"><span style="width:70%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. Faltam 3.</div></div>
+            <div class="meta"><div class="meta-top"><b>Rounds</b><span>3<small> de 4</small></span></div><div class="bar"><span style="width:75%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. 1 agendado para 27/10.</div></div>
+            <div class="meta"><div class="meta-top"><b>Indicações</b><span>4<small> de 5</small></span></div><div class="bar"><span style="width:80%"></span><i class="pace" style="left:65%"></i></div><div class="meta-dica">No ritmo. Falta 1.</div></div>
+            <div class="meta"><div class="meta-top"><b>Carteira e churn</b><span style="color:var(--green)">ok</span></div><div class="meta-dica" style="margin-top:0">9 de 9 conselhos, nenhum churn no mês.</div></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- Nível 3: carteira -->
+      <section class="panel" aria-labelledby="h-cart">
+        <div class="ph"><div><h2 id="h-cart">Minha carteira</h2><p>9 conselhos, os que pedem atenção primeiro.</p></div><div class="r"><div class="seg"><button type="button" class="on">Atenção</button><button type="button">Próximo encontro</button><button type="button">Produto</button></div></div></div>
+        <div class="carteira">
+          <a class="cons alerta" href="#"><div class="cons-top"><b>Fast Track 04</b><span class="dot red"></span></div><div class="cons-l"><span>Presença</span><strong>64%</strong></div><div class="cons-l"><span>GTD</span><strong style="color:var(--red)">2 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>Qui 22/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Executivo 02</b><span class="dot gold"></span></div><div class="cons-l"><span>Presença</span><strong>81%</strong></div><div class="cons-l"><span>GTD</span><strong>4 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>29/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>C Level 01</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>88%</strong></div><div class="cons-l"><span>GTD</span><strong>5 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>27/10</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Fast Track 07</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>79%</strong></div><div class="cons-l"><span>GTD</span><strong>7 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>12/11</strong></div></a>
+          <a class="cons" href="#"><div class="cons-top"><b>Executivo 05</b><span class="dot green"></span></div><div class="cons-l"><span>Presença</span><strong>92%</strong></div><div class="cons-l"><span>GTD</span><strong>8 de 9</strong></div><div class="cons-l"><span>Próximo</span><strong>14/11</strong></div></a>
+          <a class="cons" href="#" style="justify-content:center;align-items:center;color:var(--ink2);font-weight:600;border-style:dashed">Mais 4 conselhos &rarr;</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>document.querySelectorAll('svg.spark').forEach(function(s){
+  var v=s.dataset.v.split(',').map(Number),W=76,H=24,p=3,mn=Math.min.apply(0,v),mx=Math.max.apply(0,v),r=(mx-mn)||1;
+  var pts=v.map(function(x,i){return [p+i*(W-2*p)/(v.length-1),H-p-(x-mn)/r*(H-2*p)];});
+  var c=s.dataset.bad?'#C0433D':'#1A1A1A',l=pts[pts.length-1];
+  s.setAttribute('viewBox','0 0 '+W+' '+H);
+  s.innerHTML='<polyline fill="none" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="'+pts.map(function(q){return q.join(',');}).join(' ')+'"/><circle cx="'+l[0]+'" cy="'+l[1]+'" r="2.4" fill="'+c+'"/>';
+});
+document.querySelectorAll('.seg,.filtros').forEach(function(g){
+  g.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});});
+});
+/* Dock: abre por hover, foco ou toque; fecha com Esc ou clique fora */
+(function(){
+  var grps=[].slice.call(document.querySelectorAll('.grp'));
+  function fechar(ex){grps.forEach(function(g){if(g!==ex){g.classList.remove('aberto');g.querySelector('.grp-btn').setAttribute('aria-expanded','false');}});}
+  grps.forEach(function(g){
+    var b=g.querySelector('.grp-btn');
+    g.addEventListener('mouseenter',function(){b.setAttribute('aria-expanded','true');});
+    g.addEventListener('mouseleave',function(){if(!g.classList.contains('aberto'))b.setAttribute('aria-expanded','false');});
+    b.addEventListener('click',function(e){e.stopPropagation();var abre=!g.classList.contains('aberto');fechar(g);g.classList.toggle('aberto',abre);b.setAttribute('aria-expanded',String(abre));});
+  });
+  document.addEventListener('click',function(e){if(!e.target.closest('.grp'))fechar();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){fechar();if(document.activeElement)document.activeElement.blur();}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){var i=document.querySelector('.dsearch input');if(i){e.preventDefault();i.focus();}}});
+})();
+</script>
+</body>
+</html>
