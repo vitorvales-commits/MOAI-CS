@@ -2,6 +2,19 @@
 
 import { useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
+import { TEMA_CSS, FONTES_LINK } from '@/lib/ui/tema';
+
+// Login no tema v3: só tokens, fontes, painel e botão. Não leva dock (ainda não há sessão).
+const CSS_LOGIN = `
+.login-main{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{width:340px;max-width:100%;padding:40px 36px;text-align:center}
+.login-card img{height:24px;margin-bottom:28px}
+.login-card h1{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;margin:0 0 6px;letter-spacing:-0.02em}
+.login-card p{font-size:12.5px;color:var(--ink3);margin:0 0 28px}
+.login-card .btn{width:100%;height:42px;font-size:13.5px}
+.login-card .btn[disabled]{opacity:.6;cursor:not-allowed}
+.login-erro{margin:16px 0 0;font-size:12.5px;color:var(--red-ink);background:var(--red-soft);border-radius:10px;padding:10px 12px}
+`;
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -22,50 +35,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={styles.main}>
-      <div style={styles.card}>
-        <img src="/logo/moai-logo-black.png" alt="MOAI" style={styles.logo} />
-        <h1 style={styles.title}>Painel de CS</h1>
-        <p style={styles.subtitle}>Acesso restrito à equipe MOAI (@moaiclubedelideres.com)</p>
-        <button style={styles.button} onClick={entrarComGoogle} disabled={loading}>
-          {loading ? 'Abrindo o Google…' : 'Entrar com Google'}
-        </button>
-        {error && <p style={styles.error}>{error}</p>}
-      </div>
-    </main>
+    <>
+      <div dangerouslySetInnerHTML={{ __html: FONTES_LINK }} />
+      <style dangerouslySetInnerHTML={{ __html: TEMA_CSS + CSS_LOGIN }} />
+      <main className="login-main">
+        <div className="panel login-card">
+          <img src="/logo/moai-logo-black.png" alt="MOAI" />
+          <h1>Painel de CS</h1>
+          <p>Acesso restrito à equipe MOAI (@moaiclubedelideres.com)</p>
+          <button type="button" className="btn pri" onClick={entrarComGoogle} disabled={loading}>
+            {loading ? 'Abrindo o Google…' : 'Entrar com Google'}
+          </button>
+          {error && <p className="login-erro" role="alert">{error}</p>}
+        </div>
+      </main>
+    </>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  main: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#F5F5F5',
-    fontFamily: "'Inter', system-ui, sans-serif",
-  },
-  card: {
-    background: '#fff',
-    border: '0.75pt solid #D8D5D5',
-    borderRadius: 26,
-    padding: '40px 36px',
-    width: 320,
-    textAlign: 'center',
-  },
-  logo: { height: 24, marginBottom: 28 },
-  title: { fontSize: 20, fontWeight: 800, color: '#1A1A1A', margin: '0 0 6px' },
-  subtitle: { fontSize: 12.5, color: '#807E7E', margin: '0 0 28px' },
-  button: {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: 12,
-    border: '0.75pt solid #D8D5D5',
-    background: '#1A1A1A',
-    color: '#fff',
-    fontWeight: 700,
-    fontSize: 13.5,
-    cursor: 'pointer',
-  },
-  error: { fontSize: 12, color: '#C0392B', marginTop: 16 },
-};

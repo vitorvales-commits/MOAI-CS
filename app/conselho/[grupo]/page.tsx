@@ -5,27 +5,33 @@
 // sempre checada de novo em /api/conselho/[grupo].
 import { redirect } from 'next/navigation';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
+import { montarDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
 import { CONSELHO_STYLE, CONSELHO_HTML, conselhoScript } from '../../conselho-html';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ConselhoPage({ params }: { params: { grupo: string } }) {
+  let isGestor = false, csNome: string | null = null, email = '';
   try {
-    await requireMoaiUser();
+    ({ isGestor, csNome, email } = await requireMoaiUser());
   } catch (e) {
     if (e instanceof AuthError) redirect('/login');
     throw e;
   }
 
+  // Dock do perfil real: gestor sem perfil de CS vê o de gestão; quem tem perfil de CS vê o do CS.
+  const inicial = email ? email.charAt(0) : '?';
+  const dock = isGestor && !csNome
+    ? montarDock('gestor', 'conselhos', {}, { inicial })
+    : montarDock('cs', 'meus-conselhos', {}, { inicial, tambemGestor: isGestor });
+  const html = CONSELHO_HTML.replace('<!--DOCK-->', dock);
+
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap"
-        rel="stylesheet"
-      />
+      <div dangerouslySetInnerHTML={{ __html: FONTES_LINK }} />
       <style dangerouslySetInnerHTML={{ __html: CONSELHO_STYLE }} />
-      <div dangerouslySetInnerHTML={{ __html: CONSELHO_HTML }} />
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <script dangerouslySetInnerHTML={{ __html: DOCK_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: conselhoScript(params.grupo) }} />
     </>
   );

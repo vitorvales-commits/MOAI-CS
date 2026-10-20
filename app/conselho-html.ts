@@ -14,22 +14,25 @@
 // 25/09/2026 — fora de tudo).
 
 import { GTD_CHECKLIST_STYLE, GTD_CHECKLIST_SCRIPT } from '../lib/gtd-checklist';
+import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema';
 
-export const CONSELHO_STYLE = `
+export const CONSELHO_STYLE = TEMA_CSS + `
 :root{
-  --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
-  --branco:#FFFFFF; --cinza-texto:#5D5D5D; --cinza-apoio:#9F9F9F;
-  --cinza-linha:#C6C4C4; --cinza-borda:#D8D5D5; --cinza-superficie:#E9E9E9;
-  --vermelho:#C0433D; --dourado:#C89A2E; --verde:#3D8B5F; --azul:#7dd3fc;
+  /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts) */
+  --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
+  --branco:var(--surface); --cinza-texto:var(--ink2); --cinza-apoio:var(--ink3);
+  --cinza-linha:var(--line2); --cinza-borda:var(--line2); --cinza-superficie:var(--line);
+  --vermelho:var(--red); --dourado:var(--gold); --verde:var(--green); --azul:#7dd3fc;
 }
 .conselho-page *{box-sizing:border-box;}
-.conselho-page{margin:0;background:var(--cinza-fundo);color:var(--preto-tinta);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+.conselho-page{margin:0;color:var(--preto-tinta);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
 .conselho-page h1,.conselho-page h2,.conselho-page h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;}
 .page{max-width:1040px;margin:0 auto;padding:0 28px 80px;}
+.topbar{padding-top:28px !important;}
 @media (max-width:600px){ .page{padding:0 16px 60px;} .hero{padding:28px 20px !important;} }
 
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0;flex-wrap:wrap;gap:12px;}
-.voltar-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--cinza-texto);text-decoration:none;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid var(--cinza-borda);background:var(--branco);}
+.voltar-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink2);padding:7px 14px 7px 10px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);}
 .voltar-btn:hover{background:var(--cinza-superficie);}
 .pill{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:500;}
 
@@ -169,9 +172,11 @@ ${GTD_CHECKLIST_STYLE}
 
 export const CONSELHO_HTML = `
 <div class="conselho-page">
+${ICONES_SVG}
+<!--DOCK-->
 <div class="page">
   <header class="topbar">
-    <a href="/" class="voltar-btn">&larr; Voltar</a>
+    <a href="/" class="voltar-btn" id="voltarConselho">&larr; Voltar</a>
     <span class="pill" id="pillPeriodo"></span>
   </header>
 
