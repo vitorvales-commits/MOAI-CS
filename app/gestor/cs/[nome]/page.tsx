@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { GESTOR_CS_STYLE, GESTOR_CS_HTML, gestorCSScript } from '../../../gestor-cs-html';
+import { montarDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
 import { AGENDA_CSS, agendaConfigJson } from '../../../../lib/agenda-ui';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +16,9 @@ function decodificar(nome: string): string {
 
 export default async function GestorCSPage({ params }: { params: { nome: string } }) {
   let isGestor = false;
+  let email: string | null = null;
   try {
-    ({ isGestor } = await requireMoaiUser());
+    ({ isGestor, email } = await requireMoaiUser());
   } catch (e) {
     if (e instanceof AuthError) redirect('/login');
     throw e;
@@ -25,16 +27,17 @@ export default async function GestorCSPage({ params }: { params: { nome: string 
     redirect('/?erro=acesso_restrito');
   }
 
+  const nome = decodificar(params.nome);
+  const dock = montarDock('gestor', 'time', {}, { inicial: email ? email.charAt(0) : 'G', rotuloAtivo: 'Time · ' + nome });
+  const html = GESTOR_CS_HTML.replace('<!--DOCK-->', dock);
+
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap"
-        rel="stylesheet"
-      />
+      <div dangerouslySetInnerHTML={{ __html: FONTES_LINK }} />
       <style dangerouslySetInnerHTML={{ __html: GESTOR_CS_STYLE }} />
       <style dangerouslySetInnerHTML={{ __html: AGENDA_CSS }} />
-      <div dangerouslySetInnerHTML={{ __html: GESTOR_CS_HTML }} />
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <script dangerouslySetInnerHTML={{ __html: DOCK_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: 'window.AGENDA_CFG = ' + agendaConfigJson() + ';' }} />
       <script src="/agenda-cs.js" />
       <script dangerouslySetInnerHTML={{ __html: gestorCSScript(decodificar(params.nome)) }} />

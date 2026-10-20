@@ -271,3 +271,6 @@ export const SCORE_FAIXA_SAUDAVEL = 75; // pontuação a partir daqui é saudáv
 export const SCORE_FAIXA_ATENCAO = 55; // abaixo disso a pontuação é risco; entre este valor e o saudável, atenção
 // Indicadores atrás do ritmo no mês a partir dos quais a linha do CS pede ação imediata (abaixo disso, acompanhar).
 export const MAPA_RITMO_ATRASADOS_ACAO = 3;
+
+// Escala da barra de Health da Base na ficha do CS: percentual de críticos mais advertência que enche a barra.
+export const HEALTH_BARRA_ESCALA_PCT = 20;

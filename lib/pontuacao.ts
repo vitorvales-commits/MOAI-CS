@@ -105,3 +105,37 @@ export function rankingCSAtivos<T>(candidatos: CandidatoRanking<T>[]): LinhaRank
       || a.nome.localeCompare(b.nome, 'pt-BR'))
     .map((c, i) => ({ ...c, posicao: i + 1 }));
 }
+
+// Onde estão os pontos que faltam (redesenho v3, 20/10/2026). Deriva só do ScoreCS já calculado: para cada
+// indicador que pontua, o peso renormalizado sobre os elegíveis (soma 100), os pontos conquistados e os
+// que seguem em aberto. Indicador sem meta ou sem dado fica fora da conta, e a Carteira (informativa,
+// sem pontos) aparece como fora da conta também. Não recalcula a pontuação: lê os mesmos itens.
+export type DetalheScoreItem = {
+  chave: string; label: string; peso: number;
+  pesoNormalizado: number | null; conquistado: number | null; emAberto: number | null;
+  valorAlcancado: number | null; meta: number | null;
+  foraDaConta: boolean; motivoFora: 'sem_meta' | 'informativo' | null;
+};
+export type DetalheScore = { itens: DetalheScoreItem[]; totalEmAberto: number | null };
+
+const um = (n: number) => Math.round(n * 10) / 10;
+
+export function detalharScoreCS(s: ScoreCS): DetalheScore {
+  const entram = s.itens.filter((i) => i.pontos !== null && !i.semPontos);
+  const soma = entram.reduce((t, i) => t + i.peso, 0);
+  const itens: DetalheScoreItem[] = s.itens.map((i) => {
+    const entra = i.pontos !== null && !i.semPontos && soma > 0 && i.achievementPct !== null;
+    const pesoNormalizado = entra ? (i.peso / soma) * 100 : null;
+    const conquistado = entra ? ((i.achievementPct as number) / 100) * (pesoNormalizado as number) : null;
+    return {
+      chave: i.chave, label: i.label, peso: i.peso,
+      pesoNormalizado: pesoNormalizado === null ? null : um(pesoNormalizado),
+      conquistado: conquistado === null ? null : um(conquistado),
+      emAberto: entra ? um(Math.max(0, (pesoNormalizado as number) - (conquistado as number))) : null,
+      valorAlcancado: i.valorAlcancado, meta: i.meta,
+      foraDaConta: !entra, motivoFora: entra ? null : (i.semPontos ? 'informativo' : 'sem_meta'),
+    };
+  });
+  const abertos = itens.filter((i) => i.emAberto !== null);
+  return { itens, totalEmAberto: abertos.length ? um(abertos.reduce((t, i) => t + (i.emAberto as number), 0)) : null };
+}

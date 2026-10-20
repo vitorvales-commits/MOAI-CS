@@ -6,55 +6,26 @@
 // de advertência mora aqui; a escrita passa pelas rotas e funções SECURITY DEFINER de gestor.
 import { RADAR_SVG_SCRIPT } from '../lib/radar-svg';
 import { GTD_CHECKLIST_STYLE } from '../lib/gtd-checklist';
+import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema';
+import { HEALTH_BARRA_ESCALA_PCT } from '../lib/constants';
 
-export const GESTOR_CS_STYLE = `
+export const GESTOR_CS_STYLE = TEMA_CSS + `
 :root{
-  --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
-  --branco:#FFFFFF; --cinza-texto:#5D5D5D; --cinza-apoio:#9F9F9F;
-  --cinza-linha:#C6C4C4; --cinza-borda:#D8D5D5; --cinza-superficie:#E9E9E9;
-  --vermelho:#C0433D; --dourado:#C89A2E; --verde:#3D8B5F;
+  /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts) */
+  --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
+  --branco:var(--surface); --cinza-texto:var(--ink2); --cinza-apoio:var(--ink3);
+  --cinza-linha:var(--line2); --cinza-borda:var(--line2); --cinza-superficie:var(--line);
+  --vermelho:var(--red); --dourado:var(--gold); --verde:var(--green);
 }
 .cs-page *{box-sizing:border-box;}
-.cs-page{margin:0;background:var(--cinza-fundo);color:var(--preto-tinta);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+.cs-page{margin:0;color:var(--ink);font-family:'Inter',sans-serif;}
 .cs-page h1,.cs-page h2,.cs-page h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;}
-.page{max-width:1040px;margin:0 auto;padding:0 28px 80px;}
-@media (max-width:600px){ .page{padding:0 16px 60px;} .hero{padding:26px 18px !important;} }
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0;flex-wrap:wrap;gap:12px;}
-.voltar-btn{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--cinza-texto);text-decoration:none;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid var(--cinza-borda);background:var(--branco);}
-.voltar-btn:hover{background:var(--cinza-superficie);}
-.seletor{display:flex;gap:8px;flex-wrap:wrap;}
-.seletor select{font:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:10px;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);}
-.hero{position:relative;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#141414 0%,#1A1A1A 48%,#272727 100%);padding:36px;color:var(--branco);}
-.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14% -10%, rgba(200,154,46,0.38), transparent 55%),radial-gradient(circle at 100% 110%, rgba(61,139,95,0.28), transparent 55%);pointer-events:none;}
-.hero-top{position:relative;z-index:1;display:flex;align-items:center;gap:22px;flex-wrap:wrap;}
-.foto-cs{width:112px;height:112px;border-radius:28px;object-fit:cover;background:var(--grafite);flex-shrink:0;}
-.foto-cs-fallback{width:112px;height:112px;border-radius:28px;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:46px;color:#fff;flex-shrink:0;}
-.hero-eyebrow{font-size:11px;letter-spacing:0.1em;font-weight:600;color:var(--dourado);text-transform:uppercase;}
-.hero h1{font-size:30px;font-weight:700;margin:2px 0 4px;}
-.hero-sub{font-size:13px;color:#C6C4C4;margin:0;}
-.hero-selos{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
-.selo{font-size:10px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,0.1);color:#E9E9E9;border:1px solid rgba(255,255,255,0.2);}
-.selo.ouro{background:var(--dourado);color:var(--preto-tinta);border-color:var(--dourado);}
-.selo.alerta{background:#FBEEEC;color:var(--vermelho);border-color:#EBC6C0;}
-.stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:24px;}
-.stat{background:var(--branco);color:var(--preto-tinta);border-radius:18px;padding:16px 18px;}
-.stat.alerta{background:#FBEEEC;border:1px solid #EBC6C0;}
-.stat-label{font-size:11px;font-weight:700;color:var(--cinza-texto);text-transform:uppercase;letter-spacing:.04em;}
-.stat-valor{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:28px;line-height:1.1;margin-top:6px;}
-.stat.alerta .stat-valor{color:var(--vermelho);}
-.stat-sub{font-size:11.5px;color:var(--cinza-texto);margin-top:4px;line-height:1.4;}
 .block{margin-top:34px;}
 .block h2{font-size:21px;font-weight:700;margin:0 0 6px;}
 .block .sub{font-size:13px;font-weight:400;color:var(--cinza-texto);display:block;margin-top:2px;font-family:'Inter',sans-serif;letter-spacing:0;}
 .card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:22px;padding:22px;margin-top:14px;}
 .erro-secao{padding:14px 16px;border-radius:12px;background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;font-size:13px;line-height:1.5;margin-top:14px;}
 .vazio{padding:16px;border-radius:12px;background:var(--cinza-fundo);color:var(--cinza-texto);font-size:13px;line-height:1.5;}
-details.composicao{margin-top:16px;background:rgba(255,255,255,0.06);border-radius:14px;padding:12px 16px;position:relative;z-index:1;}
-details.composicao summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#E9E9E9;}
-.comp-linha{display:grid;grid-template-columns:1.6fr 70px 1.3fr 70px;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.1);font-size:12.5px;color:#E9E9E9;}
-.comp-linha:last-child{border-bottom:none;}
-.comp-linha .num{text-align:right;}
-.comp-nota{margin-top:8px;font-size:11.5px;color:#C6C4C4;line-height:1.5;}
 .radar-bloco{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:24px;align-items:center;}
 @media (max-width:760px){ .radar-bloco{grid-template-columns:1fr;} }
 .radar-svg-wrap{display:flex;justify-content:center;}
@@ -82,23 +53,15 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .form-adv label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;font-weight:700;color:var(--cinza-texto);}
 .form-adv select,.form-adv textarea,.edit-obs{font:inherit;font-size:13px;font-weight:400;padding:8px 10px;border-radius:10px;border:1px solid var(--cinza-borda);background:var(--branco);color:var(--preto-tinta);}
 .form-adv textarea,.edit-obs{min-height:62px;width:100%;resize:vertical;}
-.btn{background:#D4AF37;color:#1A1A1A;border:none;border-radius:10px;padding:9px 16px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;}
-.btn:disabled{opacity:.6;cursor:default;}
-.btn.sec{background:var(--cinza-superficie);color:var(--preto-tinta);}
-.btn.perigo{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
 .adv-linha{padding:14px 0;border-bottom:1px solid #EFEDED;font-size:13px;}
 .adv-linha:last-child{border-bottom:none;}
 .adv-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .adv-tipo{font-weight:700;}
-.status-adv{font-size:10.5px;font-weight:800;padding:3px 10px;border-radius:99px;}
-.status-adv.ativa{background:#FBEEEC;color:var(--vermelho);}
-.status-adv.vencida{background:var(--cinza-superficie);color:var(--cinza-texto);}
 .adv-meta{font-size:12px;color:var(--cinza-texto);margin-top:4px;line-height:1.5;}
 .adv-acoes{margin-left:auto;display:flex;gap:6px;}
 .efeito{padding:12px 14px;border-radius:12px;background:var(--cinza-fundo);font-size:13px;line-height:1.5;margin-bottom:14px;}
 .msg{font-size:12px;font-weight:600;margin-left:8px;}
 .um-topo{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.btn.sec.ativo{background:var(--preto-tinta);color:var(--branco);}
 /* ---------- indicadores do mês (09/10/2026): radar sempre visível e cartões por indicador ---------- */
 .ind-resumo{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--cinza-superficie);}
 .ind-placar{display:flex;align-items:baseline;gap:6px;}
@@ -168,9 +131,6 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .evo-kpi-var{font-size:11.5px;font-weight:700;margin-top:2px;color:var(--cinza-texto);}
 .evo-kpi-var.sobe{color:var(--verde);}
 .evo-kpi-var.cai{color:var(--vermelho);}
-.seg{display:inline-flex;background:var(--cinza-superficie);border-radius:99px;padding:3px;gap:2px;}
-.seg button{border:none;background:none;font:inherit;font-size:12px;font-weight:700;color:var(--cinza-texto);padding:6px 12px;border-radius:99px;cursor:pointer;}
-.seg button.ativo{background:var(--branco);color:var(--preto-tinta);box-shadow:0 1px 2px rgba(0,0,0,.12);}
 .evo-svg{width:100%;height:auto;display:block;}
 .evo-eixo{font-size:11px;fill:var(--cinza-texto);}
 .evo-valor{font-size:12.5px;font-weight:800;fill:var(--preto-tinta);}
@@ -225,71 +185,165 @@ details.um-det{margin-top:14px;}
 details.um-det summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--preto-tinta);}
 .um-itens-novos{margin:8px 0 0;padding:0;list-style:none;font-size:12.5px;}
 .um-itens-novos li{padding:6px 0;border-bottom:1px solid var(--cinza-superficie);}
+
+
+/* ===== Redesenho v3: página do CS ===== */
+.top-r .sel{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font:600 12.5px 'Inter',sans-serif;cursor:pointer}
+.nav-cs{display:inline-flex;background:rgba(26,26,26,.06);border-radius:11px;padding:3px;gap:2px}
+.nav-cs a{font-size:12.5px;font-weight:600;color:var(--ink2);padding:6px 12px;border-radius:8px}
+.nav-cs a:hover{background:var(--surface);color:var(--ink)}
+.nav-cs a.off{opacity:.4;pointer-events:none}
+.cs-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+.ficha{position:sticky;top:90px;overflow:hidden}
+.ficha-topo{position:relative;padding:20px;color:#fff;background:linear-gradient(135deg,#141414 0%,#1A1A1A 60%,#272727 100%)}
+.ficha-topo::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 14% -10%,rgba(200,154,46,.38),transparent 55%);pointer-events:none}
+.ficha-topo > *{position:relative}
+.ficha-foto{width:76px;height:76px;border-radius:20px;object-fit:cover;background:var(--side);box-shadow:0 0 0 2px var(--gold)}
+.ficha-foto.ini{display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:32px;color:#fff}
+.ficha-nome{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;margin:12px 0 2px}
+.ficha-sub{font-size:12.5px;color:#C6C4C4}
+.ficha-medidor{display:flex;align-items:center;gap:14px;margin-top:14px}
+.ficha-medidor svg{width:92px;height:56px;flex:none}
+.ficha-medidor small{display:block;font-size:12px;color:#E9E9E9;line-height:1.5}
+.ficha-sec{padding:16px 20px;border-top:1px solid var(--line)}
+.ficha-sec h3{margin:0 0 10px;font-family:'Inter',sans-serif;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.ficha-linha{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0}
+.ficha-linha b{font-weight:700}
+.health-total{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.health-total b{font-size:20px;font-family:'Bricolage Grotesque',sans-serif}
+.health-barra{display:flex;height:6px;border-radius:99px;background:#EDEBEB;overflow:hidden;margin:8px 0}
+.health-barra i{display:block;height:100%}
+.health-leg{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)}
+.health-leg i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
+.ficha-acoes{display:flex;gap:8px;padding:16px 20px;border-top:1px solid var(--line)}
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--line2);overflow-x:auto}
+.abas button{background:none;border:0;padding:10px 14px;font:600 13px 'Inter',sans-serif;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.abas button.on{color:var(--ink);border-bottom-color:var(--gold)}
+.abas button .count{margin-left:6px}
+.aba{display:none;margin-top:22px;flex-direction:column;gap:22px}
+.aba.on{display:flex}
+.aba .block{margin-top:0}
+.pontos-linha{display:grid;grid-template-columns:150px minmax(0,1fr) 180px;gap:14px;align-items:center;padding:11px 18px;border-top:1px solid var(--line);font-size:13px}
+.pontos-linha b{font-weight:600}
+.pontos-linha small{display:block;color:var(--ink3);font-size:11.5px}
+.pontos-linha.fora{color:var(--ink3)}
+.pontos-linha .num{text-align:right}
+.pontos-barra{position:relative;height:14px;border-radius:5px;background:repeating-linear-gradient(135deg,var(--gold-soft),var(--gold-soft) 4px,#fff 4px,#fff 8px);box-shadow:inset 0 0 0 1px #EBD39C;overflow:hidden}
+.pontos-barra i{position:absolute;inset:0 auto 0 0;background:var(--ink)}
+.pontos-falta{color:var(--gold-ink);font-weight:700}
+.insight{margin:0 18px 14px;padding:12px 14px;border-radius:10px;background:var(--gold-soft);font-size:13px;color:var(--gold-ink)}
+.pontos-leg{display:flex;gap:16px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.cs-duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.pauta-item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:4px 12px;padding:13px 18px;border-top:1px solid var(--line)}
+.pauta-item .dot{margin-top:6px}
+.pauta-item h4{margin:0;font-family:'Inter',sans-serif;font-size:13.5px;font-weight:600}
+.pauta-item p{margin:2px 0 0;font-size:12.5px;color:var(--ink2)}
+.gtd-att{display:grid;grid-template-columns:minmax(0,1fr) 90px 46px;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:13px}
+.gtd-att small{display:block;color:var(--ink3);font-size:11.5px}
+.rodape-painel{padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3);display:flex;justify-content:space-between;gap:10px}
+.rodape-painel button{background:none;border:0;padding:0;font:600 12.5px 'Inter',sans-serif;color:var(--ink2);cursor:pointer}
+.seg button.ativo{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.btn.perigo{border-color:#EBC6C0;color:var(--red-ink)}
+@media (max-width:1100px){.cs-layout{grid-template-columns:1fr}.ficha{position:static}.cs-duas{grid-template-columns:1fr}}
+@media (max-width:700px){.pontos-linha{grid-template-columns:110px minmax(0,1fr)}.pontos-linha .num{grid-column:1 / -1;text-align:left}}
 ${GTD_CHECKLIST_STYLE}
 `;
 
 export const GESTOR_CS_HTML = `
 <div class="cs-page">
-<div class="page">
-  <header class="topbar">
-    <a href="/gestor" class="voltar-btn">&larr; Voltar à visão da área</a>
-    <div class="seletor">
-      <select id="selMesCS" aria-label="Mês"></select>
-      <select id="selAnoCS" aria-label="Ano"><option>2025</option><option>2026</option><option>2027</option></select>
+${ICONES_SVG}
+<!--DOCK-->
+<div class="work">
+  <header class="top">
+    <div>
+      <div class="crumb"><a href="/gestor?aba=visaoGeral#mapa-time">Time</a><span>/</span><span id="crumbNome">CS</span></div>
+      <h1 id="tituloCS">CS</h1>
+    </div>
+    <div class="top-r">
+      <div class="nav-cs" id="navCS" aria-label="Navegar entre os CS"><a class="off" id="csAnt" href="#">&larr; Anterior</a><a class="off" id="csProx" href="#">Próximo &rarr;</a></div>
+      <select class="sel" id="selMesCS" aria-label="Mês"></select>
+      <select class="sel" id="selAnoCS" aria-label="Ano"><option>2025</option><option>2026</option><option>2027</option></select>
     </div>
   </header>
 
-  <section class="hero" id="heroCS"><div class="vazio" style="background:rgba(255,255,255,0.08);color:#E9E9E9;">Carregando…</div></section>
+  <main class="content">
+  <div class="cs-layout">
+    <aside class="panel ficha" id="heroCS"><div class="vazio" style="margin:18px">Carregando…</div></aside>
 
-  <section class="block" id="secAgenda">
-    <div id="agendaCs"></div>
-  </section>
-
-  <section class="block">
-    <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
-    <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
-  </section>
-
-  <section class="block" id="secEvolucao">
-    <h2>Evolução <span class="sub">Pontuação mensal do CS, mediana do time e meta de 100 pontos.</span></h2>
-    <div class="card">
-      <div class="evo-cab">
-        <div class="evo-kpis" id="evoResumo"></div>
-        <div class="seg" id="evoJanelas">
-          <button type="button" data-evo-janela="3">3 meses</button>
-          <button type="button" data-evo-janela="6">6 meses</button>
-          <button type="button" data-evo-janela="12">12 meses</button>
-        </div>
+    <div class="cs-main" style="min-width:0">
+      <div class="abas" role="tablist" id="abasCS">
+        <button type="button" role="tab" class="on" data-aba="diagnostico">Diagnóstico</button>
+        <button type="button" role="tab" data-aba="indicadores">Indicadores</button>
+        <button type="button" role="tab" data-aba="gtd">GTD<span class="count" id="contaGtd" hidden></span></button>
+        <button type="button" role="tab" data-aba="base">Base e advertências</button>
+        <button type="button" role="tab" data-aba="um">1:1<span class="count" id="contaUm" hidden></span></button>
       </div>
-      <div id="evoGrafico"><div class="vazio">Carregando…</div></div>
-      <div id="evoLeitura"></div>
-      <div id="evoRecalcular"></div>
+
+      <div class="aba on" id="aba-diagnostico" data-aba="diagnostico" role="tabpanel">
+        <section class="panel" id="secPontos" aria-labelledby="h-pontos"><div class="vazio" style="margin:18px">Carregando…</div></section>
+        <div class="cs-duas">
+          <section class="panel" id="secPauta" aria-labelledby="h-pauta"><div class="vazio" style="margin:18px">Carregando…</div></section>
+          <section class="panel" id="secGtdAtencao" aria-labelledby="h-gtdatt"><div class="vazio" style="margin:18px">Carregando…</div></section>
+        </div>
+        <section class="block" id="secEvolucao">
+          <h2>Evolução <span class="sub">Pontuação mensal do CS, mediana do time e meta de 100 pontos.</span></h2>
+          <div class="card">
+            <div class="evo-cab">
+              <div class="evo-kpis" id="evoResumo"></div>
+              <div class="seg" id="evoJanelas">
+                <button type="button" data-evo-janela="3">3 meses</button>
+                <button type="button" data-evo-janela="6">6 meses</button>
+                <button type="button" data-evo-janela="12">12 meses</button>
+              </div>
+            </div>
+            <div id="evoGrafico"><div class="vazio">Carregando…</div></div>
+            <div id="evoLeitura"></div>
+            <div id="evoRecalcular"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="aba" id="aba-indicadores" data-aba="indicadores" role="tabpanel">
+        <section class="block">
+          <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
+          <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
+        </section>
+      </div>
+
+      <div class="aba" id="aba-gtd" data-aba="gtd" role="tabpanel">
+        <section class="block">
+          <h2>Andamento do GTD <span class="sub">Etapas feitas sobre etapas totais dos ciclos atuais dos conselhos deste CS.</span></h2>
+          <div class="card" id="secGtd"><div class="vazio">Carregando…</div></div>
+        </section>
+        <section class="block" id="secAgenda">
+          <div id="agendaCs"></div>
+        </section>
+      </div>
+
+      <div class="aba" id="aba-base" data-aba="base" role="tabpanel">
+        <section class="block">
+          <h2>Membros críticos <span class="sub">Percentual no report mais recente, no total e por produto. Os nomes ficam só no report do próprio CS.</span></h2>
+          <div class="card" id="secCriticos"><div class="vazio">Carregando…</div></div>
+        </section>
+        <section class="block" id="secAdvertenciasBloco">
+          <h2>Advertências <span class="sub">Pontos ativos entram no Health da Base do CS. O CS vê o que foi aplicado na aba Pontos tomados.</span></h2>
+          <div class="card" id="secAdvertencias"><div class="vazio">Carregando…</div></div>
+        </section>
+      </div>
+
+      <div class="aba" id="aba-um" data-aba="um" role="tabpanel">
+        <section class="block" id="secUmAUm">
+          <h2>1:1 <span class="sub">Próximos passos e pontos de atenção em aberto, de todas as conversas.</span></h2>
+          <div class="card">
+            <div class="um-topo"><button class="btn" type="button" data-um="novo">Registrar 1:1</button></div>
+            <div id="umForm"></div>
+            <div id="umLista"><div class="vazio">Carregando…</div></div>
+          </div>
+        </section>
+      </div>
     </div>
-  </section>
-
-  <section class="block" id="secUmAUm">
-    <h2>1:1 <span class="sub">Próximos passos e pontos de atenção em aberto, de todas as conversas.</span></h2>
-    <div class="card">
-      <div class="um-topo"><button class="btn" type="button" data-um="novo">Registrar 1:1</button></div>
-      <div id="umForm"></div>
-      <div id="umLista"><div class="vazio">Carregando…</div></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>Andamento do GTD <span class="sub">Etapas feitas sobre etapas totais dos ciclos atuais dos conselhos deste CS.</span></h2>
-    <div class="card" id="secGtd"><div class="vazio">Carregando…</div></div>
-  </section>
-
-  <section class="block">
-    <h2>Membros críticos <span class="sub">Percentual no report mais recente, no total e por produto. Os nomes ficam só no report do próprio CS.</span></h2>
-    <div class="card" id="secCriticos"><div class="vazio">Carregando…</div></div>
-  </section>
-
-  <section class="block">
-    <h2>Advertências <span class="sub">Pontos ativos entram no Health da Base do CS. O CS vê o que foi aplicado na aba Pontos tomados.</span></h2>
-    <div class="card" id="secAdvertencias"><div class="vazio">Carregando…</div></div>
-  </section>
+  </div>
+  </main>
 </div>
 </div>
 `;
@@ -336,51 +390,192 @@ function corDoNome(nome) {
 function erroSecao(msg) { return '<div class="erro-secao">Não foi possível carregar esta seção: ' + esc(msg) + '</div>'; }
 function numFmt(v) { return (v === null || v === undefined) ? 'Sem dado' : Number(v).toLocaleString('pt-BR'); }
 
-// ---------- cabeçalho ----------
+// ---------- ficha fixa (redesenho v3) ----------
+var HEALTH_BARRA_MAX_PCT_ = ${HEALTH_BARRA_ESCALA_PCT};
+function dec1_(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+function medidorSvg_(nota) {
+  var r = 38, c = Math.PI * r, p = Math.max(0, Math.min(nota, 100)) / 100;
+  var arco = 'M 8 48 A ' + r + ' ' + r + ' 0 0 1 84 48';
+  return '<svg viewBox="0 0 92 56" role="img" aria-label="Pontuação ' + nota + ' de 100"><path d="' + arco + '" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="8" stroke-linecap="round"/>'
+    + '<path d="' + arco + '" fill="none" stroke="#C89A2E" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (p * c).toFixed(1) + ' ' + c.toFixed(1) + '"/>'
+    + '<text x="46" y="46" text-anchor="middle" font-size="22"><tspan class="medidor-num" font-weight="700" fill="#fff">' + nota + '</tspan></text></svg>';
+}
 function renderHeroCS(d) {
   var el = document.getElementById('heroCS');
   if (d.cabecalho.erro) { el.innerHTML = erroSecao(d.cabecalho.erro); return; }
   var c = d.cabecalho.dado;
-  var adv = d.advertencias.dado, hb = d.health.dado;
-  var pontosAtivos = adv ? adv.pontuacaoAtiva : null;
-  var acima = pontosAtivos !== null && pontosAtivos > LIMIAR_ADVERTENCIA_DESTAQUE;
-  var foto = c.fotoUrl
-    ? '<img class="foto-cs" src="' + esc(c.fotoUrl) + '" alt="Foto de ' + esc(c.nome) + '">'
-    : '<div class="foto-cs-fallback" style="background:' + corDoNome(c.nomeCompleto || c.nome) + '">' + esc((c.nome || '?').charAt(0).toUpperCase()) + '</div>';
   var temNota = c.pontuacao !== null && c.pontuacao !== undefined;
-  var selos = temNota
-    ? '<span class="selo ouro">' + c.posicao + 'º de ' + c.totalRankeados + ' no ranking</span>'
-    : '<span class="selo">Sem dados suficientes, fora do ranking</span>';
-  if (acima) selos += '<span class="selo alerta">Advertências acima de ' + LIMIAR_ADVERTENCIA_DESTAQUE + ' pontos</span>';
-  selos += '<span id="heroUmSelo">' + umSeloHtml() + '</span>';
-  var carteira = c.carteira.numConselhos + (c.carteira.numConselhos === 1 ? ' conselho' : ' conselhos');
-  var metaCarteira = c.carteira.semMetaPropria ? 'sem meta própria cadastrada' : 'meta de ' + c.carteira.meta;
-  var healthTxt = 'Sem apuração', healthSub = '';
-  if (hb) {
-    if (hb.comPontosDecimos !== null && hb.comPontosDecimos !== undefined) healthTxt = dec(hb.comPontosDecimos);
-    if (!hb.semApuracao) healthSub = 'sem os pontos: ' + dec(hb.semPontosDecimos);
-  } else if (d.health.erro) { healthTxt = 'Erro'; healthSub = d.health.erro; }
+  var foto = c.fotoUrl
+    ? '<img class="ficha-foto" src="' + esc(c.fotoUrl) + '" alt="Foto de ' + esc(c.nome) + '">'
+    : '<div class="ficha-foto ini" style="background:' + corDoNome(c.nomeCompleto || c.nome) + '">' + esc((c.nome || '?').charAt(0).toUpperCase()) + '</div>';
+  document.getElementById('tituloCS').textContent = c.nome;
+  document.getElementById('crumbNome').textContent = c.nome;
+  var carteira = c.carteira.numConselhos + (c.carteira.numConselhos === 1 ? ' conselho' : ' conselhos') + ' na carteira';
+  var med = d.cabecalho.dado.time ? d.cabecalho.dado.time.medianaPontuacao : null;
+  var medidor = temNota
+    ? '<div class="ficha-medidor">' + medidorSvg_(c.pontuacao) + '<small><strong style="color:#fff">' + c.posicao + 'º de ' + c.totalRankeados + '</strong> no ranking<br>'
+      + (med === null || med === undefined ? 'Mediana do time sem dado' : 'Mediana do time ' + Math.round(med)) + '</small></div>'
+    : '<div class="ficha-medidor"><small>Sem dados suficientes, fora do ranking.<br>' + c.elegiveis + ' de ' + c.minimoIndicadores + ' indicadores com meta.</small></div>';
 
-  var linhas = c.detalhamento.map(function (it) {
-    var sem = !!it.semMeta;
-    return '<div class="comp-linha"><span>' + esc(it.label) + (sem ? ' (sem meta)' : '') + '</span><span class="num">peso ' + it.peso + '</span>'
-      + '<span>' + (sem ? numFmt(it.valorAlcancado) + ', sem meta' : numFmt(it.valorAlcancado) + ' de ' + numFmt(it.meta) + ', ' + it.achievementPct + '%' + (it.alemDaMetaPct > 0 ? ', ' + it.alemDaMetaPct + '% além da meta' : '')) + '</span>'
-      + '<span class="num">' + (it.semPontos ? 'sem pontos' : (sem || it.pontos === null ? 'fora da média' : it.pontos + ' pts')) + '</span></div>';
-  }).join('');
-
-  el.innerHTML = '<div class="hero-top">' + foto + '<div><div class="hero-eyebrow">CS</div><h1>' + esc(c.nome) + '</h1>'
-    + '<p class="hero-sub">' + esc(carteira) + ' na carteira, ' + esc(metaCarteira) + '</p><div class="hero-selos">' + selos + '</div></div></div>'
-    + '<div class="stats">'
-    + '<div class="stat"><div class="stat-label">Pontuação</div><div class="stat-valor">' + (temNota ? c.pontuacao : 'Sem nota') + '</div><div class="stat-sub">'
-      + (temNota ? c.elegiveis + ' indicadores com meta' : c.elegiveis + ' de ' + c.minimoIndicadores + ' indicadores com meta') + '</div></div>'
-    + '<div class="stat"><div class="stat-label">Posição</div><div class="stat-valor">' + (temNota ? c.posicao + 'º' : 'Fora') + '</div><div class="stat-sub">' + (temNota ? 'entre ' + c.totalRankeados + ' CS ranqueados' : 'sem número no ranking') + '</div></div>'
-    + '<div class="stat"><div class="stat-label">Carteira</div><div class="stat-valor">' + c.carteira.numConselhos + '</div><div class="stat-sub">' + esc(metaCarteira) + '</div></div>'
-    + '<div class="stat' + (acima ? ' alerta' : '') + '"><div class="stat-label">Pontos de advertência</div><div class="stat-valor">' + (pontosAtivos === null ? 'Erro' : pontosAtivos) + '</div><div class="stat-sub">ativos' + (acima ? ', acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE : '') + '</div></div>'
-    + '<div class="stat"><div class="stat-label">Health da Base</div><div class="stat-valor">' + esc(healthTxt) + '</div><div class="stat-sub">' + esc(healthSub) + '</div></div>'
-    + '</div>'
-    + '<details class="composicao"><summary>Como a pontuação foi composta</summary>' + linhas
-    + '<div class="comp-nota">Pontos são o peso vezes o aproveitamento na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos, e quem supera a meta passa de 100. A pontuação só existe com pelo menos ' + c.minimoIndicadores + ' indicadores com meta.</div></details>';
+  var hb = d.health.dado, health;
+  if (hb && !hb.semApuracao && hb.comPontosDecimos !== null && hb.comPontosDecimos !== undefined) {
+    var crit = hb.semPontosDecimos / 10, adv = (hb.acrescimoDecimos || 0) / 10;
+    var wc = Math.min(crit / HEALTH_BARRA_MAX_PCT_ * 100, 100), wa = Math.min(adv / HEALTH_BARRA_MAX_PCT_ * 100, 100 - wc);
+    health = '<div class="health-total"><span>Total</span><b' + (adv > 0 ? '' : '') + '>' + dec(hb.comPontosDecimos) + '</b></div>'
+      + '<div class="health-barra"><i style="width:' + wc.toFixed(1) + '%;background:var(--ink)"></i><i style="width:' + wa.toFixed(1) + '%;background:var(--gold)"></i></div>'
+      + '<div class="health-leg"><span><i style="background:var(--ink)"></i>' + dec(hb.semPontosDecimos) + ' críticos</span><span><i style="background:var(--gold)"></i>' + dec(hb.acrescimoDecimos || 0) + ' advertência</span></div>';
+  } else if (d.health.erro) {
+    health = '<div class="erro-secao" style="margin:0">Health da Base indisponível: ' + esc(d.health.erro) + '</div>';
+  } else {
+    health = '<div class="vazio">Sem apuração: ainda não há report com críticos e base.</div>';
+  }
+  el.innerHTML = '<div class="ficha-topo">' + foto + '<div class="ficha-nome">' + esc(c.nome) + '</div><div class="ficha-sub">' + esc(carteira) + '</div>' + medidor + '</div>'
+    + '<div class="ficha-sec"><h3>Health da base</h3>' + health + '</div>'
+    + '<div class="ficha-sec"><h3>Acompanhamento</h3><div id="fichaAcomp"></div></div>'
+    + '<div class="ficha-acoes"><button class="btn gold" type="button" data-ir-aba="um" data-abrir-um="1">Registrar 1:1</button><button class="btn" type="button" data-ir-aba="base" data-foco="advTipo">Advertência</button></div>';
+  renderFichaAcomp_();
+  renderNavegacaoCS_(d);
 }
+function renderFichaAcomp_() {
+  var el = document.getElementById('fichaAcomp');
+  if (!el || !DADOS_CS) return;
+  var d = DADOS_CS, adv = d.advertencias.dado, g = d.gtd.dado;
+  var linhas = [];
+  var pts = adv ? adv.pontuacaoAtiva : null;
+  var acima = pts !== null && pts > LIMIAR_ADVERTENCIA_DESTAQUE;
+  linhas.push(['Pontos ativos', pts === null ? 'Sem dado' : '<span class="tag' + (acima ? ' red' : (pts === LIMIAR_ADVERTENCIA_DESTAQUE ? ' gold' : '')) + '">' + pts + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE + '</span>']);
+  var tm = d.cabecalho.dado.time;
+  linhas.push(['GTD', g ? '<b>' + (g.taxa === null ? 'Sem taxa' : g.taxa + '%') + '</b>' + (tm && tm.medianaGtd !== null && tm.medianaGtd !== undefined ? ' <span class="faint">mediana ' + Math.round(tm.medianaGtd) + '%</span>' : '') : 'Sem dado']);
+  if (UM) {
+    var regs = UM.registros || [];
+    var abertos = (UM.itens || []).filter(function (i) { return i.status === 'backlog' || i.status === 'em_andamento'; }).length;
+    linhas.push(['Último 1:1', regs.length ? '<b>' + esc(dataBR(regs[0].data)) + '</b>' : 'Nenhum registrado']);
+    linhas.push(['Combinados abertos', '<b>' + abertos + '</b>']);
+  } else {
+    linhas.push(['Último 1:1', '…']); linhas.push(['Combinados abertos', '…']);
+  }
+  el.innerHTML = linhas.map(function (l) { return '<div class="ficha-linha"><span>' + l[0] + '</span><span>' + l[1] + '</span></div>'; }).join('');
+}
+
+// Anterior e próximo seguem a ordem do ranking que o servidor devolve em cabecalho.time.ordem.
+function renderNavegacaoCS_(d) {
+  var t = d.cabecalho.dado.time;
+  if (!t || !t.ordem) return;
+  var i = t.ordem.indexOf(CS_NOME);
+  var qs = '?mes=' + encodeURIComponent(document.getElementById('selMesCS').value) + '&ano=' + encodeURIComponent(document.getElementById('selAnoCS').value);
+  function ligar(id, nome, prefixo, sufixo) {
+    var a = document.getElementById(id);
+    if (!nome) { a.classList.add('off'); a.setAttribute('href', '#'); return; }
+    a.classList.remove('off'); a.setAttribute('href', '/gestor/cs/' + encodeURIComponent(nome) + qs);
+    a.textContent = prefixo + nome + sufixo;
+  }
+  if (i === -1) return;
+  ligar('csAnt', i > 0 ? t.ordem[i - 1] : null, '← ', '');
+  ligar('csProx', i < t.ordem.length - 1 ? t.ordem[i + 1] : null, '', ' →');
+}
+
+// ---------- onde estão os pontos que faltam ----------
+function renderPontosCS(d) {
+  var el = document.getElementById('secPontos');
+  if (d.cabecalho.erro) { el.innerHTML = erroSecao(d.cabecalho.erro); return; }
+  var op = d.cabecalho.dado.ondePontos;
+  if (!op || !op.itens) { el.innerHTML = '<div class="vazio" style="margin:18px">Sem detalhamento da pontuação para este período.</div>'; return; }
+  var c = d.cabecalho.dado;
+  var cab = '<div class="ph"><div><h2 id="h-pontos">' + (op.totalEmAberto === null ? 'Onde estão os pontos' : 'Onde estão os ' + dec1_(op.totalEmAberto) + ' pontos que faltam') + '</h2>'
+    + '<p>Cada barra é o peso do indicador. O preto é o que já foi feito; o hachurado é o que ainda falta.</p></div></div>';
+  if (c.pontuacao === null || c.pontuacao === undefined) {
+    el.innerHTML = cab + '<div class="vazio" style="margin:0 18px 18px">Sem dados suficientes: a pontuação só existe com pelo menos ' + c.minimoIndicadores + ' indicadores com meta.</div>';
+    return;
+  }
+  var ins = '';
+  if (op.insight) {
+    var i = op.insight;
+    ins = '<div class="insight"><b>' + esc(i.label) + ' sozinho responde por ' + dec1_(i.emAberto) + ' dos ' + dec1_(op.totalEmAberto) + ' pontos.</b> Bater a meta leva a pontuação de ' + i.scoreAtual + ' para ' + i.scoreNaMeta + '.</div>';
+  }
+  var maxPeso = Math.max.apply(null, op.itens.map(function (x) { return x.pesoNormalizado || 0; }).concat([1]));
+  var ordenados = op.itens.filter(function (x) { return !x.foraDaConta; }).concat(op.itens.filter(function (x) { return x.foraDaConta; }));
+  var linhas = ordenados.map(function (x) {
+    if (x.foraDaConta) {
+      return '<div class="pontos-linha fora"><div><b>' + esc(x.label) + '</b><small>' + (x.motivoFora === 'informativo' ? 'informativo, não pontua' : 'sem meta') + '</small></div>'
+        + '<div class="pontos-barra" style="width:30%;background:#fff"></div><div class="num">fora da conta</div></div>';
+    }
+    var larg = x.pesoNormalizado / maxPeso * 100, cheio = Math.min(x.conquistado / maxPeso * 100, larg);
+    var sub = (x.valorAlcancado === null ? 'sem dado' : numFmt(x.valorAlcancado)) + ' de ' + numFmt(x.meta) + ', peso ' + dec1_(x.pesoNormalizado);
+    return '<div class="pontos-linha"><div><b>' + esc(x.label) + '</b><small>' + esc(sub) + '</small></div>'
+      + '<div class="pontos-barra" style="width:' + larg.toFixed(1) + '%"><i style="width:' + (larg ? cheio / larg * 100 : 0).toFixed(1) + '%"></i></div>'
+      + '<div class="num"><b>' + dec1_(x.conquistado) + '</b> de ' + dec1_(x.pesoNormalizado) + (x.emAberto > 0 ? ' <span class="pontos-falta">−' + dec1_(x.emAberto) + '</span>' : '') + '</div></div>';
+  }).join('');
+  el.innerHTML = cab + ins + linhas + '<div class="pontos-leg"><span>Preto: pontos conquistados</span><span>Hachurado: pontos em aberto</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>';
+}
+
+// ---------- pauta do 1:1 (somente leitura) e GTD que pede atenção ----------
+function renderPautaCS_() {
+  var el = document.getElementById('secPauta');
+  if (!DADOS_CS) return;
+  var d = DADOS_CS, itens = [];
+  var abertos = UM ? (UM.itens || []).filter(function (i) { return i.status === 'backlog' || i.status === 'em_andamento'; }) : [];
+  abertos.sort(function (a, b) { return (b.vencido ? 1 : 0) - (a.vencido ? 1 : 0) || (b.prioridade === 'alta' ? 1 : 0) - (a.prioridade === 'alta' ? 1 : 0); });
+  abertos.slice(0, 3).forEach(function (i) {
+    itens.push({ cor: i.vencido ? 'red' : (i.prioridade === 'alta' ? 'gold' : ''), t: i.texto,
+      s: umRotuloTipo(i.tipo) + (i.prazo ? (i.vencido ? ', vencido há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') : ', prazo ' + dataBR(i.prazo)) : '') });
+  });
+  var radar = d.radar.dado;
+  if (radar) {
+    var comMeta = radar.filter(function (e) { return indEstado_(e) === 'critico' || indEstado_(e) === 'atencao'; });
+    comMeta.sort(function (a, b) { return (a.pct || 0) - (b.pct || 0); });
+    if (comMeta.length) itens.push({ cor: indEstado_(comMeta[0]) === 'critico' ? 'red' : 'gold', t: comMeta[0].label + ' está em ' + comMeta[0].pct + '% da meta', s: 'Indicador mais atrasado do mês.' });
+  }
+  var g = d.gtd.dado;
+  if (g && g.conselhos.length) {
+    var crit = g.conselhos.filter(function (c) { return c.etapasAtrasadas.length > 0; }).sort(function (a, b) { return (a.taxa === null ? 101 : a.taxa) - (b.taxa === null ? 101 : b.taxa); })[0];
+    if (crit) itens.push({ cor: 'red', t: crit.membro + ' com GTD em ' + (crit.taxa === null ? 'sem taxa' : crit.taxa + '%'), s: 'Encontro em ' + dataBR(crit.dataConselho) + ', ' + crit.etapasAtrasadas.length + (crit.etapasAtrasadas.length === 1 ? ' etapa atrasada.' : ' etapas atrasadas.') });
+  }
+  var cab = '<div class="ph"><h2 id="h-pauta">Para o próximo 1:1</h2><span class="count">' + itens.length + '</span></div>';
+  var corpo = itens.length ? itens.map(function (i) { return '<div class="pauta-item"><span class="dot ' + i.cor + '"></span><div><h4>' + esc(i.t) + '</h4><p>' + esc(i.s) + '</p></div></div>'; }).join('')
+    : '<div class="vazio" style="margin:0 18px 18px">Nada em aberto para a pauta. Os combinados e os sinais do mês aparecem aqui.</div>';
+  el.innerHTML = cab + corpo + '<div class="rodape-painel"><span>Somente leitura. Registre itens na aba 1:1.</span><button type="button" data-ir-aba="um">Pauta completa</button></div>';
+}
+function renderGtdAtencaoCS_(d) {
+  var el = document.getElementById('secGtdAtencao');
+  var cab = '<div class="ph"><h2 id="h-gtdatt">GTD que pede atenção</h2></div>';
+  if (d.gtd.erro) { el.innerHTML = cab + erroSecao(d.gtd.erro); return; }
+  var g = d.gtd.dado;
+  if (!g.conselhos.length) { el.innerHTML = cab + '<div class="vazio" style="margin:0 18px 18px">Nenhum ciclo de GTD em aberto para os conselhos deste CS.</div>'; return; }
+  var ord = g.conselhos.slice().sort(function (a, b) { return (a.taxa === null ? 101 : a.taxa) - (b.taxa === null ? 101 : b.taxa); });
+  var topo = ord.slice(0, 3);
+  var linhas = topo.map(function (c) {
+    var t = c.taxa === null || c.taxa === undefined ? 0 : c.taxa;
+    var cor = c.etapasAtrasadas.length ? 'var(--red)' : 'var(--ink)';
+    return '<div class="gtd-att"><div><b>' + esc(c.membro) + '</b><small>encontro ' + esc(dataBR(c.dataConselho)) + (c.etapasAtrasadas.length ? ', ' + c.etapasAtrasadas.length + (c.etapasAtrasadas.length === 1 ? ' atrasada' : ' atrasadas') : '') + '</small></div>'
+      + '<div class="bar"><span style="width:' + t + '%;background:' + cor + '"></span></div><b style="text-align:right;color:' + cor + '">' + (c.taxa === null ? 'sem taxa' : c.taxa + '%') + '</b></div>';
+  }).join('');
+  var resto = ord.length - topo.length;
+  el.innerHTML = cab + linhas + '<div class="rodape-painel"><span>' + (resto > 0 ? 'Outros ' + resto + (resto === 1 ? ' conselho' : ' conselhos') : 'Todos os conselhos mostrados') + '</span><button type="button" data-ir-aba="gtd">Todos os ' + g.conselhos.length + '</button></div>';
+}
+
+// ---------- abas ----------
+var ABAS_CS_ = ['diagnostico', 'indicadores', 'gtd', 'base', 'um'];
+function abrirAbaCS(chave, semUrl) {
+  if (ABAS_CS_.indexOf(chave) === -1) chave = 'diagnostico';
+  document.querySelectorAll('#abasCS button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-aba') === chave); b.setAttribute('aria-selected', String(b.getAttribute('data-aba') === chave)); });
+  document.querySelectorAll('.aba').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-aba') === chave); });
+  if (!semUrl) {
+    try { var u = new URL(window.location.href); u.searchParams.set('aba', chave); window.history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) { /* a aba abre do mesmo jeito */ }
+  }
+}
+document.addEventListener('click', function (ev) {
+  var t = ev.target && ev.target.closest ? ev.target.closest('[data-aba],[data-ir-aba]') : null;
+  if (!t) return;
+  var ir = t.getAttribute('data-ir-aba');
+  if (ir) {
+    abrirAbaCS(ir);
+    if (t.getAttribute('data-abrir-um') && UM) abrirFormUm('novo', {});
+    var foco = t.getAttribute('data-foco');
+    if (foco) { var f = document.getElementById(foco); if (f) f.focus(); }
+    return;
+  }
+  if (t.closest('#abasCS')) abrirAbaCS(t.getAttribute('data-aba'));
+});
 
 // ---------- indicadores do mês (09/10/2026) ----------
 // Radar sempre visível e um cartão por indicador, ordenado do mais longe da meta para o mais perto.
@@ -754,8 +949,11 @@ function umGravacaoHtml(g) {
 
 function renderUmAUm() {
   if (!UM) return;
-  var seloEl = document.getElementById('heroUmSelo');
-  if (seloEl) seloEl.innerHTML = umSeloHtml();
+  renderFichaAcomp_();
+  renderPautaCS_();
+  var abertosUm = (UM.itens || []).filter(function (i) { return i.status === 'backlog' || i.status === 'em_andamento'; }).length;
+  var contaUm = document.getElementById('contaUm');
+  contaUm.hidden = !abertosUm; contaUm.textContent = String(abertosUm);
   var abertos = (UM.itens || []).filter(function (i) { return i.status === 'backlog' || i.status === 'em_andamento'; });
   var fechados = (UM.itens || []).filter(function (i) { return i.status === 'realizado' || i.status === 'rejeitado'; });
   var doTipo = function (t) { return abertos.filter(function (i) { return i.tipo === t; }); };
@@ -1146,7 +1344,12 @@ document.addEventListener('click', evoAoClicar_);
 
 function renderTudoCS(d) {
   DADOS_CS = d;
-  renderHeroCS(d); renderRadarCS(d); renderGtdCS(d); renderCriticosCS(d); renderAdvertenciasCS(d);
+  var passos = [renderHeroCS, renderPontosCS, renderRadarCS, renderGtdCS, renderGtdAtencaoCS_, renderCriticosCS, renderAdvertenciasCS];
+  // cada seção é desenhada à parte: se uma quebrar, as outras seguem
+  passos.forEach(function (fn) { try { fn(d); } catch (e) { console.error(e); } });
+  try { renderPautaCS_(); } catch (e2) { console.error(e2); }
+  var g = d.gtd.dado, contaGtd = document.getElementById('contaGtd');
+  if (g && g.conselhos.length) { contaGtd.hidden = false; contaGtd.textContent = String(g.conselhos.length); } else { contaGtd.hidden = true; }
 }
 
 function carregarCS() {
@@ -1154,7 +1357,7 @@ function carregarCS() {
   carregarEvolucao();
   fetchJSON_('/api/gestor/cs/' + encodeURIComponent(CS_NOME) + '?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(renderTudoCS).catch(function (err) {
     document.getElementById('heroCS').innerHTML = erroSecao(err.message);
-    ['secRadar', 'secGtd', 'secCriticos', 'secAdvertencias'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
+    ['secPontos', 'secPauta', 'secGtdAtencao', 'secRadar', 'secGtd', 'secCriticos', 'secAdvertencias'].forEach(function (id) { document.getElementById(id).innerHTML = erroSecao(err.message); });
   });
 }
 
@@ -1190,6 +1393,8 @@ document.addEventListener('click', function (ev) {
 });
 
 (function inicializarCS() {
+  document.getElementById('tituloCS').textContent = CS_NOME;
+  document.getElementById('crumbNome').textContent = CS_NOME;
   var selMes = document.getElementById('selMesCS'), selAno = document.getElementById('selAnoCS');
   ['Visão Geral'].concat(MESES_CS).forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
   var params = new URLSearchParams(window.location.search);
@@ -1204,6 +1409,11 @@ document.addEventListener('click', function (ev) {
     window.history.replaceState(null, '', url.toString());
     carregarCS();
   }
+  var abaUrl = params.get('aba');
+  var hash = window.location.hash;
+  if (!abaUrl && hash === '#secUmAUm') abaUrl = 'um';
+  if (!abaUrl && hash === '#secGtd') abaUrl = 'gtd';
+  abrirAbaCS(abaUrl || 'diagnostico', !abaUrl);
   selMes.onchange = aoMudar; selAno.onchange = aoMudar;
   aoMudar();
   carregarUmAUm();

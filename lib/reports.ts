@@ -25,7 +25,8 @@ import {
 import type { FaixaPresencaChave, SemaforoChave, AgendaTurnoChave } from './constants';
 import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato } from './agenda-nomes';
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
-import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, type ScoreCS } from './pontuacao';
+import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, detalharScoreCS, type ScoreCS } from './pontuacao';
+import { mediana } from './evolucao';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
@@ -3504,6 +3505,30 @@ export async function healthBaseComESemPontos(sb: SupabaseClient, dados: DadosBr
   return { comPontosDecimos: com.healthBaseDecimos, semPontosDecimos: sem.healthBaseDecimos, acrescimoDecimos: com.acrescimoDecimos, pontosAtivos: com.pontosAtivos, semApuracao: com.semApuracao, semReport: !report, composicao: com.composicao };
 }
 
+// Onde estão os pontos que faltam: detalhe por indicador (detalharScoreCS) e a frase de insight por regra,
+// sem IA. O insight pega o indicador que mais deixa pontos em aberto e recalcula a pontuação com ele na
+// meta, pela mesma calcularScoreCS, mudando só esse indicador.
+function ondePontosCS(cs: VisaoGestorCS) {
+  const detalhe = detalharScoreCS(cs.pontuacao);
+  if (cs.pontuacao.estado !== 'com_pontuacao' || cs.pontuacao.score === null) return { ...detalhe, insight: null };
+  const topo = detalhe.itens.filter((i) => i.emAberto !== null && (i.emAberto as number) > 0)
+    .sort((a, b) => (b.emAberto as number) - (a.emAberto as number))[0];
+  if (!topo) return { ...detalhe, insight: null };
+  const indicadores: Record<string, { meta: number | null; alcancado: number | null; tipoMeta: 'min' | 'max' }> = {};
+  Object.keys(PESOS_SCORE_CS).forEach((chave) => {
+    if (chave === 'carteira') return;
+    const ind = (cs.indicadores as any)[chave];
+    const tipoMeta = RADAR_EIXOS.find((e) => e.chave === chave)?.tipoMeta || 'min';
+    indicadores[chave] = { meta: ind.meta, alcancado: chave === topo.chave ? ind.meta : ind.calculado, tipoMeta };
+  });
+  const cart = (cs.indicadores as any).numConselhos;
+  const simulada = calcularScoreCS(indicadores, { numConselhos: cart.calculado, metaPropria: cs.semMetaPropria ? null : cart.meta });
+  return {
+    ...detalhe,
+    insight: simulada.score === null ? null : { chave: topo.chave, label: topo.label, emAberto: topo.emAberto, scoreAtual: cs.pontuacao.score, scoreNaMeta: simulada.score },
+  };
+}
+
 export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMes: string, ano: number) {
   const [visao, ativos, dados] = await Promise.all([
     generateVisaoGestor(sb, seletorMes, ano, false), getCSListCompleto(sb), getDadosBrutos(sb),
@@ -3523,6 +3548,14 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
     pontuacao: cs.scoreReal, posicao, estado: cs.pontuacao.estado, elegiveis: cs.pontuacao.elegiveis,
     minimoIndicadores: PONTUACAO_MIN_INDICADORES_COM_META, detalhamento: cs.detalhamento,
     totalRankeados: visao.ranking.length,
+    ondePontos: ondePontosCS(cs),
+    // Time: ordem do ranking (depois quem está sem dados suficientes) para os botões anterior e próximo, e a
+    // mediana de pontuação e de GTD do time, pela mesma função mediana da evolução.
+    time: {
+      ordem: [...visao.ranking.map((r) => r.nome), ...visao.semDadosSuficientes],
+      medianaPontuacao: mediana(visao.ranking.map((r) => r.scoreReal)),
+      medianaGtd: mediana(visao.porCS.filter((c) => c.ativo && !c.ex).map((c) => (c.indicadores as any).cumprimentoGtd?.calculado)),
+    },
     carteira: { numConselhos: cs.indicadores.numConselhos.calculado, meta: cs.indicadores.numConselhos.meta, semMetaPropria: !!cs.semMetaPropria },
   }));
 

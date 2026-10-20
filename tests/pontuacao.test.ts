@@ -65,3 +65,21 @@ const r = rankingCSAtivos([
 assert.deepEqual(r.map((x) => x.nome), ['Bia', 'Ana', 'Vilker', 'Caio'], 'quem passa de 100 lidera; empate: elegíveis e alfabética');
 
 console.log('pontuacao: testes aprovados');
+
+// ---- onde estão os pontos (detalharScoreCS) ----
+import { detalharScoreCS } from '../lib/pontuacao.ts';
+{
+  const s = calcularScoreCS(metas(2), { numConselhos: 6, metaPropria: 6 });
+  const d = detalharScoreCS(s);
+  const cs = d.itens.find((i) => i.chave === 'casesSucesso')!;
+  // peso 18 de 85 elegíveis = 21,2; aproveitamento 40% conquista 8,5 e deixa 12,7 em aberto
+  assert.equal(cs.pesoNormalizado, 21.2); assert.equal(cs.conquistado, 8.5); assert.equal(cs.emAberto, 12.7);
+  assert.equal(d.itens.find((i) => i.chave === 'carteira')!.foraDaConta, true);
+  assert.equal(d.itens.find((i) => i.chave === 'carteira')!.motivoFora, 'informativo');
+  const soma = d.itens.reduce((t, i) => t + (i.pesoNormalizado || 0), 0);
+  assert.ok(Math.abs(soma - 100) < 0.5, 'pesos renormalizados somam 100');
+  const semMeta = calcularScoreCS({ ...metas(2), downsell: { meta: null, alcancado: 0, tipoMeta: 'max' } }, { numConselhos: 6, metaPropria: 6 });
+  const dd = detalharScoreCS(semMeta).itens.find((i) => i.chave === 'downsell')!;
+  assert.equal(dd.foraDaConta, true); assert.equal(dd.motivoFora, 'sem_meta'); assert.equal(dd.emAberto, null);
+}
+console.log('pontuacao: detalharScoreCS ok');
