@@ -8,6 +8,7 @@
 // continuam só em /api/gestor/visao-geral.
 import { NextRequest, NextResponse } from 'next/server';
 import { generateHomeResumoCS } from '@/lib/reports';
+import { dadosInicioCS } from '@/lib/inicio-cs';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,13 @@ export async function GET(req: NextRequest) {
   try {
     const { supabase, csNome } = await requireMoaiUser();
     const data = await generateHomeResumoCS(supabase, mes, ano, csNome);
-    return NextResponse.json(data);
+    // Campo aditivo da home v3: faixa do mês, metas com ritmo e pontos tomados do próprio CS, isolado para
+    // que um erro nele não derrube o resto da resposta (a home mostra a mensagem real só nessa seção).
+    const inicio = csNome
+      ? await dadosInicioCS(supabase, mes, ano, csNome).then((dado) => ({ dado, erro: null as string | null }))
+        .catch((e: any) => { console.error('home-resumo inicio', e); return { dado: null, erro: (e && e.message) || String(e) }; })
+      : { dado: null, erro: null as string | null };
+    return NextResponse.json({ ...data, inicio });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

@@ -186,7 +186,7 @@ export const FONTES_LINK = '<link rel="preconnect" href="https://fonts.googleapi
 
 // Comportamento do dock (abre por hover, foco e toque; fecha com Esc ou clique fora; Ctrl K foca a
 // busca) e função de sparkline. Script de navegador, sem dependências. Expõe:
-//  dockDefinirSync(texto, titulo), dockDefinirTime(nome), dockDefinirBadge(chave, n), dockMarcarAtivo(chave, rotulo), sparkDesenhar(raiz).
+//  dockDefinirSync(texto, titulo), dockLigarSync(aposSync), dockDefinirTime(nome), dockDefinirBadge(chave, n), dockMarcarAtivo(chave, rotulo), sparkDesenhar(raiz).
 // A busca dispara o evento "dock-busca" (detail.texto) quando o usuário aperta Enter.
 export const DOCK_SCRIPT = `
 function sparkDesenhar(raiz) {
@@ -203,8 +203,34 @@ function sparkDesenhar(raiz) {
 }
 function dockDefinirSync(texto, titulo) {
   var el = document.getElementById('dockSync'); if (!el) return;
-  el.lastChild.nodeValue = texto || 'sem sincronização';
-  el.title = titulo || (texto ? 'Monday sincronizado às ' + texto : 'Sem registro de sincronização');
+  el.lastChild.nodeValue = texto || 'Sincronizar';
+  el.title = titulo || (texto ? 'Monday sincronizado às ' + texto : 'Clique para sincronizar com o Monday agora');
+}
+// Liga o indicador de sincronização do dock: um clique sincroniza com o Monday agora (/api/sync-agora) e
+// chama aposSync ao terminar sem erro. O horário mostrado é o do último clique bem sucedido nesta sessão.
+function dockLigarSync(aposSync) {
+  var s = document.getElementById('dockSync'), ocupado = false;
+  if (!s) return;
+  s.style.cursor = 'pointer'; s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0');
+  function sincronizar() {
+    if (ocupado) return;
+    ocupado = true;
+    dockDefinirSync('Sincronizando', 'Sincronizando com o Monday');
+    fetch('/api/sync-agora', { method: 'POST', cache: 'no-store' }).then(function (r) {
+      if (r.status === 401 || r.status === 403) { window.location.href = '/login'; return null; }
+      return r.json().then(function (d) { if (!r.ok) throw new Error((d && d.error) || ('Erro ' + r.status)); return d; });
+    }).then(function (data) {
+      if (!data) return;
+      var quadros = Object.keys(data), comErro = quadros.filter(function (q) { return data[q] && data[q].status === 'erro'; });
+      var a = new Date(), hhmm = ('0' + a.getHours()).slice(-2) + ':' + ('0' + a.getMinutes()).slice(-2);
+      dockDefinirSync(comErro.length ? comErro.length + ' com erro' : hhmm, comErro.length ? comErro.length + ' de ' + quadros.length + ' quadros com erro' : 'Monday sincronizado às ' + hhmm);
+      if (typeof aposSync === 'function') aposSync();
+    }).catch(function (err) {
+      dockDefinirSync('Erro', 'Erro ao sincronizar: ' + err.message);
+    }).then(function () { ocupado = false; });
+  }
+  s.addEventListener('click', sincronizar);
+  s.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); sincronizar(); } });
 }
 function dockMarcarAtivo(chave, rotulo) {
   document.querySelectorAll('.grp').forEach(function (g) {
@@ -294,6 +320,7 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
     ] },
     { icone: 'i-gear', rotulo: 'Sistema', titulo: 'Sistema', itens: [
       { chave: 'perfis', href: '/gestor?aba=controlePerfis', icone: 'i-gear', titulo: 'Controle de perfis', sub: 'Vínculos e permissões' },
+      { chave: 'processos', href: '/processos', icone: 'i-file', titulo: 'Processos', sub: 'Fluxos e documentos' },
     ] },
   ];
 }
@@ -304,6 +331,7 @@ function gruposCS(o: OpcoesDock): Grupo[] {
       { chave: 'inicio', href: '/', icone: 'i-home', titulo: 'Início', sub: 'Seu dia e seu mês' },
       { chave: 'agenda', href: '/?aba=agenda', icone: 'i-cal', titulo: 'Agenda', sub: 'Conselhos e rounds' },
       { chave: 'meus-conselhos', href: '/?aba=conselhos', icone: 'i-layers', titulo: 'Meus conselhos', sub: 'Membros, presença e GTD' },
+      { chave: 'processos', href: '/processos', icone: 'i-file', titulo: 'Processos', sub: 'Fluxos e documentos' },
     ] },
     { icone: 'i-target', rotulo: 'Desempenho', titulo: 'Desempenho', itens: [
       { chave: 'indicadores', href: '/?aba=indicadores', icone: 'i-target', titulo: 'Meus indicadores', sub: 'Metas contra o realizado' },
@@ -340,8 +368,8 @@ function itemHtml(i: Item, ativo: string, b: BadgesDock): string {
 // os contadores reais (urgências da semana e report pendente).
 export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock = {}, opcoes: OpcoesDock = {}): string {
   const grupos = perfil === 'gestor' ? gruposGestor(opcoes) : gruposCS(opcoes);
-  const marcaSync = opcoes.horaSync ? esc(opcoes.horaSync) : 'sem sincronização';
-  const titSync = opcoes.horaSync ? 'Monday sincronizado às ' + esc(opcoes.horaSync) : 'Sem registro de sincronização';
+  const marcaSync = opcoes.horaSync ? esc(opcoes.horaSync) : 'Sincronizar';
+  const titSync = opcoes.horaSync ? 'Monday sincronizado às ' + esc(opcoes.horaSync) : 'Clique para sincronizar com o Monday agora';
   const busca = esc(opcoes.placeholderBusca || (perfil === 'gestor' ? 'Pergunte ou busque' : 'Buscar conselho ou membro'));
   const partes = grupos.map((g) => {
     const itemAtivo = g.itens.find((i) => i.chave === ativo);
@@ -361,5 +389,5 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
     partes.join('') +
     '<span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" id="dockBusca" aria-label="' + busca + '" placeholder="' + busca + '"><kbd>Ctrl K</kbd></label>' +
     '<span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>' +
-    '<span class="av" style="background:var(--gold);color:var(--side)" aria-label="Perfil">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</span></nav></header>';
+    '<a class="av" href="/auth/signout" style="background:var(--gold);color:var(--side)" title="Sair da conta" aria-label="Sair da conta">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</a></nav></header>';
 }

@@ -41,7 +41,7 @@ assert.deepEqual(faltaGestor, [], 'ids pedidos pelo script do gestor e ausentes 
 // ---- home (HTML e script no mesmo template) ----
 const scriptsHome = Array.from(DASHBOARD_HTML.matchAll(/<script>([\s\S]*?)<\/script>/g)).map((m) => m[1]).join('\n');
 assert.ok(scriptsHome.length > 0, 'a home tem script inline');
-const faltaHome = faltando(DASHBOARD_HTML, scriptsHome);
+const faltaHome = faltando(DASHBOARD_HTML.replace('<!--DOCK-->', montarDock('cs', 'inicio') + montarDock('gestor', 'area')), scriptsHome);
 assert.deepEqual(faltaHome, [], 'ids pedidos pelo script da home e ausentes do HTML: ' + faltaHome.join(', '));
 
 console.log('ids-html: testes aprovados');

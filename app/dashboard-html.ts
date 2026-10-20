@@ -18,6 +18,8 @@ import {
   REPORT_COMO_FOI_SEMANA, REPORT_STATUS_CHECKLIST, REPORT_CHECKLISTS, REPORT_VALIDADE_DIAS,
 } from '../lib/constants.ts';
 import { casaBusca } from '../lib/indicadores-base.ts';
+import { TEMA_CSS, ICONES_SVG, DOCK_SCRIPT } from '../lib/ui/tema.ts';
+import { LIMIAR_PRESENCA_ATENCAO } from '../lib/constants.ts';
 import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
 
 export const DASHBOARD_HTML = `<!DOCTYPE html>
@@ -31,12 +33,13 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
 <style>
+${TEMA_CSS}
 :root {
   /* M da MOAI usado como máscara do "M líquido" nos cards de KPI — valor real, copiado do doc "Index". */
   --m-white: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABiCAYAAACvUNYzAAAC70lEQVR42u2dMWtUQRSFzyz+An+AKVJZpQgWsUiVJlumSyeKpBEsIph/EBBttLHYFdLY2bqFlQS0iZDKSgKm9zeMzUCCqGyWO3PPnTkHAtns2zv33I839828xyblnCH5aaISCIAASFwAZgDyDX42Bq7fxg1rNatxBpwPDOC8xhmwika8lDLxbNkDvg9UfDOvlgDuAtgfoPj7xSvlVdD7AQCYeqxxGdpzPzD3NomSaI/Fr70QO+6o+NW81ARw1BGAo4gAepmKqnqYRDcQPfdWm3EfAxa/Sc6tAOwC2ApU/K2SczcAAOBLIADNcm19PyBCP2iao8cNmZ/ExW+emweAOwAOCIt/UHLrHgAAvCUE4JKT5z1hpn7glstkVOMsOTA8FfFm0LFpADwZdGwaAF7TAEUPYnowK49WfDYAAPC5kzHCAtgGsFMx/k4ZQwD+o09BY3cDoNYcTbkRaA1gbhjrF2msOfsZ8MAozm0AhwZxDkssJm9VAZwAuDSK9ZIkBoqnkyg9YI1k7s6knpo04eQMIZN6aXoVdM+p+c1JPTQHcAZgYRTrIYD1JY5bL8daaFE8hF4HTA1j/TA6xiN314VYq34QYt73WglbGjpb8m/UxffYinhhFGcTwN6113uEOVICeG4Y68Mfv28S5kgHoEY/CDfvewNwMcqak+d29COi4rvl4gngHYALguJflFyGA4AlV7Zd58BwRywNOjYNAAC4P8iYtAC+wm7TbhktypgCcE3TTscKA6DVnEy1BmF8LCWNUnxWAADwKkjMbgE8CxKzWwDW00ViNcn+vaGp5+JHAAAAj50+KwBFM6z2pN0l/vJFqQKwmtYafUYAjObyFMVUtC/v3jY6RgBW1Cn+vWn3rbx3KgB1NV3xPQGo3A9SRCO3EFcJV4+kpKgmIgMAgNfB8w8P4Gl0APofMgIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgVVDKOasKOgMEQJLG1G93i33gLv0k4gAAAABJRU5ErkJggg==);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', system-ui, sans-serif; background: #F5F5F5; color: #5D5D5D; font-size: 13px; -webkit-font-smoothing:antialiased; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: #5D5D5D; font-size: 13px; -webkit-font-smoothing:antialiased; }
 .num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; }
 svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; margin-right: 5px; }
 .section-title { font-size: 11px; font-weight: 800; color: #9F9F9F; text-transform: uppercase; letter-spacing: 0.8px; margin: 6px 0 14px; display:flex; align-items:center; gap:8px; }
@@ -595,14 +598,98 @@ ${GTD_CHECKLIST_STYLE}
 .farol-cs, .farol-pend { color: #5d5d5d; }
 .farol-acao { margin-top: 4px; color: #1d1d1b; font-weight: 600; }
 .farol-encerrados { color: #777; font-size: 12px; margin: 8px 0 0; }
+
+/* ===== Redesenho v3: início do CS ===== */
+body{background:var(--bg);}
+.topbar{background:transparent;border-bottom:0;position:static;justify-content:flex-end;padding:10px 28px 0;backdrop-filter:none;}
+.topbar .brand{display:none;}
+#screenInicio{display:none;}
+#screenInicio .top h1,#screenInicio .crumb{color:var(--ink)}
+#screenInicio .crumb{color:var(--ink3)}
+#screenInicio h2,#screenInicio h3{color:var(--ink)}
+.pn{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,20,20,.04),0 6px 18px rgba(20,20,20,.03);text-align:left;}
+.pn .ph h2{font-family:'Bricolage Grotesque',sans-serif;}
+.mes{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#141414,#1A1A1A 50%,#272727);color:#fff;display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));align-items:stretch;text-align:left}
+.mes::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 8% -20%,rgba(200,154,46,.4),transparent 55%),radial-gradient(circle at 100% 120%,rgba(61,139,95,.3),transparent 55%)}
+.mes > *{position:relative;padding:22px 24px}
+.mes > * + *{border-left:1px solid rgba(255,255,255,.1)}
+.mes-ey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.mes h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;line-height:1.25;margin:8px 0 0;letter-spacing:-0.01em;color:#fff}
+.mes h2 em{font-style:normal;color:var(--gold)}
+.mes-l{font-size:12px;color:#B5B2B2;font-weight:600}
+.mes-n{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:34px;font-weight:700;line-height:1;margin:8px 0 6px}
+.mes-n small{font-family:'Inter',sans-serif;font-size:13px;color:#9F9F9F;margin-left:3px}
+.mes-f{font-size:12px;color:#B5B2B2}
+.mes-prog{height:4px;border-radius:99px;background:rgba(255,255,255,.14);margin-top:10px;overflow:hidden}
+.mes-prog span{display:block;height:100%;background:var(--gold)}
+.mes .erro-secao{margin:18px;grid-column:1 / -1}
+.in-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+.in-col{display:flex;flex-direction:column;gap:22px;min-width:0}
+.meta{padding:13px 18px;border-top:1px solid var(--line)}
+.meta-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.meta-top b{font-size:13.5px;font-weight:600}
+.meta-top span{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px}
+.meta-top span small{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--ink3)}
+.meta-dica{font-size:12px;color:var(--ink2);margin-top:7px}
+.meta-dica.atras{color:var(--gold-ink);font-weight:600}
+.carteira{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:0 18px 18px}
+.cons{border:1px solid var(--line);border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+.cons:hover{border-color:var(--ink)}
+.cons-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cons-top b{font-size:13.5px;font-weight:600}
+.cons-l{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2)}
+.cons-l strong{color:var(--ink);font-weight:600}
+.cons.alerta{border-color:#EBC6C0;background:#FFFCFB}
+.in-vazio{padding:18px;font-size:13px;color:var(--ink2)}
+.in-sk{display:block;height:14px;margin:12px 18px;border-radius:6px;background:linear-gradient(90deg,var(--line) 25%,#F6F5F5 50%,var(--line) 75%);background-size:200% 100%;animation:inbrilho 1.3s linear infinite}
+@keyframes inbrilho{to{background-position:-200% 0}}
+#screenInicio .work{padding-bottom:40px}
+#screenInicio .gtdx-seletor{padding:0}
+.perfil-vazio{max-width:520px;margin:60px auto;text-align:left}
+.perfil-vazio .ico{width:44px;height:44px;border-radius:12px;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.perfil-vazio .ico svg{width:22px;height:22px;stroke:var(--gold-ink);fill:none;stroke-width:1.8}
+@media (max-width:1100px){.mes{grid-template-columns:1fr 1fr}.mes > :first-child{grid-column:1 / -1}.mes > :nth-child(2){border-left:0}.mes > :nth-child(n+2){border-top:1px solid rgba(255,255,255,.1)}.in-grid{grid-template-columns:1fr}}
+@media (max-width:560px){.mes > *{padding:18px}.mes > :nth-child(4){grid-column:1 / -1;border-left:0}.topbar{padding:8px 16px 0}}
+@media (prefers-reduced-motion:reduce){.in-sk{animation:none}}
 </style>
 </head>
 <body>
-
+${ICONES_SVG}
+<!--DOCK-->
 <div class="progress-bar" id="progressBar"><div class="progress-bar-fill"></div></div>
 <div class="topbar">
   <div class="brand" onclick="showHome()"><img class="brand-logo" src="/logo/moai-logo-black.png" alt="MOAI"></div>
   <div class="topbar-right" id="topbarRight"></div>
+</div>
+
+<div id="screenInicio" class="screen">
+  <div class="work">
+    <header class="top">
+      <div>
+        <div class="crumb" id="inData">&nbsp;</div>
+        <h1 id="inSaudacao">Olá</h1>
+      </div>
+      <div class="top-r" id="inAcaoTopo"></div>
+    </header>
+    <main class="content">
+      <section class="mes" id="inFaixa" aria-labelledby="h-mes"><span class="in-sk" style="grid-column:1/-1;margin:24px"></span></section>
+
+      <div class="in-grid">
+        <div class="in-col">
+          <section class="pn" id="inTarefas" aria-labelledby="h-tar"><span class="in-sk"></span><span class="in-sk"></span></section>
+          <section class="pn" aria-labelledby="h-ag">
+            <div class="ph"><div><h2 id="h-ag">Próximos 7 dias</h2><p>Conselhos e rounds com quem já confirmou.</p></div><div class="r"><a class="link" href="/?aba=agenda" data-aba-cs="agenda">Agenda completa</a></div></div>
+            <div class="pb" id="agendaInicio"></div>
+          </section>
+        </div>
+        <div class="in-col">
+          <section class="pn" id="inMetas" aria-labelledby="h-metas"><span class="in-sk"></span><span class="in-sk"></span></section>
+        </div>
+      </div>
+
+      <section class="pn" id="inCarteira" aria-labelledby="h-cart"><span class="in-sk"></span><span class="in-sk"></span></section>
+    </main>
+  </div>
 </div>
 
 <div id="screenHome" class="screen">
@@ -720,6 +807,7 @@ ${GTD_CHECKLIST_STYLE}
   </div>
 </div>
 
+<script>${DOCK_SCRIPT}</script>
 <script>window.AGENDA_CFG = ${agendaConfigJson()};</script>
 <script src="/agenda-cs.js"></script>
 <script>
@@ -862,20 +950,26 @@ var modoRestritoCS = false;
 var configRevelarIndicadoresTime = false;
 
 function inicializarSessao(){
-  fetch('/api/perfil', { cache: 'no-store' }).then(function(r){ return r.json(); })
+  var abaUrl = new URLSearchParams(window.location.search).get('aba');
+  // fetchJSON_ manda 401 e 403 para o /login e lança o erro real dos demais (um 500 não vira "perfil não vinculado")
+  fetchJSON_('/api/perfil')
     .then(function(perfil){
       souGestor = !!perfil.isGestor;
       meuCSNome = perfil.csNome || null;
       modoRestritoCS = !souGestor;
       renderTopbar();
-      if (souGestor) { iniciarHomeGestor(); return; }
+      // Gestor sem perfil de CS segue na home do time; quem tem perfil de CS (gestor ou não) abre o início do CS.
+      if (souGestor && !meuCSNome) { iniciarHomeGestor(); return; }
       if (!meuCSNome) { mostrarPerfilNaoVinculado(); return; }
       fetch('/api/config', { cache: 'no-store' }).then(function(r){ return r.json(); })
         .then(function(cfg){ configRevelarIndicadoresTime = !!cfg.revelarIndicadoresEquipe; })
         .catch(function(){})
-        .then(function(){ abrirPessoa(meuCSNome); });
+        .then(function(){
+          iniciarInicioCS();
+          if (abaUrl && ABAS_CS_HOME_[abaUrl]) abrirSecaoCS_(abaUrl, true);
+        });
     })
-    .catch(function(){});
+    .catch(function(err){ mostrarErroPerfil_(err); });
 }
 function iniciarHomeGestor(){
   var grid = document.getElementById('teamGrid');
@@ -896,62 +990,41 @@ function iniciarHomeGestor(){
 // números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
 // Perfis (nenhuma chamada a /api/cs, /api/equipe ou /api/home-resumo acontece daqui).
 function mostrarPerfilNaoVinculado(){
+  document.querySelector('.topbar').style.display = 'none';
+  document.getElementById('screenHome').style.display = 'block';
   document.getElementById('screenHome').innerHTML =
-    '<div class="perfil-vazio"><h2>Perfil ainda não vinculado</h2>' +
-    '<p>Seu login ainda não está associado a um perfil de CS. Fale com seu gestor pra vincular seu e-mail em Controle de Perfis — assim que isso acontecer, seus indicadores aparecem aqui.</p></div>';
+    '<div class="perfil-vazio"><div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>' +
+    '<h2 style="font-family:Bricolage Grotesque,sans-serif;font-size:24px;color:var(--ink);margin-bottom:8px">Perfil ainda não vinculado</h2>' +
+    '<p style="font-size:14px;line-height:1.6;color:var(--ink2)">Seu login ainda não está associado a um perfil de CS. Peça ao seu gestor para vincular o seu email em Controle de perfis. Assim que isso acontecer, o seu mês, as suas metas e a sua carteira aparecem aqui.</p></div>';
+}
+// Erro real ao carregar o perfil (por exemplo, um 500 do servidor): mostra a mensagem do erro, nunca o estado de perfil não vinculado.
+function mostrarErroPerfil_(err){
+  document.querySelector('.topbar').style.display = 'none';
+  document.getElementById('screenHome').style.display = 'block';
+  document.getElementById('screenHome').innerHTML =
+    '<div class="perfil-vazio"><h2 style="font-family:Bricolage Grotesque,sans-serif;font-size:24px;color:var(--ink);margin-bottom:8px">Não foi possível carregar o seu perfil</h2>' +
+    '<div class="erro-secao" role="alert" style="margin:12px 0">' + gtdEsc_(err && err.message ? err.message : err) + '</div>' +
+    '<button class="btn" type="button" onclick="window.location.reload()">Tentar de novo</button></div>';
 }
 
 function renderTopbar(){
-  var isPessoa = currentCS !== null && !modoRestritoCS;
-  var html = (isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
+  var inicio = document.getElementById('screenInicio');
+  var emInicio = inicio && inicio.style.display === 'block';
+  var isPessoa = currentCS !== null && !(modoRestritoCS || meuCSNome);
+  var html = emInicio ? '' : ((isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
     '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
-    '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>' +
-    '<span class="live-label"><span class="live-dot"></span>ao vivo</span>' +
-    '<span class="sync-wrap"><button class="sync-btn" id="btnSyncTopbar" onclick="sincronizarAgora()">Sincronizar agora</button><span class="sync-status-topbar" id="syncStatusTopbar"></span></span>' +
-    '<a class="processos-topbar-link" href="/processos">Processos</a>' +
-    (souGestor ? '<a class="gestor-topbar-link" href="/gestor">Visão da área</a>' : '') +
-    '<a class="logout-link" href="/auth/signout">Sair</a>';
+    '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>');
   document.getElementById('topbarRight').innerHTML = html;
+  document.querySelector('.topbar').style.display = emInicio ? 'none' : '';
   var selMes = document.getElementById('selMes');
+  if (!selMes) return;
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);
   MESES.forEach(function(m){ var o=document.createElement('option'); o.textContent=m; selMes.appendChild(o); });
   selMes.value = currentMes;
   document.getElementById('selAno').value = currentAno;
 }
 
-// Botão "Sincronizar agora" (movido pra cá em 25-26/09/2026: antes vivia só na Controle de perfis
-// do gestor, agora aparece pra qualquer usuário moai autenticado — /api/sync-agora só exige
-// requireMoaiUser(), não é mais restrito a gestor). Sempre sincroniza todos os boards de uma vez
-// (sem seletor de board, pra caber na topbar ao lado do filtro de mês/ano).
-var sincronizandoAgora = false;
-function sincronizarAgora(){
-  if (sincronizandoAgora) return;
-  sincronizandoAgora = true;
-  var btn = document.getElementById('btnSyncTopbar');
-  var status = document.getElementById('syncStatusTopbar');
-  if (btn) btn.disabled = true;
-  if (status) { status.textContent = 'Sincronizando…'; status.className = 'sync-status-topbar'; }
-  fetchJSON_('/api/sync-agora', { method: 'POST' })
-    .then(function (data) {
-      var boards = Object.keys(data);
-      carregarFarolSemana_();
-      var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
-      var status2 = document.getElementById('syncStatusTopbar');
-      if (status2) {
-        status2.textContent = comErro.length ? (comErro.length + ' de ' + boards.length + ' board(s) com erro.') : 'Sincronizado.';
-        status2.className = 'sync-status-topbar ' + (comErro.length ? 'erro' : 'ok');
-      }
-    })
-    .catch(function (err) {
-      var status3 = document.getElementById('syncStatusTopbar');
-      if (status3) { status3.textContent = 'Erro: ' + err.message; status3.className = 'sync-status-topbar erro'; }
-    })
-    .then(function () {
-      sincronizandoAgora = false;
-      var btn2 = document.getElementById('btnSyncTopbar');
-      if (btn2) btn2.disabled = false;
-    });
-}
+// O botão "Sincronizar agora" agora é o indicador de sincronização do dock (dockLigarSync em lib/ui/tema.ts).
 
 function onFiltroChange(){
   currentMes = document.getElementById('selMes').value;
@@ -970,7 +1043,237 @@ function onFiltroChange(){
   }
 }
 
+// ============ Início do CS (redesenho v3) ============
+// Três níveis: a faixa do mês (relance), tarefas, agenda e metas (o que fazer) e a carteira (detalhe).
+// Nada é calculado aqui: pontuação, mediana, ritmo, falta por semana e pontos tomados vêm de
+// /api/home-resumo (campo inicio); conselhos e GTD vêm de /api/cs/[nome]. O CS vê só a própria posição
+// em relação à mediana, nunca a lista de colegas. Cada seção tem carregando, vazio e erro próprios.
+var LIMIAR_PRESENCA_ATENCAO_ = ${LIMIAR_PRESENCA_ATENCAO};
+var inCS_ = null;
+var inOrdemCarteira_ = 'atencao';
+var inGtdLista_ = [];
+
+function inErro_(prefixo, err) {
+  return '<div class="erro-secao" role="alert">' + gtdEsc_(prefixo) + ': ' + gtdEsc_(err && err.message ? err.message : err) + '</div>';
+}
+function inNum_(v) { return Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+function inDM_(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
+function inPrimeiroNome_(n) { return String(n || '').split(' ')[0]; }
+
+function iniciarInicioCS() {
+  document.getElementById('screenHome').style.display = 'none';
+  document.getElementById('screenPessoa').style.display = 'none';
+  document.getElementById('screenInicio').style.display = 'block';
+  var agora = new Date();
+  var h = agora.getHours();
+  document.getElementById('inSaudacao').textContent = (h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite')) + ', ' + inPrimeiroNome_(meuCSNome);
+  var dataTxt = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('inData').textContent = dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1);
+  currentCS = null;
+  renderTopbar();
+  carregarInicio_();
+}
+
+function carregarInicio_() {
+  var nome = encodeURIComponent(meuCSNome), per = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
+  fetchJSON_('/api/home-resumo' + per).then(function (d) {
+    var ini = d.inicio || { dado: null, erro: 'Sem dados da home neste período.' };
+    renderInFaixa_(ini);
+    renderInMetas_(ini);
+  }).catch(function (err) {
+    document.getElementById('inFaixa').innerHTML = inErro_('Não foi possível carregar o seu mês', err);
+    document.getElementById('inMetas').innerHTML = inErro_('Não foi possível carregar as metas', err);
+  });
+  fetchJSON_('/api/cs/' + nome + per).then(function (d) {
+    inCS_ = d;
+    try { renderInTarefas_(d); } catch (e) { document.getElementById('inTarefas').innerHTML = inErro_('Não foi possível montar as tarefas', e); }
+    try { renderInCarteira_(); } catch (e2) { document.getElementById('inCarteira').innerHTML = inErro_('Não foi possível montar a carteira', e2); }
+  }).catch(function (err) {
+    document.getElementById('inTarefas').innerHTML = inErro_('Não foi possível carregar as tarefas', err);
+    document.getElementById('inCarteira').innerHTML = inErro_('Não foi possível carregar a carteira', err);
+  });
+  fetchJSON_('/api/cs/' + nome + '/report').then(function (d) {
+    var est = d.estado && d.estado.estado;
+    var pendente = est === 'pendente' || est === 'atrasado';
+    document.getElementById('inAcaoTopo').innerHTML = pendente
+      ? '<a class="btn pri" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener"><svg><use href="#i-file"/></svg>Enviar report da semana</a>' : '';
+    if (typeof dockDefinirBadge === 'function') dockDefinirBadge('report', pendente ? 1 : 0);
+  }).catch(function () { /* o report não bloqueia a home: sem o selo, nada aparece */ });
+  if (typeof agendaMontar === 'function') agendaMontar('agendaInicio', { csNome: meuCSNome });
+}
+
+function renderInFaixa_(ini) {
+  var el = document.getElementById('inFaixa');
+  if (ini.erro || !ini.dado) { el.innerHTML = inErro_('Não foi possível carregar o seu mês', ini.erro || 'sem dados'); return; }
+  var d = ini.dado, p = d.pontuacao, f = d.faixa, per = d.periodo;
+  var mesNome = String(per.mes).toLowerCase();
+  var frase;
+  if (!f.comMeta) frase = 'Ainda não há metas cadastradas para este mês. Fale com seu gestor para cadastrá-las.';
+  else if (!per.mesAtual) frase = 'Em ' + mesNome + ', ' + f.noRitmo + ' de ' + f.comMeta + ' metas dentro do esperado.';
+  else {
+    frase = 'No ritmo em ' + f.noRitmo + ' de ' + f.comMeta + ' metas.';
+    frase += f.foco
+      ? ' Para fechar o mês, foque em <em>' + gtdEsc_(f.foco.label) + '</em>: ' + (f.foco.falta === 1 ? 'falta 1' : 'faltam ' + inNum_(f.foco.falta)) + ', cerca de ' + inNum_(f.foco.porSemana) + ' por semana.'
+      : ' Continue assim até o fim do mês.';
+  }
+  var varTxt = '';
+  if (p.variacaoPontos !== null && p.variacaoPontos !== undefined && p.variacaoPontos !== 0) varTxt = (p.variacaoPontos > 0 ? '&#9650; ' : '&#9660; ') + Math.abs(p.variacaoPontos) + ' no mês · ';
+  var medTxt = p.contraMediana === 'acima' ? 'acima da mediana' : (p.contraMediana === 'abaixo' ? 'abaixo da mediana' : (p.contraMediana === 'na' ? 'na mediana' : ''));
+  var pontCol = p.nota === null || p.nota === undefined
+    ? '<span class="mes-n" style="font-size:22px">Sem nota</span><span class="mes-f">' + p.elegiveis + ' de ' + p.minimo + ' indicadores com meta</span>'
+    : '<span class="mes-n">' + p.nota + '<small>/100</small></span><span class="mes-f">' + varTxt + medTxt + '</span>';
+  var diasCol;
+  if (per.mesAtual && per.diasNoMes) {
+    var passou = (per.diasNoMes - per.diasRestantes) / per.diasNoMes * 100;
+    diasCol = '<span class="mes-n">' + per.diasRestantes + '<small>de ' + per.diasNoMes + '</small></span><div class="mes-prog"><span style="width:' + passou.toFixed(0) + '%"></span></div>';
+  } else diasCol = '<span class="mes-n" style="font-size:22px">Mês fechado</span><span class="mes-f">Sem dias restantes</span>';
+  var pt = d.pontosTomados;
+  var ptCol = pt
+    ? '<span class="mes-n">' + pt.ativos + '<small>' + (pt.ativos === 1 ? 'ativo' : 'ativos') + '</small></span><span class="mes-f">' + (pt.proximoVencimento ? 'Próximo vence em ' + inDM_(pt.proximoVencimento) : 'Nenhum ponto a vencer') + '</span>'
+    : '<span class="mes-n" style="font-size:22px">Sem dado</span><span class="mes-f">Não foi possível ler os pontos</span>';
+  el.innerHTML = '<div><span class="mes-ey">Seu ' + gtdEsc_(mesNome) + '</span><h2 id="h-mes">' + frase + '</h2></div>'
+    + '<div><span class="mes-l">Pontuação</span>' + pontCol + '</div>'
+    + '<div><span class="mes-l">Dias restantes</span>' + diasCol + '</div>'
+    + '<div><span class="mes-l">Pontos tomados</span>' + ptCol + '</div>';
+}
+
+function renderInMetas_(ini) {
+  var el = document.getElementById('inMetas');
+  var cab = '<div class="ph"><div><h2 id="h-metas">Metas do mês</h2><p>O traço marca onde você deveria estar hoje.</p></div><div class="r"><a class="link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div></div>';
+  if (ini.erro || !ini.dado) { el.innerHTML = cab + inErro_('Não foi possível carregar as metas', ini.erro || 'sem dados'); return; }
+  var d = ini.dado;
+  var linhas = d.metas.map(function (m) {
+    if (m.status === 'sem_meta') {
+      return '<div class="meta"><div class="meta-top"><b>' + gtdEsc_(m.label) + '</b><span style="color:var(--ink3);font-size:13px">sem meta</span></div><div class="meta-dica" style="margin-top:0">Sem meta cadastrada, fica fora da conta.</div></div>';
+    }
+    var pct = m.meta ? Math.min((m.realizado || 0) / m.meta * 100, 100) : 0;
+    var pace = m.meta && m.previsto !== null && m.previsto !== undefined ? Math.min(m.previsto / m.meta * 100, 100) : null;
+    var cor = m.status === 'atras' ? 'gold' : (m.status === 'atencao' ? 'gold' : '');
+    var dica;
+    if (m.falta === 0) dica = 'Meta batida.';
+    else if (m.status === 'atras') dica = 'Atrás do ritmo. ' + (m.falta === 1 ? 'Falta 1' : 'Faltam ' + inNum_(m.falta)) + (m.porSemana ? ', cerca de ' + inNum_(m.porSemana) + ' por semana.' : '.');
+    else dica = (m.status === 'atencao' ? 'Atenção. ' : (m.status === 'cedo' ? 'No prazo. ' : 'No ritmo. ')) + (m.falta === 1 ? 'Falta 1.' : 'Faltam ' + inNum_(m.falta) + '.');
+    return '<div class="meta"><div class="meta-top"><b>' + gtdEsc_(m.label) + '</b><span>' + inNum_(m.realizado || 0) + '<small> de ' + inNum_(m.meta) + '</small></span></div>'
+      + '<div class="bar"><span class="' + cor + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i class="pace" style="left:' + pace.toFixed(0) + '%"></i>' : '') + '</div>'
+      + '<div class="meta-dica' + (m.status === 'atras' ? ' atras' : '') + '">' + gtdEsc_(dica) + '</div></div>';
+  }).join('');
+  var c = d.carteira, semChurn = c.churn === 0;
+  var okCarteira = !(c.metaChurn !== null && c.metaChurn !== undefined && c.churn !== null && c.churn > c.metaChurn);
+  linhas += '<div class="meta"><div class="meta-top"><b>Carteira e churn</b><span style="color:' + (okCarteira ? 'var(--green)' : 'var(--red)') + ';font-size:14px">' + (okCarteira ? 'ok' : 'atenção') + '</span></div>'
+    + '<div class="meta-dica" style="margin-top:0">' + (c.numConselhos === null ? 'Sem dado da carteira' : c.numConselhos + (c.meta && !c.semMetaPropria ? ' de ' + c.meta : '') + (c.numConselhos === 1 ? ' conselho' : ' conselhos'))
+    + ', ' + (c.churn === null || c.churn === undefined ? 'churn sem dado' : (semChurn ? 'nenhum churn no mês' : c.churn + (c.churn === 1 ? ' churn no mês' : ' churns no mês'))) + '.</div></div>';
+  el.innerHTML = cab + linhas;
+}
+
+// Tarefas do GTD: o componente único de lib/gtd-checklist.ts, um conselho por vez, o que mais pede atenção primeiro.
+function renderInTarefas_(d) {
+  var el = document.getElementById('inTarefas');
+  var lista = (d.conselhos || []).filter(function (c) { return c.gtd; });
+  lista.sort(function (a, b) {
+    return (b.gtd.etapasAtrasadas || []).length - (a.gtd.etapasAtrasadas || []).length || (a.gtd.taxa === null ? 101 : a.gtd.taxa) - (b.gtd.taxa === null ? 101 : b.gtd.taxa);
+  });
+  inGtdLista_ = lista;
+  var atrasadas = lista.reduce(function (s, c) { return s + (c.gtd.etapasAtrasadas || []).length; }, 0);
+  var cab = '<div class="ph"><div><h2 id="h-tar">Tarefas do GTD</h2><p>Das etapas dos seus conselhos, do que mais pede atenção para o que menos pede.</p></div>' + (atrasadas ? '<span class="count">' + atrasadas + '</span>' : '') + '</div>';
+  if (!lista.length) { el.innerHTML = cab + '<div class="in-vazio">Nenhum ciclo de GTD em aberto para os seus conselhos. Quando um conselho entrar na agenda, as etapas aparecem aqui.</div>'; return; }
+  var opcoes = lista.map(function (c, i) {
+    return '<option value="' + i + '">' + gtdEsc_(nomeCurtoConselho_(c)) + (c.gtd.etapasAtrasadas && c.gtd.etapasAtrasadas.length ? ' (' + c.gtd.etapasAtrasadas.length + ' atrasadas)' : '') + '</option>';
+  }).join('');
+  el.innerHTML = cab + '<div class="pb"><div class="gtdx-seletor"><label for="inGtdSel">Conselho</label><select id="inGtdSel">' + opcoes + '</select></div><div id="inGtdCorpo">' + gtdCicloHtml_(lista[0].gtd) + '</div></div>';
+  document.getElementById('inGtdSel').addEventListener('change', function (ev) {
+    document.getElementById('inGtdCorpo').innerHTML = gtdCicloHtml_(inGtdLista_[Number(ev.target.value)].gtd);
+  });
+}
+
+// Minha carteira: um cartão por conselho, ordenado por atenção, próximo encontro ou produto.
+function inCartoes_() {
+  var lista = (inCS_ && inCS_.conselhos) || [];
+  return lista.map(function (c) {
+    var atrasadas = c.gtd && c.gtd.etapasAtrasadas ? c.gtd.etapasAtrasadas.length : 0;
+    var pres = c.registros ? Math.round(c.presente / c.registros * 100) : null;
+    var cor = atrasadas > 0 ? 'red' : (pres !== null && pres < LIMIAR_PRESENCA_ATENCAO_ ? 'gold' : 'green');
+    var nivel = parseConselhoNome(c.nome).nivel || '';
+    return { c: c, atrasadas: atrasadas, pres: pres, cor: cor, nivel: nivel, ord: cor === 'red' ? 0 : (cor === 'gold' ? 1 : 2), prox: c.proximaData && c.proximaDataEhFutura ? String(c.proximaData) : '9999' };
+  });
+}
+function renderInCarteira_() {
+  var el = document.getElementById('inCarteira');
+  var cards = inCartoes_();
+  var cab = function (n, seg) { return '<div class="ph"><div><h2 id="h-cart">Minha carteira</h2><p>' + n + (n === 1 ? ' conselho' : ' conselhos') + ', ' + (inOrdemCarteira_ === 'atencao' ? 'os que pedem atenção primeiro.' : (inOrdemCarteira_ === 'proximo' ? 'pelo próximo encontro.' : 'por produto.')) + '</p></div>' + seg + '</div>'; };
+  if (!cards.length) { el.innerHTML = cab(0, '') + '<div class="in-vazio">Nenhum conselho na sua carteira neste período.</div>'; return; }
+  var ord = cards.slice();
+  if (inOrdemCarteira_ === 'proximo') ord.sort(function (a, b) { return a.prox < b.prox ? -1 : (a.prox > b.prox ? 1 : 0); });
+  else if (inOrdemCarteira_ === 'produto') ord.sort(function (a, b) { return a.nivel.localeCompare(b.nivel, 'pt-BR'); });
+  else ord.sort(function (a, b) { return a.ord - b.ord || (a.pres === null ? 101 : a.pres) - (b.pres === null ? 101 : b.pres); });
+  var seg = '<div class="r"><div class="seg" id="inSegCarteira">' + [['atencao', 'Atenção'], ['proximo', 'Próximo encontro'], ['produto', 'Produto']].map(function (o) {
+    return '<button type="button" data-ordem="' + o[0] + '"' + (inOrdemCarteira_ === o[0] ? ' class="on"' : '') + '>' + o[1] + '</button>';
+  }).join('') + '</div></div>';
+  var visiveis = ord.slice(0, 5);
+  var html = visiveis.map(function (x) {
+    var c = x.c, f = c.proximaData && c.proximaDataEhFutura ? formatarDataConselho(c.proximaData) : null;
+    var gtd = c.gtd ? c.gtd.feitas + ' de ' + c.gtd.total : 'sem ciclo';
+    return '<a class="cons' + (x.cor === 'red' ? ' alerta' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + '?mes=' + encodeURIComponent(currentMes) + '&ano=' + currentAno + '">'
+      + '<div class="cons-top"><b>' + gtdEsc_(nomeCurtoConselho_(c)) + '</b><span class="dot ' + x.cor + '"></span></div>'
+      + '<div class="cons-l"><span>Presença</span><strong>' + (x.pres === null ? 'sem registro' : x.pres + '%') + '</strong></div>'
+      + '<div class="cons-l"><span>GTD</span><strong' + (x.atrasadas ? ' style="color:var(--red)"' : '') + '>' + gtdEsc_(gtd) + '</strong></div>'
+      + '<div class="cons-l"><span>Próximo</span><strong>' + (f ? f.dia + '/' + String(new Date(c.proximaData).getMonth() + 1).padStart(2, '0') : 'sem data') + '</strong></div></a>';
+  }).join('');
+  if (ord.length > 5) html += '<a class="cons" href="/?aba=conselhos" data-aba-cs="conselhos" style="justify-content:center;align-items:center;color:var(--ink2);font-weight:600;border-style:dashed">Mais ' + (ord.length - 5) + ' conselhos &rarr;</a>';
+  el.innerHTML = cab(ord.length, seg) + '<div class="carteira">' + html + '</div>';
+  document.getElementById('inSegCarteira').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-ordem]');
+    if (!b) return;
+    inOrdemCarteira_ = b.getAttribute('data-ordem');
+    renderInCarteira_();
+  });
+}
+
+// ---------- navegação do dock para o CS: ?aba= abre a seção certa sem recarregar ----------
+// inicio mostra a home v3; as demais chaves abrem a página do próprio CS na aba e no bloco correspondentes.
+var ABAS_CS_HOME_ = {
+  agenda: { aba: 'aba-conselhos', alvo: 'agendaPessoa', dock: 'agenda' },
+  conselhos: { aba: 'aba-conselhos', alvo: 'conselhos', dock: 'meus-conselhos' },
+  indicadores: { aba: 'aba-mes', alvo: 'indicadores', dock: 'indicadores' },
+  advertencias: { aba: 'aba-acompanhamento', alvo: 'advertencias', dock: 'pontos' },
+  report: { aba: 'aba-acompanhamento', alvo: 'report', dock: 'report' }
+};
+function abrirSecaoCS_(chave, semUrl) {
+  if (!meuCSNome) return;
+  var cfg = ABAS_CS_HOME_[chave];
+  if (!cfg) {
+    document.getElementById('screenPessoa').style.display = 'none';
+    document.getElementById('screenInicio').style.display = 'block';
+    currentCS = null; renderTopbar();
+    if (typeof dockMarcarAtivo === 'function') dockMarcarAtivo('inicio');
+  } else {
+    document.getElementById('screenInicio').style.display = 'none';
+    if (currentCS !== meuCSNome) abrirPessoa(meuCSNome);
+    else document.getElementById('screenPessoa').style.display = 'block';
+    showTab(cfg.aba);
+    var alvo = document.getElementById(cfg.alvo);
+    if (alvo && alvo.scrollIntoView) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (typeof dockMarcarAtivo === 'function') dockMarcarAtivo(cfg.dock);
+  }
+  if (!semUrl) {
+    try { var u = new URL(window.location.href); if (cfg) u.searchParams.set('aba', chave); else u.searchParams.delete('aba'); window.history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) { /* a seção abre do mesmo jeito */ }
+  }
+  window.scrollTo(0, 0);
+}
+document.addEventListener('click', function (ev) {
+  var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+  if (!a || !meuCSNome || !document.getElementById('screenInicio')) return;
+  var u;
+  try { u = new URL(a.href); } catch (e) { return; }
+  if (u.origin !== window.location.origin || u.pathname !== '/') return;
+  var chave = u.searchParams.get('aba');
+  if (chave && !ABAS_CS_HOME_[chave]) return;
+  ev.preventDefault();
+  abrirSecaoCS_(chave || null);
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+});
+
 renderTopbar();
+dockLigarSync(function(){ if (meuCSNome && document.getElementById('screenInicio').style.display === 'block') carregarInicio_(); });
 inicializarSessao();
 
 // Mensagem de quem tentou abrir /gestor sem ser gestor e foi redirecionado de volta pra cá pelo

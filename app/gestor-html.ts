@@ -1671,30 +1671,7 @@ document.getElementById('mapaOrdem').addEventListener('click', function (ev) {
 document.getElementById('filaVerTodas').addEventListener('click', function () { filaFiltro_ = 'todas'; filaExpandida_ = true; renderFilaAcao_(); });
 document.getElementById('filaMais').addEventListener('click', function () { filaExpandida_ = !filaExpandida_; renderFilaAcao_(); });
 
-function sincronizarAgoraGestor_() {
-  if (sincronizandoGestor_ || typeof dockDefinirSync !== 'function') return;
-  sincronizandoGestor_ = true;
-  dockDefinirSync('Sincronizando', 'Sincronizando com o Monday');
-  fetchJSON_('/api/sync-agora', { method: 'POST' }).then(function (data) {
-    var boards = Object.keys(data);
-    var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
-    var agora = new Date();
-    var hhmm = ('0' + agora.getHours()).slice(-2) + ':' + ('0' + agora.getMinutes()).slice(-2);
-    dockDefinirSync(comErro.length ? comErro.length + ' com erro' : hhmm, comErro.length ? comErro.length + ' de ' + boards.length + ' quadros com erro' : 'Monday sincronizado às ' + hhmm);
-    carregarVisaoGeral(); carregarAcoes(); carregarComplementos_();
-  }).catch(function (err) {
-    dockDefinirSync('Erro', 'Erro ao sincronizar: ' + err.message);
-  }).then(function () { sincronizandoGestor_ = false; });
-}
-var sincronizandoGestor_ = false;
-(function ligarSyncDock_() {
-  var s = document.getElementById('dockSync');
-  if (!s) return;
-  s.style.cursor = 'pointer';
-  s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0');
-  s.addEventListener('click', sincronizarAgoraGestor_);
-  s.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); sincronizarAgoraGestor_(); } });
-})();
+dockLigarSync(function () { carregarVisaoGeral(); carregarAcoes(); carregarComplementos_(); });
 
 // ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
 // Bloco separado do ranking/radar por CS acima — olha a rede inteira de conselhos ativos no mesmo
