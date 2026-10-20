@@ -10,63 +10,47 @@
 // versão foi descartada). Nenhuma lógica de dados mudou: os valores, o score (scoreReal), os
 // alertas e a divergência continuam vindo prontos de generateVisaoGestor() em lib/reports.ts; este
 // arquivo só lê e desenha o que a API já calcula, nunca recalcula nada por conta própria.
+//
+// Redesenho v3 (20/10/2026): a camada visual vem de lib/ui/tema.ts (tokens, dock, ícones e sparkline). A
+// Visão da área foi reorganizada em KPIs, Mapa do time, Fila de ação e Rede de conselhos; as demais abas
+// mantêm o conteúdo e ganham só o tema e o dock.
 
-import { FAIXAS_PRESENCA } from '../lib/constants.ts';
+import { FAIXAS_PRESENCA, SCORE_FAIXA_SAUDAVEL, SCORE_FAIXA_ATENCAO, MAPA_RITMO_ATRASADOS_ACAO, INSIGHT_ADVERTENCIA_ALERTA_PONTOS } from '../lib/constants.ts';
 import { RADAR_SVG_SCRIPT } from '../lib/radar-svg.ts';
+import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema.ts';
 
-export const GESTOR_STYLE = `
+export const GESTOR_STYLE = TEMA_CSS + `
 :root{
-  --cinza-fundo:#F5F5F5; --preto-tinta:#1A1A1A; --preto-profundo:#141414; --grafite:#272727;
-  --branco:#FFFFFF; --cinza-texto:#5D5D5D; --cinza-apoio:#9F9F9F;
-  --cinza-linha:#C6C4C4; --cinza-borda:#D8D5D5; --cinza-superficie:#E9E9E9;
-  --vermelho:#C0433D; --dourado:#C89A2E; --verde:#3D8B5F;
+  /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts), para as abas ainda não redesenhadas */
+  --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
+  --branco:var(--surface); --cinza-texto:var(--ink2); --cinza-apoio:var(--ink3);
+  --cinza-linha:var(--line2); --cinza-borda:var(--line2); --cinza-superficie:var(--line);
+  --vermelho:var(--red); --dourado:var(--gold); --verde:var(--green);
 }
 .gestor-page *{box-sizing:border-box;}
+.gestor-page{margin:0;color:var(--ink);font-family:'Inter',sans-serif;}
+.gestor-page h1,.gestor-page h2,.gestor-page h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
 .gestor-page{margin:0;background:var(--cinza-fundo);color:var(--preto-tinta);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
 .gestor-page h1,.gestor-page h2,.gestor-page h3{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-0.01em;}
 .page{max-width:1180px;margin:0 auto;padding:0 28px 80px;}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0;flex-wrap:wrap;gap:12px;}
-.topbar-left{display:flex;align-items:center;gap:14px;}
-.voltar-btn{
   display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--cinza-texto);
   text-decoration:none;padding:7px 14px 7px 10px;border-radius:999px;border:1px solid var(--cinza-borda);
   background:var(--branco);
 }
-.voltar-btn:hover{background:var(--cinza-superficie);}
-.logo-mark{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;letter-spacing:0.02em;}
-.topbar-divider{width:1px;height:18px;background:var(--cinza-linha);}
-.topbar-title{font-size:14px;color:var(--cinza-texto);font-weight:500;}
-.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.pill{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:500;}
-.pill-select{font-size:12px;padding:6px 12px;border-radius:999px;background:var(--branco);border:1px solid var(--cinza-borda);color:var(--cinza-texto);font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;}
-.pill-select:hover{border-color:var(--preto-tinta);}
 
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--cinza-linha);margin-bottom:32px;}
-.tab-btn{
   font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--cinza-apoio);
   background:none;border:none;padding:12px 4px;margin-right:24px;cursor:pointer;
   border-bottom:2px solid transparent;
 }
-.tab-btn.active{color:var(--preto-tinta);border-bottom-color:var(--dourado);}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 
-.hero{position:relative;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#141414 0%,#1A1A1A 48%,#272727 100%);padding:52px 44px 44px;color:var(--branco);}
-.hero::before{content:"";position:absolute;inset:0;
   background:radial-gradient(circle at 14% -10%, rgba(200,154,46,0.38), transparent 55%),
              radial-gradient(circle at 100% 110%, rgba(61,139,95,0.28), transparent 55%);
   pointer-events:none;}
-.hero-content{position:relative;z-index:1;max-width:640px;}
-.hero-eyebrow{display:inline-block;font-size:11px;letter-spacing:0.14em;font-weight:600;color:var(--dourado);margin-bottom:14px;}
-.hero h1{font-size:34px;font-weight:700;margin:0 0 12px;line-height:1.15;}
-.hero-sub{font-size:14px;line-height:1.6;color:#C6C4C4;margin:0 0 32px;max-width:520px;}
-.hero-stats{position:relative;z-index:1;display:flex;gap:40px;flex-wrap:wrap;margin-top:8px;}
-.hero-stat-value{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:40px;display:block;line-height:1;}
-.hero-stat-label{font-size:12px;color:#9F9F9F;margin-top:8px;display:block;}
-.hero-stat:nth-child(1) .hero-stat-value{color:var(--dourado);}
-.hero-stat:nth-child(2) .hero-stat-value{color:var(--vermelho);}
-.hero-stat:nth-child(3) .hero-stat-value{color:var(--branco);}
 
 .block{margin-top:56px;}
 .block-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
@@ -75,102 +59,7 @@ export const GESTOR_STYLE = `
 .toggle-inline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--cinza-texto);font-weight:600;cursor:pointer;white-space:nowrap;}
 .toggle-inline input{width:16px;height:16px;cursor:pointer;accent-color:var(--preto-tinta);}
 
-.ranking-list{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;overflow:hidden;}
-.rank-var{display:block;font-size:11px;color:var(--cinza-texto);margin-top:2px;}
-.rank-var.alerta{color:var(--vermelho);font-weight:600;}
-.rank-var a{color:inherit;text-decoration:underline;}
-.rank-row{display:grid;grid-template-columns:32px 1fr 200px 64px;align-items:center;gap:18px;padding:16px 22px;border-bottom:1px solid var(--cinza-linha);}
-.rank-row:last-child{border-bottom:none;}
-.rank-pos{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px;color:var(--cinza-apoio);}
-.rank-name-wrap{display:flex;align-items:center;gap:10px;}
-.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.rank-name{font-size:14px;font-weight:600;}
-.rank-bar-bg{position:relative;height:8px;border-radius:99px;background:var(--cinza-superficie);overflow:hidden;}
-.rank-bar-mark{position:absolute;top:0;bottom:0;width:2px;background:var(--preto-tinta);opacity:.55;}
-.rank-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--dourado),var(--verde));}
-.rank-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;text-align:right;}
 
-.cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px;}
-.cs-card{position:relative;background:var(--branco);border:1px solid var(--cinza-borda);border-radius:24px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .15s ease,box-shadow .15s ease;outline:none;}
-.cs-card:hover,.cs-card:focus-visible{transform:translateY(-3px);box-shadow:0 12px 28px rgba(20,20,20,0.12);}
-.cs-card:focus-visible{border-color:var(--dourado);}
-.cs-card-foto-wrap{position:relative;aspect-ratio:1/1;background:var(--grafite);overflow:hidden;}
-.cs-card-foto{width:100%;height:100%;object-fit:cover;display:block;}
-.cs-card-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:64px;color:#fff;}
-.cs-card-pos{position:absolute;top:12px;left:12px;font-size:11px;font-weight:800;padding:5px 11px;border-radius:99px;background:var(--dourado);color:var(--preto-tinta);}
-.cs-card-pos.sem{background:rgba(20,20,20,0.72);color:#fff;font-weight:700;}
-.cs-card-over{position:absolute;left:0;right:0;bottom:0;padding:34px 16px 12px;background:linear-gradient(180deg,rgba(20,20,20,0),rgba(20,20,20,0.82));color:#fff;}
-.cs-card-nome{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;line-height:1.15;}
-.cs-card-body{padding:14px 16px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.cs-card-score{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:30px;line-height:1;}
-.cs-card-score-lbl{font-size:11px;color:var(--cinza-texto);margin-top:3px;}
-.cs-card-semdados{font-size:12.5px;font-weight:600;color:var(--cinza-texto);line-height:1.35;}
-.cs-nota{font-size:12px;color:var(--cinza-texto);margin-top:14px;}
-.acoes-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;margin-top:28px;align-items:start;}
-@media (max-width:980px){.acoes-grid{grid-template-columns:1fr;}}
-.acoes-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:24px;padding:24px;}
-.acoes-card h2{font-size:21px;font-weight:700;margin:0 0 4px;}
-.acoes-sub{font-size:12.5px;color:var(--cinza-texto);margin:0 0 16px;line-height:1.5;}
-.acoes-faixa{padding:16px 0;border-top:1px solid #EFEDED;}
-.acoes-faixa:first-of-type{border-top:none;padding-top:0;}
-.acoes-faixa-titulo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:700;font-size:14px;margin-bottom:10px;}
-.acoes-faixa-titulo span{font-weight:500;font-size:12px;color:var(--cinza-texto);}
-.cont-linha{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-.cont{font-size:12px;font-weight:700;padding:5px 12px;border-radius:99px;background:var(--cinza-fundo);color:var(--cinza-texto);}
-.cont.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
-.cont.ambar{background:#FBF1DA;color:#8A6410;border:1px solid #EBD39C;}
-.rep-area-resumo { font-size:14px; margin-bottom:10px; }
-.rep-area-resumo.alerta { color:#8A6410; }
-.rep-area-pilulas { display:flex; flex-wrap:wrap; gap:8px; }
-.rep-pilula { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:5px 10px; border-radius:999px; border:1px solid var(--cinza-borda); background:var(--cinza-superficie); }
-.rep-pilula.enviado_no_prazo { color:var(--verde); }
-.rep-pilula.enviado_com_atraso, .rep-pilula.atrasado { color:var(--vermelho); border-color:#EBC6C0; background:#FBEEEC; }
-.rep-pilula.pendente { color:var(--cinza-texto); }
-.rep-pilula.ambar { border-color:#EBD39C; background:#FBF1DA; color:#8A6410; }
-.rep-cobrar { font-size:11px; font-weight:700; text-decoration:underline; color:inherit; }
-.rep-area-critica { margin-top:10px; font-size:13px; color:var(--vermelho); }
-.health-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
-.health-card { border:1px solid var(--cinza-borda); border-radius:10px; padding:12px; background:var(--cinza-superficie); }
-.health-card-nome { font-size:13px; font-weight:700; }
-.health-card-valor { font-size:22px; font-weight:800; margin:4px 0; }
-.health-card-detalhe { font-size:12px; color:var(--cinza-texto); }
-.health-selo { display:inline-block; margin-top:6px; font-size:11px; font-weight:700; color:#8A6410; }
-.chips-nomes{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
-.chip-nome{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;}
-.chip-nome.vermelho{background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;}
-.chip-nome.ambar{background:#FBF1DA;color:#8A6410;border:1px solid #EBD39C;}
-.urg-cs{border-top:1px solid #EFEDED;}
-.urg-cs:first-of-type{border-top:none;}
-.urg-cs > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 0;font-size:13.5px;}
-.urg-cs > summary::-webkit-details-marker{display:none;}
-.urg-cs > summary::before{content:"▸";color:var(--cinza-apoio);font-size:11px;width:10px;}
-.urg-cs[open] > summary::before{content:"▾";}
-.urg-cs-nome{font-weight:700;min-width:70px;}
-.urg-cs-muted{color:var(--cinza-texto);font-size:12.5px;}
-.urg-lista{padding:0 0 12px 20px;}
-.urg-item{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:7px 0;border-top:1px solid #F3F1F1;font-size:12.5px;}
-.urg-item:first-child{border-top:none;}
-.urg-item b{font-weight:600;}
-.urg-item .quando{font-weight:700;text-align:right;white-space:nowrap;}
-.urg-item .quando.vermelho{color:var(--vermelho);}
-.urg-item .quando.ambar{color:#8A6410;}
-.urg-item .detalhe{font-size:11.5px;color:var(--cinza-texto);}
-.acoes-rodape{margin-top:14px;font-size:11.5px;color:var(--cinza-apoio);line-height:1.5;}
-.ins-item{padding:14px 0;border-top:1px solid #EFEDED;}
-.ins-item:first-of-type{border-top:none;padding-top:0;}
-.ins-topo{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
-.ins-sev{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:99px;}
-.ins-sev.alta{background:#FBEEEC;color:var(--vermelho);}
-.ins-sev.media{background:#FBF1DA;color:#8A6410;}
-.ins-sev.baixa{background:var(--cinza-superficie);color:var(--cinza-texto);}
-.ins-oque{font-size:13.5px;font-weight:600;line-height:1.4;}
-.ins-num{font-size:12.5px;margin-top:5px;}
-.ins-num b{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;}
-.ins-num span{color:var(--cinza-texto);}
-.ins-acao{font-size:12.5px;margin-top:6px;line-height:1.5;}
-.ins-quem{font-size:12px;color:var(--cinza-texto);margin-top:4px;}
-.ins-mais{margin-top:10px;background:none;border:none;color:var(--dourado);font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit;padding:0;}
-.acoes-erro{padding:12px 14px;border-radius:12px;background:#FBEEEC;color:var(--vermelho);border:1px solid #EBC6C0;font-size:12.5px;line-height:1.5;}
 
 .radar-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:18px 18px 8px;display:flex;flex-direction:column;align-items:center;}
 .radar-card-head{width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
@@ -193,7 +82,6 @@ export const GESTOR_STYLE = `
 .diverg-media{background:rgba(200,154,46,0.15);color:var(--dourado);}
 .diverg-baixa{background:rgba(61,139,95,0.12);color:var(--verde);}
 
-.acoes-stack{margin-top:28px;}
 .nps-seletor{margin:4px 0 6px;}
 .nps-cobertura-wrap{margin:14px 0 6px;}
 .nps-cobertura{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:14px;padding:10px 16px 10px 10px;border:1px solid var(--cinza-borda);border-radius:999px;background:var(--branco);}
@@ -238,69 +126,6 @@ export const GESTOR_STYLE = `
 .nps-leg-ant{background:var(--dourado);}
 .nps-leg-crit{background:var(--vermelho);}
 .nps-leg-elog{background:#4A4A4A;}
-.gtd-graficos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px;margin-top:14px;}
-@media (max-width:900px){.gtd-graficos{grid-template-columns:1fr;}}
-.gtd-grafico h4{font-size:14px;margin:0 0 2px;}
-.gtd-sub{font-size:12px;color:var(--cinza-apoio);margin:0 0 12px;}
-.gtd-linha{display:grid;grid-template-columns:minmax(90px,150px) minmax(0,1fr) 36px;gap:10px;align-items:center;margin-bottom:9px;}
-.gtd-rotulo{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.gtd-barra{display:flex;height:16px;border-radius:999px;overflow:hidden;background:var(--cinza-superficie);}
-.gtd-seg{display:block;height:100%;position:relative;}
-.gtd-seg-atrasada{background:var(--vermelho);}
-.gtd-seg-avencer{background:var(--dourado);}
-.gtd-seg-emdia{background:#D9D6D0;}
-.gtd-seg.clicavel{cursor:pointer;}
-.gtd-seg.clicavel:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:2px;}
-.gtd-seg b{position:absolute;right:5px;top:0;line-height:16px;font-size:11px;color:var(--branco);}
-.gtd-total{font-size:12px;text-align:right;color:var(--cinza-texto);}
-.painel-lateral{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--branco);box-shadow:-8px 0 30px rgba(0,0,0,0.12);z-index:50;overflow:auto;padding:20px;box-sizing:border-box;}
-.painel-lateral[hidden]{display:none;}
-.painel-lateral-topo{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;font-size:15px;}
-.painel-fechar{border:none;background:var(--preto-tinta);color:var(--branco);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;}
-.ritmo-topo{display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;margin:6px 0 18px;}
-.ritmo-hero b{display:block;font-size:30px;line-height:1.1;font-family:'Bricolage Grotesque',sans-serif;}
-.ritmo-hero span{font-size:13px;color:var(--cinza-texto);}
-.ritmo-dist{display:flex;height:14px;flex:1 1 260px;min-width:200px;border-radius:999px;overflow:hidden;background:var(--cinza-superficie);}
-.ritmo-dist i{display:block;height:100%;}
-.ritmo-legenda{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--cinza-texto);width:100%;}
-.ritmo-legenda span{display:inline-flex;align-items:center;gap:6px;}
-.ritmo-legenda i{width:9px;height:9px;border-radius:50%;display:inline-block;}
-.ritmo-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
-@media (max-width:980px){.ritmo-grade{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media (max-width:640px){.ritmo-grade{grid-template-columns:1fr;}}
-.ritmo-card{border:1px solid var(--cinza-borda);border-radius:20px;padding:18px;background:var(--branco);cursor:pointer;display:flex;flex-direction:column;gap:12px;}
-.ritmo-card.com-atras{border-color:rgba(192,67,61,0.45);}
-.ritmo-card:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;}
-.ritmo-cab{display:flex;align-items:center;gap:12px;}
-.ritmo-cab b{font-size:15px;}
-.ritmo-foto{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 44px;}
-.ritmo-foto-ini{display:flex;align-items:center;justify-content:center;color:var(--branco);font-weight:700;font-size:17px;}
-.ritmo-anel-wrap{display:flex;justify-content:center;}
-.ritmo-atras h4{font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin:0 0 8px;}
-.ritmo-ind{margin-bottom:10px;}
-.ritmo-ind-nome{display:block;font-size:12.5px;font-weight:600;margin-bottom:4px;}
-.ritmo-trilha2{position:relative;height:8px;border-radius:999px;background:var(--cinza-superficie);}
-.ritmo-trilha2 i{display:block;height:100%;border-radius:999px;background:var(--vermelho);}
-.ritmo-trilha2 b{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--preto-tinta);}
-.ritmo-ind small{display:block;font-size:11.5px;color:var(--cinza-texto);margin-top:3px;}
-.ritmo-mais{font-size:12px;color:var(--cinza-apoio);margin:0;}
-.ritmo-tudo{font-size:13px;color:var(--cinza-texto);margin:0;}
-.ritmo-rodape-cartao{font-size:12px;color:var(--cinza-apoio);border-top:1px solid var(--cinza-borda);padding-top:10px;margin-top:auto;}
-.ritmo-nota{font-size:11.5px;color:var(--cinza-apoio);margin-top:16px;}
-.gtd-matriz-wrap{margin-top:14px;}
-.gtd-matriz{width:100%;border-collapse:collapse;font-size:12px;}
-.gtd-matriz th{font-size:10.5px;text-transform:uppercase;letter-spacing:0.03em;color:var(--cinza-apoio);text-align:center;padding:10px 8px;font-weight:600;}
-.gtd-matriz th:first-child{text-align:left;}
-.gtd-matriz td{padding:9px 8px;border-top:1px solid var(--cinza-borda);text-align:center;}
-.gtd-matriz td.name{text-align:left;font-weight:600;white-space:nowrap;}
-.gtd-cel{all:unset;cursor:pointer;display:inline-flex;gap:6px;align-items:baseline;justify-content:center;}
-.gtd-cel:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
-.gtd-atr{color:var(--vermelho);font-weight:700;font-size:15px;}
-.gtd-ven{color:var(--dourado);font-weight:600;font-size:12px;}
-.gtd-vazio{font-size:12.5px;color:var(--cinza-apoio);padding:10px 0;}
-.gtd-det{margin-top:16px;border:1px solid var(--cinza-borda);border-radius:16px;padding:16px 18px;background:var(--branco);}
-.gtd-det-topo{font-size:14px;margin-bottom:4px;}
-.gtd-grupo-tit{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);margin:14px 0 4px;}
 .npsc-secao{margin-top:18px;}
 .npsc-titulo{font-size:15px;margin:0 0 10px;}
 .npsc-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
@@ -313,29 +138,6 @@ export const GESTOR_STYLE = `
 .npsc-var{grid-column:1 / -1;font-size:12px;color:var(--cinza-texto);}
 .npsc-var.ruim{color:var(--vermelho);font-weight:600;}
 .npsc-var.bom{color:var(--verde);font-weight:600;}
-.ritmo-resumo{font-size:14px;font-weight:600;margin:4px 0 16px;}
-.ritmo-tabela{width:100%;border-collapse:collapse;font-size:12.5px;}
-.ritmo-tabela th{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);text-align:left;padding:10px 10px;font-weight:600;}
-.ritmo-tabela td{padding:9px 10px;border-top:1px solid var(--cinza-borda);vertical-align:middle;min-width:130px;}
-.ritmo-tabela td.name{font-weight:600;white-space:nowrap;min-width:0;}
-.ritmo-btn{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;}
-.ritmo-btn:focus-visible{outline:2px solid var(--preto-tinta);outline-offset:3px;border-radius:6px;}
-.ritmo-trilha{position:relative;height:8px;border-radius:999px;background:var(--cinza-superficie);}
-.ritmo-preench{height:100%;border-radius:999px;background:var(--preto-tinta);max-width:100%;}
-.ritmo-preench.ritmo-atencao{background:var(--dourado);}
-.ritmo-preench.ritmo-atras{background:var(--vermelho);}
-.ritmo-marca{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--dourado);}
-.ritmo-texto{display:block;font-size:11px;color:var(--cinza-texto);margin-top:4px;}
-.ritmo-vazio{font-size:11px;color:var(--cinza-apoio);}
-.ritmo-rodape{font-size:11.5px;color:var(--cinza-apoio);margin-top:12px;}
-.ritmo-painel{margin-top:16px;border:1px solid var(--cinza-borda);border-radius:16px;padding:18px;background:var(--branco);}
-.ritmo-painel[hidden]{display:none;}
-.ritmo-painel-topo{font-size:14px;margin-bottom:12px;}
-.ritmo-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px 18px;margin:0 0 12px;}
-.ritmo-dl dt{font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--cinza-apoio);}
-.ritmo-dl dd{margin:3px 0 0;font-weight:600;font-size:14px;}
-.ritmo-diverg,.ritmo-acao{font-size:12.5px;color:var(--cinza-texto);margin:8px 0;}
-.ritmo-fechar{border:none;background:var(--preto-tinta);color:var(--branco);border-radius:999px;padding:7px 14px;font-size:12px;cursor:pointer;margin-top:4px;}
 .risk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;}
 .risk-card{border-radius:20px;padding:20px;border:1px solid var(--cinza-borda);background:var(--branco);}
 .risk-card.nivel-risco{border-color:rgba(192,67,61,0.4);background:rgba(192,67,61,0.05);}
@@ -581,14 +383,10 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .rec-sub{display:block;font-size:11px;color:var(--cinza-apoio);font-weight:500;}
 
 @media (max-width:640px){
-  .hero{padding:38px 24px 34px;} .hero h1{font-size:26px;} .hero-stats{gap:26px;}
-  .rank-row{grid-template-columns:24px 1fr 44px;} .rank-bar-wrap{display:none;}
   .form-inline{flex-direction:column;}
   .kanban-grid{grid-template-columns:1fr;}
   .kanban-barra-linha{grid-template-columns:80px 1fr;} .kanban-barra-health{grid-column:1/-1;text-align:left;}
   .rede-stats{flex-direction:column;align-items:stretch;}
-  .tabs{overflow-x:auto;}
-  .tab-btn{margin-right:16px;white-space:nowrap;}
   .churn-card{padding:16px 12px 12px;}
   .churn-numeros{gap:22px;} .churn-numero b{font-size:32px;} .churn-numero b.texto{font-size:22px;}
   .churn-campo{width:100%;justify-content:space-between;}
@@ -824,29 +622,105 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
   .aval-legenda{flex-direction:column;gap:2px;}
   .desafio-dispersao{overflow-x:auto;} .desafio-dispersao svg{min-width:560px;}
 }
+
+.painel-lateral{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--branco);box-shadow:-8px 0 30px rgba(0,0,0,0.12);z-index:50;overflow:auto;padding:20px;box-sizing:border-box;}
+.painel-lateral[hidden]{display:none;}
+.painel-lateral-topo{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;font-size:15px;}
+.painel-fechar{border:none;background:var(--preto-tinta);color:var(--branco);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;}
+
+/* ===== Redesenho v3: página da gestão ===== */
+.top-r .sel{height:34px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);font:600 12.5px 'Inter',sans-serif;cursor:pointer}
+.top-r .sel:hover{border-color:var(--ink)}
+.tab-panel{max-width:1312px;margin:0 auto;width:100%}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+.coluna{display:flex;flex-direction:column;gap:22px;min-width:0}
+.mapa{overflow-x:auto}
+.mrow{display:grid;grid-template-columns:minmax(150px,1.3fr) 140px repeat(5,minmax(68px,1fr));align-items:stretch;min-width:720px;border-top:1px solid var(--line)}
+.mrow > *{padding:11px 12px;display:flex;align-items:center}
+.mrow.head{border-top:0}
+.mrow.head > *{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);padding-top:4px;padding-bottom:10px}
+.mrow.head > .sort{color:var(--ink)}
+a.mrow:hover{background:#FAFAF9}
+.who{gap:10px}
+.who .av{width:32px;height:32px;font-size:13px;overflow:hidden}
+.who .av img{width:100%;height:100%;object-fit:cover}
+.who b{display:block;font-size:13.5px;font-weight:600;color:var(--ink)}
+.mrow.fora .who b{color:var(--ink3)}
+.who span{font-size:11.5px;color:var(--ink3);white-space:nowrap}
+.sc{gap:10px}
+.sc b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;width:28px}
+.sc .bar{flex:1}
+.med{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.35}
+.cell{justify-content:center;font-weight:600;font-size:13px;border-left:1px solid var(--line);flex-direction:column;gap:1px;text-align:center}
+.cell small{font-size:11px;font-weight:500;color:var(--ink3)}
+.cell.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.cell.gold small{color:var(--gold-ink);opacity:.8}
+.cell.red{background:var(--red-soft);color:var(--red-ink)}
+.cell.red small{color:var(--red-ink);opacity:.8}
+.cell.ok{color:var(--ink3);font-weight:500}
+.mrow.fora{color:var(--ink3)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.spark{width:76px;height:24px}
+.kpi-av{display:flex;margin-right:4px}
+.kpi-av .av{width:26px;height:26px;font-size:11px;border:2px solid #fff}
+.kpi-av .av + .av{margin-left:-8px}
+.fila{position:sticky;top:90px}
+.filtros{display:flex;gap:6px;padding:0 18px 12px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:4px 12px;padding:14px 18px;border-top:1px solid var(--line)}
+.item .dot{margin-top:6px}
+.item h3{margin:0;font-size:13.5px;font-weight:600;line-height:1.35}
+.item p{margin:2px 0 0;font-size:12.5px;color:var(--ink2)}
+.item-meta{grid-column:2;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--ink3)}
+.item-meta .btn{margin-left:auto}
+.fila-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center}
+.fila-foot button.link{background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+.rede{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:0;align-items:center;border-top:1px solid var(--line)}
+.rede > div{padding:16px 18px;border-left:1px solid var(--line)}
+.rede > div:first-child{border-left:0}
+.rede b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;margin-top:2px}
+.rede span{font-size:12px;color:var(--ink2)}
+.rede button.link{background:none;border:0;cursor:pointer;font-family:inherit;padding:0 18px}
+.rede-detalhe{padding:18px;border-top:1px solid var(--line)}
+.rede-detalhe .rede-stats{margin-top:0}
+/* Estados: carregando discreto, vazio orientador e erro isolado por seção */
+.sk{display:block;border-radius:6px;background:linear-gradient(90deg,var(--line) 25%,#F6F5F5 50%,var(--line) 75%);background-size:200% 100%;animation:skbrilho 1.3s linear infinite}
+@keyframes skbrilho{to{background-position:-200% 0}}
+.sk-linha{height:14px;margin:10px 18px}
+.sk-kpi{height:92px}
+.vazio-orienta{padding:22px 18px;font-size:13px;color:var(--ink2)}
+.erro-secao{padding:16px 18px;font-size:12.5px;color:var(--red-ink);background:var(--red-soft);border-radius:10px;margin:12px 18px}
+.kpi.erro-kpi{color:var(--red-ink);font-size:12.5px;justify-content:center}
+/* Consulta rápida: gaveta aberta pela busca do dock */
+.consulta-painel.gaveta{position:fixed;z-index:60;top:84px;right:24px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 110px);overflow:auto;margin:0;box-shadow:0 24px 60px rgba(20,20,20,.18)}
+.consulta-painel.gaveta[hidden]{display:none}
+.consulta-fechar{float:right;background:none;border:0;font-size:18px;cursor:pointer;color:var(--ink2)}
+@media (max-width:1180px){.layout{grid-template-columns:1fr}.fila{position:static}}
+@media (max-width:700px){.rede{grid-template-columns:1fr 1fr}.rede > div:nth-child(3){border-left:0}.rede > div{border-top:1px solid var(--line)}.rede button.link{padding:14px 18px;grid-column:1 / -1}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
 `;
 
 export const GESTOR_HTML = `
 <div class="gestor-page">
-<div class="page">
+${ICONES_SVG}
+<!--DOCK-->
+<div class="work">
 
-  <header class="topbar">
-    <div class="topbar-left">
-      <a href="/" class="voltar-btn">&larr; Voltar</a>
-      <span class="topbar-divider"></span>
-      <span class="logo-mark">MOAI</span>
-      <span class="topbar-divider"></span>
-      <span class="topbar-title">Visão da área · perfil gestor</span>
+  <header class="top">
+    <div>
+      <div class="crumb" id="topCrumb">Gestão</div>
+      <h1 id="topTitulo">Visão da área</h1>
     </div>
-    <div class="topbar-right">
-      <a href="/processos" class="voltar-btn">Processos</a>
-      <select class="pill-select" id="selMesGestor"></select>
-      <select class="pill-select" id="selAnoGestor"><option>2026</option><option>2027</option></select>
-      <span class="pill">Acesso restrito a gestores</span>
+    <div class="top-r" id="topPeriodo">
+      <select class="sel" id="selMesGestor" aria-label="Mês"></select>
+      <select class="sel" id="selAnoGestor" aria-label="Ano"><option>2026</option><option>2027</option></select>
     </div>
   </header>
 
-  <section class="consulta-painel" id="consultaPainel">
+  <section class="panel consulta-painel gaveta" id="consultaPainel" hidden aria-label="Consulta rápida">
+    <button class="consulta-fechar" type="button" id="consultaFechar" aria-label="Fechar a consulta">&times;</button>
     <h2 class="consulta-titulo">Consulta rápida</h2>
     <p class="consulta-sub">Pergunte em português sobre metas do time ou de um CS. A resposta usa os mesmos dados e regras de cálculo do resto do painel, sem custo de IA por pergunta.</p>
     <div class="consulta-form">
@@ -863,114 +737,76 @@ export const GESTOR_HTML = `
     <div id="consultaRespostaWrap"></div>
   </section>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="visaoGeral">Visão geral</button>
-    <button class="tab-btn" data-tab="controlePerfis">Controle de perfis</button>
-    <button class="tab-btn" data-tab="metasDestaques">Metas e destaques</button>
-    <button class="tab-btn" data-tab="churn">Churn</button>
-    <button class="tab-btn" data-tab="nps">NPS dos conselhos</button>
-    <button class="tab-btn" data-tab="pulso">Pulso de CS</button>
-    <button class="tab-btn" data-tab="voz">Fila da liderança</button>
-  </div>
-
-  <div class="tab-panel active" id="tab-visaoGeral">
-    <section class="hero">
-      <div class="hero-content">
-        <span class="hero-eyebrow">DESEMPENHO REAL · SEM MÁSCARA</span>
-        <h1>Como a área de CS está de verdade</h1>
-        <p class="hero-sub">Todo indicador abaixo usa só o valor calculado a partir do Monday. O autodeclarado aparece à parte, nunca substituindo o real.</p>
-      </div>
-      <div class="hero-stats">
-        <div class="hero-stat"><span class="hero-stat-value" id="statScore">—</span><span class="hero-stat-label">Score médio da área</span></div>
-        <div class="hero-stat"><span class="hero-stat-value" id="statRisco">—</span><span class="hero-stat-label" id="statRiscoLabel">CS em risco</span></div>
-        <div class="hero-stat"><span class="hero-stat-value" id="statDiverg">—</span><span class="hero-stat-label">Divergência média real × autodeclarado</span></div>
-      </div>
+  <main class="content">
+  <div class="tab-panel active" id="tab-visaoGeral" data-tab="visaoGeral">
+    <section class="kpis" id="kpisArea" aria-label="Leitura de relance">
+      <div class="panel kpi"><span class="sk sk-kpi"></span></div>
+      <div class="panel kpi"><span class="sk sk-kpi"></span></div>
+      <div class="panel kpi"><span class="sk sk-kpi"></span></div>
+      <div class="panel kpi"><span class="sk sk-kpi"></span></div>
     </section>
 
-    <div class="acoes-stack">
-      <section class="block" id="blocoReportSemana" aria-label="Report da semana">
-        <div class="block-head"><h2>Report da semana</h2><p>Quem enviou o report desta semana no Monday, com o prazo de sexta às 19h.</p></div>
-        <div id="blocoReportSemanaCorpo"><div class="gestor-empty">Carregando…</div></div>
-      </section>
-      <section class="acoes-card" id="blocoUrgencias" aria-label="Urgências">
-        <h2>Urgências</h2>
-        <p class="acoes-sub">O que precisa ser feito o quanto antes, com responsável e prazo.</p>
-        <div id="urgenciasCorpo"><div class="gestor-empty">Carregando…</div></div>
-      </section>
-    </div>
-
-    <section class="block">
-      <div class="block-head">
-        <div>
-          <h2>Ranking ponderado</h2>
-          <p>Pontuação única por CS (score real, já calculado no servidor), só com valor calculado.</p>
-        </div>
-        <label class="toggle-inline" title="Também afeta o radar por CS abaixo">
-          <input type="checkbox" id="chkExMembros">
-          <span>Mostrar ex-membros</span>
-        </label>
-      </div>
-      <div class="ranking-list" id="rankingList"><div class="gestor-empty">Carregando…</div></div>
-    </section>
-
-    <section class="block">
-      <div class="block-head">
-        <h2>CS da área</h2>
-        <p>Foto, pontuação e posição de cada CS ativo. Clique no card para abrir a página do CS, com radar, GTD, membros críticos e advertências.</p>
-      </div>
-      <div class="cs-grid" id="csGrid"></div>
-      <div class="cs-nota" id="csGridNota"></div>
-    </section>
-
-    <section class="block" id="blocoHealthBase" aria-label="Health da Base">
-      <div class="block-head"><h2>Health da Base por CS</h2><p>Críticos declarados no Monday sobre a carteira do CS. Do pior para o melhor.</p></div>
-      <div id="blocoHealthBaseCorpo"><div class="gestor-empty">Carregando…</div></div>
-    </section>
-    <section class="block" id="blocoRitmo">
-      <div class="block-head">
-        <div>
-          <h2>Ritmo do mês</h2>
-          <p>Cada CS com a situação dos indicadores de volume e do GTD. Os atrasados aparecem com o realizado e o esperado até hoje. Clique num cartão para abrir o controle de perfis.</p>
-        </div>
-      </div>
-      <div id="ritmoConteudo"><div class="gestor-empty">Carregando…</div></div>
-    </section>
-
-    <section class="block">
-      <div class="block-head">
-        <h2>Visão geral da rede</h2>
-        <p>Todos os conselhos ativos, agregados no mesmo período selecionado acima — não é sobre nenhum CS em específico.</p>
-      </div>
-      <div class="rede-stats">
-        <div class="rede-stat"><span class="rede-stat-value" id="redeStatMembros">—</span><span class="rede-stat-label">Membros na rede</span></div>
-        <div id="redePizzaWrap"></div>
-      </div>
-      <div class="table-wrap"><div class="table-scroll">
-        <table class="tabela-rede">
-          <thead><tr><th>Conselheiro</th><th>Nível</th><th class="num">Membros</th><th class="num">Presença</th><th>Status</th></tr></thead>
-          <tbody id="redeTabelaBody"></tbody>
-        </table>
-      </div></div>
-      <div class="kanban-collapse">
-        <button class="kanban-toggle" id="btnToggleKanban" type="button">
-          <span id="kanbanToggleLabel">Presença por membro</span>
-          <span class="kanban-toggle-icon">▾</span>
-        </button>
-        <div class="kanban-body" id="kanbanBody" style="display:none">
-          <div class="kanban-filtro">
-            <label for="kanbanCS">Carteira</label>
-            <select id="kanbanCS"></select>
-            <span class="kanban-health" id="kanbanHealthCS" style="display:none"></span>
+    <div class="layout" style="margin-top:22px">
+      <div class="coluna">
+        <section class="panel" id="mapa-time" aria-labelledby="h-mapa">
+          <div class="ph">
+            <div><h2 id="h-mapa">Mapa do time</h2><p>Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
+            <div class="r">
+              <label class="toggle-inline" title="Também afeta os números da página">
+                <input type="checkbox" id="chkExMembros">
+                <span>Mostrar ex membros</span>
+              </label>
+              <div class="seg" role="group" aria-label="Ordenar" id="mapaOrdem"><button type="button" class="on" data-ordem="prioridade">Prioridade</button><button type="button" data-ordem="ranking">Ranking</button></div>
+            </div>
           </div>
-          <div class="kanban-nota" id="kanbanNota"></div>
-          <div id="kanbanBarrasWrap"></div>
-          <div class="kanban-grid" id="kanbanGrid"></div>
-        </div>
+          <div class="mapa" id="mapaCorpo"><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span></div>
+          <div class="legend"><span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Agir agora</span><span><i style="background:var(--gold-soft);box-shadow:inset 0 0 0 1px #EBD39C"></i>Acompanhar</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1px var(--line2)"></i>Dentro do esperado</span><span style="margin-left:auto">Traço na barra: mediana do time</span></div>
+        </section>
+
+        <section class="panel" id="rede-conselhos" aria-labelledby="h-rede">
+          <div class="ph"><div><h2 id="h-rede">Rede de conselhos</h2><p>Todos os conselhos ativos, sem recorte por CS.</p></div></div>
+          <div class="rede" id="redeResumo"><div><span class="sk sk-linha" style="margin:0"></span></div></div>
+          <div class="rede-detalhe" id="redeDetalhe" hidden>
+            <div class="rede-stats">
+              <div class="rede-stat"><span class="rede-stat-value" id="redeStatMembros">0</span><span class="rede-stat-label">Membros na rede</span></div>
+              <div id="redePizzaWrap"></div>
+            </div>
+            <div class="table-wrap"><div class="table-scroll">
+              <table class="tabela-rede">
+                <thead><tr><th>Conselheiro</th><th>Nível</th><th class="num">Membros</th><th class="num">Presença</th><th>Status</th></tr></thead>
+                <tbody id="redeTabelaBody"></tbody>
+              </table>
+            </div></div>
+            <div class="kanban-collapse">
+              <button class="kanban-toggle" id="btnToggleKanban" type="button">
+                <span id="kanbanToggleLabel">Presença por membro</span>
+                <span class="kanban-toggle-icon">▾</span>
+              </button>
+              <div class="kanban-body" id="kanbanBody" style="display:none">
+                <div class="kanban-filtro">
+                  <label for="kanbanCS">Carteira</label>
+                  <select id="kanbanCS"></select>
+                  <span class="kanban-health" id="kanbanHealthCS" style="display:none"></span>
+                </div>
+                <div class="kanban-nota" id="kanbanNota"></div>
+                <div id="kanbanBarrasWrap"></div>
+                <div class="kanban-grid" id="kanbanGrid"></div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+
+      <aside class="panel fila" id="filaAcao" aria-labelledby="h-fila">
+        <div class="ph"><h2 id="h-fila">Fila de ação</h2><span class="count" id="filaTotal">0</span><div class="r"><button type="button" class="link" id="filaVerTodas" style="background:none;border:0;cursor:pointer;font-family:inherit">Ver todas</button></div></div>
+        <div class="filtros" id="filaFiltros"></div>
+        <div id="filaCorpo"><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span></div>
+        <div class="fila-foot"><span class="faint" style="font-size:12px">Gerada pelas regras do painel, sem IA</span><button type="button" class="link" id="filaMais" hidden></button></div>
+      </aside>
+    </div>
   </div>
 
-  <div class="tab-panel" id="tab-controlePerfis">
+  <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
     <div class="config-card" style="margin-bottom:24px;">
       <div>
         <h3 style="margin:0 0 6px;">Indicadores do time na home do CS</h3>
@@ -1033,7 +869,7 @@ export const GESTOR_HTML = `
     </div>
   </div>
 
-  <div class="tab-panel" id="tab-metasDestaques">
+  <div class="tab-panel" id="tab-metasDestaques" data-tab="metasDestaques">
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
@@ -1105,7 +941,7 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
-  <div class="tab-panel" id="tab-voz">
+  <div class="tab-panel" id="tab-voz" data-tab="voz">
     <section class="block" style="margin-top:0;" id="filaLideranca">
       <div class="block-head">
         <div>
@@ -1141,7 +977,7 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
-  <div class="tab-panel" id="tab-pulso">
+  <div class="tab-panel" id="tab-pulso" data-tab="pulso">
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
@@ -1157,7 +993,7 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
-  <div class="tab-panel" id="tab-churn">
+  <div class="tab-panel" id="tab-churn" data-tab="churn">
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
@@ -1271,7 +1107,7 @@ export const GESTOR_HTML = `
     </details>
   </div>
 
-  <div class="tab-panel" id="tab-nps">
+  <div class="tab-panel" id="tab-nps" data-tab="nps">
     <section class="block" style="margin-top:0;">
       <div class="block-head">
         <div>
@@ -1312,6 +1148,7 @@ export const GESTOR_HTML = `
     </section>
   </div>
 
+  </main>
   <footer class="footnote">Visão restrita a gestores · valores calculados pelo sistema, sem a máscara do autodeclarado.</footer>
 </div>
 </div>
@@ -1400,103 +1237,109 @@ function abrirCriterioModal(idx){
   document.getElementById('infoModalOverlay').classList.add('ativo');
 }
 
-// ============ tabs ============
+// ============ abas, ligadas ao dock (redesenho v3) ============
+// Cada item do dock que corresponde a uma aba aponta para /gestor?aba=<chave>. A navegação interna
+// troca a aba, atualiza a URL com history.replaceState e o dock marca o item ativo; assim recarregar,
+// compartilhar o link e abrir direto com ?aba= levam à aba certa.
+var ABAS_ = {
+  visaoGeral: { crumb: 'Gestão', titulo: 'Visão da área', dock: 'area' },
+  controlePerfis: { crumb: 'Sistema', titulo: 'Controle de perfis', dock: 'perfis' },
+  metasDestaques: { crumb: 'Gestão', titulo: 'Metas e destaques', dock: 'metas' },
+  churn: { crumb: 'Saúde da base', titulo: 'Churn e reconquista', dock: 'churn' },
+  nps: { crumb: 'Saúde da base', titulo: 'NPS dos conselhos', dock: 'nps' },
+  pulso: { crumb: 'Saúde da base', titulo: 'Pulso de CS', dock: 'pulso' },
+  voz: { crumb: 'Saúde da base', titulo: 'Fila da liderança', dock: 'voz' }
+};
 
-document.querySelectorAll('.tab-btn').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
-    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
-    if (btn.dataset.tab === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
-    if (btn.dataset.tab === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
-    if (btn.dataset.tab === 'nps' && !npsCarregado_) { npsCarregado_ = true; inicializarNps_(); }
-    if (btn.dataset.tab === 'pulso' && !pulsoCarregado_) { pulsoCarregado_ = true; inicializarPulso_(); }
-    if (btn.dataset.tab === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); inicializarFila_(); }
+function abrirAba(chave, opcoes) {
+  if (!ABAS_[chave]) chave = 'visaoGeral';
+  var cfg = ABAS_[chave];
+  document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-tab') === chave); });
+  document.getElementById('topCrumb').textContent = cfg.crumb;
+  document.getElementById('topTitulo').textContent = cfg.titulo;
+  document.getElementById('topPeriodo').style.display = chave === 'visaoGeral' ? '' : 'none';
+  document.title = cfg.titulo + ' · MOAI CS';
+  if (typeof dockMarcarAtivo === 'function') dockMarcarAtivo(cfg.dock);
+  if (!(opcoes && opcoes.semUrl)) {
+    try {
+      var u = new URL(window.location.href);
+      u.searchParams.set('aba', chave);
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } catch (e) { /* sem history API: a aba abre do mesmo jeito */ }
+  }
+  if (chave === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
+  if (chave === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
+  if (chave === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
+  if (chave === 'nps' && !npsCarregado_) { npsCarregado_ = true; inicializarNps_(); }
+  if (chave === 'pulso' && !pulsoCarregado_) { pulsoCarregado_ = true; inicializarPulso_(); }
+  if (chave === 'voz' && !vozCarregado_) { vozCarregado_ = true; inicializarVoz_(); inicializarFila_(); }
+}
+
+document.querySelectorAll('.dock a.mi').forEach(function (a) {
+  a.addEventListener('click', function (ev) {
+    var u;
+    try { u = new URL(a.href); } catch (e) { return; }
+    var aba = u.searchParams.get('aba');
+    if (u.pathname !== '/gestor' || !aba) return;
+    ev.preventDefault();
+    abrirAba(aba);
+    if (u.hash === '#rede-conselhos') abrirRedeDetalhe_(true);
+    if (u.hash) { var alvo = document.getElementById(u.hash.slice(1)); if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   });
 });
 
+
 ${RADAR_SVG_SCRIPT}
 
-// ============ visão geral ============
-// classificarScore() é só um agrupamento visual (3 faixas) do scoreReal que já vem pronto do
-// back-end (calcularScoreCS, reaproveitado em montarVisaoGestorCS) — não recalcula o score, só
-// decide a cor/rótulo do badge a partir do número que a API já mandou.
-function classificarScore(scoreReal) {
-  if (scoreReal === null || scoreReal === undefined) return { nivel: 'sem_dado', cor: 'var(--cinza-apoio)', label: 'Sem dado' };
-  if (scoreReal >= 75) return { nivel: 'ok', cor: 'var(--verde)', label: 'Saudável' };
-  if (scoreReal >= 55) return { nivel: 'atencao', cor: 'var(--dourado)', label: 'Atenção' };
-  return { nivel: 'risco', cor: 'var(--vermelho)', label: 'Risco' };
-}
+// ============ Visão da área (redesenho v3) ============
+// Três níveis de leitura: KPIs (relance), Mapa do time e Fila de ação (diagnóstico) e Rede de
+// conselhos (detalhe). Nada é calculado aqui: pontuação, posição, mediana, série, ritmo, GTD, críticos,
+// advertência e status de report chegam prontos do servidor. Cada seção tem estado de carregando,
+// vazio e erro próprios, e uma seção quebrada não derruba as outras.
+var SCORE_FAIXA_SAUDAVEL_ = ${SCORE_FAIXA_SAUDAVEL};
+var SCORE_FAIXA_ATENCAO_ = ${SCORE_FAIXA_ATENCAO};
+var MAPA_RITMO_ATRASADOS_ACAO_ = ${MAPA_RITMO_ATRASADOS_ACAO};
+var ADV_LIMITE_PONTOS_ = ${INSIGHT_ADVERTENCIA_ALERTA_PONTOS};
 
 var DADOS = null;
-
-function renderHero() {
-  var scores = DADOS.porCS.map(function (c) { return c.scoreReal; }).filter(function (v) { return v !== null && v !== undefined; });
-  var scoreMedio = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
-  document.getElementById('statScore').textContent = scoreMedio === null ? '—' : scoreMedio;
-  document.getElementById('statRisco').textContent = DADOS.csAbaixoDaMeta;
-  document.getElementById('statRiscoLabel').textContent = DADOS.csAbaixoDaMeta + ' CS com pelo menos um indicador abaixo da meta';
-  var divergs = DADOS.porCS.map(function (c) { return c.indiceDivergencia || 0; });
-  var divergMedia = divergs.length ? Math.round(divergs.reduce(function (a, b) { return a + b; }, 0) / divergs.length) : 0;
-  document.getElementById('statDiverg').textContent = divergMedia;
-}
-
-// Variação contra o mês anterior (08/10/2026). Queda que passa do limite fica vermelha e leva à 1:1.
-// Mês anterior sem dado não mostra nada. A conta vem pronta do servidor.
-function variacaoRankHtml_(nome, v) {
-  if (!v) return '';
-  if (v.posicoes === 0 && v.pontos === 0) return '<span class="rank-var">estável</span>';
-  var pos = v.posicoes === 0
-    ? 'sem mudança de posição'
-    : (v.posicoes > 0 ? '▲ ' + v.posicoes + (v.posicoes === 1 ? ' posição' : ' posições') : '▼ ' + (-v.posicoes) + (v.posicoes === -1 ? ' posição' : ' posições'));
-  var pts = (v.pontos >= 0 ? '+' : '−') + Math.abs(v.pontos) + ' pts';
-  var pauta = v.alerta ? ' · <a href="/gestor/cs/' + encodeURIComponent(nome) + '#secUmAUm">Pautar na próxima 1:1</a>' : '';
-  return '<span class="rank-var' + (v.alerta ? ' alerta' : '') + '">' + pos + ' · ' + pts + pauta + '</span>';
-}
-
-function renderRanking() {
-  var el = document.getElementById('rankingList');
-  if (!DADOS.ranking.length) { el.innerHTML = '<div class="gestor-empty">Sem dados suficientes neste período.</div>'; return; }
-  // quem ficou sem indicadores com meta suficientes não ganha número: a nota fica abaixo da lista
-  // escala dinâmica com marca em 100: quem passa da meta (acima de 100) se destaca sem quebrar o layout
-  var maxScore = Math.max.apply(null, DADOS.ranking.map(function (r) { return r.scoreReal || 0; }).concat([100]));
-  var marca100 = (100 / maxScore * 100).toFixed(1);
-  el.innerHTML = DADOS.ranking.map(function (r, i) {
-    var status = classificarScore(r.scoreReal);
-    var pct = maxScore > 0 ? (r.scoreReal / maxScore * 100) : 0;
-    var idxModal = registrarScoreModal_(r.nome, r.scoreReal, r.detalhamento);
-    return '<div class="rank-row"><span class="rank-pos">' + (i + 1) + '</span>'
-      + '<div class="rank-name-wrap"><span class="status-dot" style="background:' + status.cor + '"></span><div><span class="rank-name">' + r.nome + '</span>' + variacaoRankHtml_(r.nome, r.variacao) + '</div></div>'
-      + '<div class="rank-bar-wrap"><div class="rank-bar-bg"><div class="rank-bar-fill" style="width:' + pct.toFixed(0) + '%"></div><div class="rank-bar-mark" style="left:' + marca100 + '%" title="Meta batida (100)"></div></div></div>'
-      + '<span class="rank-score">' + (r.scoreReal === null || r.scoreReal === undefined ? '—' : r.scoreReal) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta">ⓘ</button></span></div>';
-  }).join('');
-}
-
-
-// ============ Urgências e Insights (07/10/2026) ============
-// Uma chamada agregada (/api/gestor/visao-geral/acoes). Cada bloco tem proteção própria e mostra a
-// mensagem real do erro só nele. Cor só para exceção: CS sem pendência não ganha destaque. Nada
-// aqui é calculado: status de report, prazos de GTD e insights chegam prontos do servidor.
 var ACOES_ = null;
+var SAUDE_ = { estado: 'carregando', lista: null, erro: null };
+var REPORT_ = { estado: 'carregando', lista: null, erro: null };
+var mapaOrdem_ = 'prioridade';
+var filaFiltro_ = 'semana';
+var filaExpandida_ = false;
+var FILA_LIMITE_ = 5;
+
+function escCS_(t) { return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
+function corDoNome_(nome) {
+  var cores = ['#8A6D1C', '#3D8B5F', '#C0433D', '#2F6F8F', '#6B4E9B', '#B5651D', '#4A7A4A'];
+  var h = 0; String(nome || '').split('').forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 997; });
+  return cores[h % cores.length];
+}
 function dmAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
 function dmaAcoes_(iso) { if (!iso) return 'sem data'; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
-function chipsAcoes_(nomes, cor) { return nomes.length ? '<div class="chips-nomes">' + nomes.map(function (n) { return '<span class="chip-nome ' + cor + '">' + escCS_(n) + '</span>'; }).join('') + '</div>' : ''; }
-function quandoAcoes_(i) {
-  if (i.status === 'atrasada') return '<span class="quando vermelho">' + i.dias + (i.dias === 1 ? ' dia de atraso' : ' dias de atraso') + '</span>';
-  return '<span class="quando ambar">' + (i.dias === 0 ? 'vence hoje' : 'vence em ' + i.dias + (i.dias === 1 ? ' dia' : ' dias')) + '</span>';
+function trimPonto_(t) { t = String(t || '').trim(); while (t.length && t.charAt(t.length - 1) === '.') t = t.slice(0, -1); return t; }
+function listaNomes_(nomes) {
+  if (nomes.length <= 1) return nomes.join('');
+  return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
 }
-// Tarefas de GTD em dois gráficos de barras empilhadas (revisão out/2026, rodada 2, Fase 2). Nada de tabela:
-// "Fila por CS" mostra cada CS com atrasadas, a vencer e em dia; "Onde o processo trava" mostra cada etapa
-// com atrasadas e a vencer. O clique num segmento abre o painel lateral com as tarefas do recorte.
-var GTD_RECORTE_ = null;
-// Ordem da etapa pelo prazo: D-1 antes de D+2, e assim por diante
-function etapaOrdemGtd_(etapa) {
-  var m = /D\s*([+\-−–])\s*(\d+)/i.exec(String(etapa || ''));
-  if (!m) return 0;
-  return m[1] === '+' ? Number(m[2]) : -Number(m[2]);
+function abrirPaginaCS(nome) {
+  window.location.href = '/gestor/cs/' + encodeURIComponent(nome) + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual);
 }
+function erroSecaoHtml_(prefixo, err) {
+  return '<div class="erro-secao" role="alert">' + escCS_(prefixo) + ': ' + escCS_(err && err.message ? err.message : err) + '</div>';
+}
+
+// Faixa visual da pontuação (limiares em lib/constants.ts). Não recalcula: só escolhe a cor do número que veio pronto.
+function classificarScore(score) {
+  if (score === null || score === undefined) return { nivel: 'sem_dado', classe: '', cor: 'var(--ink3)' };
+  if (score >= SCORE_FAIXA_SAUDAVEL_) return { nivel: 'ok', classe: 'green', cor: 'var(--ink)' };
+  if (score >= SCORE_FAIXA_ATENCAO_) return { nivel: 'atencao', classe: '', cor: 'var(--ink)' };
+  return { nivel: 'risco', classe: 'red', cor: 'var(--red)' };
+}
+
+// Painel lateral usado pelo churn (conselhos do mês e detalhes).
 function painelLateralAbrir_(titulo, corpo) {
   var p = document.getElementById('painelLateral');
   if (!p) {
@@ -1515,255 +1358,344 @@ function painelLateralAbrir_(titulo, corpo) {
 function painelLateralFechar_() { var p = document.getElementById('painelLateral'); if (p) p.hidden = true; }
 document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') painelLateralFechar_(); });
 
-// Agrega por CS (Fila) e por etapa (Processo). Cada barra mostra segmentos em proporção ao maior total.
-function barraEmpilhadaGtd_(rotulo, segmentos, escala, clicavel) {
-  var total = segmentos.reduce(function (s, x) { return s + x.valor; }, 0);
-  var partes = segmentos.filter(function (x) { return x.valor > 0; }).map(function (x) {
-    var largura = escala ? (x.valor / escala * 100) : 0;
-    var attrs = clicavel && x.chave ? ' data-gtd-seg="' + escCS_(x.chave) + '" tabindex="0" role="button" aria-label="' + escCS_(x.rotulo + ' ' + x.valor) + '"' : '';
-    return '<i class="gtd-seg gtd-seg-' + x.cor + (clicavel && x.chave ? ' clicavel' : '') + '" style="width:' + largura + '%"' + attrs + '>' +
-      (x.cor === 'atrasada' ? '<b>' + x.valor + '</b>' : '') + '</i>';
-  }).join('');
-  return '<div class="gtd-linha"><div class="gtd-rotulo">' + escCS_(rotulo) + '</div><div class="gtd-barra">' + partes +
-    '</div><div class="gtd-total">' + total + '</div></div>';
+
+// ---------- nível 1: KPIs ----------
+function kpiHtml_(o) {
+  return '<div class="panel kpi' + (o.alerta ? ' alert' : '') + '"><div class="kpi-l">' + o.rotulo +
+    (o.delta ? ' <span class="delta ' + o.delta.cls + '">' + o.delta.txt + '</span>' : '') + '</div>' +
+    '<div class="kpi-v"><span class="kpi-n"' + (o.cor ? ' style="color:' + o.cor + '"' : '') + '>' + o.num + (o.small ? '<small>' + o.small + '</small>' : '') + '</span>' +
+    (o.spark ? '<svg class="spark" data-v="' + o.spark.join(',') + '"' + (o.sparkRuim ? ' data-bad="1"' : '') + ' aria-hidden="true"></svg>' : '') + (o.lado || '') + '</div>' +
+    '<div class="kpi-f">' + o.foot + '</div></div>';
 }
-function gtdMatrizHtml_(g) {
-  GTD_RECORTE_ = { porCS: g.porCS };
-  var fila = g.porCS.filter(function (c) { return (c.atrasadas + c.aVencer + (c.emDia || 0)) > 0; });
-  if (!fila.length) return '<div class="gtd-vazio">Nenhuma tarefa de GTD nos ciclos abertos neste período.</div>';
-  var escalaFila = Math.max.apply(null, fila.map(function (c) { return c.atrasadas + c.aVencer + (c.emDia || 0); }).concat([1]));
-  var linhasFila = fila.map(function (c) {
-    return barraEmpilhadaGtd_(c.cs, [
-      { chave: 'atrasada|' + c.cs, valor: c.atrasadas, cor: 'atrasada', rotulo: 'atrasadas' },
-      { chave: 'a_vencer|' + c.cs, valor: c.aVencer, cor: 'avencer', rotulo: 'a vencer em 7 dias' },
-      { chave: null, valor: c.emDia || 0, cor: 'emdia', rotulo: 'em dia' },
-    ], escalaFila, true);
-  }).join('');
-  // Etapas: soma as pendências de todos os CS por rótulo de etapa
-  var porEtapa = {};
-  var ordem = [];
-  g.porCS.forEach(function (c) {
-    (c.itens || []).forEach(function (i) {
-      if (!porEtapa[i.rotulo]) { porEtapa[i.rotulo] = { atrasadas: 0, aVencer: 0, ordem: etapaOrdemGtd_(i.etapa) }; ordem.push(i.rotulo); }
-      if (i.status === 'atrasada') porEtapa[i.rotulo].atrasadas++; else porEtapa[i.rotulo].aVencer++;
+function deltaNum_(atual, anterior, bomQuandoSobe) {
+  if (atual === null || atual === undefined || anterior === null || anterior === undefined) return null;
+  var d = atual - anterior;
+  if (d === 0) return null;
+  var sobe = d > 0;
+  return { txt: (sobe ? '&#9650; ' : '&#9660; ') + Math.abs(d), cls: (sobe === bomQuandoSobe) ? 'good' : 'bad' };
+}
+function pontosSerieArea_() {
+  var s = DADOS.serieArea;
+  return s && s.pontos && s.pontos.length ? s.pontos : [];
+}
+function renderKpis_() {
+  var el = document.getElementById('kpisArea');
+  try {
+    var ativos = DADOS.porCS.filter(function (c) { return c.ativo && !c.ex; });
+    var pts = pontosSerieArea_();
+    var atual = pts.length ? pts[pts.length - 1].scoreMedio : null;
+    var anterior = pts.length > 1 ? pts[pts.length - 2].scoreMedio : null;
+    var mediana = pts.length ? pts[pts.length - 1].mediana : null;
+    // Visão Geral (sem série mensal): a média das pontuações já calculadas que a API entrega no ranking.
+    if (atual === null) {
+      var notas = DADOS.ranking.map(function (r) { return r.scoreReal; }).filter(function (v) { return v !== null && v !== undefined; });
+      atual = notas.length ? Math.round(notas.reduce(function (a, b) { return a + b; }, 0) / notas.length) : null;
+    }
+    var serie = pts.map(function (p) { return p.scoreMedio; }).filter(function (v) { return v !== null && v !== undefined; });
+    var serieAviso = DADOS.serieArea && DADOS.serieArea.erro ? ' · histórico indisponível' : '';
+    var k1 = kpiHtml_({
+      rotulo: 'Score médio da área', delta: deltaNum_(atual, anterior, true),
+      num: atual === null ? 'Sem dado' : atual, small: atual === null ? '' : '/100',
+      spark: serie.length > 1 ? serie : null,
+      foot: 'Mediana ' + (mediana === null || mediana === undefined ? 'sem dado' : mediana) + ' · ' + DADOS.ranking.length + ' CS no ranking' + escCS_(serieAviso)
     });
+
+    var risco = ativos.filter(function (c) { return c.temIndicadorAbaixoDaMeta; });
+    var avs = risco.slice(0, 3).map(function (c) { return '<span class="av" style="background:' + corDoNome_(c.nomeCompleto || c.nome) + '" title="' + escCS_(c.nome) + '">' + escCS_((c.nome || '?').charAt(0).toUpperCase()) + '</span>'; }).join('');
+    var k2 = kpiHtml_({
+      rotulo: 'CS em risco', alerta: risco.length > 0,
+      num: risco.length, small: 'de ' + ativos.length, cor: risco.length ? 'var(--red)' : '',
+      lado: avs ? '<span class="kpi-av">' + avs + '</span>' : '',
+      foot: risco.length ? escCS_(listaNomes_(risco.map(function (c) { return c.nome; }))) + ', com indicador abaixo da meta' : 'Nenhum CS com indicador abaixo da meta'
+    });
+
+    var ca = DADOS.criticosArea;
+    var refs = ativos.map(function (c) { return c.indicadores && c.indicadores.healthDaBase ? c.indicadores.healthDaBase.meta : null; }).filter(function (v) { return v !== null && v !== undefined; });
+    var k3;
+    if (!ca || ca.erro || ca.percentualDecimos === null || ca.percentualDecimos === undefined) {
+      k3 = kpiHtml_({ rotulo: 'Membros críticos', num: 'Sem dado', foot: escCS_(ca && ca.erro ? 'Não foi possível apurar: ' + ca.erro : 'Sem report suficiente para apurar') });
+    } else {
+      k3 = kpiHtml_({
+        rotulo: 'Membros críticos', num: fmtDecimos_(ca.percentualDecimos) + '%',
+        foot: (refs.length ? 'Referência ' + Number(refs[0]).toLocaleString('pt-BR') + '% · ' : '') + ca.criticos + ' de ' + ca.base + ' membros'
+      });
+    }
+
+    var divs = ativos.map(function (c) { return c.indiceDivergencia || 0; });
+    var divMedia = divs.length ? Math.round(divs.reduce(function (a, b) { return a + b; }, 0) / divs.length) : null;
+    var k4 = kpiHtml_({
+      rotulo: 'Real × autodeclarado', num: divMedia === null ? 'Sem dado' : divMedia, small: divMedia === null ? '' : 'pts',
+      foot: 'Divergência média, quanto menor melhor'
+    });
+    el.innerHTML = k1 + k2 + k3 + k4;
+    sparkDesenhar(el);
+  } catch (e) {
+    el.innerHTML = '<div class="panel kpi erro-kpi" style="grid-column:1/-1">' + erroSecaoHtml_('Não foi possível montar os indicadores', e) + '</div>';
+  }
+}
+
+// ---------- nível 2: Mapa do time ----------
+var RITMO_STATUS_CLASSE_ = { abaixo_da_meta: 'red', no_limite: 'gold' };
+function celulaHtml_(c) { return '<span class="cell ' + c.cls + '"' + (c.titulo ? ' title="' + escCS_(c.titulo) + '"' : '') + '>' + escCS_(c.txt) + (c.small ? '<small>' + escCS_(c.small) + '</small>' : '') + '</span>'; }
+function celulaRitmo_(l) {
+  if (!DADOS.ritmo) return { cls: 'ok', txt: 'n/d', small: 'só no mês atual' };
+  if (!l) return { cls: 'ok', txt: 'Sem dado' };
+  var comMeta = 0, atras = [];
+  DADOS.ritmo.indicadoresOrdem.forEach(function (k) { var i = l.itens[k]; if (i.status !== 'sem_meta') comMeta++; if (i.status === 'atras') atras.push(k); });
+  if (!comMeta) return { cls: 'ok', txt: 'Sem meta' };
+  if (!atras.length) return { cls: 'ok', txt: 'No ritmo' };
+  return { cls: atras.length >= MAPA_RITMO_ATRASADOS_ACAO_ ? 'red' : 'gold', txt: atras.length + ' atrás', small: atras.length === 1 ? (DADOS.labelsIndicador[atras[0]] || atras[0]) : 'de ' + comMeta };
+}
+function celulaGtd_(c) {
+  var g = c && c.indicadores ? c.indicadores.cumprimentoGtd : null;
+  if (!g || g.calculado === null || g.calculado === undefined) return { cls: 'ok', txt: 'Sem dado' };
+  var cls = RITMO_STATUS_CLASSE_[g.status] || 'ok';
+  return { cls: cls, txt: Math.round(g.calculado) + '%', small: cls !== 'ok' && g.meta ? 'meta ' + Math.round(g.meta) + '%' : '' };
+}
+var SAUDE_MOTIVOS_ = { sem_report: 'Sem report', sem_apuracao: 'Sem apuração', inconsistente: 'Inconsistente' };
+function celulaCriticos_(c, s) {
+  if (SAUDE_.estado === 'carregando') return { cls: 'ok', txt: '…' };
+  if (SAUDE_.estado === 'erro') return { cls: 'ok', txt: 'Erro', titulo: SAUDE_.erro };
+  if (!s || s.valor_decimos === null || s.valor_decimos === undefined) return { cls: 'ok', txt: SAUDE_MOTIVOS_[s && s.motivo] || 'Sem apuração' };
+  var h = c && c.indicadores ? c.indicadores.healthDaBase : null;
+  return { cls: (h && RITMO_STATUS_CLASSE_[h.status]) || 'ok', txt: fmtDecimos_(s.valor_decimos) + '%' };
+}
+function celulaAdvertencia_(s) {
+  if (SAUDE_.estado === 'carregando') return { cls: 'ok', txt: '…' };
+  if (SAUDE_.estado === 'erro') return { cls: 'ok', txt: 'Erro', titulo: SAUDE_.erro };
+  if (!s || s.pontos_ativos === null || s.pontos_ativos === undefined) return { cls: 'ok', txt: 'Sem dado' };
+  var p = Number(s.pontos_ativos);
+  if (p > ADV_LIMITE_PONTOS_) return { cls: 'red', txt: p + ' pts', small: 'limite ' + ADV_LIMITE_PONTOS_ };
+  if (p === ADV_LIMITE_PONTOS_) return { cls: 'gold', txt: p + ' pts', small: 'no limite' };
+  return { cls: 'ok', txt: p === 1 ? '1 pt' : String(p) };
+}
+function celulaReport_(r) {
+  if (REPORT_.estado === 'carregando') return { cls: 'ok', txt: '…' };
+  if (REPORT_.estado === 'erro') return { cls: 'ok', txt: 'Erro', titulo: REPORT_.erro };
+  if (!r) return { cls: 'ok', txt: 'Sem cobrança' };
+  if (r.estado === 'pendente') return { cls: 'gold', txt: 'Pendente' };
+  if (r.estado === 'atrasado') return { cls: 'red', txt: 'Atrasado' };
+  if (r.estado === 'enviado_com_atraso') return { cls: 'gold', txt: 'Enviado', small: 'com atraso' };
+  return { cls: 'ok', txt: 'Enviado' };
+}
+function gravidadeLinha_(l) { return l.celulas.reduce(function (s, c) { return s + (c.cls === 'red' ? 2 : c.cls === 'gold' ? 1 : 0); }, 0); }
+
+function linhasMapa_() {
+  var porNome = {}, ritmo = {}, saude = {}, rep = {}, vari = {};
+  DADOS.porCS.forEach(function (c) { porNome[c.nome] = c; });
+  if (DADOS.ritmo) DADOS.ritmo.linhas.forEach(function (l) { ritmo[l.nome] = l; });
+  (SAUDE_.lista || []).forEach(function (r) { saude[r.cs_nome] = r; });
+  (REPORT_.lista || []).forEach(function (r) { rep[r.cs_nome] = r; });
+  DADOS.ranking.forEach(function (r) { vari[r.nome] = r.variacao; });
+  return DADOS.cards.map(function (card) {
+    var c = porNome[card.nome];
+    var l = { card: card, cs: c, variacao: vari[card.nome] || null };
+    l.celulas = [celulaRitmo_(ritmo[card.nome]), celulaGtd_(c), celulaCriticos_(c, saude[card.nome]), celulaAdvertencia_(saude[card.nome]), celulaReport_(rep[card.nome])];
+    l.fora = card.posicao === null || card.posicao === undefined;
+    return l;
   });
-  ordem.sort(function (a, b) { return porEtapa[b].atrasadas - porEtapa[a].atrasadas || porEtapa[b].aVencer - porEtapa[a].aVencer; });
-  var escalaEtapa = Math.max.apply(null, ordem.map(function (r) { return porEtapa[r].atrasadas + porEtapa[r].aVencer; }).concat([1]));
-  var linhasEtapa = ordem.map(function (r) {
-    return barraEmpilhadaGtd_(r, [
-      { chave: 'atrasada|etapa|' + r, valor: porEtapa[r].atrasadas, cor: 'atrasada', rotulo: 'atrasadas' },
-      { chave: 'a_vencer|etapa|' + r, valor: porEtapa[r].aVencer, cor: 'avencer', rotulo: 'a vencer em 7 dias' },
-    ], escalaEtapa, true);
-  }).join('');
-  return '<div class="gtd-graficos">' +
-    '<div class="gtd-grafico"><h4>Fila por CS</h4><p class="gtd-sub">Atrasadas, a vencer em 7 dias e em dia, nos ciclos abertos.</p>' + linhasFila + '</div>' +
-    '<div class="gtd-grafico"><h4>Onde o processo trava</h4><p class="gtd-sub">Atrasadas e a vencer por etapa, somando todos os CS.</p>' + (linhasEtapa || '<div class="gtd-vazio">Nenhuma etapa atrasada ou a vencer.</div>') + '</div>' +
-    '</div>';
 }
-function gtdDetalheHtml_(tipo, chave) {
-  // chave: "atrasada|NOME" (CS), "a_vencer|NOME" (CS), "atrasada|etapa|ROTULO" ou "a_vencer|etapa|ROTULO" (etapa)
-  var partes = String(chave).split('|');
-  var status = partes[0];
-  var porEtapa = partes[1] === 'etapa';
-  var alvo = porEtapa ? partes.slice(2).join('|') : partes.slice(1).join('|');
-  var itens = [];
-  GTD_RECORTE_.porCS.forEach(function (c) {
-    if (!porEtapa && c.cs !== alvo) return;
-    (c.itens || []).forEach(function (i) { if (i.status === status && (!porEtapa || i.rotulo === alvo)) itens.push(i); });
-  });
-  itens.sort(function (a, b) { return b.dias - a.dias; });
-  var grupos = {}, ordem = [];
-  itens.forEach(function (i) { if (!grupos[i.dataConselho]) { grupos[i.dataConselho] = []; ordem.push(i.dataConselho); } grupos[i.dataConselho].push(i); });
-  var titulo = (porEtapa ? alvo : alvo) + ' · ' + (status === 'atrasada' ? 'atrasadas' : 'a vencer em 7 dias');
-  var corpo = ordem.length ? ordem.map(function (data) {
-    return '<div class="gtd-grupo"><div class="gtd-grupo-tit">Conselho de ' + dmaAcoes_(data) + '</div>' + grupos[data].map(function (i) {
-      return '<div class="urg-item"><div><b>' + escCS_(i.membro) + '</b>' + (porEtapa ? ' · ' + escCS_(i.cs) : '') + '</div>' + quandoAcoes_(i) +
-        '<div class="detalhe">Prazo ' + dmAcoes_(i.prazo) + '</div></div>';
-    }).join('') + '</div>';
-  }).join('') : '<div class="gtd-vazio">Nenhuma tarefa neste recorte.</div>';
-  painelLateralAbrir_(titulo, corpo);
+
+function subLinhaMapa_(l) {
+  if (l.fora) return 'Fora do ranking';
+  var v = l.variacao, t = l.card.posicao + 'º';
+  if (!v) return t;
+  if (v.pontos === 0) return t + ' · estável no mês';
+  return t + ' · ' + (v.pontos > 0 ? '&#9650; ' : '&#9660; ') + Math.abs(v.pontos) + ' no mês';
 }
-function ligarGtdMatriz_() {
-  var corpo = document.getElementById('urgenciasCorpo');
-  corpo.onclick = function (ev) {
-    var seg = ev.target.closest('[data-gtd-seg]');
-    if (!seg) return;
-    gtdDetalheHtml_(null, seg.getAttribute('data-gtd-seg'));
-  };
-  corpo.onkeydown = function (ev) {
-    if (ev.key !== 'Enter') return;
-    var seg = ev.target.closest && ev.target.closest('[data-gtd-seg]');
-    if (seg) gtdDetalheHtml_(null, seg.getAttribute('data-gtd-seg'));
-  };
+function linhaMapaHtml_(l, mediana, escala) {
+  var card = l.card;
+  var foto = card.fotoUrl
+    ? '<span class="av"><img loading="lazy" src="' + escCS_(card.fotoUrl) + '" alt="Foto de ' + escCS_(card.nome) + '"></span>'
+    : '<span class="av" style="background:' + corDoNome_(card.nomeCompleto || card.nome) + '">' + escCS_((card.nome || '?').charAt(0).toUpperCase()) + '</span>';
+  var sub = l.fora ? escCS_(subLinhaMapa_(l)) : subLinhaMapa_(l);
+  var pont;
+  if (l.fora) {
+    pont = '<span class="sc" style="font-size:12px" title="' + escCS_(card.estado === 'sem_meta' ? 'Sem meta cadastrada em indicadores suficientes' : 'Sem dados suficientes') + '">' + escCS_(card.elegiveis + ' de ' + DADOS.minimoIndicadores + ' metas mínimas') + '</span>';
+  } else {
+    var f = classificarScore(card.pontuacao);
+    var larg = Math.min(card.pontuacao / escala * 100, 100).toFixed(0);
+    var marca = mediana === null || mediana === undefined ? '' : '<i class="med" style="left:' + Math.min(mediana / escala * 100, 100).toFixed(1) + '%"></i>';
+    pont = '<span class="sc"><b style="color:' + f.cor + '">' + card.pontuacao + '</b><span class="bar"><span class="' + f.classe + '" style="width:' + larg + '%"></span>' + marca + '</span></span>';
+  }
+  var href = '/gestor/cs/' + encodeURIComponent(card.nome) + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual);
+  return '<a class="mrow' + (l.fora ? ' fora' : '') + '" href="' + href + '"><span class="who">' + foto + '<span><b>' + escCS_(card.nome) + '</b><span>' + sub + '</span></span></span>' + pont +
+    l.celulas.map(celulaHtml_).join('') + '</a>';
 }
-function renderUrgencias_() {
-  var el = document.getElementById('urgenciasCorpo');
+
+function renderMapa_() {
+  var el = document.getElementById('mapaCorpo');
+  try {
+    var linhas = linhasMapa_();
+    if (!linhas.length) {
+      el.innerHTML = '<div class="vazio-orienta">Nenhum CS ativo neste período. Confira os vínculos em Controle de perfis.</div>';
+      return;
+    }
+    var pts = pontosSerieArea_();
+    var mediana = pts.length ? pts[pts.length - 1].mediana : null;
+    var maxNota = Math.max.apply(null, linhas.map(function (l) { return l.fora ? 0 : l.card.pontuacao; }).concat([100]));
+    // Quem está sem dados suficientes vai sempre para o fim, fora do ranking.
+    var comNota = linhas.filter(function (l) { return !l.fora; }), semNota = linhas.filter(function (l) { return l.fora; });
+    if (mapaOrdem_ === 'prioridade') comNota.sort(function (a, b) { return gravidadeLinha_(b) - gravidadeLinha_(a) || a.card.posicao - b.card.posicao; });
+    else comNota.sort(function (a, b) { return a.card.posicao - b.card.posicao; });
+    var html = '<div class="mrow head"><span>CS</span><span class="sort">Pontuação</span><span class="cell">Ritmo</span><span class="cell">GTD</span><span class="cell">Críticos</span><span class="cell">Advert.</span><span class="cell">Report</span></div>' +
+      comNota.concat(semNota).map(function (l) { return linhaMapaHtml_(l, mediana, maxNota); }).join('');
+    var avisos = '';
+    if (SAUDE_.estado === 'erro') avisos += erroSecaoHtml_('Críticos e advertências indisponíveis', SAUDE_.erro);
+    if (REPORT_.estado === 'erro') avisos += erroSecaoHtml_('Report da semana indisponível', REPORT_.erro);
+    el.innerHTML = html + avisos;
+  } catch (e) {
+    el.innerHTML = erroSecaoHtml_('Não foi possível montar o mapa do time', e);
+  }
+}
+
+// ---------- nível 2: Fila de ação ----------
+function itensFila_() {
+  var itens = [], erros = [];
+  if (!ACOES_) return { itens: itens, erros: erros };
+  var nomesCS = {};
+  if (DADOS) DADOS.cards.forEach(function (c) { nomesCS[c.nome] = true; });
   var u = ACOES_.urgencias;
-  if (u.erro) { el.innerHTML = '<div class="acoes-erro">Não foi possível carregar as urgências: ' + escCS_(u.erro) + '</div>'; return; }
-  var d = u.dado, r = d.report;
-  var html = '<div class="acoes-faixa"><div class="acoes-faixa-titulo">Report semanal <span>semana de ' + dmAcoes_(r.semanaInicio) + ' a ' + dmAcoes_(r.semanaFim) + ', prazo na sexta ' + dmAcoes_(r.prazo) + '</span></div>'
-    + '<div class="cont-linha"><span class="cont">Em dia ' + r.emDia.length + '</span>'
-    + '<span class="cont' + (r.comAtraso.length ? ' ambar' : '') + '">Com atraso ' + r.comAtraso.length + '</span>'
-    + '<span class="cont' + (r.pendentes.length ? ' vermelho' : '') + '">Pendente ' + r.pendentes.length + '</span></div>'
-    + (r.pendentes.length ? '<div class="urg-cs-muted">Pendentes</div>' + chipsAcoes_(r.pendentes, 'vermelho') : '')
-    + (r.comAtraso.length ? '<div class="urg-cs-muted" style="margin-top:8px;">Enviaram com atraso</div>' + chipsAcoes_(r.comAtraso, 'ambar') : '')
-    + (!r.pendentes.length && !r.comAtraso.length ? '<div class="urg-cs-muted">Todos os CS enviaram o report no prazo.</div>' : '')
-    + '</div>';
-  var g = d.gtd;
-  html += '<div class="acoes-faixa"><div class="acoes-faixa-titulo">Tarefas de GTD <span>ciclos abertos, até 14 dias depois do conselho</span></div>'
-    + '<div class="cont-linha"><span class="cont' + (g.totalAtrasadas ? ' vermelho' : '') + '">Atrasadas ' + g.totalAtrasadas + '</span>'
-    + '<span class="cont' + (g.totalAVencer ? ' ambar' : '') + '">A vencer em 7 dias ' + g.totalAVencer + '</span></div>'
-    + gtdMatrizHtml_(g)
-    + '<div id="gtdDetalhe"></div></div>';
-  var rodape = 'GTD com posição de ' + dmaAcoes_(ACOES_.carimbos.gtdSnapshot) + '.';
-  if (ACOES_.carimbos.ultimoReportCriadoEm) rodape += ' Último report recebido em ' + dmaAcoes_(ACOES_.carimbos.ultimoReportCriadoEm) + '.';
-  if (r.reportsSemMapeamento) rodape += ' ' + r.reportsSemMapeamento + ' reports de pessoas sem vínculo com um CS ativo ficam de fora.';
-  if (g.rotulosNaoMapeados.length) rodape += ' Etapas sem prazo mapeado: ' + g.rotulosNaoMapeados.map(escCS_).join(', ') + '.';
-  document.getElementById('urgenciasCorpo').innerHTML = html + '<div class="acoes-rodape">' + rodape + '</div>';
-  ligarGtdMatriz_();
+  if (u && u.erro) erros.push('Urgências indisponíveis: ' + u.erro);
+  if (u && u.dado) {
+    var r = u.dado.report;
+    if (r.pendentes.length) {
+      itens.push({ tipo: 'semana', cor: 'gold', titulo: 'Report da semana pendente', texto: listaNomes_(r.pendentes) + '. Prazo sexta, 19h.',
+        quem: r.pendentes.length + ' CS', quando: 'sex ' + dmAcoes_(r.prazo), acao: { rotulo: 'Cobrar', href: REPORT_MONDAY_BOARD_URL, externo: true } });
+    }
+    u.dado.gtd.porCS.forEach(function (c) {
+      if (c.atrasadas > 0) {
+        itens.push({ tipo: 'semana', cor: 'red', titulo: c.cs + ': ' + c.atrasadas + (c.atrasadas === 1 ? ' etapa de GTD atrasada' : ' etapas de GTD atrasadas'),
+          texto: 'Maior atraso: ' + c.maiorAtrasoDias + (c.maiorAtrasoDias === 1 ? ' dia.' : ' dias.') + (c.aVencer ? ' ' + c.aVencer + (c.aVencer === 1 ? ' vence' : ' vencem') + ' nos próximos 7 dias.' : ''),
+          quem: c.cs, quando: 'GTD', acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(c.cs) + '#secGtd' } });
+      } else if (c.aVencer > 0) {
+        itens.push({ tipo: 'semana', cor: 'gold', titulo: c.cs + ': ' + c.aVencer + (c.aVencer === 1 ? ' etapa de GTD vence' : ' etapas de GTD vencem') + ' em 7 dias',
+          texto: 'Nenhuma etapa atrasada até agora.', quem: c.cs, quando: 'GTD', acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(c.cs) + '#secGtd' } });
+      }
+    });
+  }
+  var ins = ACOES_.insights;
+  if (ins && ins.erro) erros.push('Insights indisponíveis: ' + ins.erro);
+  if (ins && ins.dado) {
+    ins.dado.visiveis.concat(ins.dado.restantes).forEach(function (i) {
+      var resp = i.responsaveis || [];
+      var texto = [i.numero, i.referencia].filter(function (t) { return t; }).map(trimPonto_).join('. ');
+      if (texto) texto += '.';
+      if (i.acao) texto += ' ' + i.acao;
+      itens.push({ tipo: 'insight', cor: i.severidade === 'alta' ? 'red' : (i.severidade === 'media' ? 'gold' : ''), titulo: i.oQue, texto: texto,
+        quem: resp.length ? resp.join(', ') : 'Área', quando: '', acao: resp.length === 1 && nomesCS[resp[0]] ? { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(resp[0]) } : null });
+    });
+  }
+  return { itens: itens, erros: erros };
+}
+function itemFilaHtml_(i) {
+  var acao = i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '';
+  return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
+    '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao + '</div></div>';
+}
+function renderFilaAcao_() {
+  var corpo = document.getElementById('filaCorpo');
+  try {
+    var f = itensFila_();
+    var semana = f.itens.filter(function (i) { return i.tipo === 'semana'; });
+    var criticas = f.itens.filter(function (i) { return i.cor === 'red'; });
+    var visiveis = filaFiltro_ === 'semana' ? semana : (filaFiltro_ === 'criticas' ? criticas : f.itens);
+    document.getElementById('filaTotal').textContent = String(f.itens.length);
+    var chips = [['semana', 'Esta semana', semana.length], ['criticas', 'Críticas', criticas.length], ['todas', 'Todas', f.itens.length]];
+    var filtros = document.getElementById('filaFiltros');
+    filtros.innerHTML = chips.map(function (c) { return '<button type="button" class="chip' + (filaFiltro_ === c[0] ? ' on' : '') + '" data-filtro="' + c[0] + '">' + c[1] + ' ' + c[2] + '</button>'; }).join('');
+    filtros.onclick = function (ev) { var b = ev.target.closest('button[data-filtro]'); if (!b) return; filaFiltro_ = b.getAttribute('data-filtro'); filaExpandida_ = false; renderFilaAcao_(); };
+    var mostrar = filaExpandida_ ? visiveis : visiveis.slice(0, FILA_LIMITE_);
+    var html = f.erros.map(function (m) { return '<div class="erro-secao" role="alert">' + escCS_(m) + '</div>'; }).join('');
+    html += mostrar.length ? mostrar.map(itemFilaHtml_).join('') : '<div class="vazio-orienta">Nada pede ação neste filtro. A fila se atualiza com o relatório da semana e o GTD.</div>';
+    corpo.innerHTML = html;
+    var mais = document.getElementById('filaMais');
+    var resto = visiveis.length - FILA_LIMITE_;
+    mais.hidden = resto <= 0;
+    mais.textContent = filaExpandida_ ? 'Mostrar menos' : 'Mais ' + resto + ' →';
+    if (typeof dockDefinirBadge === 'function') dockDefinirBadge('urgencias', semana.length);
+  } catch (e) {
+    corpo.innerHTML = erroSecaoHtml_('Não foi possível montar a fila de ação', e);
+  }
 }
 function carregarAcoes() {
   fetchJSON_('/api/gestor/visao-geral/acoes').then(function (data) {
-    ACOES_ = data; renderUrgencias_();
+    ACOES_ = data;
+    renderFilaAcao_();
+    var snap = data.carimbos && data.carimbos.gtdSnapshot;
+    if (snap && typeof dockDefinirSync === 'function') dockDefinirSync(dmAcoes_(snap), 'Posição do GTD de ' + dmaAcoes_(snap) + '. Clique para sincronizar agora.');
   }).catch(function (err) {
-    document.getElementById('urgenciasCorpo').innerHTML = '<div class="acoes-erro">Não foi possível carregar: ' + escCS_(err.message) + '</div>';
+    document.getElementById('filaCorpo').innerHTML = erroSecaoHtml_('Não foi possível carregar a fila de ação', err);
   });
 }
 
-// Cards com a cara de cada CS (07/10/2026): foto grande (a mesma resolução do app, cs_fotos antes de
-// FOTOS_CS), nome, pontuação com o ícone de composição e posição. Sem foto, círculo com a inicial.
-// Quem tem menos indicadores com meta do que o mínimo aparece como "Sem dados suficientes", sem
-// número e fora do ranking. A pontuação e a posição vêm prontas do servidor, nunca recalculadas.
-function corDoNome_(nome) {
-  var cores = ['#8A6D1C', '#3D8B5F', '#C0433D', '#2F6F8F', '#6B4E9B', '#B5651D', '#4A7A4A'];
-  var h = 0; String(nome || '').split('').forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 997; });
-  return cores[h % cores.length];
+// ---------- nível 3: Rede de conselhos ----------
+function abrirRedeDetalhe_(abrir) {
+  var d = document.getElementById('redeDetalhe');
+  var btn = document.getElementById('redeAbrir');
+  d.hidden = !abrir;
+  if (btn) btn.textContent = abrir ? 'Fechar conselhos' : 'Abrir conselhos →';
 }
-function escCS_(t) { return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
-function abrirPaginaCS(nome) {
-  window.location.href = '/gestor/cs/' + encodeURIComponent(nome) + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual);
-}
-function renderCardsCS() {
-  var el = document.getElementById('csGrid');
-  var cards = DADOS.cards || [];
-  if (!cards.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste período.</div>'; document.getElementById('csGridNota').textContent = ''; return; }
-  el.innerHTML = '';
-  cards.forEach(function (c) {
-    var temNota = c.pontuacao !== null && c.pontuacao !== undefined;
-    var status = classificarScore(c.pontuacao);
-    var idxModal = registrarScoreModal_(c.nome, c.pontuacao, c.detalhamento);
-    var foto = c.fotoUrl
-      ? '<img class="cs-card-foto" loading="lazy" src="' + escCS_(c.fotoUrl) + '" alt="Foto de ' + escCS_(c.nome) + '">'
-      : '<div class="cs-card-fallback" style="background:' + corDoNome_(c.nomeCompleto || c.nome) + '">' + escCS_((c.nome || '?').charAt(0).toUpperCase()) + '</div>';
-    var pos = temNota ? '<span class="cs-card-pos">' + c.posicao + 'º no ranking</span>' : '<span class="cs-card-pos sem">Fora do ranking</span>';
-    var corpo = temNota
-      ? '<div><div class="cs-card-score" style="color:' + status.cor + '">' + c.pontuacao + '</div><div class="cs-card-score-lbl">pontos</div></div>'
-      : '<div class="cs-card-semdados">' + (c.estado === 'sem_meta' ? 'Sem meta' : 'Sem dados suficientes') + '<br>' + c.elegiveis + ' de ' + DADOS.minimoIndicadores + ' indicadores com meta</div>';
-    var card = document.createElement('div');
-    card.className = 'cs-card'; card.tabIndex = 0; card.setAttribute('role', 'link');
-    card.setAttribute('aria-label', 'Abrir a página de ' + c.nome);
-    card.innerHTML = '<div class="cs-card-foto-wrap">' + foto + pos + '<div class="cs-card-over"><div class="cs-card-nome">' + escCS_(c.nome) + '</div></div></div>'
-      + '<div class="cs-card-body">' + corpo + '<button class="info-btn" type="button" title="Como essa pontuação foi composta" aria-label="Composição da pontuação de ' + escCS_(c.nome) + '">ⓘ</button></div>';
-    card.addEventListener('click', function () { abrirPaginaCS(c.nome); });
-    card.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') abrirPaginaCS(c.nome); });
-    card.querySelector('.info-btn').addEventListener('click', function (ev) { ev.stopPropagation(); abrirScoreModal(idxModal); });
-    el.appendChild(card);
-  });
-  var sem = DADOS.cards.filter(function (c) { return c.estado === 'sem_dados_suficientes'; }).map(function (c) { return c.nome; });
-  var semMeta = DADOS.cards.filter(function (c) { return c.estado === 'sem_meta'; }).map(function (c) { return c.nome; });
-  var notas = [];
-  if (sem.length) notas.push('Sem dados suficientes e fora do ranking: ' + sem.join(', ') + '.');
-  if (semMeta.length) notas.push('Sem meta cadastrada e fora do ranking: ' + semMeta.join(', ') + '. Faltam metas em pelo menos ' + DADOS.minimoIndicadores + ' indicadores.');
-  document.getElementById('csGridNota').textContent = notas.join(' ');
+function renderRedeResumo_() {
+  var el = document.getElementById('redeResumo');
+  try {
+    var rede = DADOS.visaoGeralRede;
+    if (!rede) { el.innerHTML = '<div class="vazio-orienta" style="grid-column:1/-1">Sem dados da rede neste período.</div>'; return; }
+    var cons = rede.presencaConselhos || [];
+    var pres = 0, ag = 0, abaixo = 0;
+    cons.forEach(function (c) {
+      var crit = c.criterioPresenca || {};
+      pres += crit.presentesContados || 0; ag += crit.encontrosContados || 0;
+      if (c.presenca && c.presenca.taxa !== null && c.presenca.taxa !== undefined && c.presenca.taxa < (crit.limiarAtencaoPct || 0)) abaixo++;
+    });
+    var aberto = !document.getElementById('redeDetalhe').hidden;
+    el.innerHTML = '<div><span>Conselhos ativos</span><b>' + cons.length + '</b></div>' +
+      '<div><span>Membros na rede</span><b>' + rede.totalMembros + '</b></div>' +
+      '<div><span>Presença acumulada</span><b>' + (ag > 0 ? Math.round(pres / ag * 100) + '%' : 'Sem dado') + '</b></div>' +
+      '<div><span>Abaixo do limite de presença</span><b' + (abaixo ? ' style="color:var(--gold-ink)"' : '') + '>' + abaixo + '</b></div>' +
+      '<button type="button" class="link" id="redeAbrir">' + (aberto ? 'Fechar conselhos' : 'Abrir conselhos →') + '</button>';
+    document.getElementById('redeAbrir').addEventListener('click', function () { abrirRedeDetalhe_(document.getElementById('redeDetalhe').hidden); });
+  } catch (e) {
+    el.innerHTML = '<div style="grid-column:1/-1">' + erroSecaoHtml_('Não foi possível montar a rede de conselhos', e) + '</div>';
+  }
 }
 
-// ============ Ritmo do mês em cartões (revisão out/2026, rodada 2, Fase 1) ============
-// Os dados vêm prontos do servidor (DADOS.ritmo, montarRitmoDoMes em lib/reports.ts). Este código só desenha.
-// Nada de tabela: um resumo com a distribuição do time, e um cartão por CS com anel e os indicadores atrasados.
-var RITMO_ROTULO_ = { no_ritmo: 'No ritmo', atencao: 'Atenção', atras: 'Atrás', cedo: 'No prazo', sem_meta: 'Sem meta' };
-var RITMO_COR_ = { no_ritmo: 'var(--verde)', atencao: 'var(--dourado)', atras: 'var(--vermelho)', cedo: '#B9B6B0', sem_meta: 'var(--cinza-superficie)' };
-var RITMO_STATUS_ORDEM_ = ['no_ritmo', 'atencao', 'atras', 'cedo', 'sem_meta'];
-function fmtRitmo_(v, unidade) {
-  if (v === null || v === undefined) return 'sem valor';
-  return (Math.round(v * 10) / 10).toLocaleString('pt-BR') + (unidade === '%' ? '%' : '');
+// ---------- ligação entre as seções ----------
+document.getElementById('mapaOrdem').addEventListener('click', function (ev) {
+  var b = ev.target.closest('button[data-ordem]');
+  if (!b) return;
+  mapaOrdem_ = b.getAttribute('data-ordem');
+  document.querySelectorAll('#mapaOrdem button').forEach(function (x) { x.classList.toggle('on', x === b); });
+  if (DADOS) renderMapa_();
+});
+document.getElementById('filaVerTodas').addEventListener('click', function () { filaFiltro_ = 'todas'; filaExpandida_ = true; renderFilaAcao_(); });
+document.getElementById('filaMais').addEventListener('click', function () { filaExpandida_ = !filaExpandida_; renderFilaAcao_(); });
+
+function sincronizarAgoraGestor_() {
+  if (sincronizandoGestor_ || typeof dockDefinirSync !== 'function') return;
+  sincronizandoGestor_ = true;
+  dockDefinirSync('Sincronizando', 'Sincronizando com o Monday');
+  fetchJSON_('/api/sync-agora', { method: 'POST' }).then(function (data) {
+    var boards = Object.keys(data);
+    var comErro = boards.filter(function (b) { return data[b].status === 'erro'; });
+    var agora = new Date();
+    var hhmm = ('0' + agora.getHours()).slice(-2) + ':' + ('0' + agora.getMinutes()).slice(-2);
+    dockDefinirSync(comErro.length ? comErro.length + ' com erro' : hhmm, comErro.length ? comErro.length + ' de ' + boards.length + ' quadros com erro' : 'Monday sincronizado às ' + hhmm);
+    carregarVisaoGeral(); carregarAcoes(); carregarComplementos_();
+  }).catch(function (err) {
+    dockDefinirSync('Erro', 'Erro ao sincronizar: ' + err.message);
+  }).then(function () { sincronizandoGestor_ = false; });
 }
-// Anel com a proporção de indicadores no ritmo; o centro mostra "X de Y".
-function anelRitmoSvg_(bom, total) {
-  var r = 27, c = 2 * Math.PI * r;
-  var prop = total ? bom / total : 0;
-  return '<svg class="ritmo-anel" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="' + bom + ' de ' + total + ' indicadores no ritmo">' +
-    '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="var(--cinza-superficie)" stroke-width="8"/>' +
-    (prop > 0 ? '<circle cx="36" cy="36" r="' + r + '" fill="none" stroke="var(--verde)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + (prop * c) + ' ' + c + '" transform="rotate(-90 36 36)"/>' : '') +
-    '<text x="36" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="var(--preto-tinta)">' + bom + ' de ' + total + '</text></svg>';
-}
-// Um indicador atrasado: barra fina com o realizado, traço no previsto de hoje e o fim da trilha na meta.
-function linhaAtrasRitmo_(k, i) {
-  var unidade = k === 'cumprimentoGtd' ? '%' : '';
-  var meta = i.meta;
-  var real = (i.realizado === null || i.realizado === undefined) ? 0 : i.realizado;
-  var pReal = Math.min(real / meta, 1) * 100;
-  var pPrev = (i.previsto === null || i.previsto === undefined) ? null : Math.min(i.previsto / meta, 1) * 100;
-  var legenda = i.base === 'direto'
-    ? fmtRitmo_(i.realizado, unidade) + ' de ' + fmtRitmo_(meta, unidade)
-    : fmtRitmo_(i.realizado, unidade) + ', esperado ' + fmtRitmo_(i.previsto, unidade) + ' até hoje';
-  return '<div class="ritmo-ind"><span class="ritmo-ind-nome">' + escCS_(DADOS.labelsIndicador[k] || k) + '</span>' +
-    '<div class="ritmo-trilha2"><i style="width:' + pReal + '%"></i>' + (pPrev !== null ? '<b style="left:' + pPrev + '%"></b>' : '') + '</div>' +
-    '<small>' + escCS_(legenda) + '</small></div>';
-}
-function cardRitmo_(l) {
-  var R = DADOS.ritmo;
-  var noRitmo = 0, comMeta = 0, semMeta = 0, atras = [];
-  R.indicadoresOrdem.forEach(function (k) {
-    var i = l.itens[k];
-    if (i.status === 'sem_meta') semMeta++;
-    else { comMeta++; if (i.status === 'no_ritmo') noRitmo++; }
-    if (i.status === 'atras') atras.push({ k: k, i: i });
-  });
-  var foto = l.fotoUrl
-    ? '<img class="ritmo-foto" loading="lazy" src="' + escCS_(l.fotoUrl) + '" alt="Foto de ' + escCS_(l.nome) + '">'
-    : '<div class="ritmo-foto ritmo-foto-ini" style="background:' + corDoNome_(l.nomeCompleto || l.nome) + '">' + escCS_((l.nome || '?').charAt(0).toUpperCase()) + '</div>';
-  var corpo = atras.length
-    ? '<div class="ritmo-atras"><h4>Atrás do ritmo</h4>' + atras.slice(0, 3).map(function (a) { return linhaAtrasRitmo_(a.k, a.i); }).join('') +
-      (atras.length > 3 ? '<p class="ritmo-mais">e mais ' + (atras.length - 3) + '</p>' : '') + '</div>'
-    : '<p class="ritmo-tudo">Tudo no ritmo</p>';
-  return '<article class="ritmo-card' + (atras.length ? ' com-atras' : '') + '" tabindex="0" role="link" data-cs="' + escCS_(l.nome) + '" aria-label="Abrir o controle de perfis de ' + escCS_(l.nome) + '">' +
-    '<header class="ritmo-cab">' + foto + '<b>' + escCS_(l.nome) + '</b></header>' +
-    '<div class="ritmo-anel-wrap">' + anelRitmoSvg_(noRitmo, comMeta) + '</div>' +
-    corpo +
-    '<footer class="ritmo-rodape-cartao">' + noRitmo + ' no ritmo, ' + semMeta + ' sem meta</footer></article>';
-}
-function renderRitmo() {
-  var el = document.getElementById('ritmoConteudo');
-  var R = DADOS.ritmo;
-  if (!R) { el.innerHTML = '<div class="gestor-empty">O ritmo aparece quando o mês escolhido é o mês atual.</div>'; return; }
-  if (!R.linhas.length) { el.innerHTML = '<div class="gestor-empty">Nenhum CS ativo neste mês.</div>'; return; }
-  var dist = { no_ritmo: 0, atencao: 0, atras: 0, cedo: 0, sem_meta: 0 };
-  R.linhas.forEach(function (l) { R.indicadoresOrdem.forEach(function (k) { dist[l.itens[k].status] = (dist[l.itens[k].status] || 0) + 1; }); });
-  var total = RITMO_STATUS_ORDEM_.reduce(function (s, k) { return s + dist[k]; }, 0) || 1;
-  var segmentos = RITMO_STATUS_ORDEM_.map(function (s) {
-    return dist[s] ? '<i style="width:' + (dist[s] / total * 100) + '%;background:' + RITMO_COR_[s] + '" title="' + RITMO_ROTULO_[s] + ': ' + dist[s] + '"></i>' : '';
-  }).join('');
-  var legenda = RITMO_STATUS_ORDEM_.filter(function (s) { return dist[s]; }).map(function (s) {
-    return '<span><i style="background:' + RITMO_COR_[s] + '"></i>' + RITMO_ROTULO_[s] + ' ' + dist[s] + '</span>';
-  }).join('');
-  // Ordenado pelo número de indicadores atrasados, do maior para o menor (vem assim do servidor; garantido aqui)
-  var linhas = R.linhas.slice().sort(function (a, b) { return b.atrasados - a.atrasados; });
-  el.innerHTML = '<div class="ritmo-topo"><div class="ritmo-hero"><b>' + R.resumo.noRitmo + ' de ' + R.resumo.comMeta +
-    '</b><span>indicadores do time no ritmo hoje</span></div>' +
-    '<div class="ritmo-dist" role="img" aria-label="Distribuição dos status do time">' + segmentos + '</div>' +
-    '<div class="ritmo-legenda">' + legenda + '</div></div>' +
-    '<div class="ritmo-grade">' + linhas.map(cardRitmo_).join('') + '</div>' +
-    '<p class="ritmo-nota">Previsto calculado até ' + dmaAcoes_(R.hoje) + '. Dias úteis descontam feriados nacionais. Cases e Matchmakings usam os conselhos realizados da carteira.</p>';
-  var irParaPerfis = function (ev) {
-    var card = ev.target.closest('[data-cs]');
-    if (!card) return;
-    var aba = document.querySelector('[data-tab="controlePerfis"]');
-    if (aba) aba.click();
-  };
-  el.onclick = irParaPerfis;
-  el.onkeydown = function (ev) { if (ev.key === 'Enter' && ev.target.getAttribute && ev.target.getAttribute('data-cs')) irParaPerfis(ev); };
-}
+var sincronizandoGestor_ = false;
+(function ligarSyncDock_() {
+  var s = document.getElementById('dockSync');
+  if (!s) return;
+  s.style.cursor = 'pointer';
+  s.setAttribute('role', 'button'); s.setAttribute('tabindex', '0');
+  s.addEventListener('click', sincronizarAgoraGestor_);
+  s.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); sincronizarAgoraGestor_(); } });
+})();
+
 // ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============
 // Bloco separado do ranking/radar por CS acima — olha a rede inteira de conselhos ativos no mesmo
 // período selecionado. Os dados já vêm prontos em DADOS.visaoGeralRede (generateVisaoGeralRede em
@@ -1988,56 +1920,22 @@ var REPORT_MONDAY_BOARD_URL = 'https://monday.com/boards/18394181332';
 function escRA_(s) { return String(s === null || s === undefined ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function fmtHorasArea_(h) { h = Number(h || 0); if (h >= 48) return Math.floor(h / 24) + ' dias'; return Math.round(h) + ' h'; }
 
-function carregarReportArea_() {
-  fetchJSON_(ENDPOINT_REPORT_SEMANA_AREA).then(renderReportSemanaArea_).catch(function (err) {
-    document.getElementById('blocoReportSemanaCorpo').innerHTML = '<div class="gestor-erro">Erro ao carregar o report da semana: ' + escRA_(err.message) + '</div>';
-  });
-  fetchJSON_(ENDPOINT_HEALTH_BASE).then(renderHealthBaseArea_).catch(function (err) {
-    document.getElementById('blocoHealthBaseCorpo').innerHTML = '<div class="gestor-erro">Erro ao carregar o Health da Base: ' + escRA_(err.message) + '</div>';
-  });
+// Críticos, advertência e report da semana por CS: duas chamadas isoladas, cada uma refaz só o mapa.
+function carregarComplementos_() {
+  SAUDE_ = { estado: 'carregando', lista: null, erro: null };
+  REPORT_ = { estado: 'carregando', lista: null, erro: null };
+  fetchJSON_(ENDPOINT_HEALTH_BASE).then(function (d) {
+    SAUDE_ = { estado: 'ok', lista: d.cs || [], erro: null };
+  }).catch(function (err) {
+    SAUDE_ = { estado: 'erro', lista: null, erro: err.message };
+  }).then(function () { if (DADOS) renderMapa_(); });
+  fetchJSON_(ENDPOINT_REPORT_SEMANA_AREA).then(function (d) {
+    REPORT_ = { estado: 'ok', lista: d.cs || [], erro: null };
+  }).catch(function (err) {
+    REPORT_ = { estado: 'erro', lista: null, erro: err.message };
+  }).then(function () { if (DADOS) renderMapa_(); });
 }
 
-function renderReportSemanaArea_(d) {
-  var lista = d.cs || [];
-  if (!lista.length) { document.getElementById('blocoReportSemanaCorpo').innerHTML = '<div class="gestor-empty">Nenhum CS cobrado de report nesta semana.</div>'; return; }
-  var prazo = new Date(lista[0].prazo);
-  var depois = new Date() > prazo;
-  var enviados = lista.filter(function (r) { return r.estado && r.estado.indexOf('enviado') === 0; }).length;
-  var rotulo = { enviado_no_prazo: 'no prazo', enviado_com_atraso: 'com atraso', pendente: 'pendente', atrasado: 'atrasado' };
-  var html = '<div class="rep-area-resumo ' + (depois ? 'alerta' : 'neutro') + '"><b>' + enviados + ' de ' + lista.length + ' enviados</b> · prazo sexta, 19h</div>';
-  html += '<div class="rep-area-pilulas">' + lista.map(function (r) {
-    var txt = rotulo[r.estado] || r.estado;
-    if (r.horas_atraso) txt += ' há ' + fmtHorasArea_(r.horas_atraso);
-    var emFalta = r.estado === 'atrasado' || r.estado === 'pendente';
-    var destaque = depois && emFalta ? ' ambar' : '';
-    var cobrar = emFalta ? ' <a class="rep-cobrar" href="' + REPORT_MONDAY_BOARD_URL + '" target="_blank" rel="noopener">Cobrar</a>' : '';
-    return '<span class="rep-pilula ' + r.estado + destaque + '">' + escRA_(r.cs_nome) + ': ' + escRA_(txt) + cobrar + '</span>';
-  }).join('') + '</div>';
-  lista.filter(function (r) { return r.como_foi_semana === 'critica'; }).forEach(function (r) {
-    html += '<div class="rep-area-critica">Semana crítica declarada por ' + escRA_(r.cs_nome) + (r.risco_se_ignorar ? ': ' + escRA_(r.risco_se_ignorar) : '') + '</div>';
-  });
-  document.getElementById('blocoReportSemanaCorpo').innerHTML = html;
-}
-
-function renderHealthBaseArea_(d) {
-  var lista = (d.cs || []).slice().sort(function (a, b) {
-    var va = a.valor_decimos, vb = b.valor_decimos;
-    if (va === null && vb === null) return a.cs_nome.localeCompare(b.cs_nome);
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    return vb - va;
-  });
-  var motivos = { sem_report: 'Sem report', sem_apuracao: 'Sem apuração', inconsistente: 'Inconsistente' };
-  var aviso = { inconsistente: 'Críticos informados acima da carteira, revisar com o CS' };
-  var html = '<div class="health-cards">' + lista.map(function (r) {
-    var tem = r.valor_decimos !== null && r.valor_decimos !== undefined;
-    var valor = tem ? (r.valor_decimos / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : (motivos[r.motivo] || 'Sem apuração');
-    var detalhe = tem ? r.criticos + ' de ' + r.carteira + ' membros' : (aviso[r.motivo] || ('carteira de ' + r.carteira));
-    var selo = (!r.chave_ligada && r.pontos_ativos > 0) ? '<span class="health-selo">Advertência: ' + r.pontos_ativos + ' pts ativos, fora do Health</span>' : '';
-    return '<div class="health-card"><div class="health-card-nome">' + escRA_(r.cs_nome) + '</div><div class="health-card-valor">' + escRA_(valor) + '</div><div class="health-card-detalhe">' + escRA_(detalhe) + '</div>' + selo + '</div>';
-  }).join('') + '</div>';
-  document.getElementById('blocoHealthBaseCorpo').innerHTML = html;
-}
 
 function renderAdvHealthChave_(ligado) {
   document.getElementById('chkSomaAdvHealth').checked = ligado;
@@ -2060,14 +1958,19 @@ carregarAdvHealthChave_();
 function carregarVisaoGeral() {
   fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&incluirExMembros=' + incluirExMembros).then(function (data) {
     DADOS = data;
-    renderHero();
-    renderRanking();
-    renderCardsCS();
-    renderRitmo();
-    renderVisaoRede();
-    carregarReportArea_();
+    renderKpis_();
+    renderMapa_();
+    renderRedeResumo_();
+    // O detalhe da rede tem erro isolado: se quebrar, o resumo e as demais seções seguem.
+    try { renderVisaoRede(); } catch (e) { document.getElementById('redeDetalhe').innerHTML = erroSecaoHtml_('Não foi possível montar o detalhe dos conselhos', e); }
+    renderFilaAcao_();
+    var primeiro = data.ranking && data.ranking.length ? data.ranking[0].nome : null;
+    if (primeiro && typeof dockDefinirTime === 'function') dockDefinirTime(primeiro);
   }).catch(function (err) {
-    document.getElementById('rankingList').innerHTML = '<div class="gestor-erro">Erro ao carregar: ' + err.message + '</div>';
+    var msg = erroSecaoHtml_('Não foi possível carregar a visão da área', err);
+    document.getElementById('kpisArea').innerHTML = '<div class="panel kpi erro-kpi" style="grid-column:1/-1">' + msg + '</div>';
+    document.getElementById('mapaCorpo').innerHTML = msg;
+    document.getElementById('redeResumo').innerHTML = '<div style="grid-column:1/-1">' + msg + '</div>';
   });
 }
 
@@ -2487,6 +2390,17 @@ function consultaExecutar_(pergunta) {
     btn.textContent = rotuloAnterior;
   });
 }
+
+function consultaAbrir_(texto) {
+  var p = document.getElementById('consultaPainel');
+  if (!p) return;
+  p.hidden = false;
+  if (texto) consultaExecutar_(texto); else { var i = document.getElementById('consultaInput'); if (i) i.focus(); }
+}
+function consultaFechar_() { var p = document.getElementById('consultaPainel'); if (p) p.hidden = true; }
+document.addEventListener('dock-busca', function (ev) { consultaAbrir_(ev.detail && ev.detail.texto); });
+document.getElementById('consultaFechar').addEventListener('click', consultaFechar_);
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') consultaFechar_(); });
 
 (function initConsulta_() {
   try {
@@ -4537,11 +4451,20 @@ function inicializarVoz_() {
 }
 
 carregarVisaoGeral();
+carregarComplementos_();
 carregarAcoes();
 
-// link direto /gestor#churn (usado pelo "Voltar ao painel" do relatório de churn)
-if (window.location.hash === '#churn' || new URLSearchParams(window.location.search).has('granularidade')) {
-  var btnAbaChurn_ = document.querySelector('.tab-btn[data-tab="churn"]');
-  if (btnAbaChurn_) btnAbaChurn_.click();
-}
+// Aba inicial: ?aba=<chave> (links do dock e links compartilhados) ou o link antigo /gestor#churn.
+(function abaInicial_() {
+  var q = new URLSearchParams(window.location.search);
+  var aba = q.get('aba');
+  var antigoChurn = window.location.hash === '#churn' || q.has('granularidade');
+  if (!aba && antigoChurn) aba = 'churn';
+  abrirAba(aba || 'visaoGeral', { semUrl: !aba });
+  if (window.location.hash === '#rede-conselhos') {
+    abrirRedeDetalhe_(true);
+    var alvo = document.getElementById('rede-conselhos');
+    if (alvo) alvo.scrollIntoView({ block: 'start' });
+  }
+})();
 `;

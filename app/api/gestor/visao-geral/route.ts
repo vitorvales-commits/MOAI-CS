@@ -8,6 +8,7 @@ import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { variacaoDoRanking, serieScoreArea } from '@/lib/evolucao-dados';
 import { EVOLUCAO_JANELA_PADRAO } from '@/lib/constants';
 import { hojeSP } from '@/lib/gtd-prazos';
+import { percentualCriticosDecimos } from '@/lib/indicadores-base';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,16 @@ export async function GET(req: NextRequest) {
       .then((pontos) => ({ pontos, erro: null as string | null }))
       .catch((e) => { console.error('visao-geral serie', e); return { pontos: null, erro: (e && e.message) || String(e) }; });
 
-    return NextResponse.json({ ...data, ranking, visaoGeralRede, serieArea });
+    // Membros críticos da área: soma dos críticos e da base de cada CS (health_base_cs) e o percentual pela
+    // mesma função do Health da Base (percentualCriticosDecimos). Campo aditivo, isolado como a série.
+    const criticosArea = await Promise.resolve(supabase.rpc('health_base_cs', { p_cs: null })).then(({ data: linhas, error }) => {
+      if (error) throw new Error(error.message);
+      const validas = (linhas || []).filter((r: any) => typeof r.criticos === 'number' && typeof r.carteira === 'number' && r.carteira > 0);
+      const criticos = validas.reduce((s: number, r: any) => s + r.criticos, 0);
+      const base = validas.reduce((s: number, r: any) => s + r.carteira, 0);
+      return { criticos, base, percentualDecimos: percentualCriticosDecimos(criticos, base), erro: null as string | null };
+    }).catch((e: any) => { console.error('visao-geral criticos', e); return { criticos: null, base: null, percentualDecimos: null, erro: (e && e.message) || String(e) }; });
+    return NextResponse.json({ ...data, ranking, visaoGeralRede, serieArea, criticosArea });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { GESTOR_HTML, GESTOR_SCRIPT } from '../app/gestor-html.ts';
 import { DASHBOARD_HTML } from '../app/dashboard-html.ts';
+import { montarDock } from '../lib/ui/tema.ts';
 
 // ids declarados: atributo id em qualquer HTML (estático ou dentro de strings do script) e el.id = '...'
 function idsDeclarados(fonte: string): Set<string> {
@@ -33,7 +34,8 @@ assert.deepEqual(faltando('', "var h = '<p id=\"montado\"></p>'; document.getEle
 assert.deepEqual(faltando('', "document.getElementById('x' + i);"), [], 'id por concatenação fica de fora');
 
 // ---- página do gestor ----
-const faltaGestor = faltando(GESTOR_HTML, GESTOR_SCRIPT);
+// O dock entra no lugar do marcador, como faz app/gestor/page.tsx.
+const faltaGestor = faltando(GESTOR_HTML.replace('<!--DOCK-->', montarDock('gestor', 'area')), GESTOR_SCRIPT);
 assert.deepEqual(faltaGestor, [], 'ids pedidos pelo script do gestor e ausentes do HTML: ' + faltaGestor.join(', '));
 
 // ---- home (HTML e script no mesmo template) ----

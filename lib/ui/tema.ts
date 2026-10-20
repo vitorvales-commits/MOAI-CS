@@ -186,7 +186,7 @@ export const FONTES_LINK = '<link rel="preconnect" href="https://fonts.googleapi
 
 // Comportamento do dock (abre por hover, foco e toque; fecha com Esc ou clique fora; Ctrl K foca a
 // busca) e função de sparkline. Script de navegador, sem dependências. Expõe:
-//  dockDefinirSync(texto), dockDefinirTime(nome), dockDefinirBadge(chave, n), sparkDesenhar(raiz).
+//  dockDefinirSync(texto, titulo), dockDefinirTime(nome), dockDefinirBadge(chave, n), dockMarcarAtivo(chave, rotulo), sparkDesenhar(raiz).
 // A busca dispara o evento "dock-busca" (detail.texto) quando o usuário aperta Enter.
 export const DOCK_SCRIPT = `
 function sparkDesenhar(raiz) {
@@ -201,10 +201,21 @@ function sparkDesenhar(raiz) {
       pts.map(function (q) { return q.join(','); }).join(' ') + '"/><circle cx="' + l[0] + '" cy="' + l[1] + '" r="2.4" style="fill:' + cor + '"/>';
   });
 }
-function dockDefinirSync(texto) {
+function dockDefinirSync(texto, titulo) {
   var el = document.getElementById('dockSync'); if (!el) return;
   el.lastChild.nodeValue = texto || 'sem sincronização';
-  el.title = texto ? 'Monday sincronizado às ' + texto : 'Sem registro de sincronização';
+  el.title = titulo || (texto ? 'Monday sincronizado às ' + texto : 'Sem registro de sincronização');
+}
+function dockMarcarAtivo(chave, rotulo) {
+  document.querySelectorAll('.grp').forEach(function (g) {
+    var it = g.querySelector('.mi[data-chave="' + chave + '"]');
+    var btn = g.querySelector('.grp-btn');
+    g.querySelectorAll('.mi').forEach(function (m) { m.classList.toggle('on', m === it); });
+    g.classList.toggle('on', !!it);
+    var lbl = g.querySelector('.grp-lbl'), uso = btn.querySelector('use');
+    lbl.textContent = it ? (rotulo || it.getAttribute('data-titulo')) : g.getAttribute('data-rotulo');
+    uso.setAttribute('href', '#' + (it ? it.getAttribute('data-icone') : g.getAttribute('data-icone')));
+  });
 }
 function dockDefinirTime(nome) {
   var a = document.getElementById('dockTime'); if (!a || !nome) return;
@@ -214,9 +225,12 @@ function dockDefinirBadge(chave, n) {
   var a = document.querySelector('[data-badge="' + chave + '"]'); if (!a) return;
   var mostrar = n !== null && n !== undefined && Number(n) > 0;
   a.querySelectorAll('.nbadge').forEach(function (b) { b.parentNode.removeChild(b); });
-  if (!mostrar) return;
+  var g0 = a.closest('.grp'), btn0 = g0 ? g0.querySelector('.grp-btn') : null;
+  if (!mostrar) { if (btn0) btn0.querySelectorAll('.nbadge').forEach(function (x) { x.parentNode.removeChild(x); }); return; }
   var b = document.createElement('span'); b.className = 'nbadge' + (a.getAttribute('data-badge-tom') === 'gold' ? ' gold' : ''); b.textContent = String(n);
   a.appendChild(b);
+  var g = a.closest('.grp'), btn = g ? g.querySelector('.grp-btn') : null;
+  if (btn) { btn.querySelectorAll('.nbadge').forEach(function (x) { x.parentNode.removeChild(x); }); var c = b.cloneNode(true); btn.appendChild(c); }
 }
 (function () {
   var grps = [].slice.call(document.querySelectorAll('.grp'));
@@ -318,7 +332,7 @@ function itemHtml(i: Item, ativo: string, b: BadgesDock): string {
     if (b.reportPendente) selo = '<span class="nbadge gold">1</span>';
   }
   const id = i.chave === 'time' ? ' id="dockTime"' : '';
-  return '<a' + id + ' class="mi' + (i.chave === ativo ? ' on' : '') + '" href="' + esc(i.href) + '" role="menuitem"' + marca + '><span class="ico"><svg><use href="#' + i.icone + '"/></svg></span><span><b>' +
+  return '<a' + id + ' class="mi' + (i.chave === ativo ? ' on' : '') + '" href="' + esc(i.href) + '" role="menuitem" data-chave="' + i.chave + '" data-titulo="' + esc(i.titulo) + '" data-icone="' + i.icone + '"' + marca + '><span class="ico"><svg><use href="#' + i.icone + '"/></svg></span><span><b>' +
     esc(i.titulo) + '</b><small>' + esc(i.sub) + '</small></span>' + selo + '</a>';
 }
 
@@ -338,7 +352,7 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
     const temUrg = g.itens.some((i) => i.badge === 'urgencias') && badges.urgencias && badges.urgencias > 0;
     const temRep = g.itens.some((i) => i.badge === 'report') && badges.reportPendente;
     const seloBtn = temUrg ? '<span class="nbadge">' + badges.urgencias + '</span>' : temRep ? '<span class="nbadge gold">1</span>' : '';
-    return '<div class="grp' + (on ? ' on' : '') + '"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="' + esc(g.titulo) + '">' +
+    return '<div class="grp' + (on ? ' on' : '') + '" data-rotulo="' + esc(g.rotulo) + '" data-icone="' + g.icone + '"><button type="button" class="grp-btn" aria-haspopup="true" aria-expanded="false" aria-label="' + esc(g.titulo) + '">' +
       '<svg aria-hidden="true"><use href="#' + icone + '"/></svg><span class="grp-lbl">' + esc(rotulo) + '</span>' + seloBtn + '</button>' +
       '<div class="menu" role="menu"><span class="menu-h">' + esc(g.titulo) + '</span>' + g.itens.map((i) => itemHtml(i, ativo, badges)).join('') + '</div></div>';
   });
