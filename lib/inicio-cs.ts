@@ -1,13 +1,19 @@
-// Dados da home do CS (redesenho v3, 20/10/2026): a faixa do mês, a pontuação contra a mediana, as metas com
-// ritmo e os pontos tomados. Só devolve números do próprio CS e a mediana do time (um número), nunca a lista
-// nominal de colegas. Nada é recalculado aqui: ranking, pontuação e ritmo vêm de generateVisaoGestor
-// (calcularScoreCS e calcularRitmo), a mediana vem de lib/evolucao.ts e a variação de variacaoDoRanking.
+// Dados da home do CS (redesenho v3 e homes de 20/10/2026): a faixa do mês, a pontuação contra a mediana, as metas com
+// ritmo, o foco de hoje, a simulação da pontuação, a semana e os pontos tomados. Só devolve números do próprio CS e a
+// mediana do time (um número), nunca a lista nominal de colegas. Ranking e pontuação vêm de generateVisaoGestor
+// (calcularScoreCS), o ritmo de calcularRitmo e as regras de foco, simulação e dica de lib/home-regras.ts.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { generateVisaoGestor, listarAdvertenciasCS } from './reports';
+import { generateCSReport, generateVisaoGestor, listarAdvertenciasCS, parseTituloConselho } from './reports';
 import { variacaoDoRanking } from './evolucao-dados';
 import { mediana } from './evolucao';
 import { hojeSP } from './gtd-prazos';
-import { MESES_ORDEM } from './constants';
+import { MESES_ORDEM, PESOS_SCORE_CS } from './constants';
+import { segundaFeiraBRT } from './indicadores-base';
+import {
+  dicaRitmo, focoDoDia, faltaPorSemana, simularPatamar, type ConselhoFoco, type MetaFoco,
+} from './home-regras';
+
+export { faltaPorSemana } from './home-regras';
 
 // Indicadores de volume que entram nas metas do mês da home (Carteira e churn viram uma linha à parte).
 export const INICIO_METAS = ['casesSucesso', 'upsell', 'matchmakings', 'rounds', 'indicacoes'] as const;
@@ -23,10 +29,17 @@ export function diasDoMesReal(ano: number, mes1a12: number): number {
   return new Date(Date.UTC(ano, mes1a12, 0)).getUTCDate();
 }
 
-// Quanto falta por semana para fechar a meta: falta dividido pelas semanas que restam no mês (mínimo de uma).
-export function faltaPorSemana(falta: number, diasRestantes: number): number {
-  const semanas = Math.max(1, diasRestantes / 7);
-  return Math.round((falta / semanas) * 10) / 10;
+// Dias de diferença entre dois ISO de data (YYYY-MM-DD), sem depender do fuso do servidor.
+function diasEntre(de: string, ate: string): number {
+  return Math.round((new Date(ate + 'T12:00:00Z').getTime() - new Date(de + 'T12:00:00Z').getTime()) / 86400000);
+}
+
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function somarDiasIso(iso: string, n: number): string {
+  const d = new Date(iso + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano: number, csNome: string) {
@@ -68,6 +81,42 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   const foco = atras && diasRestantes !== null
     ? { chave: atras.chave, label: atras.label, falta: atras.falta, porSemana: faltaPorSemana(atras.falta as number, diasRestantes) }
     : null;
+  const dica = atras && diasRestantes !== null
+    ? dicaRitmo({ label: atras.label, meta: atras.meta as number, realizado: atras.realizado || 0, diasRestantes })
+    : null;
+
+  // Simulação (7.5): o indicador atrasado de maior peso, pelo mesmo calcularScoreCS.
+  const atrasadosComPeso = metas.filter((m) => m.status === 'atras' && m.meta !== null)
+    .sort((a, b) => (PESOS_SCORE_CS[b.chave] || 0) - (PESOS_SCORE_CS[a.chave] || 0));
+  const simulacao = atrasadosComPeso.length
+    ? simularPatamar({
+      indicadores: minha.indicadores as any,
+      carteira: { numConselhos: (minha.indicadores as any).numConselhos?.calculado ?? 0, metaPropria: (minha.indicadores as any).numConselhos?.meta },
+      chave: atrasadosComPeso[0].chave, scoreAtual: meuRank ? meuRank.scoreReal : null,
+    })
+    : null;
+
+  // Foco de hoje (7.4) e semana: conselhos e GTD do próprio CS, pelo relatório individual.
+  const relatorio = await generateCSReport(sb, csNome, seletorMes, ano);
+  const conselhosFoco: ConselhoFoco[] = (relatorio.conselhos || []).map((c: any) => ({
+    nome: (parseTituloConselho(c.nome)?.contato) || c.nome,
+    diasAte: c.proximaData && c.proximaDataEhFutura ? diasEntre(hoje, String(c.proximaData).slice(0, 10)) : null,
+    confirmados: (c.confirmadosFuturos || []).length,
+    membros: Number(c.membros || 0),
+    gtdAtrasadas: c.gtd && c.gtd.etapasAtrasadas ? c.gtd.etapasAtrasadas.length : 0,
+  }));
+  const reportPendente = await reportPendenteDoCS(sb, csNome);
+  const diaSemanaHoje = new Date(hoje + 'T12:00:00Z').getUTCDay();
+  const reportDiasAtePrazo = reportPendente ? (5 - diaSemanaHoje + 7) % 7 : null;
+  const metasFoco: MetaFoco[] = metas.filter((m) => m.meta !== null).map((m) => ({
+    chave: m.chave, label: m.label, meta: m.meta as number, realizado: m.realizado || 0,
+    esperado: m.previsto ?? 0, peso: PESOS_SCORE_CS[m.chave] || 0,
+  }));
+  const futuros = conselhosFoco.filter((c) => c.diasAte !== null && c.diasAte >= 0).sort((a, b) => (a.diasAte as number) - (b.diasAte as number));
+  const proximo = futuros.length ? { titulo: futuros[0].nome, quando: formatarQuando(hoje, futuros[0].diasAte as number) } : null;
+  const focoHoje = focoDoDia({ conselhos: conselhosFoco, reportDiasAtePrazo, metas: metasFoco, proximo });
+
+  const semana = montarSemana(hoje, conselhosFoco, reportPendente);
 
   const cart: any = (minha.indicadores as any).numConselhos;
   const churn: any = (minha.indicadores as any).churn;
@@ -93,10 +142,44 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
         ? (meuRank.scoreReal > med ? 'acima' : (meuRank.scoreReal === med ? 'na' : 'abaixo'))
         : null,
       variacaoPontos: variacao ? variacao.pontos : null,
+      simulacao,
     },
     faixa: { noRitmo, comMeta: comMeta.length, foco },
+    dica,
+    focoHoje,
+    semana,
     metas,
     carteira: { numConselhos: cart ? cart.calculado : null, meta: cart ? cart.meta : null, semMetaPropria: !!(cart && cart.semMetaPropria), churn: churn ? churn.calculado : null, metaChurn: churn ? churn.meta : null },
     pontosTomados: pontos,
   };
+}
+
+// O report do CS está pendente ou atrasado nesta semana, pela mesma função de status usada na aba Report.
+async function reportPendenteDoCS(sb: SupabaseClient, csNome: string): Promise<boolean> {
+  const { data, error } = await sb.rpc('status_report_semana', { p_semana: segundaFeiraBRT() });
+  if (error) return false;
+  const estado = ((data || []) as any[]).find((r) => r.cs_nome === csNome)?.estado ?? null;
+  return estado === 'pendente' || estado === 'atrasado';
+}
+
+function formatarQuando(hoje: string, diasAte: number): string {
+  if (diasAte === 0) return 'hoje';
+  const dataIso = somarDiasIso(hoje, diasAte);
+  return DIAS_SEMANA[new Date(dataIso + 'T12:00:00Z').getUTCDay()].toLowerCase() + ', ' + dataIso.slice(8, 10) + '/' + dataIso.slice(5, 7);
+}
+
+// Sua semana (6.5): os sete dias a partir da segunda desta semana, com a marca de cada conselho e do prazo do report.
+function montarSemana(hoje: string, conselhos: ConselhoFoco[], reportPendente: boolean) {
+  const segunda = somarDiasIso(hoje, -((new Date(hoje + 'T12:00:00Z').getUTCDay() + 6) % 7));
+  const proximos: { dataIso: string; rotulo: string; titulo: string; tipo: 'conselho' | 'report' }[] = [];
+  const dias = Array.from({ length: 7 }, (_, i) => {
+    const dataIso = somarDiasIso(segunda, i);
+    const diasAte = diasEntre(hoje, dataIso);
+    const dow = new Date(dataIso + 'T12:00:00Z').getUTCDay();
+    const conselhosNoDia = conselhos.filter((c) => c.diasAte === diasAte);
+    if (conselhosNoDia.length) conselhosNoDia.forEach((c) => proximos.push({ dataIso, rotulo: DIAS_SEMANA[dow], titulo: 'Conselho ' + c.nome, tipo: 'conselho' }));
+    if (dow === 5 && reportPendente) proximos.push({ dataIso, rotulo: DIAS_SEMANA[dow], titulo: 'Prazo do report semanal, às 19h', tipo: 'report' });
+    return { dataIso, rotulo: DIAS_SEMANA[dow], dia: Number(dataIso.slice(8, 10)), hoje: diasAte === 0, fimDeSemana: dow === 0 || dow === 6, marcas: conselhosNoDia.length + (dow === 5 && reportPendente ? 1 : 0) };
+  });
+  return { dias, proximos: proximos.filter((p) => p.dataIso >= hoje).slice(0, 4) };
 }

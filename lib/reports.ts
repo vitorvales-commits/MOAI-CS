@@ -1633,6 +1633,9 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     },
     churnOrfao,
     casesPorCS,
+    // Cases do time inteiro, com o CS de cada um (campo aditivo da home do gestor). Sem ordenação por data: o
+    // registro traz o grupo de mês do Monday, não a data do case.
+    casesDoTime: relatorios.flatMap((r) => (r.casesRegistrados || []).map((c) => ({ ...c, cs: r.cs.nome }))),
     ranking: rankingIndicadores,
     csTop,
     // Lista completa (nome + score + detalhamento) — usada internamente por generateHomeResumoCS

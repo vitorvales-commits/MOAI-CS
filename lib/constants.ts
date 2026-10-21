@@ -274,3 +274,21 @@ export const MAPA_RITMO_ATRASADOS_ACAO = 3;
 
 // Escala da barra de Health da Base na ficha do CS: percentual de críticos mais advertência que enche a barra.
 export const HEALTH_BARRA_ESCALA_PCT = 20;
+
+// Homes do gestor e do CS (redesenho de 20/10/2026, seção 7 do prompt). Regras determinísticas, sem IA.
+// Projeção de retenção (churn e revenue churn): quando a projeção do mês passa do limite, o status vira Atenção.
+// Deixe em false para voltar a mostrar só o realizado contra o limite, sem mexer no template.
+export const RETENCAO_STATUS_POR_PROJECAO = true;
+// Abaixo deste número de dias decorridos a projeção é instável: a home mostra só o realizado.
+export const DIAS_MIN_PROJECAO = 7;
+// Status de indicador de crescimento pela fração do esperado até hoje (realizado dividido pelo esperado).
+export const HOME_RITMO_LIMIAR_ACELERAR = 0.7; // abaixo disso vale Acelerar
+export const HOME_RITMO_LIMIAR_NO_RITMO = 0.9; // a partir disso vale No ritmo; entre os dois, Quase no ritmo
+// Uso do limite de retenção e de críticos: a partir desta fração do limite vale Perto do limite.
+export const HOME_LIMIAR_PERTO_DO_LIMITE = 0.9;
+// Foco de hoje do CS (7.4): conselho nos próximos dias com poucos confirmados ou etapa de GTD atrasada.
+export const HOME_FOCO_DIAS_CONSELHO = 3;
+export const HOME_FOCO_CONFIRMADOS_ALERTA = 3;
+export const HOME_FOCO_DIAS_REPORT = 1;
+// Simulação da pontuação (7.5): o próximo patamar inteiro relevante é o múltiplo de 5 acima da nota atual.
+export const HOME_PATAMAR_PONTUACAO = 5;
