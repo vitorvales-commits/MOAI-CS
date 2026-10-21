@@ -831,6 +831,12 @@ function fetchJSON_(url, opts) {
       window.location.href = '/login';
       return new Promise(function () {});
     }
+    // Só faz o parse se a resposta for JSON. Uma página HTML (redirect, 404 ou erro da plataforma) vira uma mensagem
+    // orientadora, nunca o erro cru do JSON.parse.
+    var tipo = res.headers.get('content-type') || '';
+    if (tipo.indexOf('application/json') === -1) {
+      throw new Error('o servidor respondeu sem dados (status ' + res.status + '). Recarregue a página e, se continuar, avise o time de dados');
+    }
     return res.json().then(function (data) {
       if (!res.ok) throw new Error((data && data.error) || ('Erro ' + res.status));
       return data;
