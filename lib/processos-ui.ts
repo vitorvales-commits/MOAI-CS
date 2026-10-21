@@ -1,4 +1,6 @@
-// Casca da página /processos (13/10/2026): CSS e HTML estáticos. Leitura em tela cheia (o documento
+// Casca da página /processos (13/10/2026; dock v3 em 21/10/2026): CSS e HTML estáticos. A página
+// recebe o mesmo dock das demais (lib/ui/tema.ts), com Processos ativo; o CSS daqui entra depois de
+// TEMA_CSS e por isso prevalece no corpo da página. Leitura em tela cheia (o documento
 // já traz busca e navegação próprias); no modo de edição, o painel de itens abre à esquerda. O comportamento está em
 // public/processos.js. Visual alinhado ao restante do painel (fundo #F5F5F5, Inter, dourado MOAI)
 // para o time reconhecer a página como parte do mesmo produto. O documento em si é exibido num
@@ -8,16 +10,13 @@ export const PROCESSOS_CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none !important}
 html,body{height:100%}
-body{font-family:'Inter',system-ui,sans-serif;background:#F5F5F5;color:#5D5D5D;font-size:13px;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg,#F5F5F5);color:#5D5D5D;font-size:13px;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 button{font-family:inherit}
-.pr-topo{display:flex;align-items:center;gap:14px;padding:14px 24px;background:rgba(245,245,245,.92);border-bottom:.75pt solid #C6C4C4;flex-wrap:wrap}
-.pr-topo a.pr-logo img{height:22px;display:block}
+.pr-topo{display:flex;align-items:center;gap:14px;padding:16px 24px 14px;border-bottom:.75pt solid #DAD7D7;flex-wrap:wrap}
 .pr-topo-txt{flex:1;min-width:220px}
 .pr-titulo{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;color:#1A1A1A;line-height:1.2}
 .pr-meta{font-size:11.5px;color:#807E7E;margin-top:2px}
 .pr-topo-acoes{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.pr-voltar{font-size:11px;font-weight:700;color:#9F9F9F;text-decoration:none;padding:6px 10px;border-radius:8px}
-.pr-voltar:hover{color:#1A1A1A;background:#E9E9E9}
 .pr-btn{font-size:12px;font-weight:700;color:#1A1A1A;background:#fff;border:.75pt solid #D8D5D5;border-radius:9px;padding:8px 14px;cursor:pointer;transition:border-color .15s,background .15s}
 .pr-btn:hover:not(:disabled){border-color:#1A1A1A}
 .pr-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -124,9 +123,8 @@ body[data-modo=versao] .pr-doc-wrap{outline:3px solid #F5D273;outline-offset:-3p
 
 export const PROCESSOS_HTML = `
 <header class="pr-topo">
-  <a class="pr-logo" href="/" aria-label="Voltar ao painel"><img src="/logo/moai-logo-black.png" alt="MOAI"></a>
   <div class="pr-topo-txt"><h1 class="pr-titulo" id="prTitulo">Processos de CS</h1><div class="pr-meta" id="prMeta">Carregando…</div></div>
-  <div class="pr-topo-acoes"><span id="prAcoesTopo"></span><a class="pr-voltar" href="/">Voltar ao painel</a></div>
+  <div class="pr-topo-acoes"><span id="prAcoesTopo"></span></div>
 </header>
 <div class="pr-vazio" id="prVazio" hidden></div>
 <div class="pr-leitor" id="prLeitor">

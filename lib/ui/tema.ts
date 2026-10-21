@@ -51,6 +51,15 @@ button{font-family:inherit}
 .grp.on .nbadge{position:static;margin-left:8px;box-shadow:none}
 .nbadge.gold{background:var(--gold);color:var(--side)}
 
+/* Atalho de primeiro nível: destino consultado todo dia (Processos), sem menu e com rótulo sempre visível */
+.dock-atalho{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border-radius:12px;color:var(--ink2);font-size:13px;font-weight:600;white-space:nowrap;transition:background .18s ease,color .18s ease,transform .1s ease-out}
+.dock-atalho svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dock-atalho:hover,.dock-atalho:focus-visible{background:rgba(26,26,26,.06);color:var(--ink)}
+.dock-atalho:active{transform:scale(.96)}
+.dock-atalho.on{background:var(--ink);color:#fff;box-shadow:0 4px 14px rgba(20,20,20,.18),inset 0 1px 0 rgba(255,255,255,.12)}
+.dock-atalho.on svg{stroke:var(--gold)}
+.dock-atalho .grp-lbl{max-width:none;opacity:1;margin-left:0}
+
 /* Menu do grupo: nasce do ícone que o abriu */
 .menu{position:absolute;top:calc(100% + 12px);left:0;min-width:280px;padding:8px;border-radius:18px;background:var(--glass-strong);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-edge);box-shadow:0 24px 60px rgba(20,20,20,.18),0 2px 6px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9);transform-origin:24px 0;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.96);filter:blur(6px);transition:opacity .16s ease .12s,transform .3s var(--spring) .12s,filter .2s ease .12s,visibility 0s linear .42s}
 .menu::before{content:"";position:absolute;left:0;right:0;top:-14px;height:14px}
@@ -141,6 +150,8 @@ button{font-family:inherit}
   .brand-txt,.dsync,.dock-sep{display:none}
   .grp.on .grp-lbl,.grp:hover .grp-lbl,.grp:focus-within .grp-lbl{max-width:0;opacity:0;margin-left:0}
   .grp{position:static}
+  .dock-atalho{padding:0 10px}
+  .dock-atalho .grp-lbl{display:none}
   .menu{left:12px;right:12px;top:72px;position:fixed;min-width:0}
   .dsearch:hover,.dsearch:focus-within{width:40px;background:transparent;box-shadow:none}
   .work{padding:0 16px}
@@ -161,7 +172,7 @@ button{font-family:inherit}
 `;
 
 // Sprite de ícones (ids i-home, i-area, i-users, i-layers, i-target, i-shield, i-pulse, i-flag,
-// i-gear, i-cal, i-file, i-search, i-arrow, i-plus, i-check, i-warn). Entra uma vez por página.
+// i-gear, i-cal, i-file, i-book, i-search, i-arrow, i-plus, i-check, i-warn). Entra uma vez por página.
 export const ICONES_SVG = `<svg width="0" height="0" style="position:absolute" aria-hidden="true" xmlns:c2pa="http://c2pa.org/manifest">
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></symbol>
 <symbol id="i-area" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
@@ -173,6 +184,7 @@ export const ICONES_SVG = `<svg width="0" height="0" style="position:absolute" a
 <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></symbol>
 <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2Z"/><path d="M4 19v0a2 2 0 0 0 2 2h14M8.5 7.5h7M8.5 11h5"/></symbol>
 <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
 <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
@@ -233,6 +245,11 @@ function dockLigarSync(aposSync) {
   s.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); sincronizar(); } });
 }
 function dockMarcarAtivo(chave, rotulo) {
+  document.querySelectorAll('.dock-atalho').forEach(function (a) {
+    var on = a.getAttribute('data-chave') === chave;
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.grp').forEach(function (g) {
     var it = g.querySelector('.mi[data-chave="' + chave + '"]');
     var btn = g.querySelector('.grp-btn');
@@ -281,8 +298,8 @@ function dockDefinirBadge(chave, n) {
 `;
 
 export type PerfilDock = 'gestor' | 'cs';
-// Chaves de página ativa. Gestor: inicio, area, time, conselhos, metas, churn, nps, voz, perfis.
-// CS: inicio, agenda, meus-conselhos, indicadores, pontos, report, gestor.
+// Chaves de página ativa. Gestor: inicio, area, time, conselhos, metas, churn, nps, voz, perfis, processos.
+// CS: inicio, agenda, meus-conselhos, indicadores, pontos, report, processos, gestor.
 export type BadgesDock = {
   // Urgências da semana (fonte: /api/gestor/visao-geral/acoes). Omitido ou zero: sem badge.
   urgencias?: number | null;
@@ -296,14 +313,25 @@ export type OpcoesDock = {
   tambemGestor?: boolean; // CS que is_gestor() aprovou no servidor: libera o item Gestor
   primeiroCS?: string | null; // primeiro CS do ranking, destino do item Time
   placeholderBusca?: string;
+  // Página que não trata a busca do dock nem o sync (por exemplo /processos, que tem busca própria):
+  // omite os dois controles para não exibir botão que não faz nada.
+  semFerramentas?: boolean;
 };
 
 type Item = { chave: string; href: string; icone: string; titulo: string; sub: string; badge?: 'urgencias' | 'report' };
 type Grupo = { icone: string; rotulo: string; titulo: string; itens: Item[] };
+// Atalho: destino de primeiro nível, sem menu. Reservado ao que a pessoa abre várias vezes por semana,
+// para não esconder atrás de um grupo o que é consulta diária. Use com parcimônia: cada atalho ocupa o dock.
+type Atalho = { atalho: true; chave: string; href: string; icone: string; titulo: string; dica: string };
+type Entrada = Grupo | Atalho;
+const ehAtalho = (e: Entrada): e is Atalho => (e as Atalho).atalho === true;
+
+// Processos de CS (/processos): consulta de todo CS e gestor, mesma posição nos dois docks.
+const ATALHO_PROCESSOS: Atalho = { atalho: true, chave: 'processos', href: '/processos', icone: 'i-book', titulo: 'Processos', dica: 'Processos de CS: fluxos, POPs e modelos' };
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function gruposGestor(o: OpcoesDock): Grupo[] {
+function gruposGestor(o: OpcoesDock): Entrada[] {
   const time = o.primeiroCS ? '/gestor/cs/' + encodeURIComponent(o.primeiroCS) : '/gestor?aba=visaoGeral#mapa-time';
   return [
     { icone: 'i-area', rotulo: 'Gestão', titulo: 'Gestão', itens: [
@@ -320,18 +348,17 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
     ] },
     { icone: 'i-gear', rotulo: 'Sistema', titulo: 'Sistema', itens: [
       { chave: 'perfis', href: '/gestor?aba=controlePerfis', icone: 'i-gear', titulo: 'Controle de perfis', sub: 'Vínculos e permissões' },
-      { chave: 'processos', href: '/processos', icone: 'i-file', titulo: 'Processos', sub: 'Fluxos e documentos' },
     ] },
+    ATALHO_PROCESSOS,
   ];
 }
 
-function gruposCS(o: OpcoesDock): Grupo[] {
-  const g: Grupo[] = [
+function gruposCS(o: OpcoesDock): Entrada[] {
+  const g: Entrada[] = [
     { icone: 'i-home', rotulo: 'Início', titulo: 'Meu trabalho', itens: [
       { chave: 'inicio', href: '/', icone: 'i-home', titulo: 'Início', sub: 'Seu dia e seu mês' },
       { chave: 'agenda', href: '/?aba=agenda', icone: 'i-cal', titulo: 'Agenda', sub: 'Conselhos e rounds' },
       { chave: 'meus-conselhos', href: '/?aba=conselhos', icone: 'i-layers', titulo: 'Meus conselhos', sub: 'Membros, presença e GTD' },
-      { chave: 'processos', href: '/processos', icone: 'i-file', titulo: 'Processos', sub: 'Fluxos e documentos' },
     ] },
     { icone: 'i-target', rotulo: 'Desempenho', titulo: 'Desempenho', itens: [
       { chave: 'indicadores', href: '/?aba=indicadores', icone: 'i-target', titulo: 'Meus indicadores', sub: 'Metas contra o realizado' },
@@ -340,6 +367,7 @@ function gruposCS(o: OpcoesDock): Grupo[] {
     { icone: 'i-file', rotulo: 'Report', titulo: 'Report', itens: [
       { chave: 'report', href: '/?aba=report', icone: 'i-file', titulo: 'Report semanal', sub: 'Vence sexta às 19h', badge: 'report' },
     ] },
+    ATALHO_PROCESSOS,
   ];
   // O item Gestor só existe para quem is_gestor() aprova no servidor; a página decide e passa a opção.
   if (o.tambemGestor) g.push({ icone: 'i-area', rotulo: 'Gestor', titulo: 'Gestor', itens: [
@@ -372,6 +400,11 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
   const titSync = opcoes.horaSync ? 'Monday sincronizado às ' + esc(opcoes.horaSync) : 'Clique para sincronizar com o Monday agora';
   const busca = esc(opcoes.placeholderBusca || (perfil === 'gestor' ? 'Pergunte ou busque' : 'Buscar conselho ou membro'));
   const partes = grupos.map((g) => {
+    if (ehAtalho(g)) {
+      const on = g.chave === ativo;
+      return '<a class="dock-atalho' + (on ? ' on' : '') + '" href="' + esc(g.href) + '" data-chave="' + g.chave + '" title="' + esc(g.dica) + '"' + (on ? ' aria-current="page"' : '') + '>' +
+        '<svg aria-hidden="true"><use href="#' + g.icone + '"/></svg><span class="grp-lbl">' + esc(g.titulo) + '</span></a>';
+    }
     const itemAtivo = g.itens.find((i) => i.chave === ativo);
     const on = !!itemAtivo;
     const rotulo = on ? (opcoes.rotuloAtivo || itemAtivo!.titulo) : g.rotulo;
@@ -387,7 +420,7 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
   return '<header class="dock-wrap"><nav class="dock" aria-label="Navegação principal">' +
     '<a class="dock-brand" href="' + (perfil === 'gestor' ? '/gestor' : '/') + '"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span>' +
     partes.join('') +
-    '<span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" id="dockBusca" aria-label="' + busca + '" placeholder="' + busca + '"><kbd>Ctrl K</kbd></label>' +
-    '<span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>' +
+    '<span class="dock-fill"></span>' + (opcoes.semFerramentas ? '' : '<label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" id="dockBusca" aria-label="' + busca + '" placeholder="' + busca + '"><kbd>Ctrl K</kbd></label>' +
+    '<span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>') +
     '<a class="av" href="/auth/signout" style="background:var(--gold);color:var(--side)" title="Sair da conta" aria-label="Sair da conta">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</a></nav></header>';
 }

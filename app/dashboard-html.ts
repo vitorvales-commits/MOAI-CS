@@ -63,8 +63,6 @@ svg.icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-w
 .logout-link:hover { color:#1A1A1A; background:#E9E9E9; }
 .gestor-topbar-link { font-size: 11px; font-weight:800; color:#C89A2E; text-decoration:none; padding:6px 10px; border-radius:8px; transition: color .15s, background .15s; }
 .gestor-topbar-link:hover { color:#1A1A1A; background:#F0E4C8; }
-.processos-topbar-link { font-size: 11px; font-weight:800; color:#1A1A1A; text-decoration:none; padding:6px 10px; border-radius:8px; border:0.75pt solid #D8D5D5; background:#fff; }
-.processos-topbar-link:hover { border-color:#1A1A1A; }
 select.pickmes { background:#fff; color:#1A1A1A; border: 0.75pt solid #D8D5D5; border-radius: 10px; padding: 7px 12px; font-family:'Inter',sans-serif; font-size: 12px; font-weight: 700; cursor:pointer; transition: border-color .2s; }
 select.pickmes:hover { border-color:#1A1A1A; }
 .sync-wrap { display:flex; align-items:center; gap:8px; }
