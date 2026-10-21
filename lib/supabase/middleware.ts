@@ -41,6 +41,9 @@ export async function updateSession(request: NextRequest) {
   // /login) em vez de travar a navegação; o pior caso vira "precisa logar de novo", nunca "página
   // não carrega".
   let userAtual = null;
+  // Verdade "não sei" (timeout ou erro na checagem) é diferente de "sem sessão": a rota de API responde 503
+  // e não manda o navegador para o login, que devolveria HTML onde o cliente espera JSON.
+  let verificacaoFalhou = false;
   try {
     const TIMEOUT_MS = 3000;
     const timeout = new Promise<never>((_, reject) => {
@@ -50,12 +53,23 @@ export async function updateSession(request: NextRequest) {
     userAtual = data.user;
   } catch {
     userAtual = null;
+    verificacaoFalhou = true;
   }
   const user = userAtual;
 
   const path = request.nextUrl.pathname;
   const isPublicPath = path === '/login' || path.startsWith('/auth/');
   const isAuthorized = !!user?.email && user.email.toLowerCase().endsWith(ALLOWED_EMAIL_DOMAIN);
+
+  // Rotas de API nunca recebem redirect para /login (o fetch seguiria o redirect e leria HTML no lugar de JSON,
+  // que foi a causa do erro "Unexpected token '<'" do farol da semana). Cada caso devolve JSON com o status certo.
+  if (!isPublicPath && path.startsWith('/api/')) {
+    if (verificacaoFalhou) {
+      return NextResponse.json({ error: 'Não foi possível verificar sua sessão agora. Tente de novo em instantes.' }, { status: 503 });
+    }
+    if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+    if (!isAuthorized) return NextResponse.json({ error: 'Domínio de e-mail não autorizado.' }, { status: 403 });
+  }
 
   if (!isPublicPath && !isAuthorized) {
     return NextResponse.redirect(new URL('/login', request.url));

@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Início · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/*BASE*/
+.saud{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:30px 0 4px;max-width:1312px;margin:0 auto}
+.saud small{display:block;font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:6px}
+.saud h1{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:44px;font-weight:700;letter-spacing:-0.035em;line-height:1.02}
+.saud h1 span{color:var(--ink3)}
+.saud-r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+.bento{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.w{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:22px;box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 30px rgba(20,20,20,.04);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.w-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.w-t{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+.w-t svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.c4{grid-column:span 4} .c5{grid-column:span 5} .c6{grid-column:span 6} .c7{grid-column:span 7} .c8{grid-column:span 8} .c12{grid-column:span 12}
+
+/* Resumo do mês */
+.foco{position:relative;overflow:hidden;background:linear-gradient(140deg,#141414 0%,#1C1C1C 45%,#262626 100%);color:#fff;border:0;padding:26px 26px 22px;gap:18px}
+.foco::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(520px 320px at 0% 0%,rgba(200,154,46,.42),transparent 60%),radial-gradient(460px 300px at 100% 100%,rgba(61,139,95,.32),transparent 60%)}
+.foco > *{position:relative}
+.foco .w-t{color:var(--gold)}
+.foco h2{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.03em;line-height:1.1;max-width:640px}
+.foco p{margin:8px 0 0;color:#CFCBCB;font-size:14px;max-width:600px}
+.vidro{background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,.14);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.foco-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mini{padding:13px 15px;display:flex;flex-direction:column;gap:4px}
+.mini span{font-size:11.5px;color:#B5B2B2;font-weight:600}
+.mini b{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em}
+.mini small{font-size:12px;color:#CFCBCB}
+.mini b.al{color:#F0B9B5} .mini b.at{color:#EDCB7E}
+.foco-acoes{display:flex;gap:10px;flex-wrap:wrap}
+.btn.claro{background:#fff;color:var(--ink);border-color:#fff}
+.btn.vidro-b{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.22)}
+
+/* Time */
+.time{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px}
+.pessoa{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px;border-radius:16px;text-align:center;transition:background .15s ease,transform .1s ease-out}
+.pessoa:hover{background:var(--bg)}
+.pessoa:active{transform:scale(.97)}
+.pessoa .av{width:54px;height:54px;font-size:20px;position:relative;box-shadow:0 4px 12px rgba(20,20,20,.12)}
+.pessoa b{font-size:12.5px;font-weight:600}
+.pessoa small{font-size:11px;color:var(--ink3);margin-top:-5px}
+.pessoa .ring{position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2.5px var(--red)}
+.pessoa .ring.g{box-shadow:0 0 0 2.5px var(--gold)}
+
+/* Indicadores com o M da marca */
+.inds-grupo{display:flex;flex-direction:column;gap:10px}
+.inds-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px}
+.inds-lbl::after{content:"";flex:1;height:1px;background:var(--line)}
+.inds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.inds.tres{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ind{border-radius:18px;background:var(--bg);padding:16px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 14px;align-items:center;transition:transform .2s var(--spring)}
+.ind:hover{transform:translateY(-2px)}
+.ind svg.m{width:52px;height:52px;grid-row:span 2}
+.ind-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.ind-top b{font-size:12.5px;font-weight:700}
+.ind-v{font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.025em;line-height:1}
+.ind-v small{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--ink3);margin-left:3px;letter-spacing:0}
+.ind-foot{grid-column:1 / -1;display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.ind-foot .bar{background:#E3E1E1}
+.ind-txt{font-size:12px;color:var(--ink2);line-height:1.45}
+.ind-txt em{font-style:normal;color:var(--gold-ink);font-weight:600}
+.ind-txt strong{color:var(--red-ink);font-weight:600}
+
+/* Agenda */
+.semana{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.d{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:14px;background:var(--bg)}
+.d small{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.d b{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;line-height:1}
+.d span{font-size:11.5px;color:var(--ink2)}
+.d.hoje{background:var(--ink);color:#fff}
+.d.hoje small{color:var(--gold)} .d.hoje span{color:#CFCBCB}
+.ev{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 4px;border-top:1px solid var(--line)}
+.ev:first-of-type{border-top:0}
+.ev-h{font-size:12px;font-weight:700;color:var(--ink2);line-height:1.25}
+.ev b{display:block;font-size:13.5px;font-weight:600}
+.ev small{font-size:12px;color:var(--ink2)}
+.conf{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.legenda{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3)}
+.legenda span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:8px;height:8px;border-radius:50%}
+
+/* Cases */
+.case{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.case:first-of-type{border-top:0;padding-top:0}
+.case .av{width:34px;height:34px;font-size:13px}
+.case b{display:block;font-size:13.5px;font-weight:600;line-height:1.35}
+.case small{font-size:12px;color:var(--ink2)}
+.grande{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1}
+.grande small{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);margin-left:4px;letter-spacing:0}
+
+/* Rede */
+.rede{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rv{padding:14px;border-radius:16px;background:var(--bg)}
+.rv span{display:block;font-size:12px;color:var(--ink2);font-weight:600}
+.rv b{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em}
+
+
+/* Agenda: controles e calendário */
+.ag-ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ag-nav{display:inline-flex;gap:4px}
+.ag-nav button{height:32px;min-width:32px;padding:0 10px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);font-weight:700;font-size:13px;cursor:pointer}
+.ag-nav button:active{transform:scale(.96)}
+.cal-sem{--h:30px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cal-head,.cal-body{display:grid;grid-template-columns:52px repeat(5,minmax(0,1fr))}
+.cal-head{border-bottom:1px solid var(--line);background:#FAFAF9}
+.cal-head span{display:flex;align-items:baseline;gap:6px;padding:10px 12px}
+.cal-head small{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+.cal-head b{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;line-height:1}
+.cal-head .hoje small{color:var(--gold-ink)}
+.cal-head .hoje b{background:var(--ink);color:#fff;border-radius:9px;padding:3px 7px}
+.cal-body{position:relative;height:calc(var(--h) * 15);background:repeating-linear-gradient(180deg,transparent 0 calc(var(--h) - 1px),var(--line) calc(var(--h) - 1px) var(--h))}
+.cal-horas{display:flex;flex-direction:column}
+.cal-horas span{height:var(--h);font-size:10.5px;font-weight:600;color:var(--ink3);text-align:right;padding:2px 8px 0 0;transform:translateY(-7px)}
+.cal-horas span:first-child{transform:none}
+.cal-col{position:relative;border-left:1px solid var(--line)}
+.cal-col.hoje{background:rgba(200,154,46,.05)}
+.agora{position:absolute;left:-4px;right:0;height:2px;background:var(--red);z-index:2}
+.agora::before{content:"";position:absolute;left:0;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)}
+.evt{position:absolute;left:5px;right:5px;border-radius:11px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;overflow:hidden;font-size:12px;transition:transform .15s var(--spring),box-shadow .15s ease;border:1px solid transparent}
+.evt:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(20,20,20,.12);z-index:3}
+.evt b{font-size:12.5px;font-weight:700;line-height:1.3}
+.evt span{color:var(--ink2)}
+.evt em{font-style:normal;font-weight:700;display:inline-flex;align-items:center;gap:6px;margin-top:auto}
+.evt em i{width:8px;height:8px;border-radius:50%}
+.evt.verde{background:#E8F2EC;border-color:#CFE3D6}.evt.verde em i{background:var(--green)}.evt.verde em{color:#2F6E4A}
+.evt.amarelo{background:#FBF2DC;border-color:#F0DDA8}.evt.amarelo em i{background:#E3B23C}.evt.amarelo em{color:#8A6410}
+.evt.laranja{background:#FCEADF;border-color:#F3CDB4}.evt.laranja em i{background:#E07B39}.evt.laranja em{color:#A4501C}
+.evt.azul{background:#E6EDFB;border-color:#C9D7F4}.evt.azul em i{background:#3B6FD8}.evt.azul em{color:#2A52A8}
+.evt.vermelho{background:var(--red-soft);border-color:#EBC6C0}.evt.vermelho em i{background:var(--red)}
+.evt.round{background:#F1F0EF;border-color:#E2E0DF;border-style:dashed}
+.cal-mes{border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.mes-head,.mes-grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mes-head{background:#FAFAF9;border-bottom:1px solid var(--line)}
+.mes-head span{padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+.dia{min-height:96px;padding:8px 10px;border-left:1px solid var(--line);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.dia:nth-child(7n+1){border-left:0}
+.dia:nth-child(-n+7){border-top:0}
+.dia .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:15px}
+.dia.fora{background:#FAFAF9;color:var(--ink3)}
+.dia.passado .chip-ev{opacity:.55}
+.dia.hoje .n{background:var(--ink);color:#fff;border-radius:8px;padding:1px 7px;align-self:flex-start}
+.chip-ev{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 7px;border-radius:7px;background:var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-ev i{width:7px;height:7px;border-radius:50%;flex:none}
+.mais{font-size:11px;color:var(--ink3);font-weight:600;padding-left:2px}
+
+/* Pódio */
+.podio-w{position:relative;overflow:hidden;background:linear-gradient(160deg,#141414 0%,#1C1C1C 55%,#232323 100%);color:#fff;border:0}
+.podio-w::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(420px 260px at 50% 30%,rgba(200,154,46,.35),transparent 65%),radial-gradient(360px 220px at 100% 100%,rgba(61,139,95,.25),transparent 60%)}
+.podio-w > *{position:relative}
+.podio-w .w-t{color:var(--gold)}
+.link.claro{color:#CFCBCB}.link.claro:hover{color:#fff}
+.podio{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px;align-items:end;padding-top:6px}
+.pod{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:#fff;position:relative}
+.pod b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.01em}
+.pod-dest{font-size:12px;color:#B5B2B2;line-height:1.35;min-height:32px;max-width:180px}
+.pod-av{position:relative;margin-bottom:4px}
+.pod .av{width:64px;height:64px;font-size:24px;box-shadow:0 0 0 3px rgba(255,255,255,.15),0 10px 24px rgba(0,0,0,.35)}
+.p1 .av{width:84px;height:84px;font-size:32px;box-shadow:0 0 0 3px #C89A2E,0 0 0 8px rgba(200,154,46,.18),0 14px 34px rgba(0,0,0,.45)}
+.medalha{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:800;color:#1A1A1A;border:2px solid #1A1A1A}
+.medalha.ouro{background:linear-gradient(145deg,#F2D27A,#C89A2E)}
+.medalha.prata{background:linear-gradient(145deg,#F1F3F5,#AEB4BB)}
+.medalha.bronze{background:linear-gradient(145deg,#E3B48C,#A86F45)}
+.coroa{width:40px;height:24px;margin-bottom:-2px;filter:drop-shadow(0 4px 10px rgba(200,154,46,.5))}
+.degrau{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding-top:12px;border-radius:16px 16px 6px 6px;background:rgba(255,255,255,.07);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.14);margin-top:6px;position:relative;overflow:hidden}
+.p1 .degrau{height:118px;background:linear-gradient(180deg,rgba(200,154,46,.32),rgba(200,154,46,.08));border-color:rgba(200,154,46,.45)}
+.p2 .degrau{height:88px}
+.p3 .degrau{height:68px}
+.p1 .degrau::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 66%);transform:translateX(-120%);animation:brilho 3.6s ease-in-out 1s infinite}
+@keyframes brilho{0%{transform:translateX(-120%)}45%,100%{transform:translateX(120%)}}
+.pod-n{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;line-height:1;letter-spacing:-0.02em}
+.p1 .pod-n{font-size:40px;color:#F2D27A}
+.degrau small{font-size:11.5px;color:#CFCBCB;font-weight:600}
+.pod{animation:sobe .7s var(--spring) both}
+.p1{animation-delay:.15s}.p3{animation-delay:.08s}
+@keyframes sobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.pod:hover .av{transform:scale(1.04)}
+.pod .av{transition:transform .25s var(--spring)}
+.pod-foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+@media (prefers-reduced-motion:reduce){.pod,.p1 .degrau::after{animation:none}}
+.rede{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+@media (max-width:700px){.cal-sem{overflow-x:auto}.cal-head,.cal-body{min-width:640px}.rede{grid-template-columns:1fr 1fr!important}.dia{min-height:64px;padding:6px}.chip-ev span{display:none}.podio{gap:6px}.pod .av{width:52px;height:52px}.p1 .av{width:66px;height:66px}.pod-dest{display:none}}
+
+@media (max-width:1100px){.c4,.c5,.c6{grid-column:span 6}.c7,.c8{grid-column:span 12}.inds{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.bento{grid-template-columns:1fr}.c4,.c5,.c6,.c7,.c8,.c12{grid-column:auto}.saud h1{font-size:32px}.foco h2{font-size:24px}.foco-row{grid-template-columns:1fr}.inds,.inds.tres{grid-template-columns:1fr}.semana{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.d{padding:8px}.d span{display:none}}
+</style>
+</head>
+<body>
+<!--ICONS-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs><path id="mglyph" d="M2 50V4h11l13 20 13-20h11v46H38V26L26 43 14 26v24Z"/></defs>
+</svg>
+<div class="app">
+<!--DOCK-->
+  <div class="work">
+    <div class="saud">
+      <div><small>Terça, 20 de outubro · dia 20 de 31 do mês</small><h1>Boa tarde, Vitor.<br><span>O time está atrás do ritmo em 4 frentes.</span></h1></div>
+      <div class="saud-r">
+        <div class="seg" role="group" aria-label="Período"><button type="button">Set</button><button type="button" class="on">Out 2026</button></div>
+        <a class="btn" href="#"><svg><use href="#i-pulse"/></svg>Sincronizar agora</a>
+      </div>
+    </div>
+
+    <main class="content">
+      <div class="bento">
+
+        <!-- Nível 1: o mês do time numa frase -->
+        <section class="w foco c8" aria-labelledby="h-mes">
+          <div class="w-h"><span class="w-t"><svg><use href="#i-warn"/></svg>Outubro até aqui</span><span class="tag" style="background:rgba(255,255,255,.1);color:#fff">65% do mês corrido</span></div>
+          <div>
+            <h2 id="h-mes">Cases de sucesso é o maior risco do mês: 11 de 55, quando o esperado até hoje seria 35.</h2>
+            <p>Matchmakings e rounds também estão atrás. Churn e revenue churn ainda estão dentro do limite, mas no ritmo atual passam dele até o fim do mês.</p>
+          </div>
+          <div class="foco-row">
+            <div class="vidro mini"><span>Metas de crescimento no ritmo</span><b class="al">0 de 4</b><small>Indicações é a mais perto</small></div>
+            <div class="vidro mini"><span>Churn projetado no mês</span><b class="at">12 de 10</b><small>8 até hoje, limite 10</small></div>
+            <div class="vidro mini"><span>Membros críticos</span><b class="at">19 de 20</b><small>7,4% de 258 membros</small></div>
+          </div>
+          <div class="foco-acoes">
+            <a class="btn claro" href="gestor.html"><svg><use href="#i-arrow"/></svg>Abrir a fila de ação</a>
+            <a class="btn vidro-b" href="#casos">Ver cases do mês</a>
+          </div>
+        </section>
+
+        <!-- Time -->
+        <section class="w c4" aria-labelledby="h-time">
+          <div class="w-h"><span class="w-t" id="h-time"><svg><use href="#i-users"/></svg>Time de CS · 8</span><a class="link" href="gestor.html">Mapa do time</a></div>
+          <div class="time">
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#7A5A1C">A<i class="ring g"></i></span><b>Amanda</b><small>72</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#2F4A3D">G</span><b>George</b><small>81</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#9A9797">L</span><b>Luana</b><small>sem dados</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#272727">M</span><b>Marcos</b><small>76</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#4A3B36">M<i class="ring"></i></span><b>Mateus</b><small>64</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#3D5248">R<i class="ring g"></i></span><b>Rodrigo</b><small>61</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#5D3A35">V<i class="ring"></i></span><b>Vilker</b><small>55</small></a>
+            <a class="pessoa" href="cs.html"><span class="av" style="background:#33415C">V</span><b>Vitor</b><small>70</small></a>
+          </div>
+          <div class="legenda" style="margin-top:auto"><span><i class="sw" style="background:var(--red)"></i>Em risco</span><span><i class="sw" style="background:var(--gold)"></i>Acompanhar</span><span>Número: pontuação do mês</span></div>
+        </section>
+
+        <!-- Nível 2: indicadores do time -->
+        <section class="w c12" aria-labelledby="h-inds">
+          <div class="w-h">
+            <div><span class="w-t" id="h-inds"><svg><use href="#i-target"/></svg>Indicadores da área</span></div>
+            <span style="font-size:12px;color:var(--ink3)">O M enche conforme a meta. O traço na barra marca onde o time deveria estar hoje.</span>
+          </div>
+          <div class="inds-grupo">
+            <span class="inds-lbl">Crescimento · quanto mais, melhor</span>
+            <div class="inds">
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c1"><rect x="0" y="40.8" width="52" height="11.2"/></clipPath><use href="#mglyph" fill="#C0433D" clip-path="url(#c1)"/></svg>
+                <div class="ind-top"><b>Cases de sucesso</b><span class="tag red">Acelerar</span></div>
+                <div class="ind-v">11<small>de 55</small></div>
+                <div class="ind-foot"><div class="bar"><span class="red" style="width:20%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><strong>24 abaixo do esperado.</strong> Recorde: 65 em set/2026.</span></div></div>
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c2"><rect x="0" y="52" width="52" height="0"/></clipPath><use href="#mglyph" fill="#C0433D" clip-path="url(#c2)"/></svg>
+                <div class="ind-top"><b>Rounds</b><span class="tag red">Nenhum ainda</span></div>
+                <div class="ind-v">0<small>de 4</small></div>
+                <div class="ind-foot"><div class="bar"><span class="red" style="width:0%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><strong>3 esperados até hoje.</strong> Recorde: 8 em jul/2026.</span></div></div>
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c3"><rect x="0" y="30.2" width="52" height="21.8"/></clipPath><use href="#mglyph" fill="#C0433D" clip-path="url(#c3)"/></svg>
+                <div class="ind-top"><b>Matchmakings</b><span class="tag red">Acelerar</span></div>
+                <div class="ind-v">63<small>de 150</small></div>
+                <div class="ind-foot"><div class="bar"><span class="red" style="width:42%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><strong>34 abaixo do esperado.</strong> Recorde: 184 em set/2026.</span></div></div>
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c4"><rect x="0" y="25" width="52" height="27"/></clipPath><use href="#mglyph" fill="#C89A2E" clip-path="url(#c4)"/></svg>
+                <div class="ind-top"><b>Indicações</b><span class="tag gold">Quase no ritmo</span></div>
+                <div class="ind-v">13<small>de 25</small></div>
+                <div class="ind-foot"><div class="bar"><span class="gold" style="width:52%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><em>3 abaixo do esperado.</em> Recorde: 34 em set/2026.</span></div></div>
+            </div>
+          </div>
+          <div class="inds-grupo">
+            <span class="inds-lbl">Retenção · limite máximo do mês</span>
+            <div class="inds tres">
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c5"><rect x="0" y="10.4" width="52" height="41.6"/></clipPath><use href="#mglyph" fill="#C89A2E" clip-path="url(#c5)"/></svg>
+                <div class="ind-top"><b>Churn</b><span class="tag gold">Atenção</span></div>
+                <div class="ind-v">8<small>de 10 no limite</small></div>
+                <div class="ind-foot"><div class="bar"><span class="gold" style="width:80%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><em>No ritmo atual fecha em 12.</em> 80% do limite usado em 65% do mês.</span></div></div>
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c6"><rect x="0" y="17.2" width="52" height="34.8"/></clipPath><use href="#mglyph" fill="#C89A2E" clip-path="url(#c6)"/></svg>
+                <div class="ind-top"><b>Revenue churn</b><span class="tag gold">Atenção</span></div>
+                <div class="ind-v">R$ 10.035<small>de 15.000</small></div>
+                <div class="ind-foot"><div class="bar"><span class="gold" style="width:67%"></span><i class="pace" style="left:65%"></i></div><span class="ind-txt"><em>No ritmo atual fecha perto de R$ 15.550.</em> 67% do limite usado.</span></div></div>
+              <div class="ind"><svg class="m" viewBox="0 0 52 52" aria-hidden="true"><use href="#mglyph" fill="#E3E1E1"/><clipPath id="c7"><rect x="0" y="4.6" width="52" height="47.4"/></clipPath><use href="#mglyph" fill="#C89A2E" clip-path="url(#c7)"/></svg>
+                <div class="ind-top"><b>Membros críticos</b><span class="tag gold">Perto do limite</span></div>
+                <div class="ind-v">19<small>de 20 no limite</small></div>
+                <div class="ind-foot"><div class="bar"><span class="gold" style="width:95%"></span></div><span class="ind-txt"><em>Falta 1 para o limite.</em> 7,4% de uma base de 258 membros.</span></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agenda com calendário -->
+        <section class="w c12" aria-labelledby="h-ag">
+          <div class="w-h">
+            <span class="w-t" id="h-ag"><svg><use href="#i-cal"/></svg><span id="ag-titulo">Agenda da equipe · 19 a 23 out</span></span>
+            <div class="ag-ctrl">
+              <div class="ag-nav"><button type="button" aria-label="Período anterior">&lsaquo;</button><button type="button" class="hoje-btn">Hoje</button><button type="button" aria-label="Próximo período">&rsaquo;</button></div>
+              <div class="seg" role="group" aria-label="Recorte"><button type="button">Meus</button><button type="button" class="on">Equipe</button></div>
+              <div class="seg" role="group" aria-label="Visão da agenda" id="ag-visao"><button type="button" data-v="lista">Lista</button><button type="button" data-v="semana" class="on">Semana</button><button type="button" data-v="mes">Mês</button></div>
+            </div>
+          </div>
+
+          <!-- Semana: grade de horários -->
+          <div id="ag-semana" class="cal-sem">
+            <div class="cal-head">
+              <span></span>
+              <span><small>Seg</small><b>19</b></span>
+              <span class="hoje"><small>Ter</small><b>20</b></span>
+              <span><small>Qua</small><b>21</b></span>
+              <span><small>Qui</small><b>22</b></span>
+              <span><small>Sex</small><b>23</b></span>
+            </div>
+            <div class="cal-body">
+              <div class="cal-horas" aria-hidden="true"><span>8h</span><span>9h</span><span>10h</span><span>11h</span><span>12h</span><span>13h</span><span>14h</span><span>15h</span><span>16h</span><span>17h</span><span>18h</span><span>19h</span><span>20h</span><span>21h</span><span>22h</span></div>
+              <div class="cal-col"></div>
+              <div class="cal-col hoje">
+                <i class="agora" style="top:calc(var(--h) * 6.85)" aria-label="Agora, 14h51"></i>
+                <a class="evt verde" href="#" style="top:calc(var(--h) * 6);height:calc(var(--h) * 4)"><b>14h · Henrique Guimarães</b><span>Conselho · Rodrigo</span><em><i></i>6 de 7 confirmados</em></a>
+                <a class="evt azul" href="#" style="top:calc(var(--h) * 11);height:calc(var(--h) * 4)"><b>19h · Lívia</b><span>Fast Track · George</span><em><i></i>8 de 10 confirmados</em></a>
+              </div>
+              <div class="cal-col">
+                <a class="evt amarelo" href="#" style="top:calc(var(--h) * 6);height:calc(var(--h) * 4)"><b>14h · Rafael Glanesini</b><span>Executivo · Marcos</span><em><i></i>5 de 7 confirmados</em></a>
+                <a class="evt round" href="#" style="top:calc(var(--h) * 2);height:calc(var(--h) * 2)"><b>10h · Round Executivo 02</b><span>Amanda · online</span></a>
+              </div>
+              <div class="cal-col">
+                <a class="evt laranja" href="#" style="top:calc(var(--h) * 1);height:calc(var(--h) * 4)"><b>9h · Julio Faccioli</b><span>Fast Track · Vilker</span><em><i></i>2 de 8 confirmados</em></a>
+                <a class="evt amarelo" href="#" style="top:calc(var(--h) * 6);height:calc(var(--h) * 4)"><b>14h · Thiago Correia</b><span>Executivo · George</span><em><i></i>5 de 9 confirmados</em></a>
+                <a class="evt amarelo" href="#" style="top:calc(var(--h) * 11);height:calc(var(--h) * 4)"><b>19h · Fast Track 04</b><span>Fast Track · Amanda</span><em><i></i>5 de 14 confirmados</em></a>
+              </div>
+              <div class="cal-col">
+                <a class="evt round" href="#" style="top:calc(var(--h) * 2);height:calc(var(--h) * 2)"><b>10h · Round Fast Track 07</b><span>Mateus · Brasília</span></a>
+                <a class="evt amarelo" href="#" style="top:calc(var(--h) * 6);height:calc(var(--h) * 4)"><b>14h · Kadydja Albuquerque</b><span>Conselho · Amanda</span><em><i></i>4 de 6 confirmados</em></a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mês: calendário -->
+          <div id="ag-mes" class="cal-mes" hidden>
+            <div class="mes-head"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+            <div class="mes-grade" id="mes-grade"></div>
+          </div>
+
+          <!-- Lista -->
+          <div id="ag-lista" hidden>
+            <a class="ev" href="#"><span class="ev-h">Hoje<br>14h</span><span><b>Henrique Guimarães</b><small>Conselho · CS Rodrigo</small></span><span class="conf"><i class="sw" style="background:var(--green)"></i>6/7</span></a>
+            <a class="ev" href="#"><span class="ev-h">Hoje<br>19h</span><span><b>Lívia</b><small>Fast Track · CS George</small></span><span class="conf"><i class="sw" style="background:#3B6FD8"></i>8/10</span></a>
+            <a class="ev" href="#"><span class="ev-h">Qua<br>14h</span><span><b>Rafael Glanesini</b><small>Executivo · CS Marcos</small></span><span class="conf"><i class="sw" style="background:#E3B23C"></i>5/7</span></a>
+            <a class="ev" href="#"><span class="ev-h">Qui<br>9h</span><span><b>Julio Faccioli</b><small>Fast Track · CS Vilker</small></span><span class="conf"><i class="sw" style="background:#E07B39"></i>2/8</span></a>
+            <a class="ev" href="#"><span class="ev-h">Qui<br>14h</span><span><b>Thiago Correia</b><small>Executivo · CS George</small></span><span class="conf"><i class="sw" style="background:#E3B23C"></i>5/9</span></a>
+            <a class="ev" href="#"><span class="ev-h">Qui<br>19h</span><span><b>Fast Track 04</b><small>Fast Track · CS Amanda</small></span><span class="conf"><i class="sw" style="background:#E3B23C"></i>5/14</span></a>
+            <a class="ev" href="#"><span class="ev-h">Sex<br>14h</span><span><b>Kadydja Albuquerque</b><small>Conselho · CS Amanda</small></span><span class="conf"><i class="sw" style="background:#E3B23C"></i>4/6</span></a>
+          </div>
+
+          <div class="w-h">
+            <div class="legenda"><span>Confirmados:</span><span><i class="sw" style="background:var(--red)"></i>0 a 1</span><span><i class="sw" style="background:#E07B39"></i>2 a 3</span><span><i class="sw" style="background:#E3B23C"></i>4 a 5</span><span><i class="sw" style="background:var(--green)"></i>6 a 7</span><span><i class="sw" style="background:#3B6FD8"></i>8 ou mais</span><span><i class="sw" style="background:#B5B2B2"></i>Round</span></div>
+            <span class="faint" style="font-size:12px">7 conselhos e 2 rounds na semana · 1 conselho com 3 confirmados ou menos</span>
+          </div>
+        </section>
+
+        <!-- Pódio do mês -->
+        <section class="w podio-w c7" aria-labelledby="h-dest">
+          <div class="w-h"><span class="w-t" id="h-dest"><svg><use href="#i-flag"/></svg>Top 3 de outubro</span><a class="link claro" href="gestor.html">Ranking completo &rarr;</a></div>
+          <div class="podio">
+            <a class="pod p2" href="cs.html">
+              <span class="pod-av"><span class="av" style="background:#272727">M</span><i class="medalha prata">2</i></span>
+              <b>Marcos</b><span class="pod-dest">8 de 9 indicadores com meta</span>
+              <span class="degrau"><span class="pod-n">76</span><small>&#9660; 2 no mês</small></span>
+            </a>
+            <a class="pod p1" href="cs.html">
+              <svg class="coroa" viewBox="0 0 40 24" aria-hidden="true"><path d="M3 21h34l2-16-10 7-9-10-9 10L1 5l2 16Z" fill="#C89A2E"/><circle cx="1.5" cy="4.5" r="1.8" fill="#E8C66A"/><circle cx="20" cy="2" r="1.8" fill="#E8C66A"/><circle cx="38.5" cy="4.5" r="1.8" fill="#E8C66A"/></svg>
+              <span class="pod-av"><span class="av" style="background:#2F4A3D">G</span><i class="medalha ouro">1</i></span>
+              <b>George</b><span class="pod-dest">Maior volume de matchmakings do time</span>
+              <span class="degrau"><span class="pod-n">81</span><small>&#9650; 3 no mês</small></span>
+            </a>
+            <a class="pod p3" href="cs.html">
+              <span class="pod-av"><span class="av" style="background:#7A5A1C">A</span><i class="medalha bronze">3</i></span>
+              <b>Amanda</b><span class="pod-dest">Quem mais subiu no mês</span>
+              <span class="degrau"><span class="pod-n">72</span><small>&#9650; 6 no mês</small></span>
+            </a>
+          </div>
+          <div class="pod-foot"><span class="tag" style="background:rgba(200,154,46,.18);color:#EDCB7E">&#9650; Maior alta: Amanda, de 66 para 72</span><span class="tag" style="background:rgba(255,255,255,.1);color:#CFCBCB">Distância do 1º para o 4º: 17 pontos</span></div>
+        </section>
+        <!-- Cases -->
+        <section class="w c5" id="casos" aria-labelledby="h-cases">
+          <div class="w-h"><span class="w-t" id="h-cases"><svg><use href="#i-flag"/></svg>Cases de sucesso do time</span><a class="link" href="#">Todos</a></div>
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px"><span class="grande">11<small>no mês</small></span><span style="font-size:12.5px;color:var(--ink2);text-align:right">4 nesta semana<br>mais recente há 2 dias</span></div>
+          <div>
+            <div class="case"><span class="av" style="background:#2F4A3D">G</span><span><b>[Título do case registrado no Monday]</b><small>George · conselho C Level · 18/10</small></span></div>
+            <div class="case"><span class="av" style="background:#7A5A1C">A</span><span><b>[Título do case registrado no Monday]</b><small>Amanda · conselho Fast Track · 16/10</small></span></div>
+            <div class="case"><span class="av" style="background:#272727">M</span><span><b>[Título do case registrado no Monday]</b><small>Marcos · conselho Executivo · 15/10</small></span></div>
+            <div class="case"><span class="av" style="background:#3D5248">R</span><span><b>[Título do case registrado no Monday]</b><small>Rodrigo · conselho Fast Track · 14/10</small></span></div>
+            <div class="case"><span class="av" style="background:#33415C">V</span><span><b>[Título do case registrado no Monday]</b><small>Vitor · conselho Executivo · 13/10</small></span></div>
+          </div>
+        </section>
+
+        <section class="w c12" aria-labelledby="h-rede">
+          <div class="w-h"><span class="w-t" id="h-rede"><svg><use href="#i-layers"/></svg>Conselhos · visão consolidada</span><a class="link" href="#">Abrir conselhos</a></div>
+          <div class="rede">
+            <div class="rv"><span>Conselhos ativos</span><b>67</b></div>
+            <div class="rv"><span>Membros</span><b>258</b></div>
+            <div class="rv"><span>Presença acumulada</span><b>78%</b></div>
+            <div class="rv"><span>Abaixo de 70% de presença</span><b style="color:var(--gold-ink)">4</b></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<script>/*SPARK*/</script>
+
+<script>
+(function(){
+  var vis=document.getElementById('ag-visao');
+  vis.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var v=b.dataset.v;
+    ['lista','semana','mes'].forEach(function(k){document.getElementById('ag-'+k).hidden=(k!==v);});
+    document.getElementById('ag-titulo').textContent=v==='mes'?'Agenda da equipe · outubro de 2026':'Agenda da equipe · 19 a 23 out';});
+  /* Mês ilustrativo: outubro de 2026 começa numa quinta */
+  var ev={1:[['Fast Track 07','g']],2:[['Executivo 05','g']],6:[['C Level 01','b'],['Round Exec 02','r']],7:[['Fast Track 04','y']],8:[['Julio Faccioli','g'],['Lívia','b']],9:[['Kadydja A.','y']],13:[['Thiago Correia','g']],14:[['Executivo 02','y'],['Rafael G.','g']],15:[['C Level 01','g'],['Round FT 07','r']],16:[['Henrique G.','g']],20:[['Henrique G.','g'],['Lívia','b']],21:[['Rafael G.','y'],['Round Exec 02','r']],22:[['Julio Faccioli','o'],['Thiago Correia','y'],['Fast Track 04','y']],23:[['Round FT 07','r'],['Kadydja A.','y']],27:[['C Level 01','y'],['Round FT 07','r']],28:[['Executivo 05','s']],29:[['Executivo 02','s']],30:[['Fast Track 11','s']]};
+  var cor={g:'#3D8B5F',y:'#E3B23C',o:'#E07B39',b:'#3B6FD8',r:'#B5B2B2',s:'#D8D5D5'};
+  var g=document.getElementById('mes-grade'),h='';
+  var cel=[];for(var i=28;i<=30;i++)cel.push([i,'fora']);for(var d=1;d<=31;d++)cel.push([d,'']);var n=1;while(cel.length%7)cel.push([n++,'fora']);
+  cel.forEach(function(c){var d=c[0],cls='dia '+c[1];if(!c[1]){if(d<20)cls+=' passado';if(d===20)cls+=' hoje';}
+    var lista=(!c[1]&&ev[d])||[],chips=lista.slice(0,2).map(function(x){return '<span class="chip-ev"><i style="background:'+cor[x[1]]+'"></i><span>'+x[0]+'</span></span>';}).join('');
+    if(lista.length>2)chips+='<span class="mais">mais '+(lista.length-2)+'</span>';
+    h+='<div class="'+cls+'"><span class="n">'+d+'</span>'+chips+'</div>';});
+  g.innerHTML=h;
+})();
+</script>
+</body>
+</html>
