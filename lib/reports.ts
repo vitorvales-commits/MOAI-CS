@@ -662,16 +662,28 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
 
+// Leitura em voo única (21/10/2026): com o cache vazio, as rotas que a home dispara juntas (equipe, agenda,
+// fotos) faziam cada uma a leitura completa das tabelas. Agora as chamadas simultâneas aguardam a mesma leitura.
+// A geração impede que uma leitura iniciada antes de uma invalidação grave dado antigo no cache.
+let dadosBrutosEmVoo: ReturnType<typeof buscarDadosBrutosSemCache> | null = null;
+let geracaoDadosBrutos = 0;
 export function invalidarDadosBrutosCache() {
   dadosBrutosCache = null;
+  dadosBrutosEmVoo = null;
+  geracaoDadosBrutos++;
 }
 
 export async function getDadosBrutos(sb: SupabaseClient) {
   noStore();
   if (dadosBrutosCache && dadosBrutosCache.expiraEm > Date.now()) return dadosBrutosCache.valor;
-  const dados = await buscarDadosBrutosSemCache(sb);
-  dadosBrutosCache = { valor: dados, expiraEm: Date.now() + DADOS_BRUTOS_TTL_MS };
-  return dados;
+  if (dadosBrutosEmVoo) return dadosBrutosEmVoo;
+  const geracao = geracaoDadosBrutos;
+  const voo = buscarDadosBrutosSemCache(sb).then((dados) => {
+    if (geracao === geracaoDadosBrutos) dadosBrutosCache = { valor: dados, expiraEm: Date.now() + DADOS_BRUTOS_TTL_MS };
+    return dados;
+  }).finally(() => { if (dadosBrutosEmVoo === voo) dadosBrutosEmVoo = null; });
+  dadosBrutosEmVoo = voo;
+  return voo;
 }
 export type DadosBrutos = Awaited<ReturnType<typeof getDadosBrutos>>;
 

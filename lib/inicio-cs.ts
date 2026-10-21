@@ -44,6 +44,12 @@ function somarDiasIso(iso: string, n: number): string {
 
 export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano: number, csNome: string) {
   const hoje = hojeSP();
+  // Independentes da visão do time: começam juntas (21/10/2026). O catch vazio só evita rejeição sem tratamento
+  // se a visão falhar antes; o erro real aparece no await de cada uma.
+  const relatorioP = generateCSReport(sb, csNome, seletorMes, ano);
+  const reportPendenteP = reportPendenteDoCS(sb, csNome);
+  const advertenciasP = listarAdvertenciasCS(sb, csNome);
+  relatorioP.catch(() => undefined); advertenciasP.catch(() => undefined);
   const visao = await generateVisaoGestor(sb, seletorMes, ano, false);
   const minha = visao.porCS.find((c) => c.nome === csNome);
   if (!minha) throw new Error('Este perfil não aparece entre os CS ativos do período.');
@@ -97,7 +103,7 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
     : null;
 
   // Foco de hoje (7.4) e semana: conselhos e GTD do próprio CS, pelo relatório individual.
-  const relatorio = await generateCSReport(sb, csNome, seletorMes, ano);
+  const relatorio = await relatorioP;
   const conselhosFoco: ConselhoFoco[] = (relatorio.conselhos || []).map((c: any) => ({
     nome: (parseTituloConselho(c.nome)?.contato) || c.nome,
     diasAte: c.proximaData && c.proximaDataEhFutura ? diasEntre(hoje, String(c.proximaData).slice(0, 10)) : null,
@@ -108,7 +114,7 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
     gtdTotal: c.gtd ? Number(c.gtd.total || 0) : 0,
     presencaPct: c.registros ? Math.round((Number(c.presente || 0) / Number(c.registros)) * 100) : null,
   }));
-  const reportPendente = await reportPendenteDoCS(sb, csNome);
+  const reportPendente = await reportPendenteP;
   const diaSemanaHoje = new Date(hoje + 'T12:00:00Z').getUTCDay();
   const reportDiasAtePrazo = reportPendente ? (5 - diaSemanaHoje + 7) % 7 : null;
   const metasFoco: MetaFoco[] = metas.filter((m) => m.meta !== null).map((m) => ({
@@ -130,7 +136,7 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
 
   let pontos: { ativos: number; proximoVencimento: string | null } | null = null;
   try {
-    const adv = await listarAdvertenciasCS(sb, csNome);
+    const adv = await advertenciasP;
     const vencimentos = adv.registros.filter((r) => r.ativa).map((r) => {
       const d = new Date(r.aplicadoEm); d.setMonth(d.getMonth() + r.validadeMeses);
       return d.toISOString().slice(0, 10);

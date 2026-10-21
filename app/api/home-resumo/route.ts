@@ -22,13 +22,16 @@ export async function GET(req: NextRequest) {
   }
   try {
     const { supabase, csNome } = await requireMoaiUser();
-    const data = await generateHomeResumoCS(supabase, mes, ano, csNome);
+    // so=inicio (21/10/2026): o Início do CS só usa o campo inicio. Sem o parâmetro, a resposta segue completa para
+    // a página restrita do CS, que usa top 3, posição e indicadores do time. As duas partes rodam em paralelo.
+    const soInicio = searchParams.get('so') === 'inicio';
     // Campo aditivo da home v3: faixa do mês, metas com ritmo e pontos tomados do próprio CS, isolado para
     // que um erro nele não derrube o resto da resposta (a home mostra a mensagem real só nessa seção).
-    const inicio = csNome
-      ? await dadosInicioCS(supabase, mes, ano, csNome).then((dado) => ({ dado, erro: null as string | null }))
+    const inicioP = csNome
+      ? dadosInicioCS(supabase, mes, ano, csNome).then((dado) => ({ dado, erro: null as string | null }))
         .catch((e: any) => { console.error('home-resumo inicio', e); return { dado: null, erro: (e && e.message) || String(e) }; })
-      : { dado: null, erro: null as string | null };
+      : Promise.resolve({ dado: null, erro: null as string | null });
+    const [data, inicio] = await Promise.all([soInicio ? Promise.resolve({}) : generateHomeResumoCS(supabase, mes, ano, csNome), inicioP]);
     return NextResponse.json({ ...data, inicio });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
