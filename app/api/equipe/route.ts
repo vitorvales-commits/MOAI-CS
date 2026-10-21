@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
         return montarHomeGestor({
           mes, ano, geral: data.periodo.geral,
           indicadores: data.indicadores as any, rankingGeral: data.rankingGeralPorScore as any,
-          membrosIncluidos: data.membrosIncluidos, variacoes: variacoes ?? new Map(), conselhos: data.conselhos as any,
+          csAtivos: data.csAtivos, variacoes: variacoes ?? new Map(), conselhos: data.conselhos as any,
           recordes: data.recordes, casesDoTime: data.casesDoTime, casesPorCS: data.casesPorCS,
         });
       } catch (err: any) {

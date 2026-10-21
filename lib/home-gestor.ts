@@ -35,7 +35,7 @@ export function montarHomeGestor(args: {
   mes: string; ano: number; geral: boolean;
   indicadores: Record<string, IndicadorEquipe | undefined>;
   rankingGeral: LinhaPontuacao[];
-  membrosIncluidos: string[];
+  csAtivos: { nome: string; nomeCompleto?: string; fotoUrl?: string | null }[];
   variacoes: Map<string, { pontos: number } | null | undefined>;
   conselhos: { status?: string; congelado?: boolean; membros?: number; presente?: number; ausente?: number; reposicao?: number; registros?: number; nome: string }[];
   recordes: Record<string, unknown>;
@@ -98,13 +98,13 @@ export function montarHomeGestor(args: {
   const primeiro = args.rankingGeral[0]?.score ?? null;
   const quarto = args.rankingGeral[3]?.score ?? null;
 
-  // Time de CS: quem está no ranking com pontuação e quem ainda não tem dado suficiente, sem ordenar por nota.
+  // Time de CS: só CS ativos de cs_config (nunca ex CS nem inativos), com a pontuação de quem está no ranking e
+  // "sem dados" para quem ainda não tem indicador suficiente. Ordem alfabética, sem ordenar por nota.
   const porNome = new Map(args.rankingGeral.map((l) => [l.nome, l]));
-  const nomesTime = Array.from(new Set([...args.membrosIncluidos, ...args.rankingGeral.map((l) => l.nome)])).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  const time = nomesTime.map((nome) => {
-    const l = porNome.get(nome);
+  const time = args.csAtivos.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map((c) => {
+    const l = porNome.get(c.nome);
     const score = l ? l.score : null;
-    return { nome, nomeCompleto: l?.nomeCompleto || nome, fotoUrl: l?.fotoUrl || null, score, faixa: faixaPessoa(score) };
+    return { nome: c.nome, nomeCompleto: c.nomeCompleto || l?.nomeCompleto || c.nome, fotoUrl: c.fotoUrl || l?.fotoUrl || null, score, faixa: faixaPessoa(score) };
   });
 
   // Conselhos consolidados (a mesma soma que a home fazia no navegador, agora no servidor).

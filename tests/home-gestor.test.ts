@@ -23,7 +23,7 @@ const ranking = [
 ];
 const home = montarHomeGestor({
   mes: 'Outubro', ano: 2026, geral: false,
-  indicadores, rankingGeral: ranking, membrosIncluidos: ['Amanda', 'George', 'Luana', 'Marcos'],
+  indicadores, rankingGeral: ranking, csAtivos: ['Amanda', 'George', 'Luana', 'Marcos'].map((nome) => ({ nome })),
   variacoes: new Map([['George', { pontos: 3 }], ['Amanda', { pontos: 6 }]]),
   conselhos: [
     { nome: 'A', status: 'realizado', membros: 10, presente: 8, ausente: 2, reposicao: 0, registros: 10, congelado: false },
@@ -46,12 +46,15 @@ assert.equal(home.podio.pessoas[0].nome, 'George');
 assert.equal(home.podio.distanciaPrimeiroQuarto, null);
 assert.equal(home.podio.maiorAlta!.nome, 'Amanda', 'maior alta vem de variacoes');
 const so2 = montarHomeGestor({
-  mes: 'Outubro', ano: 2026, geral: false, indicadores, rankingGeral: ranking.slice(0, 2), membrosIncluidos: [],
+  mes: 'Outubro', ano: 2026, geral: false, indicadores, rankingGeral: ranking.slice(0, 2), csAtivos: [],
   variacoes: new Map(), conselhos: [], recordes: {}, casesDoTime: [], casesPorCS: [],
 });
 assert.equal(so2.podio.pessoas.length, 2, 'não preenche vaga do pódio');
 
 // Time: quem não tem pontuação aparece como sem dados, nunca como zero, e a faixa segue a régua da Visão da área.
+// Só CS ativos entram no Time: quem não está em csAtivos (ex CS, inativo) nunca aparece, mesmo com histórico.
+assert.deepEqual(home.time.map((t) => t.nome), ['Amanda', 'George', 'Luana', 'Marcos']);
+assert.ok(!home.time.some((t) => t.nome === 'Lanna'));
 const luana = home.time.find((t) => t.nome === 'Luana')!;
 assert.equal(luana.score, null);
 assert.equal(luana.faixa, 'sem_dados');
@@ -78,7 +81,7 @@ assert.equal(criticos.percentualBase, 7.4);
 
 // Mês geral (Visão Geral) não tem frase do mês.
 const geral = montarHomeGestor({
-  mes: 'Visão Geral', ano: 2026, geral: true, indicadores, rankingGeral: ranking, membrosIncluidos: [],
+  mes: 'Visão Geral', ano: 2026, geral: true, indicadores, rankingGeral: ranking, csAtivos: [],
   variacoes: new Map(), conselhos: [], recordes: {}, casesDoTime: [], casesPorCS: [],
 });
 assert.equal(geral.resumo, null);

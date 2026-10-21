@@ -1148,13 +1148,12 @@ function inicializarSessao(){
       // Gestor sem perfil de CS segue na home do time; quem tem perfil de CS (gestor ou não) abre o início do CS.
       if (souGestor && !meuCSNome) { iniciarHomeGestor(); return; }
       if (!meuCSNome) { mostrarPerfilNaoVinculado(); return; }
-      fetch('/api/config', { cache: 'no-store' }).then(function(r){ return r.json(); })
+      // O Início não depende da configuração: começa já; só a página do CS (aberta por ?aba=) espera por ela.
+      var configP = fetch('/api/config', { cache: 'no-store' }).then(function(r){ return r.json(); })
         .then(function(cfg){ configRevelarIndicadoresTime = !!cfg.revelarIndicadoresEquipe; })
-        .catch(function(){})
-        .then(function(){
-          iniciarInicioCS();
-          if (abaUrl && ABAS_CS_HOME_[abaUrl]) abrirSecaoCS_(abaUrl, true);
-        });
+        .catch(function(){});
+      iniciarInicioCS();
+      if (abaUrl && ABAS_CS_HOME_[abaUrl]) configP.then(function(){ abrirSecaoCS_(abaUrl, true); });
     })
     .catch(function(err){ mostrarErroPerfil_(err); });
 }
@@ -1264,7 +1263,7 @@ function iniciarInicioCS() {
 
 function carregarInicio_() {
   var nome = encodeURIComponent(meuCSNome), per = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
-  fetchJSON_('/api/home-resumo' + per).then(function (d) {
+  fetchJSON_('/api/home-resumo' + per + '&so=inicio').then(function (d) {
     var ini = d.inicio || { dado: null, erro: 'Sem dados da home neste período.' };
     renderInCabecalho_(ini);
     renderInFoco_(ini);
