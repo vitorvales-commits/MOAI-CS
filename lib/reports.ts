@@ -1636,6 +1636,9 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     // Cases do time inteiro, com o CS de cada um (campo aditivo da home do gestor). Sem ordenação por data: o
     // registro traz o grupo de mês do Monday, não a data do case.
     casesDoTime: relatorios.flatMap((r) => (r.casesRegistrados || []).map((c) => ({ ...c, cs: r.cs.nome }))),
+    // CS ativos de cs_config, sem inativos e sem EX_MEMBROS_SEM_CONTA: a lista do Time de CS da home do gestor.
+    // membrosIncluidos segue com todos, porque os totais do time ainda somam o histórico de quem saiu.
+    csAtivos: relatorios.filter((r) => r.cs.ativo && !r.cs.ex).map((r) => ({ nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl || null })),
     ranking: rankingIndicadores,
     csTop,
     // Lista completa (nome + score + detalhamento) — usada internamente por generateHomeResumoCS
