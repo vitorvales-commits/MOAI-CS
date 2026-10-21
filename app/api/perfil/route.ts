@@ -11,8 +11,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { isGestor, csNome } = await requireMoaiUser();
-    return NextResponse.json({ isGestor, csNome });
+    const { isGestor, csNome, email } = await requireMoaiUser();
+    // Nome de saudação: primeiro trecho do e-mail da sessão (ex.: "vitor.vales@..." vira "Vitor"). Só exibição.
+    const primeiro = String(email || '').split('@')[0].split(/[._-]/)[0].replace(/\d+/g, '');
+    const nome = primeiro ? primeiro.charAt(0).toUpperCase() + primeiro.slice(1) : null;
+    return NextResponse.json({ isGestor, csNome, nome });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

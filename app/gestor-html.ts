@@ -70,6 +70,8 @@ export const GESTOR_STYLE = TEMA_CSS + `
 .table-scroll{overflow-x:auto;}
 .toggle-group{display:flex;background:var(--cinza-superficie);border-radius:999px;padding:3px;gap:2px;}
 .toggle-btn{border:none;background:transparent;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;color:var(--cinza-texto);}
+.resolver-card{background:#fff;border:1px dashed #D8D5D5;border-radius:14px;padding:14px 16px;margin-bottom:10px}.resolver-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.resolver-nome-raw{font-weight:700;font-size:13.5px;color:#1A1A1A}.resolver-sub{font-size:11px;color:#9F9F9F;margin-top:2px}.resolver-linha{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.resolver-select{font-family:Inter,sans-serif;font-size:12.5px;padding:7px 10px;border-radius:9px;border:0.75pt solid #D8D5D5;background:#fff;color:#1A1A1A;min-width:220px}.resolver-btn{font-family:Inter,sans-serif;font-size:12px;font-weight:700;padding:7px 14px;border-radius:9px;border:none;background:#1A1A1A;color:#fff;cursor:pointer}.resolver-btn:disabled{opacity:0.5;cursor:default}.resolver-status{font-size:11.5px;margin-top:6px}.resolver-status.erro{color:#C0433D}
+
 .toggle-btn.active{background:var(--preto-tinta);color:var(--branco);}
 .gestor-page table{width:100%;border-collapse:collapse;font-size:13px;}
 .gestor-page thead th{text-align:left;font-size:10px;letter-spacing:0.05em;text-transform:uppercase;color:var(--cinza-apoio);font-weight:600;padding:14px 16px;border-bottom:1px solid var(--cinza-linha);white-space:nowrap;}
@@ -1145,6 +1147,21 @@ ${ICONES_SVG}
       <div class="block-head"><div><h2>O que os membros sugerem</h2><p>Respostas abertas do NPS, separadas entre sugestões sobre o conselho e avaliação do CS. Clique num tema para ler os trechos.</p></div></div>
       <div id="npsSugestoes"><div class="gestor-empty">Carregando…</div></div>
       <div id="npsTrechos"></div>
+    </section>
+
+    <div id="npsAliasesPendentesBlock" style="display:none;margin-top:36px;">
+      <div class="block-head"><div><h2>Conselhos pendentes de confirmação</h2><p>O board de NPS não amarra a resposta direto num conselho cadastrado. O texto digitado por quem respondeu ("Qual é o seu Conselho?") precisa ser confirmado contra o roster antes de entrar nos cortes por CS.</p></div></div>
+      <div id="npsAliasesPendentesList"></div>
+    </div>
+
+    <section class="block" style="margin-top:36px;">
+      <div class="block-head"><div><h2>Relatório mensal de Conselhos</h2><p>NPS de conselheiro, conselho e CS, dados operacionais dos encontros e ranking de destaque de um mês, num único HTML autônomo para baixar e compartilhar.</p></div></div>
+      <div class="churn-filtros">
+        <select class="pill-select" id="selMesRelatorio" aria-label="Mês do relatório"></select>
+        <select class="pill-select" id="selAnoRelatorio" aria-label="Ano do relatório"><option>2026</option><option>2027</option></select>
+        <button class="toggle-btn" type="button" onclick="preVisualizarRelatorioMensal()">Ver prévia</button>
+        <button class="toggle-btn" type="button" onclick="baixarRelatorioMensal()">Baixar HTML</button>
+      </div>
     </section>
   </div>
 
@@ -3983,8 +4000,77 @@ function carregarNps_() {
     churnErroEm_(NPS_IDS_, err);
   });
 }
+var npsRosterAtual_ = [];
+var npsPendentesAtual_ = [];
+function carregarNpsAliasesPendentes_() {
+  fetchJSON_('/api/gestor/nps/aliases-pendentes').then(function (d) {
+    npsRosterAtual_ = d.roster || [];
+    npsPendentesAtual_ = d.pendentes || [];
+    renderNpsAliasesPendentes_();
+  }).catch(function () { /* bloco opcional nesta aba: sem a lista, nada aparece e o resto da aba segue */ });
+}
+function renderNpsAliasesPendentes_() {
+  var bloco = document.getElementById('npsAliasesPendentesBlock');
+  var lista = npsPendentesAtual_;
+  bloco.style.display = lista.length ? 'block' : 'none';
+  if (!lista.length) return;
+  var opcoes = '<option value="">Selecionar do roster…</option>' +
+    npsRosterAtual_.map(function (g) { return '<option value="' + escCS_(g.groupId) + '">' + escCS_(g.titulo) + '</option>'; }).join('');
+  document.getElementById('npsAliasesPendentesList').innerHTML = lista.map(function (p, idx) {
+    var sugestao = p.groupIdSugerido
+      ? '<div class="resolver-sub">Sugestão automática: ' + escCS_(p.nomeGrupoSugerido || p.groupIdSugerido) + '</div>'
+      : '<div class="resolver-sub">Sem sugestão automática, escolha manualmente.</div>';
+    return '<div class="resolver-card"><div class="resolver-head"><div><span class="resolver-nome-raw">' + escCS_(p.conselhoRaw) + '</span>' + sugestao + '</div></div>' +
+      '<div class="resolver-linha"><select class="resolver-select" id="npsAliasSelect' + idx + '">' + opcoes + '</select>' +
+      '<button class="resolver-btn" id="npsAliasBtn' + idx + '" type="button" onclick="confirmarNpsAlias(' + idx + ')">Confirmar</button></div>' +
+      '<div class="resolver-status" id="npsAliasStatus' + idx + '"></div></div>';
+  }).join('');
+  lista.forEach(function (p, idx) {
+    var sel = document.getElementById('npsAliasSelect' + idx);
+    if (sel && p.groupIdSugerido) sel.value = p.groupIdSugerido;
+  });
+}
+function confirmarNpsAlias(idx) {
+  var p = npsPendentesAtual_[idx];
+  var sel = document.getElementById('npsAliasSelect' + idx);
+  var btn = document.getElementById('npsAliasBtn' + idx);
+  var status = document.getElementById('npsAliasStatus' + idx);
+  var groupId = sel ? sel.value : '';
+  if (!groupId) { status.textContent = 'Escolha um conselho do roster.'; status.className = 'resolver-status erro'; return; }
+  btn.disabled = true; status.textContent = 'Confirmando…'; status.className = 'resolver-status';
+  fetchJSON_('/api/gestor/nps/aliases-pendentes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conselhoRaw: p.conselhoRaw, groupId: groupId }),
+  }).then(function () {
+    npsPendentesAtual_ = npsPendentesAtual_.filter(function (x) { return x.conselhoRaw !== p.conselhoRaw; });
+    renderNpsAliasesPendentes_();
+  }).catch(function (err) {
+    btn.disabled = false;
+    status.textContent = 'Erro: ' + err.message;
+    status.className = 'resolver-status erro';
+  });
+}
+// O arquivo baixado é autônomo: o seletor só escolhe qual relatório baixar.
+function iniciarRelatorioMensal_() {
+  var sel = document.getElementById('selMesRelatorio');
+  if (!sel || sel.options.length) return;
+  var optGeral = document.createElement('option'); optGeral.textContent = 'Visão Geral'; sel.appendChild(optGeral);
+  MESES_GESTOR.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; sel.appendChild(o); });
+  var agora = new Date();
+  sel.value = MESES_GESTOR[agora.getMonth()];
+  document.getElementById('selAnoRelatorio').value = String(agora.getFullYear());
+}
+function urlRelatorioMensal_(preview) {
+  var mes = document.getElementById('selMesRelatorio').value;
+  var ano = document.getElementById('selAnoRelatorio').value;
+  return '/api/gestor/relatorio-mensal?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano) + (preview ? '&preview=1' : '');
+}
+function preVisualizarRelatorioMensal() { window.open(urlRelatorioMensal_(true), '_blank'); }
+function baixarRelatorioMensal() { window.open(urlRelatorioMensal_(false), '_blank'); }
 function inicializarNps_() {
   try {
+    carregarNpsAliasesPendentes_();
+    iniciarRelatorioMensal_();
     npsPopularRef_();
     document.getElementById('npsRef').addEventListener('change', carregarNps_);
     document.getElementById('npsCs').addEventListener('change', carregarNps_);

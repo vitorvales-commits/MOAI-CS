@@ -222,9 +222,12 @@ export function frasesPodio(pessoas: PessoaPodio[], indicadores: { chave: string
   return saida;
 }
 
-export type ConselhoFoco = { nome: string; diasAte: number | null; confirmados: number; membros: number; gtdAtrasadas: number };
+export type ConselhoFoco = {
+  nome: string; diasAte: number | null; confirmados: number; membros: number; gtdAtrasadas: number;
+  gtdFeitas?: number; gtdTotal?: number; presencaPct?: number | null;
+};
 export type MetaFoco = { chave: string; label: string; meta: number; realizado: number; esperado: number; peso: number };
-export type FocoDoDia = { tipo: 'conselho' | 'report' | 'meta' | 'tudo_em_dia'; titulo: string; texto: string };
+export type FocoDoDia = { tipo: 'conselho' | 'report' | 'meta' | 'tudo_em_dia'; titulo: string; texto: string; conselho?: ConselhoFoco };
 
 // Foco de hoje do CS (7.4), na ordem de prioridade: conselho próximo com pouca confirmação ou GTD atrasado, report
 // com prazo perto, meta de maior peso atrás do ritmo e, por fim, o próximo compromisso.
@@ -242,7 +245,7 @@ export function focoDoDia(args: {
     const gtd = c.gtdAtrasadas > 0 ? ' ' + c.gtdAtrasadas + (c.gtdAtrasadas === 1 ? ' etapa do GTD atrasada.' : ' etapas do GTD atrasadas.') : '';
     return {
       tipo: 'conselho', titulo: 'Preparar o conselho ' + c.nome,
-      texto: quando + ' ' + c.confirmados + ' de ' + c.membros + ' membros confirmaram.' + gtd,
+      texto: quando + ' ' + c.confirmados + ' de ' + c.membros + ' membros confirmaram.' + gtd, conselho: c,
     };
   }
   if (args.reportDiasAtePrazo !== null && args.reportDiasAtePrazo <= HOME_FOCO_DIAS_REPORT) {

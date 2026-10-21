@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoje · MOAI CS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/*BASE*/
+.saud{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:30px 0 4px;max-width:1312px;margin:0 auto}
+.saud small{display:block;font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:6px}
+.saud h1{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:44px;font-weight:700;letter-spacing:-0.035em;line-height:1.02}
+.saud h1 span{color:var(--ink3)}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.w{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:22px;box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 30px rgba(20,20,20,.04);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;transition:transform .2s var(--spring),box-shadow .2s ease}
+a.w:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(20,20,20,.05),0 16px 40px rgba(20,20,20,.08)}
+.w-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.w-t{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+.w-t svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.c4{grid-column:span 4} .c5{grid-column:span 5} .c7{grid-column:span 7} .c8{grid-column:span 8} .c3{grid-column:span 3} .c6{grid-column:span 6}
+
+/* Foco do dia: cartão escuro da marca com vidro por dentro */
+.foco{position:relative;overflow:hidden;background:linear-gradient(140deg,#141414 0%,#1C1C1C 45%,#262626 100%);color:#fff;border:0;padding:26px 26px 22px;gap:18px}
+.foco::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(520px 320px at 0% 0%,rgba(200,154,46,.42),transparent 60%),radial-gradient(460px 300px at 100% 100%,rgba(61,139,95,.32),transparent 60%)}
+.foco > *{position:relative}
+.foco .w-t{color:var(--gold)}
+.foco h2{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.03em;line-height:1.08}
+.foco p{margin:0;color:#CFCBCB;font-size:14px;max-width:520px}
+.vidro{background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,.14);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.foco-row{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+.anel{display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px}
+.anel svg{width:56px;height:56px}
+.anel b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:20px;line-height:1}
+.anel span{font-size:12px;color:#CFCBCB}
+.mini{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.mini span{font-size:11.5px;color:#B5B2B2;font-weight:600}
+.mini b{font-size:14px;font-weight:700}
+.mini b.alerta{color:#F0B9B5}
+.foco-acoes{display:flex;gap:10px;flex-wrap:wrap}
+.btn.claro{background:#fff;color:var(--ink);border-color:#fff}
+.btn.vidro-b{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.22)}
+
+/* Pontuação */
+.score{display:flex;align-items:center;gap:18px}
+.score svg{width:112px;height:112px;flex:none}
+.score-n{font-family:'Bricolage Grotesque',sans-serif;font-size:13px}
+.score-txt b{display:block;font-size:15px;font-weight:700;margin-bottom:4px}
+.score-txt span{display:block;font-size:12.5px;color:var(--ink2);line-height:1.6}
+
+/* Semana */
+.semana{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.d{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 12px;border-radius:14px}
+.d small{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.d b{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:700;line-height:1}
+.d i{display:flex;gap:3px;height:6px}
+.d i em{width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.d i em.r{background:#B5B2B2}
+.d.hoje{background:var(--ink);color:#fff}
+.d.hoje small{color:var(--gold)}
+.d.fds{opacity:.5}
+.prox{display:flex;flex-direction:column;gap:8px}
+.ev{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--bg)}
+.ev-h{font-size:12px;font-weight:700;color:var(--ink2);line-height:1.2}
+.ev b{display:block;font-size:13.5px;font-weight:600}
+.ev small{font-size:12px;color:var(--ink2)}
+
+/* Metas */
+.meta{display:grid;grid-template-columns:96px minmax(0,1fr) 52px;gap:12px;align-items:center}
+.meta b{font-size:13px;font-weight:600}
+.meta span{font-size:12.5px;font-weight:700;text-align:right}
+.meta span small{font-weight:500;color:var(--ink3)}
+.meta.atras b,.meta.atras span{color:var(--gold-ink)}
+.dica{margin-top:auto;font-size:12.5px;color:var(--gold-ink);background:var(--gold-soft);border-radius:12px;padding:10px 12px;line-height:1.45}
+
+/* Tarefas */
+.task{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.task:first-of-type{border-top:0;padding-top:0}
+.task input{width:20px;height:20px;margin:0;accent-color:var(--ink);cursor:pointer}
+.task b{display:block;font-size:13.5px;font-weight:600}
+.task small{font-size:12px;color:var(--ink2)}
+
+/* Carteira em pontos */
+.cart{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cv{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--bg);font-size:12px;color:var(--ink2)}
+.cv b{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.cv.r{background:var(--red-soft);color:var(--red-ink)} .cv.r b{color:var(--red-ink)}
+.cv.g{background:var(--gold-soft);color:var(--gold-ink)} .cv.g b{color:var(--gold-ink)}
+
+/* Report e pontos */
+.grande{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1}
+.grande small{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);margin-left:4px;letter-spacing:0}
+.pts{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.pts-txt{font-size:12.5px;color:var(--ink2);line-height:1.5}
+.cont-reg{height:6px;border-radius:99px;background:#EDEBEB;overflow:hidden}
+.cont-reg span{display:block;height:100%;background:var(--gold);border-radius:99px}
+
+@media (max-width:1100px){.c4,.c5,.c3{grid-column:span 6}.c7,.c8{grid-column:span 12}.foco-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:700px){.bento{grid-template-columns:1fr}.c3,.c4,.c5,.c6,.c7,.c8{grid-column:auto}.saud h1{font-size:32px}.foco h2{font-size:24px}.cart{grid-template-columns:repeat(2,minmax(0,1fr))}.semana{gap:2px}.d b{font-size:16px}}
+</style>
+</head>
+<body>
+<!--ICONS-->
+<div class="app">
+<!--DOCK-->
+  <div class="work">
+    <div class="saud">
+      <div><small>Terça, 20 de outubro · 11 dias para fechar o mês</small><h1>Bom dia, Amanda.<br><span>Um conselho nesta semana pede atenção.</span></h1></div>
+      <a class="btn pri" href="#"><svg><use href="#i-file"/></svg>Enviar report da semana</a>
+    </div>
+
+    <main class="content">
+      <div class="bento">
+
+        <!-- Foco do dia: a primeira coisa a fazer -->
+        <section class="w foco c8" aria-labelledby="h-foco">
+          <div class="w-h"><span class="w-t"><svg><use href="#i-warn"/></svg>Foco de hoje</span><span class="tag" style="background:rgba(255,255,255,.1);color:#fff">Quinta, 19h</span></div>
+          <div>
+            <h2 id="h-foco">Preparar o conselho Fast Track 04</h2>
+            <p style="margin-top:8px">Faltam 2 dias. Só 5 dos 14 membros confirmaram e o GTD está em 2 de 9 etapas. Fechar a confirmação no grupo hoje resolve a maior parte.</p>
+          </div>
+          <div class="foco-row">
+            <div class="vidro anel">
+              <svg viewBox="0 0 56 56" role="img" aria-label="5 de 14 confirmados">
+                <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="6"/>
+                <circle cx="28" cy="28" r="22" fill="none" stroke="#C89A2E" stroke-width="6" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="88.9" transform="rotate(-90 28 28)"/>
+              </svg>
+              <div><b>5 de 14</b><span>confirmados</span></div>
+            </div>
+            <div class="vidro mini"><span>GTD do ciclo</span><b class="alerta">2 de 9 etapas</b></div>
+            <div class="vidro mini"><span>Atrasadas</span><b class="alerta">Confirmação, jornada</b></div>
+            <div class="vidro mini"><span>Presença acumulada</span><b>64%</b></div>
+          </div>
+          <div class="foco-acoes">
+            <a class="btn claro" href="#"><svg><use href="#i-check"/></svg>Abrir checklist do conselho</a>
+            <a class="btn vidro-b" href="#">Ver quem não confirmou</a>
+          </div>
+        </section>
+
+        <!-- Pontuação -->
+        <a class="w c4" href="#" aria-labelledby="h-score">
+          <div class="w-h"><span class="w-t" id="h-score"><svg><use href="#i-target"/></svg>Sua pontuação</span><span class="delta good">&#9650; 6</span></div>
+          <div class="score">
+            <svg viewBox="0 0 112 112" role="img" aria-label="72 de 100 pontos">
+              <circle cx="56" cy="56" r="46" fill="none" stroke="#EDEBEB" stroke-width="10"/>
+              <circle cx="56" cy="56" r="46" fill="none" stroke="#1A1A1A" stroke-width="10" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="80.9" transform="rotate(-90 56 56)"/>
+              <line x1="56" y1="4" x2="56" y2="18" stroke="#C89A2E" stroke-width="3" transform="rotate(237.6 56 56)"/>
+              <text x="56" y="60" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="30" fill="#1A1A1A">72</text>
+              <text x="56" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="11" fill="#878585">de 100</text>
+            </svg>
+            <div class="score-txt"><b>Acima da mediana do time</b><span>Mediana 66, marcada em dourado.<br>Dois cases a mais levam você a 79.</span></div>
+          </div>
+          <div class="pts">
+            <div class="w-h"><span class="w-t"><svg><use href="#i-shield"/></svg>Pontos tomados</span><span class="tag gold">3 de 3 · no limite</span></div>
+            <div class="cont-reg" aria-hidden="true"><span style="width:100%"></span></div>
+            <span class="pts-txt">Somam 3,0 p.p. no seu Health da base. O primeiro ponto vence em 02/11; mais um ponto antes disso vira urgência para a liderança.</span>
+          </div>
+        </a>
+
+        <!-- Metas do mês -->
+        <section class="w c5" aria-labelledby="h-metas">
+          <div class="w-h"><span class="w-t" id="h-metas"><svg><use href="#i-pulse"/></svg>Ritmo de outubro</span><a class="link" href="#">Detalhar</a></div>
+          <div class="meta atras"><b>Cases</b><div class="bar"><span class="gold" style="width:40%"></span><i class="pace" style="left:65%"></i></div><span>2<small>/5</small></span></div>
+          <div class="meta"><b>Upsell</b><div class="bar"><span style="width:50%"></span><i class="pace" style="left:65%"></i></div><span>1<small>/2</small></span></div>
+          <div class="meta"><b>Matchmakings</b><div class="bar"><span style="width:70%"></span><i class="pace" style="left:65%"></i></div><span>7<small>/10</small></span></div>
+          <div class="meta"><b>Rounds</b><div class="bar"><span style="width:75%"></span><i class="pace" style="left:65%"></i></div><span>3<small>/4</small></span></div>
+          <div class="meta"><b>Indicações</b><div class="bar"><span style="width:80%"></span><i class="pace" style="left:65%"></i></div><span>4<small>/5</small></span></div>
+          <div class="dica">Cases está atrás do ritmo: faltam 3 em 11 dias, cerca de 2 por semana. Os 2 matchmakings de setembro sem follow são o caminho mais curto.</div>
+        </section>
+
+        <!-- Semana -->
+        <section class="w c7" aria-labelledby="h-sem">
+          <div class="w-h"><span class="w-t" id="h-sem"><svg><use href="#i-cal"/></svg>Sua semana</span><a class="link" href="#">Agenda completa</a></div>
+          <div class="semana" aria-hidden="true">
+            <div class="d"><small>Seg</small><b>19</b><i></i></div>
+            <div class="d hoje"><small>Ter</small><b>20</b><i></i></div>
+            <div class="d"><small>Qua</small><b>21</b><i><em class="r"></em></i></div>
+            <div class="d"><small>Qui</small><b>22</b><i><em></em></i></div>
+            <div class="d"><small>Sex</small><b>23</b><i></i></div>
+            <div class="d fds"><small>Sáb</small><b>24</b><i></i></div>
+            <div class="d fds"><small>Dom</small><b>25</b><i></i></div>
+          </div>
+          <div class="prox">
+            <a class="ev" href="#"><span class="ev-h">Qua<br>14h</span><span><b>Round Executivo 02</b><small>Online · 2h</small></span><span class="tag">Agendado</span></a>
+            <a class="ev" href="#"><span class="ev-h">Qui<br>19h</span><span><b>Conselho Fast Track 04</b><small>5 de 14 confirmados</small></span><span class="tag gold">Confirmar</span></a>
+            <a class="ev" href="#"><span class="ev-h">Sex<br>19h</span><span><b>Prazo do report semanal</b><small>Pendente</small></span><span class="tag gold">Pendente</span></a>
+          </div>
+        </section>
+
+        <!-- Tarefas -->
+        <section class="w c5" aria-labelledby="h-tar">
+          <div class="w-h"><span class="w-t" id="h-tar"><svg><use href="#i-check"/></svg>Tarefas do GTD</span><span class="count">4</span></div>
+          <div>
+            <div class="task"><input type="checkbox" id="t1"><label for="t1"><b>Confirmação no grupo</b><small>Fast Track 04</small></label><span class="tag red">Atrasada</span></div>
+            <div class="task"><input type="checkbox" id="t2"><label for="t2"><b>Verificar a jornada dos membros</b><small>Fast Track 04</small></label><span class="tag gold">Hoje</span></div>
+            <div class="task"><input type="checkbox" id="t3"><label for="t3"><b>Follow do encaminhamento</b><small>Executivo 02</small></label><span class="tag">Amanhã</span></div>
+            <div class="task"><input type="checkbox" id="t4"><label for="t4"><b>Registrar matchmakings</b><small>C Level 01</small></label><span class="tag">Sex</span></div>
+          </div>
+        </section>
+
+        <!-- Carteira -->
+        <section class="w c7" aria-labelledby="h-cart">
+          <div class="w-h"><span class="w-t" id="h-cart"><svg><use href="#i-layers"/></svg>Sua carteira · 9 conselhos</span><a class="link" href="#">Ver todos</a></div>
+          <div class="cart">
+            <a class="cv r" href="#"><b>Fast Track 04<span class="dot red"></span></b>GTD 2/9 · presença 64%</a>
+            <a class="cv g" href="#"><b>Executivo 02<span class="dot gold"></span></b>GTD 4/9 · 29/10</a>
+            <a class="cv" href="#"><b>C Level 01<span class="dot green"></span></b>GTD 5/9 · 27/10</a>
+            <a class="cv" href="#"><b>Fast Track 07<span class="dot green"></span></b>GTD 7/9 · 12/11</a>
+            <a class="cv" href="#"><b>Executivo 05<span class="dot green"></span></b>GTD 8/9 · 14/11</a>
+            <a class="cv" href="#"><b>C Level 03<span class="dot green"></span></b>GTD 9/9 · 18/11</a>
+            <a class="cv" href="#"><b>Executivo 08<span class="dot green"></span></b>GTD 8/9 · 20/11</a>
+            <a class="cv" href="#"><b>Fast Track 11<span class="dot green"></span></b>GTD 7/9 · 24/11</a>
+            <a class="cv" href="#"><b>C Level 05<span class="dot green"></span></b>GTD 6/9 · 26/11</a>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+<script>/*SPARK*/</script>
+</body>
+</html>

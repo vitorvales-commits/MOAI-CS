@@ -104,6 +104,9 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
     confirmados: (c.confirmadosFuturos || []).length,
     membros: Number(c.membros || 0),
     gtdAtrasadas: c.gtd && c.gtd.etapasAtrasadas ? c.gtd.etapasAtrasadas.length : 0,
+    gtdFeitas: c.gtd ? Number(c.gtd.feitas || 0) : 0,
+    gtdTotal: c.gtd ? Number(c.gtd.total || 0) : 0,
+    presencaPct: c.registros ? Math.round((Number(c.presente || 0) / Number(c.registros)) * 100) : null,
   }));
   const reportPendente = await reportPendenteDoCS(sb, csNome);
   const diaSemanaHoje = new Date(hoje + 'T12:00:00Z').getUTCDay();
@@ -115,6 +118,10 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   const futuros = conselhosFoco.filter((c) => c.diasAte !== null && c.diasAte >= 0).sort((a, b) => (a.diasAte as number) - (b.diasAte as number));
   const proximo = futuros.length ? { titulo: futuros[0].nome, quando: formatarQuando(hoje, futuros[0].diasAte as number) } : null;
   const focoHoje = focoDoDia({ conselhos: conselhosFoco, reportDiasAtePrazo, metas: metasFoco, proximo });
+  const focoNumeros = focoHoje.conselho ? numerosDoConselho(focoHoje.conselho) : [];
+  const fraseSituacao = focoHoje.tipo === 'tudo_em_dia' ? 'Tudo em dia por aqui.'
+    : focoHoje.tipo === 'conselho' ? 'Um conselho nesta semana pede atenção.'
+    : focoHoje.tipo === 'report' ? 'O report da semana ainda está pendente.' : 'Uma meta do mês pede atenção.';
 
   const semana = montarSemana(hoje, conselhosFoco, reportPendente);
 
@@ -146,7 +153,8 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
     },
     faixa: { noRitmo, comMeta: comMeta.length, foco },
     dica,
-    focoHoje,
+    focoHoje: { ...focoHoje, numeros: focoNumeros, anel: focoHoje.conselho ? { valor: focoHoje.conselho.confirmados, total: focoHoje.conselho.membros } : null },
+    fraseSituacao,
     semana,
     metas,
     carteira: { numConselhos: cart ? cart.calculado : null, meta: cart ? cart.meta : null, semMetaPropria: !!(cart && cart.semMetaPropria), churn: churn ? churn.calculado : null, metaChurn: churn ? churn.meta : null },
@@ -160,6 +168,15 @@ async function reportPendenteDoCS(sb: SupabaseClient, csNome: string): Promise<b
   if (error) return false;
   const estado = ((data || []) as any[]).find((r) => r.cs_nome === csNome)?.estado ?? null;
   return estado === 'pendente' || estado === 'atrasado';
+}
+
+// Números em vidro do foco de hoje quando o foco é um conselho: confirmados, GTD, etapas atrasadas e presença.
+function numerosDoConselho(c: ConselhoFoco): { rotulo: string; valor: string; alerta: boolean }[] {
+  const numeros = [{ rotulo: 'Confirmados', valor: c.confirmados + ' de ' + c.membros, alerta: c.confirmados <= 3 }];
+  if (c.gtdTotal) numeros.push({ rotulo: 'GTD do ciclo', valor: (c.gtdFeitas || 0) + ' de ' + c.gtdTotal + ' etapas', alerta: false });
+  numeros.push({ rotulo: 'Etapas atrasadas', valor: String(c.gtdAtrasadas), alerta: c.gtdAtrasadas > 0 });
+  if (c.presencaPct !== null && c.presencaPct !== undefined) numeros.push({ rotulo: 'Presença', valor: c.presencaPct + '%', alerta: false });
+  return numeros.slice(0, 4);
 }
 
 function formatarQuando(hoje: string, diasAte: number): string {

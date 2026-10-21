@@ -81,7 +81,6 @@ select.pickmes:hover { border-color:#1A1A1A; }
 @keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
 
 /* ===== home ===== */
-#screenHome { padding: 56px 28px 80px; max-width: 1040px; margin: 0 auto; text-align:center; }
 .home-title { font-size: 30px; font-weight:800; color:#1A1A1A; letter-spacing:-0.5px; margin-bottom:6px; }
 .home-sub { font-size: 13.5px; color:#807E7E; margin-bottom:40px; }
 .team-grid { display:flex; flex-wrap:wrap; justify-content:center; gap:24px; margin-bottom: 64px; }
@@ -651,6 +650,188 @@ body{background:var(--bg);}
 @media (max-width:1100px){.mes{grid-template-columns:1fr 1fr}.mes > :first-child{grid-column:1 / -1}.mes > :nth-child(2){border-left:0}.mes > :nth-child(n+2){border-top:1px solid rgba(255,255,255,.1)}.in-grid{grid-template-columns:1fr}}
 @media (max-width:560px){.mes > *{padding:18px}.mes > :nth-child(4){grid-column:1 / -1;border-left:0}.topbar{padding:8px 16px 0}}
 @media (prefers-reduced-motion:reduce){.in-sk{animation:none}}
+
+/* ===== Homes v4 (20/10/2026): gestor (gh-) e CS (ch-). Cores só na exceção; tokens do tema. ===== */
+.gh-work{max-width:1312px;margin:0 auto;padding:0 24px 48px}
+.gh-saud{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:30px 0 6px}
+.gh-saud small{display:block;font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:6px}
+.gh-saud h1{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:44px;font-weight:700;letter-spacing:-0.035em;line-height:1.02}
+.gh-saud h1 span{display:block;color:var(--ink3);font-size:30px;margin-top:8px;letter-spacing:-0.02em}
+.gh-saud-r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.gh-btn{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line2);border-radius:999px;padding:9px 16px;cursor:pointer;transition:border-color .15s}
+.gh-btn:hover{border-color:var(--ink)}
+.gh-btn.claro{background:#fff;color:var(--ink);border-color:#fff}
+.gh-btn.vidro{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.22)}
+.gh-btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.gh-periodo{display:flex;gap:8px}
+.gh-bento{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:18px}
+.gh-w{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:22px;box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 30px rgba(20,20,20,.04);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;text-align:left}
+.gh-w-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.gh-w-t{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink2)}
+.gh-w-t svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gh-link{font-size:12px;font-weight:700;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.gh-ajuda{font-size:11.5px;color:var(--ink3);line-height:1.5}
+.gh-c4{grid-column:span 4}.gh-c5{grid-column:span 5}.gh-c6{grid-column:span 6}.gh-c7{grid-column:span 7}.gh-c8{grid-column:span 8}.gh-c12{grid-column:span 12}
+.gh-tag{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;background:var(--line);color:var(--ink2)}
+.gh-tag.red{background:var(--red-soft);color:var(--red-ink)}
+.gh-tag.gold{background:var(--gold-soft);color:var(--gold-ink)}
+.gh-tag.green{background:var(--green-soft);color:#2F6E4A}
+.gh-sk{height:120px;border-radius:14px;background:linear-gradient(90deg,var(--line) 25%,#F6F5F5 50%,var(--line) 75%);background-size:200% 100%;animation:inbrilho 1.3s linear infinite}
+.gh-erro{font-size:12.5px;color:var(--red-ink);background:var(--red-soft);border-radius:12px;padding:12px 14px}
+.gh-vazio{font-size:12.5px;color:var(--ink2);padding:10px 0}
+.gh-sw{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.gh-sw.red{background:var(--red)}.gh-sw.gold{background:var(--gold)}.gh-sw.green{background:var(--green)}.gh-sw.blue{background:#3B6FD8}
+.gh-legenda{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3);margin-top:auto}
+.gh-legenda span{display:inline-flex;align-items:center}
+.gh-glass{background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,.14);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.gh-escuro{position:relative;overflow:hidden;background:linear-gradient(140deg,#141414 0%,#1C1C1C 45%,#262626 100%);color:#fff;border:0}
+.gh-escuro::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(520px 320px at 0% 0%,rgba(200,154,46,.42),transparent 60%),radial-gradient(460px 300px at 100% 100%,rgba(61,139,95,.32),transparent 60%)}
+.gh-escuro > *{position:relative}
+.gh-escuro .gh-w-t{color:var(--gold)}
+.gh-escuro h2{color:#fff;margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1.12;max-width:660px}
+.gh-escuro p{margin:8px 0 0;color:#CFCBCB;font-size:14px;max-width:620px}
+.gh-escuro .gh-tag{background:rgba(255,255,255,.1);color:#fff}
+.gh-mini-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.gh-mini{padding:13px 15px;display:flex;flex-direction:column;gap:4px}
+.gh-mini span{font-size:11.5px;color:#B5B2B2;font-weight:600}
+.gh-mini b{font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.02em}
+.gh-mini small{font-size:12px;color:#CFCBCB}
+.gh-mini b.al{color:#F0B9B5}.gh-mini b.at{color:#EDCB7E}
+.gh-acoes{display:flex;gap:10px;flex-wrap:wrap}
+/* Time */
+.gh-time-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px}
+.gh-pessoa{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px;border-radius:16px;text-align:center;transition:background .15s ease}
+.gh-pessoa:hover{background:var(--bg)}
+.gh-av{position:relative;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;box-shadow:0 4px 12px rgba(20,20,20,.12);overflow:visible}
+.gh-av img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+.gh-ring{position:absolute;inset:-4px;border-radius:50%;pointer-events:none}
+.gh-ring.red{box-shadow:0 0 0 2.5px var(--red)}
+.gh-ring.gold{box-shadow:0 0 0 2.5px var(--gold)}
+.gh-pessoa b{font-size:12.5px;font-weight:600;color:var(--ink)}
+.gh-pessoa small{font-size:11px;color:var(--ink3);margin-top:-5px}
+/* Indicadores com o M da marca */
+.gh-grupo{display:flex;flex-direction:column;gap:10px}
+.gh-grupo-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:10px}
+.gh-grupo-lbl::after{content:"";flex:1;height:1px;background:var(--line)}
+.gh-inds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.gh-inds.gh-tres{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gh-ind{border-radius:18px;background:var(--bg);padding:16px;display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 14px;align-items:center}
+.gh-ind > svg.gh-m{width:52px;height:52px;grid-row:span 2}
+.gh-ind-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.gh-ind-top b{font-size:12.5px;font-weight:700}
+.gh-ind-v{font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.025em;line-height:1}
+.gh-ind-v small{font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--ink3);margin-left:3px;letter-spacing:0}
+.gh-ind-foot{grid-column:1 / -1;display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.gh-bar{position:relative;height:8px;border-radius:99px;background:#E3E1E1;overflow:visible}
+.gh-bar > span{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--red)}
+.gh-bar > span.gold{background:var(--gold)}
+.gh-bar > span.green{background:var(--green)}
+.gh-bar > i.pace{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px}
+.gh-ind-txt{font-size:12px;color:var(--ink2);line-height:1.45}
+.gh-ind-txt em{font-style:normal;color:var(--gold-ink);font-weight:600}
+.gh-ind-txt strong{color:var(--red-ink);font-weight:600}
+/* Pódio */
+.gh-podio-w{position:relative;overflow:hidden;background:linear-gradient(160deg,#141414 0%,#1C1C1C 55%,#232323 100%);color:#fff;border:0}
+.gh-podio-w::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(420px 260px at 50% 30%,rgba(200,154,46,.35),transparent 65%),radial-gradient(360px 220px at 100% 100%,rgba(61,139,95,.25),transparent 60%)}
+.gh-podio-w > *{position:relative}
+.gh-podio-w .gh-w-t{color:var(--gold)}
+.gh-podio-w .gh-link{color:#CFCBCB}
+.gh-podio{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px;align-items:end;padding-top:6px}
+.gh-pod{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:#fff;animation:gh-sobe .7s var(--spring) both}
+.gh-pod.p1{animation-delay:.15s}.gh-pod.p3{animation-delay:.08s}
+@keyframes gh-sobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.gh-pod b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.01em}
+.gh-pod-dest{font-size:12px;color:#B5B2B2;line-height:1.35;min-height:32px;max-width:180px}
+.gh-pod .gh-av{width:64px;height:64px;font-size:24px;box-shadow:0 0 0 3px rgba(255,255,255,.15),0 10px 24px rgba(0,0,0,.35);margin-bottom:4px}
+.gh-pod.p1 .gh-av{width:84px;height:84px;font-size:32px;box-shadow:0 0 0 3px #C89A2E,0 0 0 8px rgba(200,154,46,.18),0 14px 34px rgba(0,0,0,.45)}
+.gh-medalha{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;font-weight:800;color:#1A1A1A;border:2px solid #1A1A1A}
+.gh-medalha.ouro{background:linear-gradient(145deg,#F2D27A,#C89A2E)}
+.gh-medalha.prata{background:linear-gradient(145deg,#F1F3F5,#AEB4BB)}
+.gh-medalha.bronze{background:linear-gradient(145deg,#E3B48C,#A86F45)}
+.gh-coroa{width:40px;height:24px;margin-bottom:-2px;filter:drop-shadow(0 4px 10px rgba(200,154,46,.5))}
+.gh-degrau{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:12px;border-radius:16px 16px 6px 6px;background:rgba(255,255,255,.07);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);margin-top:6px}
+.gh-pod.p2 .gh-degrau{height:88px}
+.gh-pod.p3 .gh-degrau{height:68px}
+.gh-pod.p1 .gh-degrau{height:118px;background:linear-gradient(180deg,rgba(200,154,46,.32),rgba(200,154,46,.08));border-color:rgba(200,154,46,.45)}
+.gh-pod-n{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;line-height:1}
+.gh-pod.p1 .gh-pod-n{font-size:40px;color:#F2D27A}
+.gh-degrau small{font-size:11.5px;color:#CFCBCB;font-weight:600}
+.gh-pod-foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.gh-pod-foot .gh-tag{background:rgba(255,255,255,.1);color:#CFCBCB}
+.gh-pod-foot .gh-tag.ouro{background:rgba(200,154,46,.18);color:#EDCB7E}
+/* Cases e conselhos */
+.gh-grande{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1}
+.gh-grande small{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--ink3);margin-left:4px;letter-spacing:0}
+.gh-case{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+.gh-case:first-of-type{border-top:0}
+.gh-case .gh-av{width:34px;height:34px;font-size:13px;box-shadow:none}
+.gh-case b{display:block;font-size:13.5px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.gh-case small{font-size:12px;color:var(--ink2)}
+.gh-rede{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.gh-rv{padding:14px;border-radius:16px;background:var(--bg)}
+.gh-rv span{display:block;font-size:12px;color:var(--ink2);font-weight:600}
+.gh-rv b{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.02em}
+/* Home do CS */
+.ch-foco-row{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
+.ch-anel{display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px}
+.ch-anel svg{width:56px;height:56px;flex:none}
+.ch-anel b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:20px;line-height:1}
+.ch-anel span{font-size:12px;color:#CFCBCB}
+.ch-mini{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.ch-mini span{font-size:11.5px;color:#B5B2B2;font-weight:600}
+.ch-mini b{font-size:14px;font-weight:700}
+.ch-mini b.alerta{color:#F0B9B5}
+.ch-score{display:flex;align-items:center;gap:18px}
+.ch-score svg{width:112px;height:112px;flex:none}
+.ch-score-txt b{display:block;font-size:15px;font-weight:700;margin-bottom:4px}
+.ch-score-txt span{display:block;font-size:12.5px;color:var(--ink2);line-height:1.6}
+.ch-pts{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.ch-cont{height:6px;border-radius:99px;background:#EDEBEB;overflow:hidden}
+.ch-cont span{display:block;height:100%;background:var(--gold);border-radius:99px}
+.ch-semana{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.ch-dia{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 12px;border-radius:14px}
+.ch-dia small{font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.ch-dia b{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:700;line-height:1}
+.ch-dia i{display:flex;gap:3px;height:6px}
+.ch-dia i em{width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.ch-dia.hoje{background:var(--ink);color:#fff}
+.ch-dia.hoje small{color:var(--gold)}
+.ch-dia.fds{opacity:.5}
+.ch-prox{display:flex;flex-direction:column;gap:8px}
+.ch-ev{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--bg)}
+.ch-ev small{font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase}
+.ch-ev b{display:block;font-size:13.5px;font-weight:600}
+.ch-meta{display:grid;grid-template-columns:96px minmax(0,1fr) 84px;gap:12px;align-items:center}
+.ch-meta b{font-size:13px;font-weight:600}
+.ch-meta span{font-size:12.5px;font-weight:700;text-align:right}
+.ch-meta span small{font-weight:500;color:var(--ink3)}
+.ch-meta.atras b,.ch-meta.atras span{color:var(--gold-ink)}
+.ch-dica{margin-top:auto;font-size:12.5px;color:var(--gold-ink);background:var(--gold-soft);border-radius:12px;padding:10px 12px;line-height:1.45}
+@media (max-width:1100px){
+  .gh-c4,.gh-c5,.gh-c6,.gh-c7,.gh-c8{grid-column:span 6}
+  .gh-c12{grid-column:span 12}
+  .gh-inds{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gh-rede{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ch-foco-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:700px){
+  .gh-work{padding:0 16px 40px}
+  .gh-bento{grid-template-columns:1fr}
+  .gh-c4,.gh-c5,.gh-c6,.gh-c7,.gh-c8,.gh-c12{grid-column:auto}
+  .gh-saud h1{font-size:32px}
+  .gh-saud h1 span{font-size:22px}
+  .gh-escuro h2{font-size:24px}
+  .gh-mini-row{grid-template-columns:1fr}
+  .gh-inds,.gh-inds.gh-tres{grid-template-columns:1fr}
+  .gh-time-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gh-podio{gap:6px}
+  .gh-pod .gh-av{width:52px;height:52px}
+  .gh-pod.p1 .gh-av{width:66px;height:66px}
+  .gh-pod-dest{display:none}
+  .ch-semana{gap:2px}
+  .ch-meta{grid-template-columns:80px minmax(0,1fr) 70px}
+}
+@media (prefers-reduced-motion:reduce){.gh-pod{animation:none}}
 </style>
 </head>
 <body>
@@ -663,78 +844,76 @@ ${ICONES_SVG}
 </div>
 
 <div id="screenInicio" class="screen">
-  <div class="work">
-    <header class="top">
+  <div class="gh-work">
+    <header class="gh-saud">
       <div>
-        <div class="crumb" id="inData">&nbsp;</div>
-        <h1 id="inSaudacao">Olá</h1>
+        <small id="inData">&nbsp;</small>
+        <h1 id="inSaudacao">Olá<span id="inFrase"></span></h1>
       </div>
-      <div class="top-r" id="inAcaoTopo"></div>
+      <div class="gh-saud-r">
+        <span class="gh-tag" id="inPrazo"></span>
+        <div id="inAcaoTopo"></div>
+      </div>
     </header>
-    <main class="content">
-      <section class="mes" id="inFaixa" aria-labelledby="h-mes"><span class="in-sk" style="grid-column:1/-1;margin:24px"></span></section>
-
-      <div class="in-grid">
-        <div class="in-col">
-          <section class="pn" id="inTarefas" aria-labelledby="h-tar"><span class="in-sk"></span><span class="in-sk"></span></section>
-          <section class="pn" aria-labelledby="h-ag">
-            <div class="ph"><div><h2 id="h-ag">Próximos 7 dias</h2><p>Conselhos e rounds com quem já confirmou.</p></div><div class="r"><a class="link" href="/?aba=agenda" data-aba-cs="agenda">Agenda completa</a></div></div>
-            <div class="pb" id="agendaInicio"></div>
-          </section>
-        </div>
-        <div class="in-col">
-          <section class="pn" id="inMetas" aria-labelledby="h-metas"><span class="in-sk"></span><span class="in-sk"></span></section>
-        </div>
-      </div>
-
-      <section class="pn" id="inCarteira" aria-labelledby="h-cart"><span class="in-sk"></span><span class="in-sk"></span></section>
-    </main>
+    <div class="gh-bento">
+      <section class="gh-w gh-escuro gh-c8" id="inFoco" aria-labelledby="inFocoTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c4" id="inPontuacao" aria-labelledby="inPontTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c5" id="inMetas" aria-labelledby="h-metas"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c7" id="inSemana" aria-labelledby="inSemanaTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c5 pn" id="inTarefas" aria-labelledby="h-tar"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c7 pn" id="inCarteira" aria-labelledby="h-cart"><div class="gh-sk"></div></section>
+    </div>
   </div>
 </div>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><path id="gh-mglyph" d="M2 50V4h11l13 20 13-20h11v46H38V26L26 43 14 26v24Z"/></defs></svg>
 <div id="screenHome" class="screen">
-  <div class="home-title">Time de CS</div>
-  <div class="home-sub">Selecione um CS para ver os indicadores, em tempo real.</div>
-  <div class="team-grid" id="teamGrid"></div>
-  <div class="home-tabs">
-    <div class="home-tab active" id="homeTabIndicadores" onclick="mostrarAbaHome('indicadores')">Indicadores</div>
-    <div class="home-tab" id="homeTabConselhos" onclick="mostrarAbaHome('conselhos')">Conselhos</div>
-  </div>
-  <div id="homeAbaConselhos" style="display:none;">
-    <div class="section-title">Conselhos<div class="line"></div></div>
-    <div id="gradeConselhosOrdenacao" style="margin-bottom:14px;"></div>
-    <div id="equipeGradeConselhos"></div>
-    <div class="section-title" style="margin-top:36px;">Impacto dos conselhos<div class="line"></div></div>
-    <div id="equipeImpactoConselhos"></div>
-  </div>
-  <div id="equipeSection">
-    <div class="section-title">Agenda<div class="line"></div></div>
-    <div id="farolSemana" class="farol-bloco" aria-live="polite"><div class="empty-state">Carregando…</div></div>
-    <div id="agendaHome"></div>
-    <div class="section-title" style="margin-top:36px;">Indicadores gerais da área<div class="line"></div></div>
-    <div id="equipeIndicadores"></div>
-    <div class="section-title" style="margin-top:36px;">Cases de sucesso do time<div class="line"></div></div>
-    <div id="equipeSemanal"></div>
-    <div class="section-title" style="margin-top:36px;">Conselhos — visão consolidada<div class="line"></div></div>
-    <div id="equipeConselhos"></div>
-    <div class="section-title" style="margin-top:36px;">CS Top 3<div class="line"></div></div>
-    <div id="csTop"></div>
-    <div class="section-title" style="margin-top:36px;">Ranking do time<div class="line"></div></div>
-    <div id="equipeRanking"></div>
-    <div id="npsAliasesPendentesBlock" style="display:none;margin-top:36px;">
-      <div class="section-title">NPS — conselhos pendentes de confirmação<div class="line"></div></div>
-      <p class="fb-intro">O board de NPS não amarra a resposta direto num conselho cadastrado — o texto digitado por quem respondeu ("Qual é o seu Conselho?") precisa ser confirmado contra o roster abaixo antes de entrar nos cortes por CS.</p>
-      <div id="npsAliasesPendentesList"></div>
-    </div>
-    <div style="margin-top:36px;">
-      <div class="section-title">Relatório mensal de Conselhos<div class="line"></div></div>
-      <p class="fb-intro">NPS de conselheiro/conselho/CS, dados operacionais dos encontros e ranking de destaque de um mês, num único HTML autônomo pra baixar e compartilhar.</p>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;">
-        <select class="pickmes" id="selMesRelatorio"></select>
-        <select class="pickmes" id="selAnoRelatorio"><option>2026</option><option>2027</option></select>
-        <button class="resolver-btn" type="button" onclick="preVisualizarRelatorioMensal()">Pré-visualizar</button>
-        <button class="resolver-btn" type="button" onclick="baixarRelatorioMensal()">Baixar HTML</button>
+  <div class="gh-work">
+    <header class="gh-saud">
+      <div>
+        <small id="ghData">&nbsp;</small>
+        <h1 id="ghSaudacao">Olá<span id="ghFrase"></span></h1>
       </div>
+      <div class="gh-saud-r">
+        <div class="gh-periodo" id="ghPeriodo"></div>
+        <button type="button" class="gh-btn" onclick="ghSincronizar()">Sincronizar agora</button>
+      </div>
+    </header>
+    <div class="gh-bento">
+      <section class="gh-w gh-escuro gh-c8" id="ghFoco" aria-labelledby="ghFocoTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c4" aria-labelledby="ghTimeTit">
+        <div class="gh-w-h"><span class="gh-w-t" id="ghTimeTit">Time de CS</span><a class="gh-link" href="/gestor?aba=visaoGeral#mapa-time">Mapa do time</a></div>
+        <div id="ghTime"><div class="gh-sk"></div></div>
+        <div class="gh-legenda"><span><i class="gh-sw red"></i>Em risco</span><span><i class="gh-sw gold"></i>Acompanhar</span><span>Número: pontuação do mês</span></div>
+      </section>
+      <section class="gh-w gh-c12" aria-labelledby="ghIndsTit">
+        <div class="gh-w-h">
+          <span class="gh-w-t" id="ghIndsTit">Indicadores da área</span>
+          <span class="gh-ajuda">O M enche conforme a meta. O traço na barra marca onde o time deveria estar hoje.</span>
+        </div>
+        <div class="gh-grupo"><span class="gh-grupo-lbl">Crescimento, quanto mais, melhor</span><div class="gh-inds" id="ghCrescimento"><div class="gh-sk"></div></div></div>
+        <div class="gh-grupo"><span class="gh-grupo-lbl">Retenção, limite máximo do mês</span><div class="gh-inds gh-tres" id="ghRetencao"><div class="gh-sk"></div></div></div>
+        <div id="ghChurnOrfao"></div>
+        <div class="gh-ajuda" id="ghJanelaHistorico"></div>
+      </section>
+      <section class="gh-w gh-c12" aria-labelledby="ghAgendaTit">
+        <div class="gh-w-h"><span class="gh-w-t" id="ghAgendaTit">Agenda da equipe</span></div>
+        <div id="agendaHome"></div>
+        <div class="gh-w-h" style="margin-top:4px"><div id="farolSemana" class="gh-ajuda" aria-live="polite"></div></div>
+      </section>
+      <section class="gh-w gh-podio-w gh-c7" aria-labelledby="ghPodioTit">
+        <div class="gh-w-h"><span class="gh-w-t" id="ghPodioTit">Top 3 do mês</span><a class="gh-link" href="/gestor?aba=visaoGeral#mapa-time">Ranking completo</a></div>
+        <div id="ghPodio"><div class="gh-sk"></div></div>
+        <div id="ghPodioRodape"></div>
+      </section>
+      <section class="gh-w gh-c5" id="ghCasos" aria-labelledby="ghCasosTit">
+        <div class="gh-w-h"><span class="gh-w-t" id="ghCasosTit">Cases de sucesso do time</span><a class="gh-link" href="/gestor?aba=visaoGeral">Visão da área</a></div>
+        <div id="ghCases"><div class="gh-sk"></div></div>
+      </section>
+      <section class="gh-w gh-c12" aria-labelledby="ghRedeTit">
+        <div class="gh-w-h"><span class="gh-w-t" id="ghRedeTit">Conselhos, visão consolidada</span><a class="gh-link" href="/gestor?aba=visaoGeral#rede-conselhos">Abrir conselhos</a></div>
+        <div id="ghConselhos"><div class="gh-sk"></div></div>
+      </section>
     </div>
   </div>
 </div>
@@ -951,6 +1130,7 @@ function pendingDec(){ pendingCount = Math.max(0, pendingCount-1); if (pendingCo
 // são novos — um CS comum (souGestor=false) sem vínculo nenhum (meuCSNome=null) não tem "os
 // próprios números" pra mostrar, então cai no estado vazio de mostrarPerfilNaoVinculado().
 var souGestor = false;
+var souNomeGestor = null;
 var meuCSNome = null;
 var modoRestritoCS = false;
 var configRevelarIndicadoresTime = false;
@@ -961,6 +1141,7 @@ function inicializarSessao(){
   fetchJSON_('/api/perfil')
     .then(function(perfil){
       souGestor = !!perfil.isGestor;
+      souNomeGestor = perfil.nome || null;
       meuCSNome = perfil.csNome || null;
       modoRestritoCS = !souGestor;
       renderTopbar();
@@ -978,20 +1159,19 @@ function inicializarSessao(){
     .catch(function(err){ mostrarErroPerfil_(err); });
 }
 function iniciarHomeGestor(){
-  var grid = document.getElementById('teamGrid');
-  for (var i=0;i<5;i++){
-    var s = document.createElement('div'); s.className = 'team-card';
-    s.innerHTML = '<div class="skel" style="border-radius:50%;width:104px;height:104px;margin:0 auto 16px;"></div><div class="skel" style="height:10px;border-radius:5px;width:70%;margin:0 auto 6px;"></div><div class="skel" style="height:7px;border-radius:5px;width:45%;margin:0 auto;"></div>';
-    grid.appendChild(s);
-  }
+  var agora = new Date(), h = agora.getHours();
+  var dataTxt = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', '');
+  var diasNoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
+  document.getElementById('ghData').textContent = dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1) + ' · dia ' + agora.getDate() + ' de ' + diasNoMes + ' do mês';
+  document.getElementById('ghSaudacao').firstChild.nodeValue = (h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite')) + (souNomeGestor ? ', ' + souNomeGestor : '') + '.';
+  renderTopbar();
   carregarFotosTime();
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
   agendaMontar('agendaHome', {});
   carregarFarolSemana_();
-  carregarNpsAliasesPendentes();
-  iniciarSeletorRelatorioMensal_();
 }
+
 // Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
 // números" pra mostrar, então a home fica nesse estado vazio até o gestor vincular em Controle de
 // Perfis (nenhuma chamada a /api/cs, /api/equipe ou /api/home-resumo acontece daqui).
@@ -1015,13 +1195,15 @@ function mostrarErroPerfil_(err){
 
 function renderTopbar(){
   var inicio = document.getElementById('screenInicio');
-  var emInicio = inicio && inicio.style.display === 'block';
+  var emInicio = !!inicio && inicio.style.display === 'block';
+  var emHome = !emInicio && currentCS === null && document.getElementById('screenHome').style.display !== 'none';
   var isPessoa = currentCS !== null && !(modoRestritoCS || meuCSNome);
-  var html = emInicio ? '' : ((isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') +
-    '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
-    '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>');
-  document.getElementById('topbarRight').innerHTML = html;
-  document.querySelector('.topbar').style.display = emInicio ? 'none' : '';
+  var seletores = '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
+    '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>';
+  document.getElementById('topbarRight').innerHTML = (emInicio || emHome) ? '' :
+    ((isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') + seletores);
+  document.getElementById('ghPeriodo').innerHTML = emHome ? seletores : '';
+  document.querySelector('.topbar').style.display = (emInicio || emHome) ? 'none' : '';
   var selMes = document.getElementById('selMes');
   if (!selMes) return;
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);
@@ -1066,13 +1248,13 @@ function inNum_(v) { return Number(v).toLocaleString('pt-BR', { maximumFractionD
 function inDM_(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p[2] + '/' + p[1]; }
 function inPrimeiroNome_(n) { return String(n || '').split(' ')[0]; }
 
+
 function iniciarInicioCS() {
   document.getElementById('screenHome').style.display = 'none';
   document.getElementById('screenPessoa').style.display = 'none';
   document.getElementById('screenInicio').style.display = 'block';
-  var agora = new Date();
-  var h = agora.getHours();
-  document.getElementById('inSaudacao').textContent = (h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite')) + ', ' + inPrimeiroNome_(meuCSNome);
+  var agora = new Date(), h = agora.getHours();
+  document.getElementById('inSaudacao').firstChild.nodeValue = (h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite')) + ', ' + inPrimeiroNome_(meuCSNome) + '.';
   var dataTxt = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace('-feira', '');
   document.getElementById('inData').textContent = dataTxt.charAt(0).toUpperCase() + dataTxt.slice(1);
   currentCS = null;
@@ -1084,11 +1266,15 @@ function carregarInicio_() {
   var nome = encodeURIComponent(meuCSNome), per = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
   fetchJSON_('/api/home-resumo' + per).then(function (d) {
     var ini = d.inicio || { dado: null, erro: 'Sem dados da home neste período.' };
-    renderInFaixa_(ini);
+    renderInCabecalho_(ini);
+    renderInFoco_(ini);
+    renderInPontuacao_(ini);
     renderInMetas_(ini);
+    renderInSemana_(ini);
   }).catch(function (err) {
-    document.getElementById('inFaixa').innerHTML = inErro_('Não foi possível carregar o seu mês', err);
-    document.getElementById('inMetas').innerHTML = inErro_('Não foi possível carregar as metas', err);
+    ['inFoco', 'inPontuacao', 'inMetas', 'inSemana'].forEach(function (id) {
+      document.getElementById(id).innerHTML = inErro_('Não foi possível carregar esta seção', err);
+    });
   });
   fetchJSON_('/api/cs/' + nome + per).then(function (d) {
     inCS_ = d;
@@ -1102,73 +1288,111 @@ function carregarInicio_() {
     var est = d.estado && d.estado.estado;
     var pendente = est === 'pendente' || est === 'atrasado';
     document.getElementById('inAcaoTopo').innerHTML = pendente
-      ? '<a class="btn pri" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener"><svg><use href="#i-file"/></svg>Enviar report da semana</a>' : '';
+      ? '<a class="gh-btn pri" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Enviar report da semana</a>' : '';
     if (typeof dockDefinirBadge === 'function') dockDefinirBadge('report', pendente ? 1 : 0);
   }).catch(function () { /* o report não bloqueia a home: sem o selo, nada aparece */ });
-  if (typeof agendaMontar === 'function') agendaMontar('agendaInicio', { csNome: meuCSNome });
 }
 
-function renderInFaixa_(ini) {
-  var el = document.getElementById('inFaixa');
-  if (ini.erro || !ini.dado) { el.innerHTML = inErro_('Não foi possível carregar o seu mês', ini.erro || 'sem dados'); return; }
-  var d = ini.dado, p = d.pontuacao, f = d.faixa, per = d.periodo;
-  var mesNome = String(per.mes).toLowerCase();
-  var frase;
-  if (!f.comMeta) frase = 'Ainda não há metas cadastradas para este mês. Fale com seu gestor para cadastrá-las.';
-  else if (!per.mesAtual) frase = 'Em ' + mesNome + ', ' + f.noRitmo + ' de ' + f.comMeta + ' metas dentro do esperado.';
-  else {
-    frase = 'No ritmo em ' + f.noRitmo + ' de ' + f.comMeta + ' metas.';
-    frase += f.foco
-      ? ' Para fechar o mês, foque em <em>' + gtdEsc_(f.foco.label) + '</em>: ' + (f.foco.falta === 1 ? 'falta 1' : 'faltam ' + inNum_(f.foco.falta)) + ', cerca de ' + inNum_(f.foco.porSemana) + ' por semana.'
-      : ' Continue assim até o fim do mês.';
+function renderInCabecalho_(ini) {
+  var d = ini.dado;
+  var prazo = document.getElementById('inPrazo'), frase = document.getElementById('inFrase');
+  if (!d) { prazo.textContent = ''; frase.textContent = ''; return; }
+  var dias = d.periodo.diasRestantes;
+  prazo.textContent = dias === null || dias === undefined ? '' : dias + (dias === 1 ? ' dia para fechar o mês' : ' dias para fechar o mês');
+  frase.textContent = d.fraseSituacao ? ' ' + d.fraseSituacao : '';
+}
+
+// Foco de hoje: o título, a explicação e os números já vêm prontos de focoHoje (lib/home-regras.ts).
+function renderInFoco_(ini) {
+  var el = document.getElementById('inFoco');
+  if (ini.erro || !ini.dado) { el.innerHTML = inErro_('Não foi possível montar o foco de hoje', ini.erro || 'sem dados'); return; }
+  var f = ini.dado.focoHoje;
+  var anel = '';
+  if (f.anel && f.anel.total) {
+    var circ = 2 * Math.PI * 22, frac = Math.min(1, f.anel.valor / f.anel.total);
+    anel = '<div class="gh-glass ch-anel"><svg viewBox="0 0 56 56" role="img" aria-label="' + f.anel.valor + ' de ' + f.anel.total + ' confirmados">' +
+      '<circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="6"/>' +
+      '<circle cx="28" cy="28" r="22" fill="none" stroke="#C89A2E" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (circ * frac).toFixed(1) + ' ' + circ.toFixed(1) + '" transform="rotate(-90 28 28)"/></svg>' +
+      '<div><b>' + f.anel.valor + ' de ' + f.anel.total + '</b><span>confirmados</span></div></div>';
   }
-  var varTxt = '';
-  if (p.variacaoPontos !== null && p.variacaoPontos !== undefined && p.variacaoPontos !== 0) varTxt = (p.variacaoPontos > 0 ? '&#9650; ' : '&#9660; ') + Math.abs(p.variacaoPontos) + ' no mês · ';
-  var medTxt = p.contraMediana === 'acima' ? 'acima da mediana' : (p.contraMediana === 'abaixo' ? 'abaixo da mediana' : (p.contraMediana === 'na' ? 'na mediana' : ''));
-  var pontCol = p.nota === null || p.nota === undefined
-    ? '<span class="mes-n" style="font-size:22px">Sem nota</span><span class="mes-f">' + p.elegiveis + ' de ' + p.minimo + ' indicadores com meta</span>'
-    : '<span class="mes-n">' + p.nota + '<small>/100</small></span><span class="mes-f">' + varTxt + medTxt + '</span>';
-  var diasCol;
-  if (per.mesAtual && per.diasNoMes) {
-    var passou = (per.diasNoMes - per.diasRestantes) / per.diasNoMes * 100;
-    diasCol = '<span class="mes-n">' + per.diasRestantes + '<small>de ' + per.diasNoMes + '</small></span><div class="mes-prog"><span style="width:' + passou.toFixed(0) + '%"></span></div>';
-  } else diasCol = '<span class="mes-n" style="font-size:22px">Mês fechado</span><span class="mes-f">Sem dias restantes</span>';
-  var pt = d.pontosTomados;
-  var ptCol = pt
-    ? '<span class="mes-n">' + pt.ativos + '<small>' + (pt.ativos === 1 ? 'ativo' : 'ativos') + '</small></span><span class="mes-f">' + (pt.proximoVencimento ? 'Próximo vence em ' + inDM_(pt.proximoVencimento) : 'Nenhum ponto a vencer') + '</span>'
-    : '<span class="mes-n" style="font-size:22px">Sem dado</span><span class="mes-f">Não foi possível ler os pontos</span>';
-  el.innerHTML = '<div><span class="mes-ey">Seu ' + gtdEsc_(mesNome) + '</span><h2 id="h-mes">' + frase + '</h2></div>'
-    + '<div><span class="mes-l">Pontuação</span>' + pontCol + '</div>'
-    + '<div><span class="mes-l">Dias restantes</span>' + diasCol + '</div>'
-    + '<div><span class="mes-l">Pontos tomados</span>' + ptCol + '</div>';
+  var minis = (f.numeros || []).map(function (n) {
+    return '<div class="gh-glass ch-mini"><span>' + escHtml_(n.rotulo) + '</span><b' + (n.alerta ? ' class="alerta"' : '') + '>' + escHtml_(n.valor) + '</b></div>';
+  }).join('');
+  var linha = anel || minis ? '<div class="ch-foco-row">' + anel + minis + '</div>' : '';
+  el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">Foco de hoje</span></div>' +
+    '<div><h2>' + escHtml_(f.titulo) + '</h2><p>' + escHtml_(f.texto) + '</p></div>' + linha +
+    '<div class="gh-acoes"><a class="gh-btn claro" href="/?aba=conselhos" data-aba-cs="conselhos">Abrir checklist do conselho</a>' +
+    '<a class="gh-btn vidro" href="/?aba=conselhos" data-aba-cs="conselhos">Ver quem não confirmou</a></div>';
 }
 
+// Sua pontuação: anel com a mediana do time em dourado, a frase de simulação e os pontos tomados embutidos.
+function renderInPontuacao_(ini) {
+  var el = document.getElementById('inPontuacao');
+  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="inPontTit">Sua pontuação</span>';
+  if (ini.erro || !ini.dado) { el.innerHTML = cab + '</div>' + inErro_('Não foi possível ler a pontuação', ini.erro || 'sem dados'); return; }
+  var d = ini.dado, p = d.pontuacao, pt = d.pontosTomados;
+  var nota = p.nota, med = p.mediana;
+  var circ = 2 * Math.PI * 46;
+  var arco = nota === null || nota === undefined ? '' : '<circle cx="56" cy="56" r="46" fill="none" stroke="#1A1A1A" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + (circ * Math.min(100, nota) / 100).toFixed(1) + ' ' + circ.toFixed(1) + '" transform="rotate(-90 56 56)"/>';
+  var marca = med === null || med === undefined ? '' : '<line x1="56" y1="4" x2="56" y2="18" stroke="#C89A2E" stroke-width="3" transform="rotate(' + (med / 100 * 360).toFixed(1) + ' 56 56)"/>';
+  var svg = '<svg viewBox="0 0 112 112" role="img" aria-label="' + (nota === null ? 'Sem nota' : nota + ' de 100 pontos') + '">' +
+    '<circle cx="56" cy="56" r="46" fill="none" stroke="#EDEBEB" stroke-width="10"/>' + arco + marca +
+    '<text x="56" y="60" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="' + (nota === null ? 12 : 30) + '" fill="#1A1A1A">' + (nota === null ? 'Sem nota' : nota) + '</text>' +
+    '<text x="56" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="11" fill="#878585">de 100</text></svg>';
+  var cont = p.contraMediana === 'acima' ? 'Acima da mediana do time' : (p.contraMediana === 'abaixo' ? 'Abaixo da mediana do time' : (p.contraMediana === 'na' ? 'Na mediana do time' : 'Sem comparação ainda'));
+  var linhaMed = med === null || med === undefined ? '' : 'Mediana ' + med + ', marcada em dourado.';
+  var sim = p.simulacao ? '<br>' + p.simulacao.unidades + ' a mais levam você a ' + p.simulacao.patamar + '.' : '';
+  var txt = '<div class="ch-score-txt"><b>' + cont + '</b><span>' + escHtml_(linhaMed) + sim + '</span></div>';
+  var delta = p.variacaoPontos ? '<span class="gh-tag ' + (p.variacaoPontos > 0 ? 'green' : 'red') + '">' + (p.variacaoPontos > 0 ? '▲ ' : '▼ ') + Math.abs(p.variacaoPontos) + '</span>' : '';
+  var limite = LIMIAR_ADVERTENCIA_DESTAQUE_;
+  var pts = '';
+  if (!pt) pts = '<div class="ch-pts">' + inErro_('Não foi possível ler os pontos tomados', { message: 'sem dados' }) + '</div>';
+  else {
+    var ativos = pt.ativos;
+    pts = '<div class="ch-pts"><div class="gh-w-h"><span class="gh-w-t">Pontos tomados</span>' +
+      '<span class="gh-tag ' + (ativos > limite ? 'gold' : '') + '">' + ativos + (ativos === 1 ? ' ponto ativo' : ' pontos ativos') + (ativos > limite ? ', acima do limite de ' + limite : '') + '</span></div>' +
+      '<div class="ch-cont" aria-hidden="true"><span style="width:' + Math.min(100, ativos / limite * 100).toFixed(0) + '%"></span></div>' +
+      '<span class="gh-ajuda">' + (pt.proximoVencimento ? 'Próximo vence em ' + inDM_(pt.proximoVencimento) + '.' : 'Nenhum ponto a vencer.') + '</span></div>';
+  }
+  el.innerHTML = cab + delta + '</div><div class="ch-score">' + svg + txt + '</div>' + pts;
+}
+
+// Ritmo do mês: metas com barra e traço do esperado até hoje, e a dica do atraso. Sem meta não aparece como zero.
 function renderInMetas_(ini) {
   var el = document.getElementById('inMetas');
-  var cab = '<div class="ph"><div><h2 id="h-metas">Metas do mês</h2><p>O traço marca onde você deveria estar hoje.</p></div><div class="r"><a class="link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div></div>';
+  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Ritmo de ' + escHtml_(String(currentMes).toLowerCase()) + '</span><a class="gh-link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div>';
   if (ini.erro || !ini.dado) { el.innerHTML = cab + inErro_('Não foi possível carregar as metas', ini.erro || 'sem dados'); return; }
   var d = ini.dado;
-  var linhas = d.metas.map(function (m) {
-    if (m.status === 'sem_meta') {
-      return '<div class="meta"><div class="meta-top"><b>' + gtdEsc_(m.label) + '</b><span style="color:var(--ink3);font-size:13px">sem meta</span></div><div class="meta-dica" style="margin-top:0">Sem meta cadastrada, fica fora da conta.</div></div>';
-    }
+  var linhas = d.metas.filter(function (m) { return m.status !== 'sem_meta'; }).map(function (m) {
     var pct = m.meta ? Math.min((m.realizado || 0) / m.meta * 100, 100) : 0;
     var pace = m.meta && m.previsto !== null && m.previsto !== undefined ? Math.min(m.previsto / m.meta * 100, 100) : null;
-    var cor = m.status === 'atras' ? 'gold' : (m.status === 'atencao' ? 'gold' : '');
-    var dica;
-    if (m.falta === 0) dica = 'Meta batida.';
-    else if (m.status === 'atras') dica = 'Atrás do ritmo. ' + (m.falta === 1 ? 'Falta 1' : 'Faltam ' + inNum_(m.falta)) + (m.porSemana ? ', cerca de ' + inNum_(m.porSemana) + ' por semana.' : '.');
-    else dica = (m.status === 'atencao' ? 'Atenção. ' : (m.status === 'cedo' ? 'No prazo. ' : 'No ritmo. ')) + (m.falta === 1 ? 'Falta 1.' : 'Faltam ' + inNum_(m.falta) + '.');
-    return '<div class="meta"><div class="meta-top"><b>' + gtdEsc_(m.label) + '</b><span>' + inNum_(m.realizado || 0) + '<small> de ' + inNum_(m.meta) + '</small></span></div>'
-      + '<div class="bar"><span class="' + cor + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i class="pace" style="left:' + pace.toFixed(0) + '%"></i>' : '') + '</div>'
-      + '<div class="meta-dica' + (m.status === 'atras' ? ' atras' : '') + '">' + gtdEsc_(dica) + '</div></div>';
+    var atras = m.status === 'atras' || m.status === 'atencao';
+    return '<div class="ch-meta' + (m.status === 'atras' ? ' atras' : '') + '"><b>' + escHtml_(m.label) + '</b>' +
+      '<div class="gh-bar"><span class="' + (atras ? 'gold' : 'green') + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i class="pace" style="left:' + pace.toFixed(0) + '%"></i>' : '') + '</div>' +
+      '<span>' + inNum_(m.realizado || 0) + '<small>/' + inNum_(m.meta) + '</small></span></div>';
   }).join('');
-  var c = d.carteira, semChurn = c.churn === 0;
-  var okCarteira = !(c.metaChurn !== null && c.metaChurn !== undefined && c.churn !== null && c.churn > c.metaChurn);
-  linhas += '<div class="meta"><div class="meta-top"><b>Carteira e churn</b><span style="color:' + (okCarteira ? 'var(--green)' : 'var(--red)') + ';font-size:14px">' + (okCarteira ? 'ok' : 'atenção') + '</span></div>'
-    + '<div class="meta-dica" style="margin-top:0">' + (c.numConselhos === null ? 'Sem dado da carteira' : c.numConselhos + (c.meta && !c.semMetaPropria ? ' de ' + c.meta : '') + (c.numConselhos === 1 ? ' conselho' : ' conselhos'))
-    + ', ' + (c.churn === null || c.churn === undefined ? 'churn sem dado' : (semChurn ? 'nenhum churn no mês' : c.churn + (c.churn === 1 ? ' churn no mês' : ' churns no mês'))) + '.</div></div>';
-  el.innerHTML = cab + linhas;
+  var dica = d.dica ? '<div class="ch-dica">' + escHtml_(d.dica) + '</div>' : '';
+  el.innerHTML = cab + (linhas || '<div class="gh-vazio">Nenhuma meta cadastrada para este mês. Fale com seu gestor para cadastrar as metas.</div>') + dica;
+}
+
+// Sua semana: sete dias a partir da segunda, com a marca de cada conselho e do prazo do report, e os próximos compromissos.
+function renderInSemana_(ini) {
+  var el = document.getElementById('inSemana');
+  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="inSemanaTit">Sua semana</span><a class="gh-link" href="/?aba=agenda" data-aba-cs="agenda">Agenda completa</a></div>';
+  if (ini.erro || !ini.dado || !ini.dado.semana) { el.innerHTML = cab + inErro_('Não foi possível montar a semana', ini.erro || 'sem dados'); return; }
+  var s = ini.dado.semana;
+  var faixa = '<div class="ch-semana" aria-hidden="true">' + s.dias.map(function (x) {
+    var marcas = '';
+    for (var i = 0; i < Math.min(x.marcas, 3); i++) marcas += '<em></em>';
+    return '<div class="ch-dia' + (x.hoje ? ' hoje' : '') + (x.fimDeSemana ? ' fds' : '') + '"><small>' + x.rotulo + '</small><b>' + x.dia + '</b><i>' + marcas + '</i></div>';
+  }).join('') + '</div>';
+  var prox = s.proximos.length
+    ? '<div class="ch-prox">' + s.proximos.map(function (p) {
+      var aba = p.tipo === 'report' ? 'report' : 'agenda';
+      return '<a class="ch-ev" href="/?aba=' + aba + '" data-aba-cs="' + aba + '"><small>' + escHtml_(p.rotulo) + '</small><span><b>' + escHtml_(p.titulo) + '</b></span></a>';
+    }).join('') + '</div>'
+    : '<div class="gh-vazio">Nenhum compromisso marcado nos próximos dias.</div>';
+  el.innerHTML = cab + faixa + prox;
 }
 
 // Tarefas do GTD: o componente único de lib/gtd-checklist.ts, um conselho por vez, o que mais pede atenção primeiro.
@@ -1293,31 +1517,6 @@ inicializarSessao();
   }
 })();
 
-function carregarFotosTime(){
-  var grid = document.getElementById('teamGrid');
-  if (cacheFotos) { pintarTeamGrid(cacheFotos); return; }
-  pendingInc();
-  google.script.run.withSuccessHandler(function(equipe){
-    pendingDec();
-    cacheFotos = equipe;
-    pintarTeamGrid(equipe);
-  }).withFailureHandler(function(){ pendingDec(); }).getEquipeComFotos();
-}
-function pintarTeamGrid(equipe){
-  var grid = document.getElementById('teamGrid');
-  grid.innerHTML = '';
-  equipe.forEach(function(p, idx){
-    var card = document.createElement('div'); card.className = 'team-card';
-    card.style.animation = 'fadeIn .4s cubic-bezier(.22,1,.36,1) ' + (idx*0.05) + 's both';
-    card.onclick = function(){ abrirPessoa(p.nome); };
-    var fotoHtml = p.fotoUrl ? '<img class="team-photo" src="'+p.fotoUrl+'">' : '<div class="team-photo-fallback" style="background:'+corPara(p.nomeCompleto)+'">'+iniciais(p.nomeCompleto)+'</div>';
-    card.innerHTML = fotoHtml + '<div class="team-name">'+p.nome+'</div><div class="team-role">Customer Success</div>';
-    grid.appendChild(card);
-  });
-}
-// (grid de cards do time + carregarEquipe iniciais movidos pra iniciarHomeGestor() — só rodam
-// depois de confirmar souGestor via inicializarSessao(), Parte A 25/09/2026)
-
 function showHome(){
   if (modoRestritoCS) return; // CS comum não tem home de equipe pra voltar (Parte A, 25/09/2026)
   document.getElementById('screenHome').style.display = 'block';
@@ -1378,14 +1577,184 @@ function renderSkeletonPessoa(){
   document.getElementById('conselhos').innerHTML = '<div class="council-grid">'+Array(3).fill('<div class="council-card skel" style="height:150px;"></div>').join('')+'</div>';
   document.getElementById('feedbacks').innerHTML = '<div class="votos-bar-card skel" style="height:120px;"></div><div class="quote-block skel" style="height:60px;"></div>';
 }
+
+function ghFmt_(n){ return n === null || n === undefined ? 'Sem dado' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+function ghSincronizar(){ var b = document.getElementById('dockSync'); if (b) b.click(); }
+var GH_TOM_ = { nenhum_ainda: 'red', acelerar: 'red', quase_no_ritmo: 'gold', no_ritmo: 'green' };
+var GH_HEX_ = { red: '#C0433D', gold: '#C89A2E', green: '#3D8B5F' };
+var ghClipN_ = 0;
+var GH_SECOES_ = ['ghFoco', 'ghTime', 'ghCrescimento', 'ghRetencao', 'ghPodio', 'ghCases', 'ghConselhos'];
 function renderSkeletonEquipe(){
-  document.getElementById('equipeIndicadores').innerHTML = '<div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div>';
-  document.getElementById('equipeSemanal').innerHTML = '<div class="chart-card skel" style="height:180px;"></div>';
-  document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid"><div class="dark-card skel" style="height:160px;"></div><div class="dark-card skel" style="height:160px;"></div></div>';
-  document.getElementById('csTop').innerHTML = '<div class="cstop-grid">'+Array(3).fill('<div class="cstop-card skel" style="height:180px;"></div>').join('')+'</div>';
-  document.getElementById('equipeRanking').innerHTML = '<div class="ranking-grid">'+Array(6).fill('<div class="ranking-card skel" style="height:180px;"></div>').join('')+'</div>';
-  document.getElementById('equipeGradeConselhos').innerHTML = '<div class="cons-grid">'+Array(8).fill('<div class="cons-card skel" style="height:300px;"></div>').join('')+'</div>';
-  document.getElementById('equipeImpactoConselhos').innerHTML = '<div class="chart-card skel" style="height:180px;"></div>';
+  GH_SECOES_.forEach(function (id) { document.getElementById(id).innerHTML = '<div class="gh-sk"></div>'; });
+}
+function ghErroTudo_(msg){
+  GH_SECOES_.forEach(function (id) { document.getElementById(id).innerHTML = '<div class="gh-erro" role="alert">' + escHtml_(msg) + '</div>'; });
+}
+function carregarFotosTime(){
+  if (cacheFotos) return;
+  pendingInc();
+  fetchJSON_('/api/equipe-fotos').then(function (equipe) {
+    pendingDec();
+    cacheFotos = equipe;
+    var atual = cacheEquipe[chaveE(currentMes, currentAno)];
+    if (atual && currentCS === null) renderEquipeSecao_('ghTime', function () { renderGhTime_(atual.homeGestor || {}); });
+  }).catch(function () { pendingDec(); });
+}
+function carregarEquipe(mes, ano){
+  var chave = chaveE(mes, ano);
+  if (cacheEquipe[chave]) renderEquipe(cacheEquipe[chave]); else renderSkeletonEquipe();
+  pendingInc();
+  fetchJSON_('/api/equipe?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function (data) {
+    pendingDec();
+    cacheEquipe[chave] = data;
+    if (currentCS === null && currentMes === mes && currentAno === ano) renderEquipe(data);
+  }).catch(function (err) {
+    pendingDec();
+    ghErroTudo_(err.message);
+  });
+}
+// Home do gestor: cada bloco vem pronto de /api/equipe (campo homeGestor). Aqui só se desenha.
+function renderEquipe(data){
+  modoGeralAtual = !!data.periodo.geral;
+  var h = data.homeGestor || {};
+  if (h.erro) { ghErroTudo_(h.erro); return; }
+  document.getElementById('ghFrase').textContent = h.resumo ? ' ' + h.resumo.saudacao : '';
+  renderEquipeSecao_('ghFoco', function () { renderGhFoco_(data, h); });
+  renderEquipeSecao_('ghTime', function () { renderGhTime_(h); });
+  renderEquipeSecao_('ghCrescimento', function () { renderGhCrescimento_(h); });
+  renderEquipeSecao_('ghRetencao', function () { renderGhRetencao_(h); });
+  renderEquipeSecao_('ghPodio', function () { renderGhPodio_(h); });
+  renderEquipeSecao_('ghCases', function () { renderGhCases_(h); });
+  renderEquipeSecao_('ghConselhos', function () { renderGhConselhos_(h); });
+  document.getElementById('ghChurnOrfao').innerHTML = renderChurnOrfao(data.churnOrfao);
+  document.getElementById('ghJanelaHistorico').innerHTML = modoGeralAtual ? '' : renderLegendaJanelaHistorico();
+  animarMFills(document.getElementById('ghCrescimento'));
+  animarMFills(document.getElementById('ghRetencao'));
+}
+function renderGhFoco_(data, h){
+  var el = document.getElementById('ghFoco');
+  if (!h.resumo) {
+    el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">Visão Geral</span></div><div><h2>Acumulado do ano</h2><p>Escolha um mês no topo para ver o que está no ritmo.</p></div>';
+    return;
+  }
+  var r = h.resumo, p = h.periodo;
+  var pct = p.diasNoMes ? Math.round(p.diasDecorridos / p.diasNoMes * 100) : 0;
+  var churn = r.retencao.filter(function (x) { return x.chave === 'churn'; })[0];
+  var crit = r.retencao.filter(function (x) { return x.chave === 'healthDaBase'; })[0];
+  var metasCls = r.metasNoRitmo < r.totalMetas ? 'al' : '';
+  var churnVal = churn ? ghFmt_(churn.projecao !== null ? churn.projecao : churn.realizado) + ' de ' + ghFmt_(churn.limite) : 'Sem dado';
+  var churnCls = churn && churn.status === 'atencao' ? 'at' : '';
+  var churnLbl = churn && churn.projecao !== null ? 'Churn projetado no mês' : 'Churn no mês';
+  var critVal = crit ? ghFmt_(crit.realizado) + ' de ' + ghFmt_(crit.limite) : 'Sem dado';
+  var critCls = crit && crit.status !== 'sob_controle' ? 'at' : '';
+  var critSmall = crit && crit.percentualBase !== null && crit.percentualBase !== undefined ? ghFmt_(crit.percentualBase) + '% de ' + ghFmt_(crit.membrosTotal) + ' membros' : '';
+  el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">' + escHtml_(data.periodo.mes) + ' até aqui</span><span class="gh-tag">' + pct + '% do mês corrido</span></div>' +
+    '<div><h2 id="ghFocoTit">' + escHtml_(r.frase) + '</h2><p>' + escHtml_(r.apoio) + '</p></div>' +
+    '<div class="gh-mini-row">' +
+      '<div class="gh-glass gh-mini"><span>Metas de crescimento no ritmo</span><b class="' + metasCls + '">' + r.metasNoRitmo + ' de ' + r.totalMetas + '</b><small>Dia ' + p.diasDecorridos + ' de ' + p.diasNoMes + ' do mês</small></div>' +
+      '<div class="gh-glass gh-mini"><span>' + churnLbl + '</span><b class="' + churnCls + '">' + churnVal + '</b><small>' + (churn ? ghFmt_(churn.realizado) + ' até hoje, limite ' + ghFmt_(churn.limite) : '') + '</small></div>' +
+      '<div class="gh-glass gh-mini"><span>Membros críticos</span><b class="' + critCls + '">' + critVal + '</b><small>' + escHtml_(critSmall) + '</small></div>' +
+    '</div>' +
+    '<div class="gh-acoes"><a class="gh-btn claro" href="/gestor?aba=visaoGeral">Abrir a fila de ação</a><a class="gh-btn vidro" href="#ghCasos">Ver cases do mês</a></div>';
+}
+function renderGhTime_(h){
+  var el = document.getElementById('ghTime');
+  var lista = h.time || [];
+  if (!lista.length) { el.innerHTML = '<div class="gh-vazio">Nenhum CS ativo neste período.</div>'; return; }
+  el.innerHTML = '<div class="gh-time-grid">' + lista.map(function (p) {
+    var foto = p.fotoUrl || (cacheFotos ? (cacheFotos.filter(function (x) { return x.nome === p.nome; })[0] || {}).fotoUrl : null);
+    var anel = p.faixa === 'em_risco' ? ' red' : (p.faixa === 'acompanhar' ? ' gold' : '');
+    var miolo = foto ? '<img src="' + escHtml_(foto) + '" alt="">' : escHtml_(iniciais(p.nome));
+    var fundo = foto ? '' : ' style="background:' + corPara(p.nomeCompleto || p.nome) + '"';
+    return '<a class="gh-pessoa" href="/gestor/cs/' + encodeURIComponent(p.nome) + '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + '">' +
+      '<span class="gh-av"' + fundo + '>' + miolo + (anel ? '<i class="gh-ring' + anel + '"></i>' : '') + '</span>' +
+      '<b>' + escHtml_(p.nome) + '</b><small>' + (p.score === null || p.score === undefined ? 'sem dados' : p.score) + '</small></a>';
+  }).join('') + '</div>';
+}
+function ghM_(tom, frac, id){
+  return '<svg class="gh-m" viewBox="0 0 52 52" aria-hidden="true"><use href="#gh-mglyph" fill="#E3E1E1"/><clipPath id="' + id + '"><rect x="0" y="' + (52 - 52 * frac).toFixed(1) + '" width="52" height="' + (52 * frac).toFixed(1) + '"/></clipPath><use href="#gh-mglyph" fill="' + GH_HEX_[tom] + '" clip-path="url(#' + id + ')"/></svg>';
+}
+function renderGhCrescimento_(h){
+  var el = document.getElementById('ghCrescimento');
+  if (!h.resumo) { el.innerHTML = '<div class="gh-vazio">Escolha um mês para ver as metas de crescimento.</div>'; return; }
+  var rec = h.recordes || {};
+  var html = h.resumo.crescimento.map(function (l) {
+    var tom = GH_TOM_[l.status];
+    var frac = l.meta > 0 ? Math.min(1, l.realizado / l.meta) : 0;
+    var pace = l.meta > 0 ? Math.min(100, l.esperado / l.meta * 100) : 0;
+    var r = rec[l.chave];
+    var recordeTxt = r && r.recordeValor !== null && r.recordeValor !== undefined ? 'Recorde: ' + ghFmt_(r.recordeValor) + (r.recordeMes ? ' em ' + formatarMesAbrevAno(r.recordeMes) : '') : '';
+    var txt = tom === 'red' ? '<strong>' + escHtml_(l.textoDeficit) + '</strong>' : (tom === 'gold' ? '<em>' + escHtml_(l.textoDeficit) + '</em>' : escHtml_(l.textoDeficit));
+    return '<div class="gh-ind">' + ghM_(tom, frac, 'ghClip' + (++ghClipN_)) +
+      '<div class="gh-ind-top"><b>' + escHtml_(l.label) + '</b><span class="gh-tag ' + tom + '">' + escHtml_(l.rotuloStatus) + '</span></div>' +
+      '<div class="gh-ind-v">' + ghFmt_(l.realizado) + '<small>de ' + ghFmt_(l.meta) + '</small></div>' +
+      '<div class="gh-ind-foot"><div class="gh-bar"><span class="' + (tom === 'green' ? 'green' : (tom === 'gold' ? 'gold' : '')) + '" style="width:' + (frac * 100).toFixed(0) + '%"></span><i class="pace" style="left:' + pace.toFixed(1) + '%"></i></div>' +
+      '<span class="gh-ind-txt">' + txt + (recordeTxt ? '<br>' + escHtml_(recordeTxt) : '') + '</span></div></div>';
+  }).join('');
+  el.innerHTML = html || '<div class="gh-vazio">Nenhuma meta de crescimento cadastrada para este mês.</div>';
+}
+function renderGhRetencao_(h){
+  var el = document.getElementById('ghRetencao');
+  if (!h.resumo) { el.innerHTML = '<div class="gh-vazio">Escolha um mês para ver a retenção.</div>'; return; }
+  var fracMes = h.periodo.diasNoMes ? Math.min(100, h.periodo.diasDecorridos / h.periodo.diasNoMes * 100) : 0;
+  el.innerHTML = h.resumo.retencao.map(function (l) {
+    var tom = l.status === 'sob_controle' ? 'green' : 'gold';
+    var moeda = l.chave === 'revenueChurn' ? 'R$ ' : '';
+    var frac = l.limite > 0 ? Math.min(1, l.realizado / l.limite) : 0;
+    var rodape = l.chave === 'healthDaBase' && l.percentualBase !== null && l.percentualBase !== undefined
+      ? ghFmt_(l.percentualBase) + '% da base de ' + ghFmt_(l.membrosTotal) + ' membros'
+      : l.textoProjecao;
+    return '<div class="gh-ind">' + ghM_(tom, frac, 'ghClip' + (++ghClipN_)) +
+      '<div class="gh-ind-top"><b>' + escHtml_(l.label) + '</b><span class="gh-tag ' + tom + '">' + escHtml_(l.rotuloStatus) + '</span></div>' +
+      '<div class="gh-ind-v">' + moeda + ghFmt_(l.realizado) + '<small>de ' + moeda + ghFmt_(l.limite) + ' no limite</small></div>' +
+      '<div class="gh-ind-foot"><div class="gh-bar"><span class="' + tom + '" style="width:' + (frac * 100).toFixed(0) + '%"></span><i class="pace" style="left:' + fracMes.toFixed(1) + '%"></i></div>' +
+      '<span class="gh-ind-txt">' + escHtml_(rodape) + '</span></div></div>';
+  }).join('') || '<div class="gh-vazio">Nenhum indicador de retenção com limite cadastrado.</div>';
+}
+function renderGhPodio_(h){
+  var el = document.getElementById('ghPodio'), rod = document.getElementById('ghPodioRodape');
+  var p = (h.podio && h.podio.pessoas) || [];
+  if (!p.length) { el.innerHTML = '<div class="gh-vazio">Sem CS com dados suficientes para o ranking deste período.</div>'; rod.innerHTML = ''; return; }
+  var ordem = [{ i: 1, cls: 'p2', med: 'prata', n: 2 }, { i: 0, cls: 'p1', med: 'ouro', n: 1 }, { i: 2, cls: 'p3', med: 'bronze', n: 3 }];
+  el.innerHTML = '<div class="gh-podio">' + ordem.filter(function (o) { return p[o.i]; }).map(function (o) {
+    var x = p[o.i];
+    var miolo = x.fotoUrl ? '<img src="' + escHtml_(x.fotoUrl) + '" alt="">' : escHtml_(iniciais(x.nomeCompleto || x.nome));
+    var fundo = x.fotoUrl ? '' : ' style="background:' + corPara(x.nomeCompleto || x.nome) + '"';
+    var v = x.variacaoPontos;
+    var varTxt = v === null || v === undefined ? '' : (v > 0 ? '▲ ' + v + ' no mês' : (v < 0 ? '▼ ' + Math.abs(v) + ' no mês' : 'estável no mês'));
+    var coroa = o.cls === 'p1' ? '<svg class="gh-coroa" viewBox="0 0 40 24" aria-hidden="true"><path d="M3 21h34l2-16-10 7-9-10-9 10L1 5l2 16Z" fill="#C89A2E"/></svg>' : '';
+    return '<a class="gh-pod ' + o.cls + '" href="/gestor/cs/' + encodeURIComponent(x.nome) + '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + '">' + coroa +
+      '<span class="gh-av"' + fundo + '>' + miolo + '<i class="gh-medalha ' + o.med + '">' + o.n + '</i></span>' +
+      '<b>' + escHtml_(x.nome) + '</b><span class="gh-pod-dest">' + escHtml_(x.frase || '') + '</span>' +
+      '<span class="gh-degrau"><span class="gh-pod-n">' + escHtml_(x.score) + '</span><small>' + escHtml_(varTxt) + '</small></span></a>';
+  }).join('') + '</div>';
+  var tags = [];
+  if (h.podio.maiorAlta) tags.push('<span class="gh-tag ouro">▲ Maior alta: ' + escHtml_(h.podio.maiorAlta.nome) + ', ' + h.podio.maiorAlta.pontos + (h.podio.maiorAlta.pontos === 1 ? ' ponto' : ' pontos') + '</span>');
+  if (h.podio.distanciaPrimeiroQuarto !== null && h.podio.distanciaPrimeiroQuarto !== undefined) tags.push('<span class="gh-tag">Distância do 1º para o 4º: ' + h.podio.distanciaPrimeiroQuarto + ' pontos</span>');
+  rod.innerHTML = tags.length ? '<div class="gh-pod-foot">' + tags.join('') + '</div>' : '';
+}
+function renderGhCases_(h){
+  var el = document.getElementById('ghCases');
+  var c = h.cases || { total: 0, recentes: [] };
+  var html = '<div class="gh-w-h"><span class="gh-grande">' + c.total + '<small>no período</small></span></div>';
+  if (!c.recentes.length) html += '<div class="gh-vazio">Nenhum case de sucesso registrado neste período.</div>';
+  else html += c.recentes.map(function (x) {
+    return '<div class="gh-case"><span class="gh-av" style="background:' + corPara(x.cs) + '">' + escHtml_(iniciais(x.cs)) + '</span>' +
+      '<span><b>' + escHtml_(x.nome) + '</b><small>' + escHtml_(x.cs) + (x.produto ? ' · ' + escHtml_(x.produto) : '') + '</small></span></div>';
+  }).join('');
+  el.innerHTML = html;
+}
+function renderGhConselhos_(h){
+  var el = document.getElementById('ghConselhos');
+  var c = h.conselhos;
+  if (!c) { el.innerHTML = '<div class="gh-vazio">Sem dados de conselhos neste período.</div>'; return; }
+  var rv = function (rotulo, valor, cls) { return '<div class="gh-rv"><span>' + escHtml_(rotulo) + '</span><b class="' + (cls || '') + '">' + escHtml_(valor) + '</b></div>'; };
+  el.innerHTML = '<div class="gh-rede">' +
+    rv('Conselhos ativos', ghFmt_(c.ativos)) +
+    rv('Membros', ghFmt_(c.membros)) +
+    rv('Presença acumulada', c.presencaAcumulada === null ? 'Sem dado' : c.presencaAcumulada + '%') +
+    rv('Abaixo de ' + c.limiteAbaixo + '% de presença', ghFmt_(c.abaixoDoLimite), c.abaixoDoLimite ? 'gold' : '') +
+  '</div>';
 }
 
 function carregarRelatorio(nome, mes, ano){
@@ -1441,29 +1810,6 @@ function carregarRelatorioRestrito(nome, mes, ano){
     }
   });
 }
-function carregarEquipe(mes, ano){
-  var meuSeq = ++requestSeq;
-  var chave = chaveE(mes, ano);
-  if (cacheEquipe[chave]) { renderEquipe(cacheEquipe[chave]); animarMFills(document.getElementById('equipeIndicadores')); }
-  else renderSkeletonEquipe();
-  pendingInc();
-  google.script.run.withSuccessHandler(function(data){
-    pendingDec();
-    cacheEquipe[chave] = data;
-    if (currentCS === null && currentMes === mes && currentAno === ano) { renderEquipe(data); animarMFills(document.getElementById('equipeIndicadores')); }
-  }).withFailureHandler(function(err){
-    pendingDec();
-    var msgErro = '<div class="empty-state">Erro ao consultar: ' + err.message + '</div>';
-    document.getElementById('equipeIndicadores').innerHTML = msgErro;
-    document.getElementById('equipeSemanal').innerHTML = msgErro;
-    document.getElementById('equipeConselhos').innerHTML = msgErro;
-    document.getElementById('csTop').innerHTML = msgErro;
-    document.getElementById('equipeRanking').innerHTML = msgErro;
-    document.getElementById('equipeGradeConselhos').innerHTML = msgErro;
-    document.getElementById('equipeImpactoConselhos').innerHTML = msgErro;
-  }).getEquipeReportPublico(mes, ano);
-}
-
 var modoGeralAtual = false;
 function calcIndicador(ind){
   var meta = modoGeralAtual ? null : ind.meta, alc = ind.alcancado, tipo = ind.tipoMeta;
@@ -1570,21 +1916,6 @@ function lineChart(pontos, corLinha){
   return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:130px;overflow:visible;">' +
     '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+corLinha+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+corLinha+'" stop-opacity="0"/></linearGradient></defs>' +
     '<path d="'+areaD+'" fill="url(#'+gradId+')"/><path d="'+pathD+'" fill="none" stroke="'+corLinha+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' + dots + labels + '</svg>';
-}
-function barChart(pontos, corBarra){
-  corBarra = corBarra || '#7dd3fc';
-  if (pontos.length === 0) return '<div style="color:#807E7E;font-size:11.5px;padding:20px 0;">Sem dados ainda.</div>';
-  var w = 720, h = 110, pad = 20, gap = 6;
-  var max = Math.max.apply(null, pontos.map(function(p){return p.v;})) || 1;
-  var bw = (w - pad*2) / pontos.length - gap;
-  var bars = pontos.map(function(p,i){
-    var bh = (p.v/max) * (h - pad*2);
-    var x = pad + i*((w-pad*2)/pontos.length);
-    var y = h - pad - bh;
-    return '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="4" fill="'+corBarra+'"/>' +
-      '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(h-4)+'" font-size="9" fill="#807E7E" text-anchor="middle" font-family="Inter">'+p.lbl+'</text>';
-  }).join('');
-  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:110px;">'+bars+'</svg>';
 }
 function donutChart(presente, ausente, reposicao, tamanho){
   tamanho = tamanho || 150;
@@ -2432,84 +2763,28 @@ function agendaItensUnificados_(d){
   return itens;
 }
 
-// ===== farol da semana (08/10/2026): confirmações da semana corrente, no topo da agenda =====
-// Sempre a semana corrente, de segunda a domingo, independente da semana que a agenda estiver mostrando.
-// Usa a mesma faixa de cor da agenda (semaforoConfirmados_), sem limiar novo. A lista de itens é própria,
-// para não trocar a lista de cliques da agenda.
-var farolItens_ = [];
-var FAROL_GRAVIDADE_ = { vermelho: 0, laranja: 1, amarelo: 2, verde: 3, azul: 4 };
-var FAROL_DIAS_ = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
-function farolAbrir_(i){
-  var salvo = agendaItensClique_;
-  agendaItensClique_ = farolItens_;
-  try { agendaAbrirModal_(i); } finally { agendaItensClique_ = salvo; }
-}
-
+// Farol da semana: virou o resumo do rodapé da agenda (prompt 5.5.10). Os cards saem; a contagem vem da agenda.
 function carregarFarolSemana_(){
   var el = document.getElementById('farolSemana');
   if (!el) return;
-  el.innerHTML = '<div class="empty-state">Carregando…</div>';
+  el.textContent = 'Carregando o resumo da semana…';
   var inicio = agendaInicioSemana_(agendaZerarHora_(new Date()));
   var fim = agendaAddDias_(inicio, 7);
-  fetchJSON_('/api/gestor/agenda?inicio='+agendaFmtYYYYMMDD_(inicio)+'&fim='+agendaFmtYYYYMMDD_(fim)).then(function(d){
+  fetchJSON_('/api/gestor/agenda?inicio=' + agendaFmtYYYYMMDD_(inicio) + '&fim=' + agendaFmtYYYYMMDD_(fim)).then(function (d) {
     renderFarolSemana_(d);
-  }).catch(function(err){
-    el.innerHTML = '<div class="gestor-erro">Não foi possível carregar o farol: '+escAgenda_(err.message)+'.</div>';
+  }).catch(function (err) {
+    el.innerHTML = '<span class="gh-erro">Não foi possível carregar o resumo da semana: ' + escAgenda_(err.message) + '.</span>';
   });
 }
-
 function renderFarolSemana_(d){
   var el = document.getElementById('farolSemana');
-  var todos = d.conselhos || [];
-  var encerrados = todos.filter(function(c){ return c.passado; }).length;
-  var cards = todos.filter(function(c){ return !c.passado; }).map(function(c){
-    var faixa = semaforoConfirmados_((c.confirmados || []).length);
-    var ordem = FAROL_GRAVIDADE_[faixa.chave];
-    return { c: c, faixa: faixa, ordem: ordem === undefined ? 9 : ordem };
-  }).sort(function(a, b){
-    return a.ordem - b.ordem || new Date(a.c.dataIso) - new Date(b.c.dataIso);
-  });
-  var atencao = cards.filter(function(x){ return x.ordem <= 1; }).length;
-  var resumo;
-  if (!cards.length) resumo = 'Nenhum conselho nesta semana.';
-  else if (atencao) resumo = cards.length + (cards.length === 1 ? ' conselho nesta semana; ' : ' conselhos nesta semana; ') + atencao + (atencao === 1 ? ' precisa' : ' precisam') + ' de atenção (vermelho ou laranja).';
-  else resumo = cards.length + (cards.length === 1 ? ' conselho nesta semana' : ' conselhos nesta semana') + ', todos com confirmações em dia.';
-
-  var html = '<div class="farol-titulo">Farol da semana</div><p class="farol-resumo">' + escAgenda_(resumo) + '</p>';
-  farolItens_ = [];
-  if (cards.length) {
-    html += '<div class="farol-linha">';
-    cards.forEach(function(x, k){
-      var c = x.c;
-      farolItens_.push(agendaItensUnificados_({ conselhos: [c], rounds: [] })[0]);
-      var dt = new Date(c.dataIso);
-      var dia = FAROL_DIAS_[dt.getDay()];
-      var hora = String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-      var confirmados = (c.confirmados || []).length;
-      var naoVao = c.naoVao || 0;
-      var aguardando = c.aguardando || 0;
-      var chave = x.faixa.chave;
-      var acao = (chave === 'vermelho' || chave === 'laranja') ? 'Cobrar confirmações com ' + (c.cs || 'o CS') + ' hoje'
-        : (chave === 'amarelo' ? 'Acompanhar confirmações até a véspera' : 'Confirmações em dia');
-      var rotulo = c.nomeGrupo + ', ' + dia + ' ' + hora + ', ' + confirmados + ' confirmados, faixa ' + x.faixa.rotulo;
-      html += '<button type="button" class="farol-card" aria-label="' + escAgenda_(rotulo) + '" onclick="farolAbrir_(' + k + ')">' +
-        '<span class="farol-lampada" style="background:' + x.faixa.corFundo + ';box-shadow:0 0 12px ' + x.faixa.corFundo + '80"></span>' +
-        '<span class="farol-numero">' + confirmados + '</span>' +
-        '<span class="farol-info">' +
-          '<span class="farol-data">' + dia + ' ' + hora + '</span>' +
-          '<span class="farol-nome">' + escAgenda_(c.nomeGrupo) + '</span>' +
-          '<span class="farol-cs">CS ' + escAgenda_(c.cs || '-') + '</span>' +
-          '<span class="farol-pend">' + aguardando + ' aguardando resposta, ' + naoVao + ' não vão</span>' +
-          '<span class="farol-acao">' + escAgenda_(acao) + '</span>' +
-        '</span></button>';
-    });
-    html += '</div>';
-  }
-  if (encerrados) html += '<p class="farol-encerrados">' + encerrados + (encerrados === 1 ? ' conselho desta semana já aconteceu.' : ' conselhos desta semana já aconteceram.') + '</p>';
-  el.innerHTML = html;
+  var conselhos = d.conselhos || [];
+  var rounds = (d.rounds || []).length;
+  var atencao = conselhos.filter(function (c) { return !c.passado && (c.confirmados || []).length <= 3; }).length;
+  el.textContent = conselhos.length + (conselhos.length === 1 ? ' conselho' : ' conselhos') + ' e ' + rounds + (rounds === 1 ? ' round' : ' rounds') +
+    ' na semana · ' + atencao + ' com 3 confirmados ou menos';
 }
-
 
 function agendaAbrirModal_(i){
   var item = agendaItensClique_[i];
@@ -2549,86 +2824,6 @@ function agendaAbrirModal_(i){
   document.getElementById('conselhoModalOverlay').classList.add('ativo');
 }
 
-// ============ NPS — resolver de aliases (Parte D, 28/09/2026) ============
-// Mesmo espírito do resolver de Big Deal sem membro (app/conselho-html.ts): mostra quem não bateu
-// automático contra o roster de conselhos ativos, gestor escolhe/confirma, some da lista.
-var npsRosterAtual_ = [];
-var npsPendentesAtual_ = [];
-function carregarNpsAliasesPendentes(){
-  fetchJSON_('/api/gestor/nps/aliases-pendentes').then(function(d){
-    npsRosterAtual_ = d.roster || [];
-    npsPendentesAtual_ = d.pendentes || [];
-    renderNpsAliasesPendentes_();
-  }).catch(function(){
-    // silencioso — não é uma seção crítica da home, não deve travar o resto da tela por causa dela
-  });
-}
-function renderNpsAliasesPendentes_(){
-  var bloco = document.getElementById('npsAliasesPendentesBlock');
-  var lista = npsPendentesAtual_;
-  bloco.style.display = lista.length ? 'block' : 'none';
-  if (!lista.length) return;
-  var opcoes = '<option value="">Selecionar do roster…</option>' +
-    npsRosterAtual_.map(function(g){ return '<option value="'+escAgenda_(g.groupId)+'">'+escAgenda_(g.titulo)+'</option>'; }).join('');
-  document.getElementById('npsAliasesPendentesList').innerHTML = lista.map(function(p, idx){
-    var sugestao = p.groupIdSugerido ? '<div class="resolver-sub">Sugestão automática: '+escAgenda_(p.nomeGrupoSugerido || p.groupIdSugerido)+'</div>' : '<div class="resolver-sub">Sem sugestão automática — escolha manualmente.</div>';
-    var selecaoInicial = p.groupIdSugerido || '';
-    return '<div class="resolver-card"><div class="resolver-head">' +
-        '<div><span class="resolver-nome-raw">'+escAgenda_(p.conselhoRaw)+'</span>'+sugestao+'</div>' +
-      '</div>' +
-      '<div class="resolver-linha">' +
-        '<select class="resolver-select" id="npsAliasSelect'+idx+'">'+opcoes+'</select>' +
-        '<button class="resolver-btn" id="npsAliasBtn'+idx+'" type="button" onclick="confirmarNpsAlias('+idx+')">Confirmar</button>' +
-      '</div>' +
-      '<div class="resolver-status" id="npsAliasStatus'+idx+'"></div></div>';
-  }).join('');
-  lista.forEach(function(p, idx){
-    var sel = document.getElementById('npsAliasSelect'+idx);
-    if (sel && p.groupIdSugerido) sel.value = p.groupIdSugerido;
-  });
-}
-function confirmarNpsAlias(idx){
-  var p = npsPendentesAtual_[idx];
-  var sel = document.getElementById('npsAliasSelect'+idx);
-  var btn = document.getElementById('npsAliasBtn'+idx);
-  var status = document.getElementById('npsAliasStatus'+idx);
-  var groupId = sel ? sel.value : '';
-  if (!groupId) { status.textContent = 'Escolha um conselho do roster.'; status.className = 'resolver-status erro'; return; }
-  btn.disabled = true; status.textContent = 'Confirmando…'; status.className = 'resolver-status';
-  fetchJSON_('/api/gestor/nps/aliases-pendentes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conselhoRaw: p.conselhoRaw, groupId: groupId }),
-  }).then(function(){
-    npsPendentesAtual_ = npsPendentesAtual_.filter(function(x){ return x.conselhoRaw !== p.conselhoRaw; });
-    renderNpsAliasesPendentes_();
-  }).catch(function(err){
-    btn.disabled = false;
-    status.textContent = 'Erro: ' + err.message;
-    status.className = 'resolver-status erro';
-  });
-}
-
-// ============ Relatório mensal (Parte G, 28/09/2026) ============
-// Seletor de mês/ano só escolhe QUAL relatório baixar — o arquivo baixado é sempre autônomo (todo
-// dado já embutido nele, ver gerarRelatorioMensalHtml), sem nenhuma chamada de volta pro app.
-function iniciarSeletorRelatorioMensal_(){
-  var sel = document.getElementById('selMesRelatorio');
-  if (!sel || sel.options.length) return;
-  var optGeral = document.createElement('option'); optGeral.textContent = 'Visão Geral'; sel.appendChild(optGeral);
-  MESES.forEach(function(m){ var o=document.createElement('option'); o.textContent=m; sel.appendChild(o); });
-  sel.value = MESES[agoraGlobal_().getMonth()];
-  document.getElementById('selAnoRelatorio').value = String(agoraGlobal_().getFullYear());
-}
-function agoraGlobal_(){ return new Date(); }
-function urlRelatorioMensal_(preview){
-  var mes = document.getElementById('selMesRelatorio').value;
-  var ano = document.getElementById('selAnoRelatorio').value;
-  return '/api/gestor/relatorio-mensal?mes='+encodeURIComponent(mes)+'&ano='+encodeURIComponent(ano)+(preview?'&preview=1':'');
-}
-function preVisualizarRelatorioMensal(){ window.open(urlRelatorioMensal_(true), '_blank'); }
-function baixarRelatorioMensal(){ window.open(urlRelatorioMensal_(false), '_blank'); }
-
 function renderChurnOrfao(churnOrfao){
   if (!churnOrfao || !churnOrfao.qtd) return '';
   var detalheTxt = (churnOrfao.detalhe || []).map(function(d){ return d.nome+' ('+d.qtd+')'; }).join(', ');
@@ -2649,21 +2844,6 @@ function renderEquipeSecao_(id, fn){
     if (el) el.innerHTML = '<div class="empty-state">Erro ao exibir esta seção: ' + (e && e.message ? e.message : e) + '</div>';
   }
 }
-// Parte G (29/09/2026): cards da home vêm de config_home_indicadores (visível/ordem definidos
-// pelo gestor na Matriz de metas), não mais fixos. Mapa só de rótulo/unidade/chave em
-// data.indicadores — indicadores sem cálculo pra equipe hoje (carteira, presenca, suspensoes,
-// critico) ficam de fora de propósito, mesmo que um dia sejam marcados visíveis por engano.
-var INDICADOR_HOME_INFO = {
-  churn: { label: 'Churn', unidade: null, chave: 'churn' },
-  revenue_churn: { label: 'Revenue Churn', unidade: 'R$', chave: 'revenueChurn' },
-  cases: { label: 'Cases de Sucesso', unidade: null, chave: 'casesSucesso' },
-  matchmakings: { label: 'Matchmakings', unidade: null, chave: 'matchmakings' },
-  rounds: { label: 'Rounds', unidade: null, chave: 'rounds' },
-  health_base: { label: 'Críticos', unidade: null, chave: 'healthDaBase' },
-  indicacoes: { label: 'Indicações', unidade: null, chave: 'indicacoes' },
-  upsell: { label: 'Upsell', unidade: null, chave: 'upsell' },
-  downsell: { label: 'Downsell', unidade: null, chave: 'downsell' },
-};
 // Limites conhecidos do histórico espelhado (conferido direto no banco em 29/09/2026) — o recorde
 // só é calculado dentro dessa janela; antes dela, o gestor pode registrar um recorde manual na
 // tela de Metas e destaques.
@@ -2673,211 +2853,10 @@ function renderLegendaJanelaHistorico(){
     'matchmakings desde abril de 2026, rounds e churn desde maio de 2026. Fora dessa janela, use o recorde manual na tela do gestor.'+
     '</div>';
 }
-function renderEquipe(data){
-  modoGeralAtual = !!data.periodo.geral;
-  renderEquipeSecao_('equipeIndicadores', function(){
-    var ind = data.indicadores;
-    var cfgHome = (data.configHomeIndicadores || []).filter(function(c){ return c.visivel && INDICADOR_HOME_INFO[c.indicador] && ind[INDICADOR_HOME_INFO[c.indicador].chave]; })
-      .sort(function(a,b){ return a.ordem - b.ordem; });
-    var cards = cfgHome.map(function(c){
-      var info = INDICADOR_HOME_INFO[c.indicador];
-      var recordeInfo = c.exibir_recorde && data.recordes ? data.recordes[info.chave] : null;
-      return kpiCard(info.label, ind[info.chave], info.unidade, null, false, recordeInfo);
-    });
-    var linhasHtml = '';
-    for (var i = 0; i < cards.length; i += 3) { linhasHtml += '<div class="grid3">' + cards.slice(i, i + 3).join('') + '</div>'; }
-    if (!cards.length) linhasHtml = '<div class="empty-state">Nenhum indicador visível na home — configure em Controle de Perfis, Metas e destaques.</div>';
-    document.getElementById('equipeIndicadores').innerHTML = linhasHtml + renderChurnOrfao(data.churnOrfao) + (modoGeralAtual ? '' : renderLegendaJanelaHistorico());
-    animarMFills(document.getElementById('equipeIndicadores'));
-  });
-
-  renderEquipeSecao_('equipeSemanal', function(){
-    if (data.casesPorCS && data.casesPorCS.length > 0) {
-      var pontosCases = data.casesPorCS.map(function(c){ return { v: c.qtd, lbl: c.nome }; });
-      document.getElementById('equipeSemanal').innerHTML = '<div class="chart-card"><div class="chart-title">'+ICONS.calendar+'Cases de sucesso registrados por CS ('+data.membrosIncluidos.length+' incluídos)</div>' + barChart(pontosCases, '#fbbf24') + '</div>';
-    } else {
-      document.getElementById('equipeSemanal').innerHTML = '<div class="empty-state">Nenhum case de sucesso registrado neste período.</div>';
-    }
-  });
-
-  renderEquipeSecao_('equipeConselhos', function(){
-    var a = agregarConselhos(data.conselhos);
-    var mediaGeral = a.totalRegistros ? Math.round(a.totalPresente/a.totalRegistros*100) : 0;
-    document.getElementById('equipeConselhos').innerHTML = '<div class="hero-grid">' +
-      '<div class="dark-card" style="display:flex;align-items:center;gap:20px;">' + donutChart(a.totalPresente, a.totalAusente, a.totalReposicao, 130) +
-        '<div><div class="dark-label">Presença média — toda a operação</div><div class="dark-value num '+(mediaGeral>=60?'c-g':'c-r')+'">'+mediaGeral+'%</div><div class="dark-sub">'+a.total+' conselhos · '+a.totalMembros+' membros</div></div></div>' +
-      '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
-        '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Conselhos abaixo de 60%</div><div class="dark-value num c-r">'+a.atencao.length+'</div></div>' +
-        '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Congelados</div><div class="dark-value num c-y">'+a.congelados+'</div></div>' +
-      '</div></div>';
-  });
-
-  // BUG FIX (24/09/2026): antes passava data.impactoConselhos (o alias, que é só o objeto do
-  // histórico) pra uma função que lê .impactoConselhosHistorico/.impactoConselhosPeriodo dele —
-  // os dois vinham undefined e a seção sempre mostrava "Sem dados de impacto disponíveis".
-  renderEquipeSecao_('equipeGradeConselhos', function(){ renderGradeConselhos(data); });
-  renderEquipeSecao_('equipeImpactoConselhos', function(){ renderImpactoConselhosEquipe(data); });
-  renderEquipeSecao_('csTop', function(){ renderCSTop(data.csTop); });
-  renderEquipeSecao_('equipeRanking', function(){ renderRankingEquipe(data.ranking); });
-}
-
-// Home da equipe em duas abas (pedido do Vitor, 24/09/2026): "Indicadores" (tudo que já existia)
-// e "Conselhos" (grade de conselheiros + impacto dos conselhos). A aba escolhida fica guardada
-// no navegador só como conveniência — a tela funciona igual sem isso.
-function mostrarAbaHome(aba){
-  var conselhos = aba === 'conselhos';
-  document.getElementById('homeAbaConselhos').style.display = conselhos ? 'block' : 'none';
-  document.getElementById('equipeSection').style.display = conselhos ? 'none' : 'block';
-  document.getElementById('homeTabConselhos').classList.toggle('active', conselhos);
-  document.getElementById('homeTabIndicadores').classList.toggle('active', !conselhos);
-  try { localStorage.setItem('moaiHomeAba', aba); } catch (e) {}
-}
-(function restaurarAbaHome(){
-  var aba = null;
-  try { aba = localStorage.getItem('moaiHomeAba'); } catch (e) {}
-  if (aba === 'conselhos') mostrarAbaHome('conselhos');
-})();
-
 function escHtml_(s){
   return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){
     return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
   });
-}
-
-// Grade de conselhos: um cartão por conselho. Ordem padrão é por produto (nivelOrdem, já vem
-// calculado do servidor a partir do próprio nome do grupo — Setorial e afins sempre por último);
-// um controle visível deixa trocar pra "Próximo encontro" (padrão antigo) sem pedir nada de novo
-// ao servidor — mesmo padrão do toggle de impacto dos conselhos, reordena em memória. Clique no
-// cartão abre a visão combinada conselheiro + conselho (/conselho/[grupo]), já no mesmo período
-// selecionado aqui.
-var gradeConselhosAtual_ = null;
-var gradeConselhosOrdenacao_ = 'produto';
-function renderGradeConselhos(data){
-  gradeConselhosAtual_ = data.gradeConselhos;
-  if (!data.gradeConselhos) {
-    document.getElementById('gradeConselhosOrdenacao').innerHTML = '';
-    document.getElementById('equipeGradeConselhos').innerHTML = '<div class="empty-state">Não foi possível montar a grade de conselhos' + (data.gradeConselhosErro ? ': ' + escHtml_(data.gradeConselhosErro) : '.') + '</div>';
-    return;
-  }
-  renderGradeOrdenacaoControl_();
-  desenharGradeConselhos_();
-}
-function mudarGradeOrdenacaoProduto(){ gradeConselhosOrdenacao_ = 'produto'; renderGradeOrdenacaoControl_(); desenharGradeConselhos_(); }
-function mudarGradeOrdenacaoProximo(){ gradeConselhosOrdenacao_ = 'proximo'; renderGradeOrdenacaoControl_(); desenharGradeConselhos_(); }
-function renderGradeOrdenacaoControl_(){
-  var estiloAtivo = 'background:#C89A2E;color:#1A1A1A;border:none;';
-  var estiloInativo = 'background:#1A1A1A;color:#9F9F9F;border:0.75pt solid #2A2A2A;';
-  document.getElementById('gradeConselhosOrdenacao').innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-      '<span style="font-size:11px;color:#807E7E;font-weight:700;">Ordenar por</span>' +
-      '<button class="destaque-form-btn" style="'+(gradeConselhosOrdenacao_==='produto'?estiloAtivo:estiloInativo)+'" onclick="mudarGradeOrdenacaoProduto()">Produto</button>' +
-      '<button class="destaque-form-btn" style="'+(gradeConselhosOrdenacao_==='proximo'?estiloAtivo:estiloInativo)+'" onclick="mudarGradeOrdenacaoProximo()">Próximo encontro</button>' +
-    '</div>';
-}
-function desenharGradeConselhos_(){
-  var el = document.getElementById('equipeGradeConselhos');
-  var cards = (gradeConselhosAtual_ && gradeConselhosAtual_.cards || []).slice();
-  if (!cards.length) { el.innerHTML = '<div class="empty-state">Nenhum conselho ativo encontrado.</div>'; return; }
-  if (gradeConselhosOrdenacao_ === 'proximo') {
-    var tempo = function(c){ return c.proximaData && c.proximaDataEhFutura ? new Date(c.proximaData).getTime() : Number.MAX_SAFE_INTEGER; };
-    cards.sort(function(a,b){ return tempo(a) - tempo(b) || a.conselheiro.localeCompare(b.conselheiro); });
-  } else {
-    cards.sort(function(a,b){ return a.nivelOrdem - b.nivelOrdem || a.conselheiro.localeCompare(b.conselheiro); });
-  }
-  var qs = '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno);
-  var html = '<div class="cons-grid">';
-  cards.forEach(function(c){
-    var foto = c.fotoUrl
-      ? '<img class="cons-foto" loading="lazy" src="' + escHtml_(c.fotoUrl) + '" alt="">'
-      : '<div class="cons-foto-fallback">' + escHtml_(iniciais(c.conselheiro)) + '</div>';
-    var selo = c.congelado ? '<div class="cons-selo congelado">Congelado</div>' : (c.atencao ? '<div class="cons-selo atencao">Atenção</div>' : '');
-    var health = (c.healthscore !== null && c.healthscore !== undefined) ? '<div class="cons-health" title="Healthscore do conselho no período">♥ ' + c.healthscore + '</div>' : '';
-    var proxima = '';
-    if (c.proximaData && c.proximaDataEhFutura) {
-      var f = formatarDataConselho(c.proximaData);
-      if (f) proxima = '<div class="cons-linha">' + ICONS.calendar + 'Próximo: ' + escHtml_(f.texto) + '</div>';
-    }
-    if (!proxima) proxima = '<div class="cons-linha">' + ICONS.clock + 'Sem próximo encontro na agenda</div>';
-    var variacao = '<span class="cons-var neutra">sem presença registrada</span>';
-    if (c.presenca) {
-      var v = c.presenca.variacaoPp;
-      var seta = v === null ? '' : (v > 0 ? '▲ ' : (v < 0 ? '▼ ' : '= '));
-      var classe = v === null ? 'neutra' : (v > 0 ? 'alta' : (v < 0 ? 'queda' : 'neutra'));
-      var comp = v === null ? '' : ' · ' + seta + Math.abs(v) + ' p.p. vs ' + c.presenca.mesAnterior.slice(0,3);
-      variacao = '<span class="cons-var ' + classe + '" title="Presença em ' + escHtml_(c.presenca.mes) + ' comparada ao encontro anterior">' + c.presenca.taxa + '%' + comp + '</span>';
-    }
-    html += '<a class="cons-card' + (c.congelado ? ' congelado' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + qs + '">' +
-      '<div class="cons-foto-wrap">' + foto + selo + health +
-        '<div class="cons-over"><div class="cons-nome">' + escHtml_(c.conselheiro) + '</div><div class="cons-nivel">' + escHtml_(c.nivel) + '</div></div>' +
-      '</div>' +
-      '<div class="cons-body">' +
-        '<div class="cons-linha">CS responsável: <b style="color:#fff;">' + escHtml_(c.csResponsavel) + '</b></div>' +
-        proxima +
-        '<div class="cons-rodape"><span>' + c.membros + ' membros</span>' + variacao + '</div>' +
-      '</div></a>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
-}
-function healthscoreDoGrupo_(groupId){
-  if (!gradeConselhosAtual_ || !groupId) return null;
-  var c = (gradeConselhosAtual_.cards || []).find(function(x){ return x.groupId === groupId; });
-  return c ? c.healthscore : null;
-}
-
-// Duas visões, nunca uma substituindo a outra (decisão confirmada com o Vitor): histórico
-// completo (todos os meses, sempre) e período selecionado no dashboard — guardadas as duas de
-// uma vez quando o relatório da equipe chega, o toggle só troca qual delas está em tela, sem
-// pedir nada de novo pro servidor.
-var impactoConselhosDados_ = null;
-var impactoConselhosModo_ = 'historico';
-function renderImpactoConselhosEquipe(dataEquipe){
-  impactoConselhosDados_ = { historico: dataEquipe.impactoConselhosHistorico, periodo: dataEquipe.impactoConselhosPeriodo };
-  impactoConselhosModo_ = 'historico';
-  desenharImpactoConselhosEquipe_();
-}
-function mudarImpactoConselhosHistorico(){ impactoConselhosModo_ = 'historico'; desenharImpactoConselhosEquipe_(); }
-function mudarImpactoConselhosPeriodo(){ impactoConselhosModo_ = 'periodo'; desenharImpactoConselhosEquipe_(); }
-
-function desenharImpactoConselhosEquipe_(){
-  var el = document.getElementById('equipeImpactoConselhos');
-  var imp = impactoConselhosDados_ ? impactoConselhosDados_[impactoConselhosModo_] : null;
-  var estiloAtivo = 'background:#C89A2E;color:#1A1A1A;border:none;';
-  var estiloInativo = 'background:#1A1A1A;color:#9F9F9F;border:0.75pt solid #2A2A2A;';
-  var toggleHtml = '<div style="display:flex;gap:8px;margin-bottom:14px;">' +
-    '<button class="destaque-form-btn" style="'+(impactoConselhosModo_==='historico'?estiloAtivo:estiloInativo)+'" onclick="mudarImpactoConselhosHistorico()">Histórico completo</button>' +
-    '<button class="destaque-form-btn" style="'+(impactoConselhosModo_==='periodo'?estiloAtivo:estiloInativo)+'" onclick="mudarImpactoConselhosPeriodo()">Período selecionado</button>' +
-  '</div>';
-
-  if (!imp) { el.innerHTML = toggleHtml + '<div class="empty-state">Sem dados de impacto disponíveis.</div>'; return; }
-
-  var html = toggleHtml + '<div class="mini-stats" style="display:flex;gap:14px;">' +
-    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Cases de sucesso</div><div class="dark-value num">'+imp.totalCases+'</div></div>' +
-    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings</div><div class="dark-value num">'+imp.totalMatchmakings+'</div></div>' +
-    '<div class="mini-stat" style="background:#1A1A1A;flex:1;"><div class="dark-label">Matchmakings sem resultado</div><div class="dark-value num '+(imp.matchmakingsSemResultado>0?'c-r':'')+'">'+imp.matchmakingsSemResultado+'</div></div>' +
-  '</div>';
-
-  if (imp.topConselhos && imp.topConselhos.length > 0) {
-    var maxTotal = Math.max.apply(null, imp.topConselhos.map(function(t){ return t.total; }).concat([1]));
-    html += '<div class="chart-card ranking-card" style="margin-top:14px;"><div class="ranking-title" style="display:flex;align-items:center;gap:6px;">'+ICONS.trophy+'Conselhos com mais impacto (cases + matchmakings)</div>';
-    imp.topConselhos.forEach(function(t, i){
-      var contato = parseConselhoNome(t.nome).contato;
-      var pct = Math.round(t.total / maxTotal * 100);
-      var linkAbre = t.groupId ? (' onclick="window.location.href=\\'/conselho/'+encodeURIComponent(t.groupId)+'?mes='+encodeURIComponent(currentMes)+'&ano='+currentAno+'\\'"') : '';
-      html += '<div class="ranking-row"'+(t.groupId?' style="cursor:pointer;"'+linkAbre:'')+'>' +
-        '<span class="ranking-pos">'+(i+1)+'º</span>' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div class="ranking-nome" style="white-space:normal;">'+contato+' <span style="color:#9F9F9F;font-weight:500;">· '+t.cs+'</span>' +
-            (healthscoreDoGrupo_(t.groupId) !== null ? '<span class="ranking-health" title="Healthscore do conselho no período">♥ '+healthscoreDoGrupo_(t.groupId)+'</span>' : '') + '</div>' +
-          '<div style="height:5px;background:#2A2A2A;border-radius:99px;overflow:hidden;margin-top:5px;"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C89A2E,#e8c574);border-radius:99px;"></div></div>' +
-        '</div>' +
-        '<span class="ranking-valor num">'+t.total+'</span></div>';
-    });
-    html += '</div>';
-  } else {
-    html += '<div class="empty-state">Nenhum case ou matchmaking atribuído a um conselho '+(impactoConselhosModo_==='periodo'?'neste período':'ainda')+'.</div>';
-  }
-  el.innerHTML = html;
 }
 
 // SCORE_MODAL_DATA_/registrarScoreModal_/abrirScoreModal (Parte A/C, pedido do Vitor 25/09/2026):
@@ -2942,31 +2921,6 @@ function renderMinhaPosicao(resumo){
     (resumo.totalRankeados ? ' de '+resumo.totalRankeados : '') +
     (resumo.meuScore !== null && resumo.meuScore !== undefined ? ' · '+resumo.meuScore+' pontos' : '') +
     '<button class="info-btn dark" onclick="abrirScoreModal('+idxModal+')" title="Como essa pontuação foi composta">ⓘ</button></div>';
-}
-
-function rankingCard(titulo, lista, sufixo){
-  sufixo = sufixo || '';
-  if (!lista || lista.length === 0) return '<div class="ranking-card"><div class="ranking-title">'+titulo+'</div><div class="ranking-empty">Sem dados no período.</div></div>';
-  var html = '<div class="ranking-card"><div class="ranking-title">'+titulo+'</div>';
-  lista.slice(0,5).forEach(function(item, i){
-    html += '<div class="ranking-row"><span class="ranking-pos">'+(i+1)+'º</span><span class="ranking-nome">'+item.nome+'</span><span class="ranking-valor num">'+item.valor+sufixo+'</span></div>';
-  });
-  html += '</div>';
-  return html;
-}
-function renderRankingEquipe(ranking){
-  if (!ranking) { document.getElementById('equipeRanking').innerHTML = '<div class="empty-state">Sem dados de ranking neste período.</div>'; return; }
-  var html = '<div class="ranking-grid">' +
-    rankingCard('Mais Matchmakings', ranking.matchmakings) +
-    rankingCard('Mais Indicações', ranking.indicacoes) +
-    rankingCard('Mais Rounds', ranking.rounds) +
-    rankingCard('Mais Upsell', ranking.upsell) +
-    rankingCard('Mais Cases de Sucesso', ranking.casesSucesso) +
-    rankingCard('Mais Downsell', ranking.downsellMais) +
-    rankingCard('Menos Downsell', ranking.downsellMenos) +
-    rankingCard('Mais Churn', ranking.churnMais) +
-  '</div>';
-  document.getElementById('equipeRanking').innerHTML = html;
 }
 
 function showTab(id, e){

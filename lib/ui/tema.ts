@@ -281,7 +281,7 @@ function dockDefinirBadge(chave, n) {
 `;
 
 export type PerfilDock = 'gestor' | 'cs';
-// Chaves de página ativa. Gestor: area, time, conselhos, metas, churn, nps, pulso, voz, perfis.
+// Chaves de página ativa. Gestor: inicio, area, time, conselhos, metas, churn, nps, voz, perfis.
 // CS: inicio, agenda, meus-conselhos, indicadores, pontos, report, gestor.
 export type BadgesDock = {
   // Urgências da semana (fonte: /api/gestor/visao-geral/acoes). Omitido ou zero: sem badge.
@@ -307,6 +307,7 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
   const time = o.primeiroCS ? '/gestor/cs/' + encodeURIComponent(o.primeiroCS) : '/gestor?aba=visaoGeral#mapa-time';
   return [
     { icone: 'i-area', rotulo: 'Gestão', titulo: 'Gestão', itens: [
+      { chave: 'inicio', href: '/', icone: 'i-home', titulo: 'Início', sub: 'Situação do mês' },
       { chave: 'area', href: '/gestor?aba=visaoGeral', icone: 'i-area', titulo: 'Visão da área', sub: 'Situação e fila de ação', badge: 'urgencias' },
       { chave: 'time', href: time, icone: 'i-users', titulo: 'Time', sub: 'Página de cada CS' },
       { chave: 'conselhos', href: '/gestor?aba=visaoGeral#rede-conselhos', icone: 'i-layers', titulo: 'Conselhos', sub: 'Rede, presença e GTD' },
@@ -314,8 +315,7 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
     ] },
     { icone: 'i-shield', rotulo: 'Saúde', titulo: 'Saúde da base', itens: [
       { chave: 'churn', href: '/gestor?aba=churn', icone: 'i-shield', titulo: 'Churn e reconquista', sub: 'Saídas, motivos e retorno' },
-      { chave: 'nps', href: '/gestor?aba=nps', icone: 'i-pulse', titulo: 'NPS dos conselhos', sub: 'Voz do membro' },
-      { chave: 'pulso', href: '/gestor?aba=pulso', icone: 'i-pulse', titulo: 'Pulso de CS', sub: 'Voz do time' },
+      { chave: 'nps', href: '/gestor?aba=nps', icone: 'i-pulse', titulo: 'NPS e Pulso de CS', sub: 'Voz do membro e do time' },
       { chave: 'voz', href: '/gestor?aba=voz', icone: 'i-flag', titulo: 'Fila da liderança', sub: 'Pedidos para a liderança' },
     ] },
     { icone: 'i-gear', rotulo: 'Sistema', titulo: 'Sistema', itens: [
