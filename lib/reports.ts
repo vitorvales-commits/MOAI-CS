@@ -6,6 +6,7 @@
 // Este arquivo não usa cache (CacheService/planilha do Apps Script não existem aqui) porque
 // ler do Postgres já é rápido o bastante — era o Monday que exigia cache agressivo.
 
+import { filtrarCardsPorCS, fraseSituacaoConselhos } from './conselhos-aba';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unstable_noStore as noStore } from 'next/cache';
 import {
@@ -1791,7 +1792,7 @@ function resolverDestaqueMembro(nomeLivre: string, groupId: string, roster: any[
 // desse conselho, como Daniel de Castro e Thamires Botelho, tinham cases/matchmakings próprios
 // nunca contados), o que zerava o impacto de quase todo conselho. Corrigido comparando contra o
 // roster inteiro do conselho (titulares + substitutos do grupo de reposição).
-function calcularImpactoConselhos(dados: DadosBrutos, seletorMes?: string, ano?: number) {
+export function calcularImpactoConselhos(dados: DadosBrutos, seletorMes?: string, ano?: number) {
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo);
   const membrosPorGrupo = new Map<string, any[]>();
   dados.conselhosMembros.forEach((m: any) => {
@@ -2511,6 +2512,8 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
         proximaData: calc.resumo.proximaData,
         proximaDataEhFutura: calc.resumo.proximaDataEhFutura,
         healthscore: calc.healthscore,
+        // Atas extraídas no período: quantos titulares têm ata e quantos ainda não (fonte única do indicador do cartão).
+        atas: (() => { const comAta = calc.itemsPrincipais.filter((m: any) => calc.atasNoPeriodo.has(m.nome)).length; return { comAta, membros: calc.itemsPrincipais.length, semAta: calc.itemsPrincipais.length - comAta }; })(),
         presenca: atual ? {
           mes: atual.mes, taxa: atual.taxa,
           mesAnterior: anterior ? anterior.mes : null,
@@ -2525,6 +2528,25 @@ export function montarGradeConselhos(dados: DadosBrutos, seletorMes: string, ano
   // encontro" sem pedir nada de novo ao servidor (mesmo padrão do toggle de impacto dos conselhos).
   cards.sort((a, b) => a.nivelOrdem - b.nivelOrdem || a.conselheiro!.localeCompare(b.conselheiro!));
   return { mesReferencia: mesRef, cards };
+}
+
+// Conteúdo da aba Conselhos do gestor e da grade de Meus conselhos do CS (22/10/2026). Cada seção
+// falha isolada, com a mensagem real. apelidoCS filtra a grade pelo CS do título do grupo; sem
+// filtro (gestor) devolve a rede toda e o impacto dos conselhos nas duas visões.
+export function montarAbaConselhos(dados: DadosBrutos, seletorMes: string, ano: number, apelidoCS: string | null | undefined, incluirImpacto: boolean) {
+  let grade: ReturnType<typeof montarGradeConselhos> | null = null;
+  let gradeErro: string | null = null;
+  try {
+    grade = montarGradeConselhos(dados, seletorMes, ano);
+    if (apelidoCS !== undefined) grade = { ...grade, cards: filtrarCardsPorCS(grade.cards, apelidoCS) };
+  } catch (e: any) { gradeErro = e?.message || String(e); console.error('[abaConselhos grade]', e); }
+  let impacto: { historico: ReturnType<typeof calcularImpactoConselhos>; periodo: ReturnType<typeof calcularImpactoConselhos> } | null = null;
+  let impactoErro: string | null = null;
+  if (incluirImpacto) {
+    try { impacto = { historico: calcularImpactoConselhos(dados), periodo: calcularImpactoConselhos(dados, seletorMes, ano) }; }
+    catch (e: any) { impactoErro = e?.message || String(e); console.error('[abaConselhos impacto]', e); }
+  }
+  return { situacao: grade ? fraseSituacaoConselhos(grade.cards) : null, grade, gradeErro, impacto, impactoErro };
 }
 
 // ============ visão geral da rede (B, pedido do Vitor 25-26/09/2026) ============

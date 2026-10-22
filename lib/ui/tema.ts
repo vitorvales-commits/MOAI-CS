@@ -310,7 +310,7 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
       { chave: 'inicio', href: '/', icone: 'i-home', titulo: 'Início', sub: 'Situação do mês' },
       { chave: 'area', href: '/gestor?aba=visaoGeral', icone: 'i-area', titulo: 'Visão da área', sub: 'Situação e fila de ação', badge: 'urgencias' },
       { chave: 'time', href: time, icone: 'i-users', titulo: 'Time', sub: 'Página de cada CS' },
-      { chave: 'conselhos', href: '/gestor?aba=visaoGeral#rede-conselhos', icone: 'i-layers', titulo: 'Conselhos', sub: 'Rede, presença e GTD' },
+      { chave: 'conselhos', href: '/gestor?aba=conselhos', icone: 'i-layers', titulo: 'Conselhos', sub: 'Cartões, atas e impacto' },
       { chave: 'metas', href: '/gestor?aba=metasDestaques', icone: 'i-target', titulo: 'Metas e destaques', sub: 'Metas do mês e recordes' },
     ] },
     { icone: 'i-shield', rotulo: 'Saúde', titulo: 'Saúde da base', itens: [

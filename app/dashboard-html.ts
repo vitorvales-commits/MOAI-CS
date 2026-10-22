@@ -19,6 +19,7 @@ import {
 } from '../lib/constants.ts';
 import { casaBusca } from '../lib/indicadores-base.ts';
 import { TEMA_CSS, ICONES_SVG, DOCK_SCRIPT } from '../lib/ui/tema.ts';
+import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
 import { LIMIAR_PRESENCA_ATENCAO } from '../lib/constants.ts';
 import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
 
@@ -34,6 +35,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&display=swap" rel="stylesheet">
 <style>
 ${TEMA_CSS}
+${GRADE_CONSELHOS_CSS}
 :root {
   /* M da MOAI usado como máscara do "M líquido" nos cards de KPI — valor real, copiado do doc "Index". */
   --m-white: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABiCAYAAACvUNYzAAAC70lEQVR42u2dMWtUQRSFzyz+An+AKVJZpQgWsUiVJlumSyeKpBEsIph/EBBttLHYFdLY2bqFlQS0iZDKSgKm9zeMzUCCqGyWO3PPnTkHAtns2zv33I839828xyblnCH5aaISCIAASFwAZgDyDX42Bq7fxg1rNatxBpwPDOC8xhmwika8lDLxbNkDvg9UfDOvlgDuAtgfoPj7xSvlVdD7AQCYeqxxGdpzPzD3NomSaI/Fr70QO+6o+NW81ARw1BGAo4gAepmKqnqYRDcQPfdWm3EfAxa/Sc6tAOwC2ApU/K2SczcAAOBLIADNcm19PyBCP2iao8cNmZ/ExW+emweAOwAOCIt/UHLrHgAAvCUE4JKT5z1hpn7glstkVOMsOTA8FfFm0LFpADwZdGwaAF7TAEUPYnowK49WfDYAAPC5kzHCAtgGsFMx/k4ZQwD+o09BY3cDoNYcTbkRaA1gbhjrF2msOfsZ8MAozm0AhwZxDkssJm9VAZwAuDSK9ZIkBoqnkyg9YI1k7s6knpo04eQMIZN6aXoVdM+p+c1JPTQHcAZgYRTrIYD1JY5bL8daaFE8hF4HTA1j/TA6xiN314VYq34QYt73WglbGjpb8m/UxffYinhhFGcTwN6113uEOVICeG4Y68Mfv28S5kgHoEY/CDfvewNwMcqak+d29COi4rvl4gngHYALguJflFyGA4AlV7Zd58BwRywNOjYNAAC4P8iYtAC+wm7TbhktypgCcE3TTscKA6DVnEy1BmF8LCWNUnxWAADwKkjMbgE8CxKzWwDW00ViNcn+vaGp5+JHAAAAj50+KwBFM6z2pN0l/vJFqQKwmtYafUYAjObyFMVUtC/v3jY6RgBW1Cn+vWn3rbx3KgB1NV3xPQGo3A9SRCO3EFcJV4+kpKgmIgMAgNfB8w8P4Gl0APofMgIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgVVDKOasKOgMEQJLG1G93i33gLv0k4gAAAABJRU5ErkJggg==);
@@ -961,6 +963,11 @@ ${ICONES_SVG}
       <div id="semanal"></div>
     </div>
     <div id="aba-conselhos" class="panel">
+      <div id="consGradeCS" hidden>
+        <div class="section-title">Meus conselhos<div class="line"></div></div>
+        <div class="gc-ctl" id="consGradeCtl"></div>
+        <div id="consGradeCorpo"></div>
+      </div>
       <div id="agendaPessoa"></div>
       <div class="section-title" style="margin-top:30px;">Carteira de conselhos<div class="line"></div></div>
       <div id="conselhos"></div>
@@ -1225,6 +1232,7 @@ function onFiltroChange(){
     } else renderSkeletonPessoa();
     if (modoRestritoCS) carregarRelatorioRestrito(currentCS, currentMes, currentAno);
     else carregarRelatorio(currentCS, currentMes, currentAno);
+    if (document.getElementById('aba-conselhos').classList.contains('active')) carregarGradeCS_();
   } else {
     carregarEquipe(currentMes, currentAno);
   }
@@ -2931,7 +2939,28 @@ function showTab(id, e){
   });
   var painel = document.getElementById(id);
   if (painel) painel.classList.add('active');
+  if (id === 'aba-conselhos') carregarGradeCS_();
 }
+
+// Grade de cartões da carteira do próprio CS (22/10/2026). O recorte é feito no servidor
+// (/api/conselhos-grade?meus=1): só vem o que tem o apelido dele no título do grupo.
+var gradeCSChave_ = null;
+function carregarGradeCS_(){
+  var bloco = document.getElementById('consGradeCS');
+  if (!bloco || !meuCSNome || currentCS !== meuCSNome) { if (bloco) bloco.hidden = true; return; }
+  var chave = currentMes + '|' + currentAno;
+  if (gradeCSChave_ === chave) return;
+  gradeCSChave_ = chave;
+  var mes = currentMes, ano = currentAno;
+  bloco.hidden = false;
+  document.getElementById('consGradeCtl').innerHTML = '';
+  gcSkeleton('consGradeCorpo');
+  fetchJSON_('/api/conselhos-grade?meus=1&mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function(d){
+    if (d.grade) gcIniciar({ raizId: 'consGradeCorpo', ctlId: 'consGradeCtl', grade: d.grade, mes: mes, ano: ano, comCS: false });
+    else gcErro('consGradeCorpo', d.gradeErro || 'erro sem mensagem');
+  }).catch(function(err){ gradeCSChave_ = null; gcErro('consGradeCorpo', err && err.message ? err.message : err); });
+}
+${GRADE_CONSELHOS_SCRIPT}
 // Atalho das pendências e do resumo do mês: troca de aba e rola até o alvo.
 function irParaAba(id, alvoId){
   showTab(id);

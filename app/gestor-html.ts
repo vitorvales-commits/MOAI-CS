@@ -18,8 +18,9 @@
 import { FAIXAS_PRESENCA, SCORE_FAIXA_SAUDAVEL, SCORE_FAIXA_ATENCAO, MAPA_RITMO_ATRASADOS_ACAO, INSIGHT_ADVERTENCIA_ALERTA_PONTOS } from '../lib/constants.ts';
 import { RADAR_SVG_SCRIPT } from '../lib/radar-svg.ts';
 import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema.ts';
+import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
 
-export const GESTOR_STYLE = TEMA_CSS + `
+export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + `
 :root{
   /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts), para as abas ainda não redesenhadas */
   --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
@@ -808,6 +809,19 @@ ${ICONES_SVG}
     </div>
   </div>
 
+  <div class="tab-panel" id="tab-conselhos" data-tab="conselhos">
+    <section class="panel" aria-labelledby="h-cons-grade">
+      <div class="ph"><div><h2 id="h-cons-grade">Conselhos da rede</h2><p id="consSituacao">Carregando a situação dos conselhos.</p></div></div>
+      <div class="gc-ctl" id="consCtl"></div>
+      <div id="consGrade"></div>
+    </section>
+    <section class="panel" style="margin-top:22px" aria-labelledby="h-cons-impacto">
+      <div class="ph"><div><h2 id="h-cons-impacto">Impacto dos conselhos</h2><p>Cases de sucesso mais matchmakings atribuídos a cada conselho.</p></div></div>
+      <div class="gc-ctl" id="consImpCtl"></div>
+      <div id="consImpacto"></div>
+    </section>
+  </div>
+
   <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
     <div class="config-card" style="margin-bottom:24px;">
       <div>
@@ -1261,6 +1275,7 @@ function abrirCriterioModal(idx){
 var ABAS_ = {
   visaoGeral: { crumb: 'Gestão', titulo: 'Visão da área', dock: 'area' },
   controlePerfis: { crumb: 'Sistema', titulo: 'Controle de perfis', dock: 'perfis' },
+  conselhos: { crumb: 'Gestão', titulo: 'Conselhos', dock: 'conselhos' },
   metasDestaques: { crumb: 'Gestão', titulo: 'Metas e destaques', dock: 'metas' },
   churn: { crumb: 'Saúde da base', titulo: 'Churn e reconquista', dock: 'churn' },
   nps: { crumb: 'Saúde da base', titulo: 'NPS dos conselhos', dock: 'nps' },
@@ -1268,13 +1283,15 @@ var ABAS_ = {
   voz: { crumb: 'Saúde da base', titulo: 'Fila da liderança', dock: 'voz' }
 };
 
+var abaAtiva_ = 'visaoGeral';
 function abrirAba(chave, opcoes) {
   if (!ABAS_[chave]) chave = 'visaoGeral';
   var cfg = ABAS_[chave];
+  abaAtiva_ = chave;
   document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-tab') === chave); });
   document.getElementById('topCrumb').textContent = cfg.crumb;
   document.getElementById('topTitulo').textContent = cfg.titulo;
-  document.getElementById('topPeriodo').style.display = chave === 'visaoGeral' ? '' : 'none';
+  document.getElementById('topPeriodo').style.display = (chave === 'visaoGeral' || chave === 'conselhos') ? '' : 'none';
   document.title = cfg.titulo + ' · MOAI CS';
   if (typeof dockMarcarAtivo === 'function') dockMarcarAtivo(cfg.dock);
   if (!(opcoes && opcoes.semUrl)) {
@@ -1284,6 +1301,7 @@ function abrirAba(chave, opcoes) {
       history.replaceState(null, '', u.pathname + u.search + u.hash);
     } catch (e) { /* sem history API: a aba abre do mesmo jeito */ }
   }
+  if (chave === 'conselhos') carregarConselhos_();
   if (chave === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
   if (chave === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
   if (chave === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
@@ -1991,8 +2009,41 @@ function onFiltroChangeGestor() {
   mesAtual = document.getElementById('selMesGestor').value;
   anoAtual = Number(document.getElementById('selAnoGestor').value);
   carregarVisaoGeral();
+  if (abaAtiva_ === 'conselhos') carregarConselhos_();
 }
 inicializarSeletorPeriodoGestor();
+
+// ============ aba Conselhos (22/10/2026) ============
+// Cartões dos conselheiros e impacto dos conselhos, que o redesenho das homes tirou da interface.
+// Tudo vem pronto de /api/conselhos-grade (montarAbaConselhos); aqui só se desenha, cada seção com o seu erro.
+var conselhosSeq_ = 0;
+function carregarConselhos_() {
+  var seq = ++conselhosSeq_;
+  var mes = mesAtual, ano = anoAtual;
+  document.getElementById('consSituacao').textContent = 'Carregando a situação dos conselhos.';
+  document.getElementById('consCtl').innerHTML = '';
+  document.getElementById('consImpCtl').innerHTML = '';
+  gcSkeleton('consGrade');
+  document.getElementById('consImpacto').innerHTML = '<span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span>';
+  fetchJSON_('/api/conselhos-grade?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function (d) {
+    if (seq !== conselhosSeq_) return;
+    if (d.grade) {
+      document.getElementById('consSituacao').textContent = d.situacao || '';
+      gcIniciar({ raizId: 'consGrade', ctlId: 'consCtl', grade: d.grade, mes: mes, ano: ano, comCS: true });
+    } else {
+      document.getElementById('consSituacao').textContent = '';
+      gcErro('consGrade', d.gradeErro || 'erro sem mensagem');
+    }
+    if (d.impacto) gcImpactoIniciar({ raizId: 'consImpacto', ctlId: 'consImpCtl', impacto: d.impacto, mes: mes, ano: ano });
+    else gcErro('consImpacto', d.impactoErro || 'erro sem mensagem');
+  }).catch(function (err) {
+    if (seq !== conselhosSeq_) return;
+    document.getElementById('consSituacao').textContent = '';
+    gcErro('consGrade', err && err.message ? err.message : err);
+    gcErro('consImpacto', err && err.message ? err.message : err);
+  });
+}
+${GRADE_CONSELHOS_SCRIPT}
 
 // ============ controle de perfis: gestores ============
 
