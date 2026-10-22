@@ -35,6 +35,7 @@ import { ACOES_POR_INDICADOR } from '../config/acoes-por-indicador';
 import { csDoMes, type LinhaPeriodo } from './cs-periodos';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
 import { insightsGestor, type CtxInsights } from './insights';
+import { listarAlertasNps } from './alertas-nps-dados';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
@@ -3794,8 +3795,11 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
     return { ...insightsGestor(ctx), periodo: { mes, ano } };
   });
 
+  // Alertas de NPS abertos (22/10/2026): critérios e texto em lib/alertas-nps.ts; a tabela só é legível por gestor.
+  const alertasNps = await secaoIsolada('alertasNps', () => listarAlertasNps(sb, { apenasAbertos: true }));
+
   return {
-    geradoEm: new Date().toISOString(), urgencias, insights,
+    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps,
     carimbos: { gtdSnapshot: snapshot, ultimoReportCriadoEm: reports.dado ? reports.dado.ultimoEnvio : null },
   };
 }

@@ -319,3 +319,13 @@ export const ERRO_MEDIO_MAX_SUGESTAO = 0.5;
 // Valores espelhados nos tipos de sistema de advertencia_tipos (codigo report_atrasado e relatorio_conselho_atrasado).
 export const PONTOS_REPORT_ATRASADO = 5;
 export const PONTOS_RELATORIO_ATRASADO = 5;
+
+// Alerta de NPS (22/10/2026). Espelhados na tabela alerta_nps_config (uma linha, editável só por gestor).
+export const ALERTA_NPS_LIMIAR_DETRATOR = 6; // nota do conselheiro até este valor é detrator
+export const ALERTA_NPS_LIMIAR_NOTA_CS = 6; // nota do CS até este valor gera alerta
+export const ALERTA_NPS_MINIMO = 70; // NPS do conselheiro no encontro abaixo disto gera alerta
+export const ALERTA_NPS_MEDIA_MINIMA = 8.5; // média do conselheiro no encontro abaixo disto gera alerta
+export const ALERTA_NPS_AMOSTRA_MINIMA = 5; // agregados só valem com pelo menos esta quantidade de respostas
+// Envio: um email por encontro; a janela conta do primeiro alerta não notificado do encontro.
+export const ALERTA_NPS_JANELA_AGRUPAMENTO_MIN = 60;
+export const ALERTA_NPS_VALIDADE_ENVIO_DIAS = 7; // alerta mais antigo que isto não é enviado ao ligar o envio

@@ -121,6 +121,11 @@ export const CONSELHO_STYLE = TEMA_CSS + `
 .encontro-row:last-child{border-bottom:none;}
 .encontro-mes{font-weight:600;}
 .encontro-presenca{color:var(--cinza-texto);}
+.alerta-item{padding:13px 18px;border-bottom:1px solid var(--cinza-linha);font-size:13px;line-height:1.5;}
+.alerta-item:last-child{border-bottom:none;}
+.alerta-estado{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+.alerta-estado.aberto{background:#FBECEA;color:#A3342F;}
+.alerta-estado.tratado{background:#E8F2EC;color:#2F6B49;}
 
 .membro-card{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:18px;margin-bottom:12px;overflow:hidden;}
 .membro-head{display:flex;align-items:center;gap:10px;padding:14px 18px;cursor:pointer;flex-wrap:wrap;}
@@ -245,6 +250,11 @@ ${ICONES_SVG}
       <button class="evolucao-toggle-btn" id="evolucaoToggleBtn" type="button" onclick="toggleEvolucaoExpandida()">Expandir tudo</button>
     </h2>
     <div id="evolucaoMembrosList"><div class="empty">Carregando…</div></div>
+  </section>
+
+  <section class="block" id="alertasNpsBlock" style="display:none;">
+    <h2>Alertas de NPS <span class="sub">histórico do conselho</span></h2>
+    <div id="alertasNps"></div>
   </section>
 
   <section class="block" id="bigDealsSemMembroBlock" style="display:none;">
@@ -865,6 +875,22 @@ function limparCacheConselhoAtual_() {
   } catch (e) {}
 }
 
+// Alertas de NPS do conselho (22/10/2026): só gestor lê; para os demais a rota responde 403 e o bloco fica oculto.
+var ROTULO_ALERTA_NPS_ = { detrator: 'Resposta detratora', nota_cs_baixa: 'Nota baixa para o CS', nps_encontro: 'NPS do encontro', media_encontro: 'Média do encontro' };
+function carregarAlertasNps_() {
+  fetchJSON_('/api/gestor/alertas-nps?grupo=' + encodeURIComponent(GROUP_ID)).then(function (d) {
+    var lista = d.alertas || [];
+    if (!lista.length) return;
+    document.getElementById('alertasNpsBlock').style.display = '';
+    document.getElementById('alertasNps').innerHTML = lista.map(function (a) {
+      var estado = a.tratadoEm
+        ? '<span class="alerta-estado tratado">Tratado por ' + esc(a.tratadoPor || 'gestor') + ' em ' + esc(dataBR(a.tratadoEm)) + (a.notaTratamento ? ': ' + esc(a.notaTratamento) : '') + '</span>'
+        : '<span class="alerta-estado aberto">Aberto</span>';
+      return '<div class="alerta-item"><b>' + esc(ROTULO_ALERTA_NPS_[a.criterio] || a.criterio) + '</b> · ' + esc(a.mes) + '<div>' + esc(a.texto.oQue) + '. ' + esc(a.texto.numero) + '.</div>' + estado + '</div>';
+    }).join('');
+  }).catch(function () {});
+}
+
 function carregarConselho(mes, ano) {
   var cacheado = lerCacheConselho_(mes, ano);
   if (cacheado) renderTudo_(cacheado);
@@ -909,6 +935,7 @@ function carregarConselho(mes, ano) {
   selAno.onchange = aoMudarFiltro;
 
   aoMudarFiltro();
+  carregarAlertasNps_();
 })();
 `;
 }

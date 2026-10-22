@@ -1650,6 +1650,15 @@ function itensFila_() {
       }
     });
   }
+  var an = ACOES_.alertasNps;
+  if (an && an.erro) erros.push('Alertas de NPS indisponíveis: ' + an.erro);
+  if (an && an.dado) {
+    an.dado.forEach(function (a) {
+      itens.push({ tipo: 'semana', cor: a.criterio === 'detrator' ? 'red' : 'gold', titulo: a.texto.oQue,
+        texto: a.texto.numero + '. ' + a.texto.acao + (a.comentario ? ' Comentário: ' + a.comentario : ''),
+        quem: a.texto.quem, quando: a.mes, acao: { rotulo: 'Ver conselho', href: '/conselho/' + encodeURIComponent(a.groupId) }, tratar: a.id });
+    });
+  }
   var ins = ACOES_.insights;
   if (ins && ins.erro) erros.push('Insights indisponíveis: ' + ins.erro);
   if (ins && ins.dado) {
@@ -1667,7 +1676,8 @@ function itensFila_() {
 function itemFilaHtml_(i) {
   var acao = i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '';
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
-    '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao + '</div></div>';
+    '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
+    + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '') + '</div></div>';
 }
 function renderFilaAcao_() {
   var corpo = document.getElementById('filaCorpo');
@@ -1685,6 +1695,21 @@ function renderFilaAcao_() {
     var html = f.erros.map(function (m) { return '<div class="erro-secao" role="alert">' + escCS_(m) + '</div>'; }).join('');
     html += mostrar.length ? mostrar.map(itemFilaHtml_).join('') : '<div class="vazio-orienta">Nada pede ação neste filtro. A fila se atualiza com o relatório da semana e o GTD.</div>';
     corpo.innerHTML = html;
+    corpo.onclick = function (ev) {
+      var b = ev.target.closest('button[data-tratar]');
+      if (b) {
+        var conteudo = b.closest('.item').children[1];
+        if (conteudo.querySelector('.tratar-form')) return;
+        conteudo.insertAdjacentHTML('beforeend', '<div class="tratar-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><input type="text" maxlength="300" placeholder="Nota curta do que foi feito" aria-label="Nota do tratamento" style="flex:1 1 220px;"><button type="button" class="btn sm pri" data-tratar-ok="' + escCS_(b.getAttribute('data-tratar')) + '">Salvar</button></div>');
+        return;
+      }
+      var ok = ev.target.closest('button[data-tratar-ok]');
+      if (!ok) return;
+      var campo = ok.parentNode.querySelector('input');
+      ok.disabled = true;
+      fetchJSON_('/api/gestor/alertas-nps/' + encodeURIComponent(ok.getAttribute('data-tratar-ok')) + '/tratar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nota: campo.value }) })
+        .then(carregarAcoes).catch(function (err) { ok.disabled = false; ok.textContent = 'Erro: ' + err.message; });
+    };
     var mais = document.getElementById('filaMais');
     var resto = visiveis.length - FILA_LIMITE_;
     mais.hidden = resto <= 0;
