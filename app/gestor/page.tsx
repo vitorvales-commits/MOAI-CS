@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 // Aba pedida na URL (?aba=) e o item do dock que ela marca. O script da página abre a mesma aba no navegador.
 const DOCK_DA_ABA: Record<string, string> = {
-  visaoGeral: 'area', controlePerfis: 'perfis', metasDestaques: 'metas', churn: 'churn', nps: 'nps', pulso: 'pulso', voz: 'voz',
+  visaoGeral: 'area', controlePerfis: 'perfis', metasDestaques: 'metas', churn: 'churn', nps: 'nps', pulso: 'pulso', voz: 'voz', conselhos: 'conselhos',
 };
 
 export default async function GestorPage({ searchParams }: { searchParams?: { aba?: string } }) {

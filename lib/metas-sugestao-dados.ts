@@ -10,6 +10,7 @@ import {
   type DadosBrutos, type ResumoReport, type CSConfig,
 } from './reports.ts';
 import { hojeSP } from './gtd-prazos.ts';
+import { periodosPorMetas } from './cs-periodos.ts';
 import {
   sugerirCS, sugerirTime, motivoSemModelo,
   type EntradaCS, type IndicadorCatalogo, type MesCS, type Sugestao, type SugestaoTime,
@@ -42,7 +43,10 @@ interface Contexto {
 
 export async function criarContexto(sb: SupabaseClient): Promise<Contexto> {
   const [dados, resumo, lista, periodos] = await Promise.all([getDadosBrutos(sb), buscarResumoReports(sb), getCSListParaAgregados(sb), periodosCsSeguro(sb)]);
-  return { sb, dados, resumo, roster: lista.filter((c) => c.ativo && !c.ex), periodos: periodos || [], cache: new Map() };
+  const roster = lista.filter((c) => c.ativo && !c.ex);
+  // A tabela cs_periodos ainda não existe em produção (seed não aplicado): cai na regra C2, quem tem meta no mês é CS no mês.
+  const porMetas = periodosPorMetas((dados.metas as any[]).filter((m) => m.mes_grupo_titulo && m.cs_nome), 2026, roster.map((c) => c.nome));
+  return { sb, dados, resumo, roster, periodos: periodos && periodos.length ? periodos : porMetas, cache: new Map() };
 }
 
 // Cache por requisição: o mesmo CS e mês nunca é calculado duas vezes (janela do alvo e da validação se sobrepõem).
@@ -60,7 +64,7 @@ function eraCSNoMes(ctx: Contexto, nome: string, mes: string): boolean {
 }
 function mesesDeCasa(ctx: Contexto, nome: string, mesAlvo: string): number {
   const p = periodoDe(ctx, nome);
-  if (!p) return 99;
+  if (!p) return 0; // sem período nem meta registrada: CS recém chegado, primeiro mês
   const a = p.primeiro_mes, b = mesAlvo;
   return (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
 }
