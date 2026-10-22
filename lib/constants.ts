@@ -292,3 +292,25 @@ export const HOME_FOCO_CONFIRMADOS_ALERTA = 3;
 export const HOME_FOCO_DIAS_REPORT = 1;
 // Simulação da pontuação (7.5): o próximo patamar inteiro relevante é o múltiplo de 5 acima da nota atual.
 export const HOME_PATAMAR_PONTUACAO = 5;
+
+// ============ sugestão de metas (22/10/2026) ============
+// Modelo determinístico em lib/metas-sugestao.ts, sem IA. Todas as constantes do modelo moram aqui.
+// Quantos meses fechados, antes do mês alvo, entram na estimativa da taxa (o mês corrente nunca entra).
+export const JANELA_SUGESTAO_MESES = 3;
+// Força do prior do time, em conselhos de exposição: o CS com poucos conselhos no histórico (como quem
+// acabou de entrar) herda a taxa do time; com muito histórico, prevalece a própria taxa.
+export const FORCA_PRIOR_CONSELHOS = 6;
+// Mesma ideia para o churn, cuja exposição é medida em membros ativos da carteira (cerca de 6 por conselho).
+export const FORCA_PRIOR_MEMBROS = 36;
+// Fator de carteira por mês de casa: primeiro mês 60%, segundo 80%, a partir do terceiro 100%.
+export const RAMPA_CS_NOVO = [0.6, 0.8];
+// Crescimento pedido sobre o esperado nos indicadores de direção mínima.
+export const CRESCIMENTO_ALVO = 0.1;
+// Redução pedida sobre o esperado nos indicadores de direção máxima (churn).
+export const REDUCAO_ALVO_RETENCAO = 0.1;
+// Esperado abaixo disto não vira meta (arredondaria para zero); a partir disto a meta mínima é 1.
+export const LIMIAR_META_MINIMA = 0.5;
+// Exposição total do time na janela (soma de conselhos realizados) abaixo disto: não sugere.
+export const MIN_EXPOSICAO_SUGESTAO = 6;
+// Erro médio acima disto bloqueia o botão do indicador até revisão do gestor.
+export const ERRO_MEDIO_MAX_SUGESTAO = 0.5;

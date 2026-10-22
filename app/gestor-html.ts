@@ -301,6 +301,28 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .matriz-input.alterado{border-color:var(--dourado);background:rgba(200,154,46,0.08);}
 .matriz-input.invalido{border-color:var(--vermelho);}
 .matriz-col-time{background:rgba(200,154,46,0.06);}
+.matriz-input.sugerido{box-shadow:0 0 0 2px var(--dourado);}
+.sg-fundo{position:fixed;inset:0;background:rgba(20,20,20,.35);z-index:80;}
+.sg-fundo[hidden],.sg-painel[hidden]{display:none;}
+.sg-painel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--bg);z-index:81;box-shadow:-12px 0 40px rgba(20,20,20,.18);display:flex;flex-direction:column;}
+.sg-topo{padding:18px 20px 14px;border-bottom:1px solid var(--line2);background:var(--surface);}
+.sg-topo h2{margin:0 0 4px;font-size:18px;}
+.sg-topo p{margin:0 0 12px;font-size:12.5px;color:var(--ink2);line-height:1.5;}
+.sg-acoes{display:flex;gap:8px;flex-wrap:wrap;}
+.sg-corpo{flex:1;overflow:auto;padding:16px 20px 32px;display:flex;flex-direction:column;gap:14px;}
+.sg-cartao{background:var(--surface);border:1px solid var(--line2);border-radius:14px;padding:14px 16px;}
+.sg-cartao h3{margin:0;font-size:15px;}
+.sg-cab{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.sg-cab .btn{margin-left:auto;}
+.sg-nota{font-size:12.5px;color:var(--ink2);line-height:1.5;margin:6px 0 10px;}
+.sg-linha{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);}
+.sg-nome{font-size:12.5px;font-weight:600;}
+.sg-b{display:grid;grid-template-columns:54px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;color:var(--ink2);margin:2px 0;}
+.sg-b b{color:var(--ink);text-align:right;}
+.sg-b .bar{height:7px;}
+.sg-det{margin-top:8px;font-size:12px;color:var(--ink2);}
+.sg-det summary{cursor:pointer;font-weight:600;color:var(--ink);}
+.sg-det p{margin:6px 0 0;line-height:1.5;}
 #btnSalvarMatriz{padding:11px 22px;border-radius:12px;border:none;background:var(--preto-tinta);color:var(--branco);font-weight:600;font-size:13px;cursor:pointer;}
 #btnSalvarMatriz:disabled{opacity:0.4;cursor:not-allowed;}
 .ordem-setas{display:inline-flex;gap:4px;}
@@ -809,6 +831,19 @@ ${ICONES_SVG}
     </div>
   </div>
 
+  <div class="sg-fundo" id="sgFundo" hidden></div>
+  <aside class="sg-painel" id="sgPainel" role="dialog" aria-modal="true" aria-labelledby="sgTitulo" hidden>
+    <div class="sg-topo">
+      <h2 id="sgTitulo">Sugerir metas</h2>
+      <p id="sgSub">O modelo usa os últimos meses fechados, encolhe a taxa de quem tem pouco histórico para a do time e pede crescimento. Nada é salvo sem o seu clique em Salvar alterações.</p>
+      <div class="sg-acoes">
+        <button class="btn pri" id="sgAplicarTudo" type="button" disabled>Aplicar à matriz</button>
+        <button class="btn" id="sgFechar" type="button">Fechar</button>
+      </div>
+    </div>
+    <div class="sg-corpo" id="sgCorpo"></div>
+  </aside>
+
   <div class="tab-panel" id="tab-conselhos" data-tab="conselhos">
     <section class="panel" aria-labelledby="h-cons-grade">
       <div class="ph"><div><h2 id="h-cons-grade">Conselhos da rede</h2><p id="consSituacao">Carregando a situação dos conselhos.</p></div></div>
@@ -897,6 +932,7 @@ ${ICONES_SVG}
           <select class="pill-select" id="selAnoMatriz"><option>2026</option><option>2027</option></select>
           <label class="toggle-inline"><input type="checkbox" id="chkMostrarOcultosMatriz"><span>Mostrar ocultos</span></label>
           <button class="btn-remover" id="btnCopiarMesAnterior" style="color:var(--preto-tinta);">Copiar do mês anterior</button>
+          <button class="btn gold" id="btnSugerirMetas" type="button">Sugerir metas</button>
         </div>
       </div>
       <p class="erro-msg" id="avisoMesPassadoMatriz" style="color:var(--dourado);display:none;">Este é um mês passado — alterar a meta muda a pontuação retroativa já calculada, e fica registrado na auditoria.</p>
@@ -2759,8 +2795,91 @@ function renderRecordesCalculados_(data) {
     : '';
 }
 
+// ============ sugerir metas (22/10/2026) ============
+// Painel lateral com o modelo de lib/metas-sugestao.ts (via /api/gestor/metas/sugestao). Só preenche os campos
+// da matriz, marcados com contorno dourado; a gravação continua sendo o botão Salvar alterações.
+var SUGESTAO_ = null;
+function abrirSugestaoMetas_() {
+  var mes = matrizMesAtual_();
+  if (!mes) return;
+  document.getElementById('sgFundo').hidden = false;
+  document.getElementById('sgPainel').hidden = false;
+  document.getElementById('sgAplicarTudo').disabled = true;
+  document.getElementById('sgCorpo').innerHTML = '<span class="sk sk-kpi"></span><span class="sk sk-kpi"></span><span class="sk sk-kpi"></span>';
+  fetchJSON_('/api/gestor/metas/sugestao?mes=' + encodeURIComponent(mes)).then(function (d) {
+    SUGESTAO_ = d;
+    renderSugestaoMetas_();
+  }).catch(function (err) {
+    document.getElementById('sgCorpo').innerHTML = erroSecaoHtml_('Não foi possível gerar as sugestões', err);
+  });
+}
+function fecharSugestaoMetas_() {
+  document.getElementById('sgFundo').hidden = true;
+  document.getElementById('sgPainel').hidden = true;
+}
+function sgNum_(v) { return v === null || v === undefined ? 'sem' : String(Math.round(v * 10) / 10).replace('.', ','); }
+function sgBarra_(rotulo, valor, max, classe) {
+  var pct = valor === null || valor === undefined || !max ? 0 : Math.min(100, Math.round(valor / max * 100));
+  return '<div class="sg-b"><span>' + rotulo + '</span><span class="bar"><span class="' + (classe || '') + '" style="width:' + pct + '%"></span></span><b>' + sgNum_(valor) + '</b></div>';
+}
+function renderSugestaoMetas_() {
+  var d = SUGESTAO_;
+  var nomes = Object.keys(d.indicadores.length ? d.indicadores[0].vigente.porCS : {});
+  var algum = false;
+  var html = d.indicadores.map(function (ind) {
+    if (ind.semModelo) {
+      return '<div class="sg-cartao"><div class="sg-cab"><h3>' + escCS_(ind.rotulo) + '</h3><span class="tag">Por política</span></div><p class="sg-nota">' + escCS_(ind.semModelo) + '</p></div>';
+    }
+    var valores = [ind.vigente.time, ind.mediaRealizada.time, ind.time && ind.time.sugerido];
+    nomes.forEach(function (n) { valores.push(ind.vigente.porCS[n], ind.mediaRealizada.porCS[n], ind.porCS[n] && ind.porCS[n].sugerido); });
+    var max = Math.max.apply(null, valores.filter(function (v) { return v !== null && v !== undefined; }).concat([1]));
+    var tem = (ind.time && ind.time.sugerido !== null) || nomes.some(function (n) { return ind.porCS[n] && ind.porCS[n].sugerido !== null; });
+    if (tem) algum = true;
+    var linhas = '<div class="sg-linha"><span class="sg-nome">Time</span><div>' +
+      sgBarra_('Meta', ind.vigente.time, max) + sgBarra_('Média', ind.mediaRealizada.time, max) + sgBarra_('Sugestão', ind.time && ind.time.sugerido, max, 'gold') + '</div></div>';
+    nomes.forEach(function (n) {
+      var s = ind.porCS[n];
+      linhas += '<div class="sg-linha"><span class="sg-nome">' + escCS_(n) + '</span><div>' +
+        sgBarra_('Meta', ind.vigente.porCS[n], max) + sgBarra_('Média', ind.mediaRealizada.porCS[n], max) + sgBarra_('Sugestão', s && s.sugerido, max, 'gold') + '</div></div>';
+    });
+    var det = '<details class="sg-det"><summary>Como cada número foi calculado</summary>' +
+      (ind.time ? '<p><b>Time.</b> ' + escCS_(ind.time.explicacao) + '</p>' : '') +
+      nomes.map(function (n) { return ind.porCS[n] ? '<p><b>' + escCS_(n) + '.</b> ' + escCS_(ind.porCS[n].explicacao) + '</p>' : ''; }).join('') + '</details>';
+    return '<div class="sg-cartao"><div class="sg-cab"><h3>' + escCS_(ind.rotulo) + '</h3><span class="tag">' + (ind.direcao === 'max' ? 'Quanto menos melhor' : 'Quanto mais melhor') + '</span>' +
+      '<button class="btn sm" type="button" data-sg-ind="' + escCS_(ind.chave) + '"' + (tem ? '' : ' disabled') + '>Aplicar só este indicador</button></div>' +
+      (ind.time ? '<p class="sg-nota">' + escCS_(ind.time.explicacao) + '</p>' : '') + linhas + det + '</div>';
+  }).join('');
+  document.getElementById('sgCorpo').innerHTML = html;
+  document.getElementById('sgAplicarTudo').disabled = !algum;
+  document.querySelectorAll('[data-sg-ind]').forEach(function (b) { b.addEventListener('click', function () { aplicarSugestao_(b.getAttribute('data-sg-ind')); }); });
+}
+// Preenche os campos da matriz pelo mesmo caminho da digitação, para entrarem nas alterações pendentes.
+function aplicarSugestao_(chaveInd) {
+  var aplicados = 0, fora = 0;
+  function preencher(indicador, escopo, cs, valor) {
+    if (valor === null || valor === undefined) return;
+    var input = document.querySelector('.matriz-input[data-chave="' + matrizChave_(indicador, escopo, cs) + '"]');
+    if (!input) { fora++; return; }
+    input.value = valor;
+    input.classList.add('sugerido');
+    onMatrizInputMudou_(input);
+    aplicados++;
+  }
+  SUGESTAO_.indicadores.forEach(function (ind) {
+    if (ind.semModelo || (chaveInd && ind.chave !== chaveInd)) return;
+    if (ind.time) preencher(ind.chave, 'time', null, ind.time.sugerido);
+    Object.keys(ind.porCS).forEach(function (n) { preencher(ind.chave, 'cs', n, ind.porCS[n].sugerido); });
+  });
+  document.getElementById('statusMatriz').textContent = aplicados + ' sugestão(ões) aplicada(s), em contorno dourado. ' + (fora ? fora + ' ficaram fora porque o indicador está oculto. ' : '') + 'Nada foi salvo.';
+  fecharSugestaoMetas_();
+}
+
 function inicializarMetasDestaques() {
   try {
+    document.getElementById('btnSugerirMetas').addEventListener('click', abrirSugestaoMetas_);
+    document.getElementById('sgFechar').addEventListener('click', fecharSugestaoMetas_);
+    document.getElementById('sgFundo').addEventListener('click', fecharSugestaoMetas_);
+    document.getElementById('sgAplicarTudo').addEventListener('click', function () { aplicarSugestao_(null); });
     carregarRecordesCalculados('');
     popularSeletorMesMatriz_();
     document.getElementById('selMesMatriz').addEventListener('change', carregarMatriz);

@@ -1359,6 +1359,13 @@ function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: 
 
 // ============ relatório individual ============
 
+// Conselhos já realizados por um CS entre duas datas (fim limitado a hoje por quem chama). Fonte única da
+// contagem usada no cumprimento do GTD e na exposição do modelo de sugestão de metas.
+export function conselhosRealizadosNoPeriodo(dados: DadosBrutos, nomeCS: string, inicio: string, fim: string): any[] {
+  return (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(nomeCS)
+    && h.data_conselho && h.data_conselho >= inicio && h.data_conselho <= fim);
+}
+
 export async function generateCSReport(sb: SupabaseClient, nomeCS: string, seletorMes: string, ano: number, dadosParam?: DadosBrutos, resumoParam?: ResumoReport[]) {
   const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
   const dados = dadosParam || (await getDadosBrutos(sb));
@@ -1420,8 +1427,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   // conselhos futuros sem etapa feita e ignorava o mês do filtro (revisão out/2026, achado A2).
   const hojeGtd = hojeSP();
   const fimGtd = mesFim < hojeGtd ? mesFim : hojeGtd;
-  const conselhosRealizadosDoCS = (dados.historico as any[]).filter((h: any) => normalizeNome(h.cs_responsavel) === normalizeNome(cfg.nome)
-    && h.data_conselho && h.data_conselho >= mesInicio && h.data_conselho <= fimGtd);
+  const conselhosRealizadosDoCS = conselhosRealizadosNoPeriodo(dados, cfg.nome, mesInicio, fimGtd);
   const cumprimentoGtdMedia = taxaGtdAgregada(conselhosRealizadosDoCS.map((h: any) => contarEtapas(h.etapas)));
 
   const futurosDoCS = conselhos.filter((c) => c.proximaData && c.proximaDataEhFutura)
@@ -2058,7 +2064,7 @@ function montarRitmoDoMes(porCS: any[], dados: DadosBrutos, seletorMes: string, 
 
 // Quem era CS no mês, a partir de cs_periodos (revisão out/2026, C3). Se a tabela ainda não existe ou
 // está vazia, devolve null e o chamador usa a lista de cs_config como antes.
-async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo[] | null> {
+export async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo[] | null> {
   try {
     const { data, error } = await sb.from('cs_periodos').select('nome_curto, nome_completo, primeiro_mes, ultimo_mes');
     if (error || !data || !data.length) return null;
@@ -2598,7 +2604,7 @@ function presencaHistoricoConselhoDetalhe(ctx: ContextoConselhos, itemsPrincipai
 // Carteira do CS = grupos ativos (não-repo) cujo título contém "(ApelidoConselho)", o mesmo
 // mecanismo de vinculação que generateCSReport sempre usou (lista de conselhos e indicador
 // Carteira). Um conselho que cita mais de um CS conta para cada um deles.
-function gruposDaCarteira(dados: DadosBrutos, apelidoConselho: string | null): any[] {
+export function gruposDaCarteira(dados: DadosBrutos, apelidoConselho: string | null): any[] {
   if (!apelidoConselho) return [];
   return dados.conselhosGrupos.filter((g: any) => !g.is_repo && tituloContemApelido(g.titulo, apelidoConselho) && !g.titulo.startsWith('Reposições'));
 }
