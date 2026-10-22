@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   fimDoMesSP, validoAteDoTipo, prazoReportSexta19, estadoReportNoPrazo, geraPontoReportAtrasado,
-  prazoRelatorioConselho, estadoRelatorioConselho, diasRestantesRelatorio, chaveReportAtrasado, chaveRelatorioAtrasado, rotuloOrigem,
+  prazoRelatorioConselho, estadoRelatorioConselho, semanaObrigatoria, encontroObrigatorio, diasRestantesRelatorio, chaveReportAtrasado, chaveRelatorioAtrasado, rotuloOrigem,
 } from '../lib/pontos.ts';
 import { advertenciaAtiva, pontuacaoAtiva, pontuacaoHistorica } from '../lib/indicadores-base.ts';
 
@@ -53,6 +53,16 @@ assert.equal(estadoRelatorioConselho(encontro, d('2026-10-22T03:00:00Z'), d('202
 assert.equal(diasRestantesRelatorio(encontro, d('2026-10-15T12:00:00Z')), 6);
 assert.equal(diasRestantesRelatorio(encontro, d('2026-10-21T20:00:00Z')), 0);
 assert.equal(diasRestantesRelatorio(encontro, d('2026-10-23T12:00:00Z')), -2);
+
+// ---- início do CS: nada de antes da entrada ----
+assert.equal(semanaObrigatoria(null, '2026-10-12'), true, 'CS antigo não tem restrição');
+assert.equal(semanaObrigatoria('2026-11-01', '2026-10-26'), false, 'semana anterior à entrada');
+assert.equal(semanaObrigatoria('2026-11-01', '2026-10-12'), false);
+assert.equal(semanaObrigatoria('2026-11-01', '2026-11-02'), true, 'primeira segunda depois da entrada');
+assert.equal(semanaObrigatoria('2026-11-02', '2026-11-02'), true, 'entrada numa segunda vale a própria semana');
+assert.equal(encontroObrigatorio('2026-11-01', d('2026-10-31T23:00:00-03:00')), false, 'encontro de 31/10 em Brasília');
+assert.equal(encontroObrigatorio('2026-11-01', d('2026-11-01T00:30:00-03:00')), true);
+assert.equal(encontroObrigatorio(null, d('2026-10-01T12:00:00Z')), true);
 
 // ---- chaves e rótulos ----
 assert.equal(chaveReportAtrasado('Rodrigo', '2026-10-26'), 'report:Rodrigo:2026-10-26');

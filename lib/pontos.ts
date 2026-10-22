@@ -68,6 +68,16 @@ export function diasRestantesRelatorio(dataEncontro: Date, agora: Date): number 
   return Math.round((dia(prazoRelatorioConselho(dataEncontro)) - dia(agora)) / (24 * MS_HORA));
 }
 
+// ---- início do CS: CS novo não leva ponto de antes da entrada (cs_config.inicio_em) ----
+// Semana vale se a segunda-feira dela é igual ou posterior ao início; encontro vale se o dia (Brasília) é igual ou posterior.
+// Espelha status_report_semana_base e _encontros_relatorio no SQL. inicioEm nulo = sem restrição.
+export function semanaObrigatoria(inicioEm: string | null, semanaInicio: string): boolean {
+  return inicioEm === null || semanaInicio >= inicioEm;
+}
+export function encontroObrigatorio(inicioEm: string | null, dataEncontro: Date): boolean {
+  return inicioEm === null || diaCivilSP(dataEncontro) >= inicioEm;
+}
+
 // ---- chaves de idempotência e texto ----
 export const chaveReportAtrasado = (csNome: string, semanaInicio: string) => `report:${csNome}:${semanaInicio}`;
 export const chaveRelatorioAtrasado = (groupId: string, dataEncontroIso: string) => `relatorio:${groupId}:${dataEncontroIso}`;
