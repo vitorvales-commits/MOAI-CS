@@ -835,7 +835,7 @@ ${ICONES_SVG}
   <aside class="sg-painel" id="sgPainel" role="dialog" aria-modal="true" aria-labelledby="sgTitulo" hidden>
     <div class="sg-topo">
       <h2 id="sgTitulo">Sugerir metas</h2>
-      <p id="sgSub">O modelo usa os últimos meses fechados, encolhe a taxa de quem tem pouco histórico para a do time e pede crescimento. Nada é salvo sem o seu clique em Salvar alterações.</p>
+      <p id="sgSub">O modelo usa os últimos meses fechados, encolhe a taxa de quem tem pouco histórico para a do time e pede crescimento. Na validação de jul a set as sugestões ficaram abaixo do realizado em quase todos os casos, então revise antes de salvar. Nada é salvo sem o seu clique em Salvar alterações.</p>
       <div class="sg-acoes">
         <button class="btn pri" id="sgAplicarTudo" type="button" disabled>Aplicar à matriz</button>
         <button class="btn" id="sgFechar" type="button">Fechar</button>
