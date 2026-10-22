@@ -1513,7 +1513,7 @@ async function syncHistoricoGtd() {
 
 // atualiza o status de conta ativa (enabled) dos CS já cadastrados em cs_config
 async function syncStatusUsuarios() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,nome,nome_completo,monday_user_id&monday_user_id=not.is.null`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,nome,nome_completo,monday_user_id,tipo&monday_user_id=not.is.null`, {
     headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
   });
   const csConfig = await res.json();
@@ -1544,6 +1544,8 @@ async function syncStatusUsuarios() {
     }
 
     if (infoMonday.enabled === undefined) continue;
+    // CS desligado na plataforma (tipo 'ex_membro_sem_conta', único valor de ex permitido por cs_config_tipo_check) não volta a ficar ativo só porque a conta do Monday segue ativa.
+    if (c.tipo === 'ex_membro_sem_conta') continue;
     await fetch(`${SUPABASE_URL}/rest/v1/cs_config?id=eq.${c.id}`, {
       method: 'PATCH',
       headers: {

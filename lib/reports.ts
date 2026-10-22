@@ -154,7 +154,7 @@ export async function getCSListCompleto(sb: SupabaseClient): Promise<CSConfig[]>
     getCsFotosCustomizadasSet(sb),
   ]);
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
-  return (data || []).map((r: any) => ({
+  return (data || []).filter((r: any) => r.tipo !== 'ex_membro_sem_conta').map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
     fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: true, ex: false,
@@ -184,7 +184,7 @@ export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConf
   const ativos = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
-    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: !!r.ativo, ex: false,
+    fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: !!r.ativo && r.tipo !== 'ex_membro_sem_conta', ex: false,
   }));
   // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
   // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.

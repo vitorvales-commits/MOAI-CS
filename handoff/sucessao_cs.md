@@ -11,7 +11,7 @@ A carteira de um CS é definida pelo título do grupo no Monday ("Nível | Conse
 
 ## Na data de corte
 4. Monday, só com autorização explícita: trocar "(CS antigo)" por "(CS novo)" no título de cada grupo; atualizar `cs_responsavel` dos conselheiros no board Conselheiros 2026; conferir que os próximos ciclos do board de histórico de GTD saem com o CS novo.
-5. CS que sai: `ativo = false` e `tipo = 'ex'` em `cs_config`, e desvincular o e-mail em `cs_usuarios`. O histórico segue visível nas telas de período.
+5. CS que sai: `ativo = false` e `tipo = 'ex_membro_sem_conta'` (a constraint não aceita 'ex'; o sync do Monday reativa quem fica só com ativo = false) em `cs_config`, e desvincular o e-mail em `cs_usuarios`. O histórico segue visível nas telas de período.
 6. Gerar as metas do CS novo pelo botão Sugerir metas (a rampa de primeiro mês cobre a entrada) e deixar o gestor salvar.
 
 ## Conferência
