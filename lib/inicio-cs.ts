@@ -9,8 +9,9 @@ import { mediana } from './evolucao';
 import { hojeSP } from './gtd-prazos';
 import { MESES_ORDEM, PESOS_SCORE_CS } from './constants';
 import { segundaFeiraBRT } from './indicadores-base';
+import { listarEncontrosRelatorio } from './relatorio-conselho-dados';
 import {
-  dicaRitmo, focoDoDia, faltaPorSemana, simularPatamar, type ConselhoFoco, type MetaFoco,
+  dicaRitmo, focoDoDia, faltaPorSemana, simularPatamar, type ConselhoFoco, type MetaFoco, type RelatorioFoco,
 } from './home-regras';
 
 export { faltaPorSemana } from './home-regras';
@@ -49,6 +50,8 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   const relatorioP = generateCSReport(sb, csNome, seletorMes, ano);
   const reportPendenteP = reportPendenteDoCS(sb, csNome);
   const advertenciasP = listarAdvertenciasCS(sb, csNome);
+  // Relatórios do conselho pendentes (encontros_pendentes_relatorio): falha aqui não derruba a home.
+  const relatoriosP = listarEncontrosRelatorio(sb, csNome).catch(() => []);
   relatorioP.catch(() => undefined); advertenciasP.catch(() => undefined);
   const visao = await generateVisaoGestor(sb, seletorMes, ano, false);
   const minha = visao.porCS.find((c) => c.nome === csNome);
@@ -123,11 +126,15 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   }));
   const futuros = conselhosFoco.filter((c) => c.diasAte !== null && c.diasAte >= 0).sort((a, b) => (a.diasAte as number) - (b.diasAte as number));
   const proximo = futuros.length ? { titulo: futuros[0].nome, quando: formatarQuando(hoje, futuros[0].diasAte as number) } : null;
-  const focoHoje = focoDoDia({ conselhos: conselhosFoco, reportDiasAtePrazo, metas: metasFoco, proximo });
+  const relatoriosFoco: RelatorioFoco[] = (await relatoriosP)
+    .filter((e) => e.estado === 'a_preencher' || e.estado === 'vence_hoje' || e.estado === 'atrasado')
+    .map((e) => ({ groupId: e.groupId, conselho: (parseTituloConselho(e.conselho)?.contato) || e.conselho, dataEncontro: e.dataEncontro, estado: e.estado as RelatorioFoco['estado'], diasRestantes: e.diasRestantes }));
+  const focoHoje = focoDoDia({ conselhos: conselhosFoco, reportDiasAtePrazo, metas: metasFoco, proximo, relatorios: relatoriosFoco });
   const focoNumeros = focoHoje.conselho ? numerosDoConselho(focoHoje.conselho) : [];
   const fraseSituacao = focoHoje.tipo === 'tudo_em_dia' ? 'Tudo em dia por aqui.'
     : focoHoje.tipo === 'conselho' ? 'Um conselho nesta semana pede atenção.'
-    : focoHoje.tipo === 'report' ? 'O report da semana ainda está pendente.' : 'Uma meta do mês pede atenção.';
+    : focoHoje.tipo === 'report' ? 'O report da semana ainda está pendente.'
+    : focoHoje.tipo === 'relatorio' ? 'Um relatório de conselho pede preenchimento.' : 'Uma meta do mês pede atenção.';
 
   const semana = montarSemana(hoje, conselhosFoco, reportPendente);
 

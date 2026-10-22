@@ -20,6 +20,7 @@ import {
 import { casaBusca } from '../lib/indicadores-base.ts';
 import { TEMA_CSS, ICONES_SVG, DOCK_SCRIPT } from '../lib/ui/tema.ts';
 import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
+import { RELATORIO_CSS, RELATORIO_PAINEL_HTML, RELATORIO_SCRIPT } from '../lib/ui/relatorio-conselho-ui.ts';
 import { LIMIAR_PRESENCA_ATENCAO } from '../lib/constants.ts';
 import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
 
@@ -36,6 +37,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 <style>
 ${TEMA_CSS}
 ${GRADE_CONSELHOS_CSS}
+${RELATORIO_CSS}
 :root {
   /* M da MOAI usado como máscara do "M líquido" nos cards de KPI — valor real, copiado do doc "Index". */
   --m-white: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABiCAYAAACvUNYzAAAC70lEQVR42u2dMWtUQRSFzyz+An+AKVJZpQgWsUiVJlumSyeKpBEsIph/EBBttLHYFdLY2bqFlQS0iZDKSgKm9zeMzUCCqGyWO3PPnTkHAtns2zv33I839828xyblnCH5aaISCIAASFwAZgDyDX42Bq7fxg1rNatxBpwPDOC8xhmwika8lDLxbNkDvg9UfDOvlgDuAtgfoPj7xSvlVdD7AQCYeqxxGdpzPzD3NomSaI/Fr70QO+6o+NW81ARw1BGAo4gAepmKqnqYRDcQPfdWm3EfAxa/Sc6tAOwC2ApU/K2SczcAAOBLIADNcm19PyBCP2iao8cNmZ/ExW+emweAOwAOCIt/UHLrHgAAvCUE4JKT5z1hpn7glstkVOMsOTA8FfFm0LFpADwZdGwaAF7TAEUPYnowK49WfDYAAPC5kzHCAtgGsFMx/k4ZQwD+o09BY3cDoNYcTbkRaA1gbhjrF2msOfsZ8MAozm0AhwZxDkssJm9VAZwAuDSK9ZIkBoqnkyg9YI1k7s6knpo04eQMIZN6aXoVdM+p+c1JPTQHcAZgYRTrIYD1JY5bL8daaFE8hF4HTA1j/TA6xiN314VYq34QYt73WglbGjpb8m/UxffYinhhFGcTwN6113uEOVICeG4Y68Mfv28S5kgHoEY/CDfvewNwMcqak+d29COi4rvl4gngHYALguJflFyGA4AlV7Zd58BwRywNOjYNAAC4P8iYtAC+wm7TbhktypgCcE3TTscKA6DVnEy1BmF8LCWNUnxWAADwKkjMbgE8CxKzWwDW00ViNcn+vaGp5+JHAAAAj50+KwBFM6z2pN0l/vJFqQKwmtYafUYAjObyFMVUtC/v3jY6RgBW1Cn+vWn3rbx3KgB1NV3xPQGo3A9SRCO3EFcJV4+kpKgmIgMAgNfB8w8P4Gl0APofMgIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgVVDKOasKOgMEQJLG1G93i33gLv0k4gAAAABJRU5ErkJggg==);
@@ -482,6 +484,7 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .report-reg-ok { background:#3D8B5F; }
 .report-reg-atraso { background:#C89A2E; }
 .report-reg-falta { background:#C0433D; }
+.report-reg-pendente { background:#C6C4C4; }
 .report-topo { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
 .report-semana-nav { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .report-semana-label { font-size:13px; font-weight:800; color:#1A1A1A; }
@@ -608,6 +611,7 @@ body{background:var(--bg);}
 #screenInicio .top h1,#screenInicio .crumb{color:var(--ink)}
 #screenInicio .crumb{color:var(--ink3)}
 #screenInicio h2,#screenInicio h3{color:var(--ink)}
+#screenInicio .gh-escuro h2{color:#fff}
 .pn{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:var(--r);box-shadow:0 1px 2px rgba(20,20,20,.04),0 6px 18px rgba(20,20,20,.03);text-align:left;}
 .pn .ph h2{font-family:'Bricolage Grotesque',sans-serif;}
 .mes{position:relative;overflow:hidden;border-radius:16px;background:linear-gradient(135deg,#141414,#1A1A1A 50%,#272727);color:#fff;display:grid;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr));align-items:stretch;text-align:left}
@@ -993,11 +997,15 @@ ${ICONES_SVG}
   </div>
 </div>
 
+${RELATORIO_PAINEL_HTML}
 <script>${DOCK_SCRIPT}</script>
 <script>window.AGENDA_CFG = ${agendaConfigJson()};</script>
 <script src="/agenda-cs.js"></script>
 <script>
 ${GTD_CHECKLIST_SCRIPT}
+${RELATORIO_SCRIPT}
+// Depois de salvar um relatório, a home recalcula o foco (o relatório pendente sai da frente).
+window.rcAoSalvar_ = function () { if (typeof carregarInicio_ === 'function') carregarInicio_(); };
 // ============ RUNTIME_SHIM ============
 // Substitui google.script.run (Apps Script) por chamadas fetch() às rotas /api/* deste app
 // Next.js. Implementa a mesma interface encadeada (withSuccessHandler/withFailureHandler +
@@ -1328,8 +1336,11 @@ function renderInFoco_(ini) {
   var linha = anel || minis ? '<div class="ch-foco-row">' + anel + minis + '</div>' : '';
   el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">Foco de hoje</span></div>' +
     '<div><h2>' + escHtml_(f.titulo) + '</h2><p>' + escHtml_(f.texto) + '</p></div>' + linha +
-    '<div class="gh-acoes"><a class="gh-btn claro" href="/?aba=conselhos" data-aba-cs="conselhos">Abrir checklist do conselho</a>' +
-    '<a class="gh-btn vidro" href="/?aba=conselhos" data-aba-cs="conselhos">Ver quem não confirmou</a></div>';
+    (f.tipo === 'relatorio' && f.relatorio
+      ? '<div class="gh-acoes"><button type="button" class="gh-btn claro" data-rc-abrir="1" data-rc-grupo="' + escHtml_(f.relatorio.groupId) + '" data-rc-data="' + escHtml_(f.relatorio.dataEncontro) + '">Preencher relatório</button>' +
+        '<a class="gh-btn vidro" href="/conselho/' + encodeURIComponent(f.relatorio.groupId) + '#relatorios">Ver relatórios do conselho</a></div>'
+      : '<div class="gh-acoes"><a class="gh-btn claro" href="/?aba=conselhos" data-aba-cs="conselhos">Abrir checklist do conselho</a>' +
+        '<a class="gh-btn vidro" href="/?aba=conselhos" data-aba-cs="conselhos">Ver quem não confirmou</a></div>');
 }
 
 // Sua pontuação: anel com a mediana do time em dourado, a frase de simulação e os pontos tomados embutidos.
@@ -3034,7 +3045,7 @@ function renderAbaReport(){
       '<span class="report-selo ' + (rep ? 'ok' : 'pendente') + '">' + (rep ? 'Enviado no Monday' : 'Sem report nesta semana') + '</span>' +
     '</div>' + reportHealthHtml_(d.health) + '</div>' +
     '<p class="report-ajuda">Os reports são preenchidos no board do Monday. Esta aba mostra o que foi enviado. <a href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Abrir no Monday</a></p>';
-  html += reportEstadoHtml_(d) + reportRegularidadeHtml_(d);
+  html += reportEstadoHtml_(d) + reportRegularidadeHtml_(d) + relatorioRegularidadeHtml_(d);
   html += rep ? reportLeituraHtml_(rep) : '<div class="empty-state">Nenhum report encontrado para esta semana.</div>';
   html += reportHistoricoHtml_();
   document.getElementById('report').innerHTML = html;
@@ -3060,6 +3071,17 @@ function reportRegularidadeHtml_(d){
     return '<span class="report-reg report-reg-' + cls + '" title="' + escR_(dataCurtaR_(r.semana_inicio) + ': ' + (rot[r.estado] || r.estado)) + '"></span>';
   }).join('');
   return '<section class="report-secao"><h3>Regularidade, últimas ' + lista.length + ' semanas</h3><div class="report-reg-linha">' + marcas + '</div></section>';
+}
+// Regularidade do relatório do conselho: o mesmo componente, um quadrado por encontro das últimas 8 semanas.
+function relatorioRegularidadeHtml_(d){
+  var lista = d.regularidadeRelatorio || [];
+  if (!lista.length) return '';
+  var rot = { enviado_no_prazo: 'Enviado no prazo', enviado_com_atraso: 'Enviado com atraso', atrasado: 'Não enviado', pendente: 'Pendente' };
+  var marcas = lista.map(function(r){
+    var cls = r.estado === 'enviado_no_prazo' ? 'ok' : (r.estado === 'enviado_com_atraso' ? 'atraso' : (r.estado === 'pendente' ? 'pendente' : 'falta'));
+    return '<span class="report-reg report-reg-' + cls + '" title="' + escR_('Semana de ' + dataCurtaR_(r.semana_inicio) + ': ' + (rot[r.estado] || r.estado)) + '"></span>';
+  }).join('');
+  return '<section class="report-secao"><h3>Relatório do conselho, últimas 8 semanas</h3><div class="report-reg-linha">' + marcas + '</div></section>';
 }
 function reportLeituraHtml_(rep){
   var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === rep.como_foi_semana; })[0];

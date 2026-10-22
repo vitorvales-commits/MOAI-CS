@@ -36,6 +36,8 @@ import { csDoMes, type LinhaPeriodo } from './cs-periodos';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
 import { insightsGestor, type CtxInsights } from './insights';
 import { listarAlertasNps } from './alertas-nps-dados';
+import { listarEncontrosRelatorio } from './relatorio-conselho-dados';
+import { resumoRelatoriosPorCS } from './relatorio-conselho';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
@@ -787,6 +789,37 @@ function buildGrupoPorChaveAgenda(gruposAtivos: any[]) {
     chavesDoContato(parsed.contato, APELIDOS_AGENDA_NORM).forEach((k) => map.set(k, info));
   });
   return map;
+}
+
+// Encontros da agenda resolvidos para group_id (22/10/2026). É o MESMO casamento da agenda visual (contato do título do
+// grupo, apelidos e nome tolerante). A tabela encontros_conselho guarda o resultado para o SQL (estado do relatório e cron
+// de pontos), que nunca refaz o casamento por nome. Sem grupo ativo correspondente, o encontro vai para semGrupo.
+export function resolverEncontrosAgenda(dados: DadosBrutos) {
+  const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && !g.titulo.startsWith('Reposições'));
+  const grupoPorChave = buildGrupoPorChaveAgenda(gruposAtivos);
+  const resolvidos: { agenda_item_id: number; group_id: string }[] = [];
+  const semGrupo: { id: number; conselheiro: string; dataIso: string; status: string | null }[] = [];
+  (dados.agenda as any[]).forEach((row) => {
+    if (!row.data_iso || !row.conselheiro_nome) return;
+    const chave = acharChaveTolerante(chaveAgenda(row.conselheiro_nome), grupoPorChave.keys());
+    const grupo = chave ? grupoPorChave.get(chave) : undefined;
+    if (grupo) resolvidos.push({ agenda_item_id: Number(row.id), group_id: grupo.groupId });
+    else semGrupo.push({ id: Number(row.id), conselheiro: String(row.conselheiro_nome), dataIso: String(row.data_iso), status: row.status ?? null });
+  });
+  return { resolvidos, semGrupo };
+}
+// A fila do gestor e as telas de relatório chamam isto; o casamento só roda de novo depois de 10 minutos.
+let ultimaSincEncontros = 0;
+export async function sincronizarEncontrosSePreciso(sb: SupabaseClient, dados: DadosBrutos) {
+  if (Date.now() - ultimaSincEncontros < 10 * 60_000) return;
+  ultimaSincEncontros = Date.now();
+  await sincronizarEncontrosConselho(sb, dados);
+}
+export async function sincronizarEncontrosConselho(sb: SupabaseClient, dadosParam?: DadosBrutos) {
+  const r = resolverEncontrosAgenda(dadosParam || (await getDadosBrutos(sb)));
+  const { error } = await sb.rpc('sincronizar_encontros_conselho', { p_itens: r.resolvidos });
+  if (error) throw new Error('Erro ao sincronizar os encontros do conselho: ' + error.message);
+  return r;
 }
 
 // Converte um timestamptz (instante absoluto, ex. "2026-09-28T17:00:00+00:00") pro calendário de
@@ -3798,8 +3831,15 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
   // Alertas de NPS abertos (22/10/2026): critérios e texto em lib/alertas-nps.ts; a tabela só é legível por gestor.
   const alertasNps = await secaoIsolada('alertasNps', () => listarAlertasNps(sb, { apenasAbertos: true }));
 
+  // Relatórios do conselho (22/10/2026): pendentes e atrasados por CS. O casamento agenda -> grupo é gravado antes
+  // de ler, porque o estado vem do SQL (encontros_pendentes_relatorio).
+  const relatorios = await secaoIsolada('relatorios', async () => {
+    await sincronizarEncontrosSePreciso(sb, dados).catch((e) => console.error('[relatorios] sincronizar encontros', e));
+    return { porCS: resumoRelatoriosPorCS(await listarEncontrosRelatorio(sb, null)) };
+  });
+
   return {
-    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps,
+    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios,
     carimbos: { gtdSnapshot: snapshot, ultimoReportCriadoEm: reports.dado ? reports.dado.ultimoEnvio : null },
   };
 }

@@ -15,8 +15,9 @@
 
 import { GTD_CHECKLIST_STYLE, GTD_CHECKLIST_SCRIPT } from '../lib/gtd-checklist';
 import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema';
+import { RELATORIO_CSS, RELATORIO_PAINEL_HTML, RELATORIO_SCRIPT } from '../lib/ui/relatorio-conselho-ui';
 
-export const CONSELHO_STYLE = TEMA_CSS + `
+export const CONSELHO_STYLE = TEMA_CSS + RELATORIO_CSS + `
 :root{
   /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts) */
   --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
@@ -176,6 +177,7 @@ ${GTD_CHECKLIST_STYLE}
 `;
 
 export const CONSELHO_HTML = `
+${RELATORIO_PAINEL_HTML}
 <div class="conselho-page">
 ${ICONES_SVG}
 <!--DOCK-->
@@ -252,6 +254,11 @@ ${ICONES_SVG}
     <div id="evolucaoMembrosList"><div class="empty">Carregando…</div></div>
   </section>
 
+  <section class="block" id="relatorios">
+    <h2>Relatórios do conselho <span class="sub">um por encontro, prazo de 7 dias</span></h2>
+    <div class="encontros-list" id="relatoriosLista"><div class="empty">Carregando…</div></div>
+  </section>
+
   <section class="block" id="alertasNpsBlock" style="display:none;">
     <h2>Alertas de NPS <span class="sub">histórico do conselho</span></h2>
     <div id="alertasNps"></div>
@@ -282,6 +289,7 @@ ${ICONES_SVG}
 export function conselhoScript(groupId: string): string {
   return `
 ${GTD_CHECKLIST_SCRIPT}
+${RELATORIO_SCRIPT}
 var GROUP_ID = ${JSON.stringify(groupId).replace(/</g, '\\u003c')};
 
 function fetchJSON_(url) {
@@ -936,6 +944,8 @@ function carregarConselho(mes, ano) {
 
   aoMudarFiltro();
   carregarAlertasNps_();
+  window.rcAoSalvar_ = function () { rcRenderLista_('relatoriosLista', GROUP_ID); };
+  rcRenderLista_('relatoriosLista', GROUP_ID);
 })();
 `;
 }

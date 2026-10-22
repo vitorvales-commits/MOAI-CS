@@ -2,7 +2,7 @@
 // sem IA e sem DOM. Rodam no servidor, nas rotas /api/equipe e /api/home-resumo, e o template só mostra o texto
 // e os números que chegam prontos. Nenhum componente recalcula regra daqui.
 import {
-  DIAS_MIN_PROJECAO, HOME_FOCO_CONFIRMADOS_ALERTA, HOME_FOCO_DIAS_CONSELHO, HOME_FOCO_DIAS_REPORT,
+  DIAS_MIN_PROJECAO, HOME_FOCO_CONFIRMADOS_ALERTA, HOME_FOCO_DIAS_CONSELHO, HOME_FOCO_DIAS_REPORT, HOME_FOCO_DIAS_RELATORIO,
   HOME_LIMIAR_PERTO_DO_LIMITE, HOME_PATAMAR_PONTUACAO, HOME_RITMO_LIMIAR_ACELERAR, HOME_RITMO_LIMIAR_NO_RITMO,
   RETENCAO_STATUS_POR_PROJECAO, SCORE_FAIXA_ATENCAO, SCORE_FAIXA_SAUDAVEL,
 } from './constants';
@@ -227,14 +227,32 @@ export type ConselhoFoco = {
   gtdFeitas?: number; gtdTotal?: number; presencaPct?: number | null;
 };
 export type MetaFoco = { chave: string; label: string; meta: number; realizado: number; esperado: number; peso: number };
-export type FocoDoDia = { tipo: 'conselho' | 'report' | 'meta' | 'tudo_em_dia'; titulo: string; texto: string; conselho?: ConselhoFoco };
+// Relatório do conselho pendente (22/10/2026): candidato do foco, vindo de encontros_pendentes_relatorio.
+export type RelatorioFoco = { groupId: string; conselho: string; dataEncontro: string; estado: 'a_preencher' | 'vence_hoje' | 'atrasado'; diasRestantes: number };
+export type FocoDoDia = { tipo: 'conselho' | 'report' | 'meta' | 'tudo_em_dia' | 'relatorio'; titulo: string; texto: string; conselho?: ConselhoFoco; relatorio?: RelatorioFoco };
+
+// Relatório mais urgente: o atrasado há mais tempo e, depois, o de prazo mais próximo.
+function relatorioMaisUrgente(rels: RelatorioFoco[]): RelatorioFoco | null {
+  return [...rels].sort((a, b) => a.diasRestantes - b.diasRestantes)[0] || null;
+}
+function focoRelatorio(r: RelatorioFoco): FocoDoDia {
+  const texto = r.estado === 'atrasado'
+    ? (r.diasRestantes >= 0 ? 'O prazo venceu hoje.' : 'O prazo venceu há ' + (-r.diasRestantes) + (r.diasRestantes === -1 ? ' dia.' : ' dias.')) + ' Cada relatório atrasado gera 5 pontos.'
+    : r.estado === 'vence_hoje' ? 'O prazo vence hoje, às 23h59.'
+    : (r.diasRestantes === 1 ? 'Falta 1 dia para o prazo.' : 'Faltam ' + r.diasRestantes + ' dias para o prazo.');
+  return { tipo: 'relatorio', titulo: 'Preencher o relatório do conselho ' + r.conselho, texto, relatorio: r };
+}
 
 // Foco de hoje do CS (7.4), na ordem de prioridade: conselho próximo com pouca confirmação ou GTD atrasado, report
 // com prazo perto, meta de maior peso atrás do ritmo e, por fim, o próximo compromisso.
 export function focoDoDia(args: {
   conselhos: ConselhoFoco[]; reportDiasAtePrazo: number | null; metas: MetaFoco[];
-  proximo: { titulo: string; quando: string } | null;
+  proximo: { titulo: string; quando: string } | null; relatorios?: RelatorioFoco[];
 }): FocoDoDia {
+  // Relatório vencendo em até HOME_FOCO_DIAS_RELATORIO dias, ou atrasado, passa à frente do GTD e do conselho.
+  const relatorios = args.relatorios || [];
+  const urgente = relatorioMaisUrgente(relatorios.filter((r) => r.estado === 'atrasado' || r.diasRestantes <= HOME_FOCO_DIAS_RELATORIO));
+  if (urgente) return focoRelatorio(urgente);
   const conselhos = args.conselhos
     .filter((c) => c.diasAte !== null && c.diasAte >= 0 && c.diasAte <= HOME_FOCO_DIAS_CONSELHO
       && (c.confirmados <= HOME_FOCO_CONFIRMADOS_ALERTA || c.gtdAtrasadas > 0))
@@ -252,6 +270,8 @@ export function focoDoDia(args: {
     const texto = args.reportDiasAtePrazo <= 0 ? 'O prazo é hoje, às 19h.' : 'O prazo é amanhã, às 19h.';
     return { tipo: 'report', titulo: 'Enviar o report da semana', texto };
   }
+  const calmo = relatorioMaisUrgente(relatorios);
+  if (calmo) return focoRelatorio(calmo);
   const atras = args.metas.filter((m) => m.meta > 0 && m.esperado > m.realizado);
   if (atras.length) {
     const m = atras.reduce((a, b) => {

@@ -1650,6 +1650,18 @@ function itensFila_() {
       }
     });
   }
+  var rl = ACOES_.relatorios;
+  if (rl && rl.erro) erros.push('Relatórios do conselho indisponíveis: ' + rl.erro);
+  if (rl && rl.dado) {
+    rl.dado.porCS.forEach(function (c) {
+      var n = c.pendentes + c.atrasados;
+      itens.push({ tipo: 'semana', cor: c.atrasados > 0 ? 'red' : 'gold',
+        titulo: 'Relatórios do conselho: ' + c.cs,
+        texto: c.pendentes + (c.pendentes === 1 ? ' pendente' : ' pendentes') + ' e ' + c.atrasados + (c.atrasados === 1 ? ' atrasado' : ' atrasados') +
+          (c.atrasados > 0 ? '. Maior atraso: ' + c.maiorAtrasoDias + (c.maiorAtrasoDias === 1 ? ' dia' : ' dias') : '') + '. Cobrar o preenchimento; cada relatório atrasado gera 5 pontos.',
+        quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(c.cs) } });
+    });
+  }
   var an = ACOES_.alertasNps;
   if (an && an.erro) erros.push('Alertas de NPS indisponíveis: ' + an.erro);
   if (an && an.dado) {

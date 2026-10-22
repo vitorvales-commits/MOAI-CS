@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return NextResponse.json({ error: 'Você só pode consultar o próprio report.' }, { status: 403 });
     }
     // Colunas de leitura só: nenhuma coluna de engajamento baixo, médio ou alto é lida aqui.
-    const [histRes, repRes, advertencias, statusRes, regRes, healthRes] = await Promise.all([
+    const [histRes, repRes, advertencias, statusRes, regRes, healthRes, regRelRes] = await Promise.all([
       supabase.rpc('reports_historico_cs', { p_cs: nome }),
       supabase.from('reports_individuais')
         .select('semana_inicio, origem, como_foi_semana, nota_semana, risco_se_ignorar, por_que, criticos_total, base_total, enviado_em')
@@ -39,6 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       supabase.rpc('status_report_semana', { p_semana: semana }),
       supabase.rpc('regularidade_report_cs', { p_cs: nome, p_semanas: 8 }),
       supabase.rpc('health_base_cs', { p_cs: nome }),
+      supabase.rpc('regularidade_relatorio_cs', { p_cs: nome, p_semanas: 8 }),
     ]);
     const erro = histRes.error || repRes.error || statusRes.error || regRes.error || healthRes.error;
     if (erro) throw new Error(erro.message);
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
     const report = (repRes.data || [])[0] ?? null;
     return NextResponse.json({
       cs: nome, semana, semanaAtual,
-      report, historico, health, estado, regularidade: regRes.data || [], pontosAtivos: advertencias.pontuacaoAtiva,
+      report, historico, health, estado, regularidade: regRes.data || [], regularidadeRelatorio: regRelRes.error ? [] : regRelRes.data || [], pontosAtivos: advertencias.pontuacaoAtiva,
     });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);

@@ -843,7 +843,7 @@ function renderAdvertenciasCS(d) {
     + (a.proximoVencimento ? ', o próximo vence em ' + esc(dataBR(a.proximoVencimento)) : '') + '</div></div>'
     + '<div class="pontos-caixa"><div class="num">' + a.totalHistorico + '</div><div class="rot">Total histórico'
     + (a.desde ? ', desde ' + esc(dataBR(a.desde)) : ', nenhuma advertência registrada') + '</div></div></div>';
-  var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + (t.validadeRegra === 'fim_do_mes' ? 'até o fim do mês' : t.validadeMeses + ' meses') + ')</option>'; }).join('');
+  var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + (t.validadeRegra === 'fim_do_mes' ? 'até o fim do mês' : t.validadeMeses + (t.validadeMeses === 1 ? ' mês' : ' meses')) + ')</option>'; }).join('');
   var form = a.tipos.length
     ? '<div class="form-adv"><label>Tipo<select id="advTipo">' + opcoes + '</select></label>'
       + '<label style="flex:1 1 240px;">Observação (opcional)<textarea id="advObs" placeholder="Contexto da advertência"></textarea></label>'

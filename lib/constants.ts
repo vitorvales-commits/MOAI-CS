@@ -329,3 +329,12 @@ export const ALERTA_NPS_AMOSTRA_MINIMA = 5; // agregados só valem com pelo meno
 // Envio: um email por encontro; a janela conta do primeiro alerta não notificado do encontro.
 export const ALERTA_NPS_JANELA_AGRUPAMENTO_MIN = 60;
 export const ALERTA_NPS_VALIDADE_ENVIO_DIAS = 7; // alerta mais antigo que isto não é enviado ao ligar o envio
+
+// Relatório do conselho (22/10/2026): limites dos campos de texto, espelhados nos CHECKs de relatorios_conselho.
+export const MONDAY_BOARD_CONSELHOS_URL = 'https://moai-global.monday.com/boards/18393363935'; // board onde a presença do mês é marcada
+export const RELATORIO_AVANCO_MAX = 280;
+export const RELATORIO_COMBINADO_MAX = 280;
+export const RELATORIO_MOTIVO_ATENCAO_MAX = 200;
+export const RELATORIO_JUSTIFICATIVA_MAX = 200;
+// Foco de hoje: relatório com prazo em até este número de dias, ou atrasado, passa à frente do GTD.
+export const HOME_FOCO_DIAS_RELATORIO = 2;
