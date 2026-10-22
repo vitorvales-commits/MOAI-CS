@@ -3,6 +3,9 @@
 // "Produto | Nome do conselheiro (CS)", por exemplo "Fast Track | Caio Vivan (George)".
 // Ordem: primeiro os aliases confirmados; depois o casamento automático pelo nome do conselheiro.
 
+import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato } from './agenda-nomes.ts';
+import { APELIDOS_AGENDA } from './constants.ts';
+
 export interface GrupoConselho { group_id: string; titulo: string | null; is_repo?: boolean | null }
 
 // Chave de comparação: sem acento, minúscula, espaços normalizados.
@@ -26,6 +29,8 @@ export const ALIASES_CONFIRMADOS_FALLBACK: Record<string, string[]> = {
   [chaveNome('João Pedro')]: ['group_mktkwg6v'],
 };
 
+const APELIDOS_NORMALIZADOS = normalizarApelidos(APELIDOS_AGENDA);
+
 // Grupos de um conselheiro. Um conselheiro pode ter mais de um grupo; todos voltam.
 // Grupos is_repo só entram quando não há nenhum grupo comum para o mesmo nome.
 export function casarGruposDoConselheiro(
@@ -35,7 +40,13 @@ export function casarGruposDoConselheiro(
 ): string[] {
   const chave = chaveNome(conselheiro);
   if (aliases[chave]?.length) return aliases[chave];
-  const iguais = grupos.filter((g) => chaveNome(conselheiroDoTitulo(g.titulo)) === chave);
+  // Mesma regra de casamento da agenda dos relatórios (lib/agenda-nomes.ts): anotações removidas, apelidos
+  // do contato e, para nomes longos, um único candidato com até duas edições. Ex.: "Kadydja Albuquerque" na
+  // agenda é o contato "Kadydja" do título do grupo.
+  const chavesDe = (g: GrupoConselho) => chavesDoContato(conselheiroDoTitulo(g.titulo) || '', APELIDOS_NORMALIZADOS);
+  let alvo = chaveAgenda(conselheiro);
+  if (!grupos.some((g) => chavesDe(g).includes(alvo))) alvo = acharChaveTolerante(alvo, grupos.flatMap(chavesDe)) || alvo;
+  const iguais = grupos.filter((g) => chavesDe(g).includes(alvo));
   const comuns = iguais.filter((g) => !g.is_repo).map((g) => g.group_id);
   if (comuns.length) return comuns;
   return iguais.map((g) => g.group_id);

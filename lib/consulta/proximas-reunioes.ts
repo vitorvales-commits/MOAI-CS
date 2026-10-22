@@ -2,6 +2,8 @@
 // correção). Sem IA: regra fixa. O reconhecimento é por tokens (radical simples, sem acento, minúsculas), e não por
 // frase literal. A parte pura não usa banco; o carregamento só faz SELECT.
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato } from '../agenda-nomes.ts';
+import { APELIDOS_AGENDA } from '../constants.ts';
 
 // Radicais de tempo e de evento. O "s" final de plural já sai ("proximos" vira "proximo", "datas" vira "data").
 export const TOKENS_TEMPO = ['proximo', 'proxima', 'quando', 'data', 'dia', 'agenda', 'calendario', 'marcado', 'marcada'];
@@ -167,38 +169,61 @@ async function todas(consulta: (de: number, ate: number) => any): Promise<any[]>
   return out;
 }
 // Nome do conselheiro no título do grupo: entre "| " e " (" (formato atual) ou antes de " [" (formato antigo).
-const conselheiroDoTitulo = (titulo: string | null) => {
+const parseContato = (titulo: string | null): string | null => {
   const t = String(titulo || '');
   const m = /\|\s*(.+?)(?:\s*\(|$)/.exec(t);
   if (m && m[1].trim()) return m[1].trim();
-  return t.split(' [')[0].trim();
+  return t.split(' [')[0].trim() || null;
 };
 
+// Monta os vínculos a partir do título do grupo ("Nível | Conselheiro (CS)"), fonte única de quem é o CS de cada
+// conselho. O nome da agenda é digitado à mão ("Kadydja Albuquerque" para o contato "Kadydja"), então passa pelo
+// mesmo casamento de lib/agenda-nomes.ts e vira o nome do contato do título. O histórico de GTD não entra: o
+// campo membro dele carrega anotações como "Kadydja (?)" e fez o conselho sumir da carteira do CS na consulta.
+export function montarVinculos(
+  agendaRows: { conselheiro_nome: string | null; data_iso: string | null; status: string | null }[],
+  grupos: { group_id: string; titulo: string | null; is_repo?: boolean | null }[],
+  membrosRows: { nome: string; group_id: string }[],
+): { vinculos: Vinculos; agenda: ReuniaoAgenda[] } {
+  const apelidos = normalizarApelidos(APELIDOS_AGENDA);
+  const ativos = grupos.filter((g) => !g.is_repo && parseContato(g.titulo));
+  const contatos = Array.from(new Set(ativos.map((g) => parseContato(g.titulo) as string)));
+  const dono = new Map<string, string>(); // chave de agenda -> contato do título
+  contatos.forEach((c) => chavesDoContato(c, apelidos).forEach((k) => { if (!dono.has(k)) dono.set(k, c); }));
+  const canonico = (nome: string): string => {
+    const k = chaveAgenda(nome);
+    const achada = dono.has(k) ? k : acharChaveTolerante(k, dono.keys());
+    return (achada && dono.get(achada)) || nome;
+  };
+  const csDoGrupo = (titulo: string | null) => /(([^)]*))/.exec(String(titulo || ''))?.[1].trim() || '';
+  const grupoPorId = new Map(ativos.map((g) => [g.group_id, g]));
+  const membros = membrosRows
+    .filter((m) => grupoPorId.has(m.group_id))
+    .map((m) => ({ nome: m.nome, conselheiro: parseContato(grupoPorId.get(m.group_id)!.titulo) }));
+  // O próprio conselheiro entra como membro do grupo, para o CS resolver o conselho mesmo sem linha em conselhos_membros.
+  ativos.forEach((g) => membros.push({ nome: parseContato(g.titulo) as string, conselheiro: parseContato(g.titulo) }));
+  const porCs = new Map<string, Set<string>>();
+  ativos.forEach((g) => {
+    const cs = csDoGrupo(g.titulo);
+    if (!cs) return;
+    if (!porCs.has(cs)) porCs.set(cs, new Set());
+    porCs.get(cs)!.add(parseContato(g.titulo) as string);
+    membrosRows.filter((m) => m.group_id === g.group_id).forEach((m) => porCs.get(cs)!.add(m.nome));
+  });
+  const agenda: ReuniaoAgenda[] = agendaRows
+    .filter((a) => a.conselheiro_nome && a.data_iso)
+    .map((a) => ({ conselheiro: canonico(a.conselheiro_nome as string), dataIso: a.data_iso as string, status: a.status ?? null }));
+  const conselheiros = Array.from(new Set([...contatos, ...agenda.map((a) => a.conselheiro)]));
+  return { vinculos: { conselheiros, membros, css: Array.from(porCs.entries()).map(([nome, set]) => ({ nome, membros: Array.from(set) })) }, agenda };
+}
+
 export async function carregarReunioes(supabase: SupabaseClient): Promise<{ vinculos: Vinculos; agenda: ReuniaoAgenda[] }> {
-  const [agendaRows, grupos, membrosRows, historico] = await Promise.all([
+  const [agendaRows, grupos, membrosRows] = await Promise.all([
     todas((de, ate) => supabase.from('agenda_conselhos_items').select('conselheiro_nome, data_iso, status').order('id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_grupos').select('group_id, titulo, is_repo').order('group_id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_membros').select('nome, group_id').order('id').range(de, ate)),
-    todas((de, ate) => supabase.from('historico_conselhos_items').select('cs_responsavel, membro').order('id').range(de, ate)),
   ]);
-  const tituloDoGrupo = new Map<string, string>(grupos.filter((g: any) => !g.is_repo).map((g: any) => [g.group_id, g.titulo]));
-  const membros = membrosRows
-    .filter((m: any) => tituloDoGrupo.has(m.group_id))
-    .map((m: any) => ({ nome: m.nome as string, conselheiro: conselheiroDoTitulo(tituloDoGrupo.get(m.group_id) || null) || null }));
-  const porCs = new Map<string, Set<string>>();
-  historico.forEach((h: any) => {
-    if (!h.cs_responsavel || !h.membro) return;
-    if (!porCs.has(h.cs_responsavel)) porCs.set(h.cs_responsavel, new Set());
-    porCs.get(h.cs_responsavel)!.add(h.membro);
-  });
-  const conselheiros = Array.from(new Set(agendaRows.map((a: any) => a.conselheiro_nome as string).filter(Boolean)));
-  const agenda: ReuniaoAgenda[] = agendaRows
-    .filter((a: any) => a.conselheiro_nome && a.data_iso)
-    .map((a: any) => ({ conselheiro: a.conselheiro_nome, dataIso: a.data_iso, status: a.status ?? null }));
-  return {
-    vinculos: { conselheiros, membros, css: Array.from(porCs.entries()).map(([nome, set]) => ({ nome, membros: Array.from(set) })) },
-    agenda,
-  };
+  return montarVinculos(agendaRows, grupos, membrosRows);
 }
 
 // Intenção registrada em lib/consulta.ts (INTENCOES), antes da de metas.

@@ -913,6 +913,11 @@ ${ICONES_SVG}
         <div id="listaAdvTipos"></div>
       </div>
       <div class="perfis-card">
+        <h3 id="tituloCarteiraAlertas">Carteira: cadastro e título do grupo</h3>
+        <p class="sync-desc">A carteira de cada CS vem do título do grupo no Monday. Aqui aparecem os conselheiros cujo CS no cadastro diverge do título e os grupos cuja CS no título está inativa ou não cadastrada. Serve para pegar a próxima sucessão de CS.</p>
+        <div id="listaCarteiraAlertas"><span class="sk sk-linha"></span></div>
+      </div>
+      <div class="perfis-card">
         <h3 id="tituloNaoVinculados">Detectados, ainda não vinculados</h3>
         <p class="sync-desc">Nomes de CS encontrados nos dados do Monday (conselheiros, rounds, cases, upsell/downsell, churn) que ainda não têm perfil em "CS ativos". Clique em "Vincular" para criar o perfil.</p>
         <div id="listaNaoVinculados"></div>
@@ -1338,7 +1343,7 @@ function abrirAba(chave, opcoes) {
     } catch (e) { /* sem history API: a aba abre do mesmo jeito */ }
   }
   if (chave === 'conselhos') carregarConselhos_();
-  if (chave === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); }
+  if (chave === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); carregarCarteiraAlertas_(); }
   if (chave === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
   if (chave === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
   if (chave === 'nps' && !npsCarregado_) { npsCarregado_ = true; inicializarNps_(); }
@@ -2335,6 +2340,21 @@ document.getElementById('chkRevelarIndicadores').addEventListener('change', func
     .catch(function (err) { chk.checked = !novoValor; window.alert('Não foi possível salvar: ' + err.message); })
     .then(function () { chk.disabled = false; });
 });
+
+function carregarCarteiraAlertas_() {
+  var el = document.getElementById('listaCarteiraAlertas');
+  fetchJSON_('/api/gestor/carteira-alertas').then(function (d) {
+    var n = d.cadastro.length + d.semCS.length;
+    document.getElementById('tituloCarteiraAlertas').textContent = 'Carteira: cadastro e título do grupo' + (n ? ' (' + n + ')' : '');
+    if (!n) { el.innerHTML = '<div class="vazio-orienta">Nenhuma divergência. Título do grupo e cadastro dos conselheiros concordam.</div>'; return; }
+    var motivo = { inativo: 'CS inativa', nao_cadastrado: 'CS não cadastrada' };
+    el.innerHTML = d.semCS.map(function (g) {
+      return '<div class="lista-item"><div><div class="lista-item-nome">' + escCS_(g.titulo) + '</div><div class="lista-item-sub">' + escCS_(motivo[g.motivo]) + ': ' + escCS_(g.csNoTitulo) + '. O conselho fica sem dono ativo na plataforma.</div></div></div>';
+    }).join('') + d.cadastro.map(function (c) {
+      return '<div class="lista-item"><div><div class="lista-item-nome">' + escCS_(c.conselheiro) + '</div><div class="lista-item-sub">O título do grupo diz ' + escCS_(c.csNoTitulo) + ' e o cadastro do conselheiro diz ' + escCS_(c.csNoCadastro) + '. A plataforma segue o título.</div></div></div>';
+    }).join('');
+  }).catch(function (err) { el.innerHTML = erroSecaoHtml_('Não foi possível ler a carteira', err); });
+}
 
 function carregarCSRoster() {
   fetchJSON_(ENDPOINT_CS_ROSTER).then(function (data) { renderCSRoster(data.roster || []); renderNaoVinculados(data.naoVinculados || []); })

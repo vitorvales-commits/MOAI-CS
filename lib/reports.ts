@@ -1413,7 +1413,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   gruposDoCS.forEach((g: any, idx: number) => {
     const contato = extrairContatoDoTitulo(g.titulo);
     if (!contato) return;
-    const hist = historicoDoCSAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato));
+    const hist = historicoDoCSAtual.find((h: any) => chaveAgenda(h.membro) === chaveAgenda(contato));
     if (!hist) return;
     // Ciclo pronto pro componente único de checklist (lib/gtd-checklist.ts), com as etapas já
     // separadas em antes e depois. taxaCumprimento e etapas ficam pelos consumidores antigos.
@@ -2432,7 +2432,7 @@ function calcularConselho(ctx: ContextoConselhos, grupo: any, seletorMes: string
 
   // GTD — mesma fonte que já alimenta o card do CS (historico_conselhos_items), casado pelo
   // conselheiro extraído do título.
-  const histDoConselho = contato ? ctx.cicloAtual.find((h: any) => normalizeNome(h.membro) === normalizeNome(contato)) : null;
+  const histDoConselho = contato ? ctx.cicloAtual.find((h: any) => chaveAgenda(h.membro) === chaveAgenda(contato)) : null;
   const taxaCumprimentoGtd = histDoConselho ? histDoConselho.taxa_cumprimento : null;
 
   const healthscore = calcularHealthscore({
@@ -3195,7 +3195,7 @@ export async function generateConselhoDetalhe(sb: SupabaseClient, groupId: strin
     encontros,
     membros,
     // GTD do conselho: ciclos do mais recente ao mais antigo, com checklist em antes e depois.
-    gtd: gtdDoConselho(dados.historico as any[], contato, normalizeNome),
+    gtd: gtdDoConselho(dados.historico as any[], contato, chaveAgenda),
     bigDealsSemMembro,
     destaqueRanking,
     destaqueSemMembro,
@@ -3613,11 +3613,11 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 
   const gtd = await secaoIsolada('gtd', () => {
     const contatos = new Map<string, string>();
-    grupos.forEach((g: any) => { const c = extrairContatoDoTitulo(g.titulo); if (c) contatos.set(normalizeNome(c), g.group_id); });
-    const ag = gtdAgregadoCS(dados.historico as any[], nome, normalizeNome, new Set(contatos.keys()));
+    grupos.forEach((g: any) => { const c = extrairContatoDoTitulo(g.titulo); if (c) contatos.set(chaveAgenda(c), g.group_id); });
+    const ag = gtdAgregadoCS(dados.historico as any[], nome, chaveAgenda, new Set(contatos.keys()));
     return {
       taxa: ag.taxa, feitas: ag.feitas, total: ag.total,
-      conselhos: ag.conselhos.map((c) => ({ ...c, groupId: contatos.get(normalizeNome(c.membro || '')) || null })),
+      conselhos: ag.conselhos.map((c) => ({ ...c, groupId: contatos.get(chaveAgenda(c.membro)) || null })),
       naoVinculados: ag.conselhos.filter((c) => !c.vinculado).map((c) => c.membro),
     };
   });
@@ -3695,13 +3695,13 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
     const contatos = new Map<string, Set<string>>();
     ativos.forEach((c) => {
       const set = new Set<string>();
-      gruposDaCarteira(dados, c.apelidoConselho).forEach((g: any) => { const ct = extrairContatoDoTitulo(g.titulo); if (ct) set.add(normalizeNome(ct)); });
+      gruposDaCarteira(dados, c.apelidoConselho).forEach((g: any) => { const ct = extrairContatoDoTitulo(g.titulo); if (ct) set.add(chaveAgenda(ct)); });
       contatos.set(c.nome, set);
     });
     const porCS = nomes.map((nome) => {
       const ciclos = pend.ciclosAbertos.filter((l) => canonico.get(normalizeNome(l.cs_responsavel || '')) === nome);
       const itens = pend.pendentes.filter((p) => canonico.get(normalizeNome(p.cs)) === nome)
-        .map((p) => ({ ...p, vinculado: contatos.get(nome)!.has(normalizeNome(p.membro)) }))
+        .map((p) => ({ ...p, vinculado: contatos.get(nome)!.has(chaveAgenda(p.membro)) }))
         // vence hoje no topo, depois atrasadas pelo maior atraso, depois a vencer pelo prazo mais próximo
         .sort((a, b) => (a.status === 'a_vencer' && a.dias === 0 ? 0 : 1) - (b.status === 'a_vencer' && b.dias === 0 ? 0 : 1)
           || (a.status === b.status ? (a.status === 'atrasada' ? b.dias - a.dias : a.dias - b.dias) : (a.status === 'atrasada' ? -1 : 1)));
