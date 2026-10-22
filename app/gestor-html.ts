@@ -2203,14 +2203,14 @@ function renderAdvertenciaTipos(lista) {
   el.innerHTML = lista.map(function (t, i) {
     var checked = t.ativo ? 'checked' : '';
     return '<div class="pendente-item"><div class="pendente-row">'
-      + '<div><div class="lista-item-nome">' + t.nome + '</div><div class="lista-item-sub">' + t.pontos + ' ponto(s) · validade ' + t.validadeMeses + ' mês(es)' + (t.ativo ? '' : ' · inativo') + '</div></div>'
+      + '<div><div class="lista-item-nome">' + t.nome + '</div><div class="lista-item-sub">' + t.pontos + ' ponto(s) · ' + (t.validadeRegra === 'fim_do_mes' ? 'validade até o fim do mês' : 'validade ' + t.validadeMeses + ' mês(es)') + (t.codigo ? ' · automático' : '') + (t.ativo ? '' : ' · inativo') + '</div></div>'
       + '<div class="lista-item-acoes">'
       + '<button class="btn-vincular-toggle" data-idx="' + i + '">Editar</button>'
-      + '<label class="switch"><input type="checkbox" ' + checked + ' data-idx="' + i + '"><span class="switch-track"></span></label>'
+      + '<label class="switch"><input type="checkbox" ' + checked + (t.codigo ? ' disabled' : '') + ' data-idx="' + i + '"><span class="switch-track"></span></label>'
       + '</div></div>'
       + '<div class="pendente-form" id="advTipoForm' + i + '" style="display:none">'
       + '<div class="form-inline"><input type="text" placeholder="Nome" data-field="nome" value="' + t.nome + '"></div>'
-      + '<div class="form-inline"><input type="number" placeholder="Pontos" min="0" data-field="pontos" value="' + t.pontos + '" style="flex:1;"><input type="number" placeholder="Validade (meses)" min="1" data-field="validadeMeses" value="' + t.validadeMeses + '" style="flex:1;"></div>'
+      + '<div class="form-inline"><input type="number" placeholder="Pontos" min="0" data-field="pontos" value="' + t.pontos + '" style="flex:1;"><input type="number" placeholder="Validade (meses)" min="1" data-field="validadeMeses" value="' + t.validadeMeses + '" style="flex:1;' + (t.validadeRegra === 'fim_do_mes' ? 'display:none;' : '') + '"></div>'
       + '<p class="erro-msg" id="erroAdvTipoEdit' + i + '"></p>'
       + '<div class="form-inline"><button class="btn-salvar-vinculo" data-idx="' + i + '">Salvar</button><button class="btn-cancelar-vinculo" data-idx="' + i + '">Cancelar</button></div>'
       + '</div></div>';

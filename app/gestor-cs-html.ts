@@ -59,6 +59,14 @@ table.leg td.num,table.leg th.num{text-align:right;}
 .adv-tipo{font-weight:700;}
 .adv-meta{font-size:12px;color:var(--cinza-texto);margin-top:4px;line-height:1.5;}
 .adv-acoes{margin-left:auto;display:flex;gap:6px;}
+.pontos-duplo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.pontos-caixa{padding:14px 16px;border-radius:12px;background:var(--cinza-fundo);}
+.pontos-caixa .num{font-size:28px;font-weight:700;line-height:1.1;}
+.pontos-caixa .rot{font-size:12px;color:var(--cinza-texto);margin-top:4px;line-height:1.4;}
+.pontos-caixa.alerta .num{color:#C0433D;}
+.adv-anulada .adv-tipo,.adv-anulada .adv-meta-pontos{text-decoration:line-through;color:var(--cinza-texto);}
+.status-adv.anulada{background:#EFEDED;color:#5D5D5D;}
+@media (max-width:520px){.pontos-duplo{grid-template-columns:1fr;}}
 .efeito{padding:12px 14px;border-radius:12px;background:var(--cinza-fundo);font-size:13px;line-height:1.5;margin-bottom:14px;}
 .msg{font-size:12px;font-weight:600;margin-left:8px;}
 .um-topo{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
@@ -359,6 +367,7 @@ var MESES_CS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Jul
 var DADOS_CS = null;
 var advEditandoId = null;
 var advExcluindoId = null;
+var advAnulandoId = null;
 
 function fetchJSON_(url, opts) {
   opts = opts || {};
@@ -828,27 +837,41 @@ function renderAdvertenciasCS(d) {
     efeito = '<div class="efeito">Efeito no Health da Base: <b>' + dec(hb.comPontosDecimos) + '</b> com os ' + hb.pontosAtivos + (hb.pontosAtivos === 1 ? ' ponto ativo' : ' pontos ativos')
       + ' e <b>' + dec(hb.semPontosDecimos) + '</b> sem eles.</div>';
   } else if (hb) { efeito = '<div class="efeito">Health da Base sem apuração: sem report com críticos e base.</div>'; }
-  var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + t.validadeMeses + ' meses)</option>'; }).join('');
+  var acimaLimite = a.pontuacaoAtiva > LIMIAR_ADVERTENCIA_DESTAQUE;
+  var duplo = '<div class="pontos-duplo">'
+    + '<div class="pontos-caixa' + (acimaLimite ? ' alerta' : '') + '"><div class="num">' + a.pontuacaoAtiva + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE + '</div><div class="rot">Pontos ativos'
+    + (a.proximoVencimento ? ', o próximo vence em ' + esc(dataBR(a.proximoVencimento)) : '') + '</div></div>'
+    + '<div class="pontos-caixa"><div class="num">' + a.totalHistorico + '</div><div class="rot">Total histórico'
+    + (a.desde ? ', desde ' + esc(dataBR(a.desde)) : ', nenhuma advertência registrada') + '</div></div></div>';
+  var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + (t.validadeRegra === 'fim_do_mes' ? 'até o fim do mês' : t.validadeMeses + ' meses') + ')</option>'; }).join('');
   var form = a.tipos.length
     ? '<div class="form-adv"><label>Tipo<select id="advTipo">' + opcoes + '</select></label>'
       + '<label style="flex:1 1 240px;">Observação (opcional)<textarea id="advObs" placeholder="Contexto da advertência"></textarea></label>'
       + '<div><button class="btn" id="advAplicar" type="button">Aplicar</button><span class="msg" id="advMsg"></span></div></div>'
     : '<div class="vazio" style="margin-bottom:14px;">Nenhum tipo de advertência ativo. Cadastre em Controle de perfis.</div>';
   var lista = a.registros.length ? a.registros.map(function (r) {
-    var editando = advEditandoId === r.id, excluindo = advExcluindoId === r.id;
-    var acoes = '<div class="adv-acoes"><button class="btn sec" type="button" data-adv-acao="editar" data-id="' + esc(r.id) + '">Editar</button>'
-      + (excluindo
+    var editando = advEditandoId === r.id, excluindo = advExcluindoId === r.id, anulando = advAnulandoId === r.id;
+    var automatica = r.origem === 'sistema', anulada = !!r.anuladaEm;
+    var acoes = anulada ? '' : '<div class="adv-acoes"><button class="btn sec" type="button" data-adv-acao="editar" data-id="' + esc(r.id) + '">Editar</button>'
+      + '<button class="btn sec" type="button" data-adv-acao="anular" data-id="' + esc(r.id) + '">Anular</button>'
+      + (automatica ? '' : excluindo
         ? '<button class="btn perigo" type="button" data-adv-acao="excluir-confirmar" data-id="' + esc(r.id) + '">Confirmar exclusão</button><button class="btn sec" type="button" data-adv-acao="cancelar" data-id="' + esc(r.id) + '">Cancelar</button>'
         : '<button class="btn perigo" type="button" data-adv-acao="excluir" data-id="' + esc(r.id) + '">Excluir</button>') + '</div>';
+    var painelAnular = anulando
+      ? '<div style="margin-top:8px;"><textarea class="edit-obs" id="advMotivo" placeholder="Motivo da anulação (obrigatório)"></textarea><div style="margin-top:8px;display:flex;gap:6px;"><button class="btn perigo" type="button" data-adv-acao="anular-confirmar" data-id="' + esc(r.id) + '">Confirmar anulação</button><button class="btn sec" type="button" data-adv-acao="cancelar" data-id="' + esc(r.id) + '">Cancelar</button></div></div>'
+      : '';
     var corpo = editando
       ? '<div style="margin-top:8px;"><textarea class="edit-obs" id="advObsEdit">' + esc(r.observacao || '') + '</textarea><div style="margin-top:8px;display:flex;gap:6px;"><button class="btn" type="button" data-adv-acao="salvar" data-id="' + esc(r.id) + '">Salvar</button><button class="btn sec" type="button" data-adv-acao="cancelar" data-id="' + esc(r.id) + '">Cancelar</button></div></div>'
       : (r.observacao ? '<div class="adv-meta">' + esc(r.observacao) + '</div>' : '');
-    var validade = new Date(r.aplicadoEm); validade.setMonth(validade.getMonth() + r.validadeMeses);
-    return '<div class="adv-linha"><div class="adv-topo"><span class="adv-tipo">' + esc(r.tipoNome) + '</span><span>' + r.pontos + (r.pontos === 1 ? ' ponto' : ' pontos') + '</span>'
-      + '<span class="status-adv ' + (r.ativa ? 'ativa' : 'vencida') + '">' + (r.ativa ? 'Ativa' : 'Vencida') + '</span>' + acoes + '</div>'
-      + '<div class="adv-meta">Aplicada em ' + esc(dataBR(r.aplicadoEm)) + ' por ' + esc(r.aplicadoPor) + ', válida até ' + esc(dataBR(validade.toISOString())) + '</div>' + corpo + '</div>';
+    var origem = automatica ? 'Automático' : 'Aplicado por ' + esc(r.aplicadoPor);
+    var situacao = anulada ? 'Anulada' : (r.ativa ? 'Ativa' : 'Vencida');
+    return '<div class="adv-linha' + (anulada ? ' adv-anulada' : '') + '"><div class="adv-topo"><span class="adv-tipo">' + esc(r.tipoNome) + '</span><span class="adv-meta-pontos">' + r.pontos + (r.pontos === 1 ? ' ponto' : ' pontos') + '</span>'
+      + '<span class="status-adv ' + (anulada ? 'anulada' : (r.ativa ? 'ativa' : 'vencida')) + '">' + situacao + '</span>' + acoes + '</div>'
+      + '<div class="adv-meta">' + origem + ' em ' + esc(dataBR(r.aplicadoEm)) + ', válida até ' + esc(dataBR(r.validoAte)) + '</div>'
+      + (anulada ? '<div class="adv-meta">Anulada por ' + esc(r.anuladaPor || 'gestor') + ' em ' + esc(dataBR(r.anuladaEm)) + '. Motivo: ' + esc(r.motivoAnulacao || '') + '</div>' : '')
+      + corpo + painelAnular + '</div>';
   }).join('') : '<div class="vazio">Nenhuma advertência aplicada a este CS.</div>';
-  el.innerHTML = efeito + form + lista;
+  el.innerHTML = duplo + efeito + form + lista;
 }
 
 // ---------- 1:1 (08/10/2026): conduzida e editada só nesta página ----------
@@ -1381,8 +1404,15 @@ document.addEventListener('click', function (ev) {
   if (!botao) return;
   var acao = botao.getAttribute('data-adv-acao'), id = botao.getAttribute('data-id');
   if (acao === 'editar') { advEditandoId = id; advExcluindoId = null; renderAdvertenciasCS(DADOS_CS); }
-  else if (acao === 'excluir') { advExcluindoId = id; advEditandoId = null; renderAdvertenciasCS(DADOS_CS); }
-  else if (acao === 'cancelar') { advEditandoId = null; advExcluindoId = null; renderAdvertenciasCS(DADOS_CS); }
+  else if (acao === 'excluir') { advExcluindoId = id; advEditandoId = null; advAnulandoId = null; renderAdvertenciasCS(DADOS_CS); }
+  else if (acao === 'anular') { advAnulandoId = id; advEditandoId = null; advExcluindoId = null; renderAdvertenciasCS(DADOS_CS); }
+  else if (acao === 'cancelar') { advEditandoId = null; advExcluindoId = null; advAnulandoId = null; renderAdvertenciasCS(DADOS_CS); }
+  else if (acao === 'anular-confirmar') {
+    var motivo = document.getElementById('advMotivo').value.trim();
+    if (!motivo) { botao.textContent = 'Informe o motivo'; return; }
+    postAdv(base + '/' + encodeURIComponent(id) + '/anular', 'POST', { motivo: motivo })
+      .then(function () { advAnulandoId = null; return carregarCS(); }).catch(function (err) { botao.textContent = 'Erro: ' + err.message; });
+  }
   else if (acao === 'salvar') {
     postAdv(base + '/' + encodeURIComponent(id), 'PATCH', { observacao: document.getElementById('advObsEdit').value.trim() || null })
       .then(function () { advEditandoId = null; return carregarCS(); }).catch(function (err) { botao.textContent = 'Erro: ' + err.message; });

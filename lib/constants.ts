@@ -314,3 +314,8 @@ export const LIMIAR_META_MINIMA = 0.5;
 export const MIN_EXPOSICAO_SUGESTAO = 6;
 // Erro médio acima disto bloqueia o botão do indicador até revisão do gestor.
 export const ERRO_MEDIO_MAX_SUGESTAO = 0.5;
+
+// ============ pontos automáticos, alerta de NPS e relatório do conselho (22/10/2026) ============
+// Valores espelhados nos tipos de sistema de advertencia_tipos (codigo report_atrasado e relatorio_conselho_atrasado).
+export const PONTOS_REPORT_ATRASADO = 5;
+export const PONTOS_RELATORIO_ATRASADO = 5;

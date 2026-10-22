@@ -85,16 +85,19 @@ export function distribuicaoPresenca(taxas: (number | null)[]): DistribuicaoPres
 
 // ============ advertências ============
 
-// Mesma regra que já existia em mapAdvertenciaAplicadaRow: ativa enquanto aplicado_em mais a
-// validade congelada (em meses) ainda não passou. Único lugar onde essa validade é calculada.
-export function advertenciaAtiva(aplicadoEmIso: string, validadeMeses: number, agora: Date = new Date()): boolean {
-  const expiraEm = new Date(aplicadoEmIso);
-  expiraEm.setMonth(expiraEm.getMonth() + validadeMeses);
-  return expiraEm.getTime() > agora.getTime();
+// Ativa enquanto valido_ate ainda não passou. valido_ate é gravada na aplicação (lib/pontos.ts e a função
+// SQL valido_ate_do_tipo trazem a regra de cada tipo), então este é o único lugar que lê validade.
+export function advertenciaAtiva(validoAteIso: string, agora: Date = new Date()): boolean {
+  return new Date(validoAteIso).getTime() > agora.getTime();
 }
 
-export function pontuacaoAtiva(registros: { aplicado_em: string; validade_meses: number; pontos: number }[], agora: Date = new Date()): number {
-  return registros.filter((r) => advertenciaAtiva(r.aplicado_em, r.validade_meses, agora)).reduce((s, r) => s + (r.pontos || 0), 0);
+// Anulada não conta nos ativos nem no total histórico.
+export function pontuacaoAtiva(registros: { valido_ate: string; pontos: number; anulada_em?: string | null }[], agora: Date = new Date()): number {
+  return registros.filter((r) => !r.anulada_em && advertenciaAtiva(r.valido_ate, agora)).reduce((s, r) => s + (r.pontos || 0), 0);
+}
+
+export function pontuacaoHistorica(registros: { pontos: number; anulada_em?: string | null }[]): number {
+  return registros.filter((r) => !r.anulada_em).reduce((s, r) => s + (r.pontos || 0), 0);
 }
 
 // ============ Health da Base (redefinido em 07/10/2026) ============

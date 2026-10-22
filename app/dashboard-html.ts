@@ -2656,6 +2656,7 @@ function renderAbaUmAUm(){
 // ativos continua. Carregado à parte via /api/cs/[nome]/advertencias (que já devolve o efeito).
 var advertenciasAtual_ = [];
 var advertenciaPontuacaoAtiva_ = 0;
+var advertenciaTotais_ = { totalHistorico: 0, desde: null, proximoVencimento: null };
 var advertenciaEfeito_ = null;
 var LIMIAR_ADVERTENCIA_DESTAQUE_ = 3;
 
@@ -2669,6 +2670,7 @@ function carregarAdvertencias(nome){
     if (currentCS !== nome) return;
     advertenciasAtual_ = d.registros || [];
     advertenciaPontuacaoAtiva_ = d.pontuacaoAtiva || 0;
+    advertenciaTotais_ = { totalHistorico: d.totalHistorico || 0, desde: d.desde || null, proximoVencimento: d.proximoVencimento || null };
     advertenciaEfeito_ = d.efeito || null;
     advertenciasCarregadas_ = true;
     renderAbaAdvertencias();
@@ -2680,10 +2682,16 @@ function carregarAdvertencias(nome){
 }
 function advertenciaResumoHtml_(){
   var destaque = advertenciaPontuacaoAtiva_ > LIMIAR_ADVERTENCIA_DESTAQUE_;
-  return '<div class="advertencia-resumo' + (destaque ? ' destaque' : '') + '">' +
-    '<div class="advertencia-resumo-num">' + advertenciaPontuacaoAtiva_ + '</div>' +
-    '<div class="advertencia-resumo-label">' + (advertenciaPontuacaoAtiva_ === 1 ? 'ponto ativo' : 'pontos ativos') + (destaque ? ', acima do limite de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ : '') + '</div>' +
-  '</div>';
+  var t = advertenciaTotais_;
+  return '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+  '<div class="advertencia-resumo' + (destaque ? ' destaque' : '') + '" style="flex:1 1 220px;">' +
+    '<div class="advertencia-resumo-num">' + advertenciaPontuacaoAtiva_ + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ + '</div>' +
+    '<div class="advertencia-resumo-label">' + (advertenciaPontuacaoAtiva_ === 1 ? 'ponto ativo' : 'pontos ativos') + (destaque ? ', acima do limite' : '') + (t.proximoVencimento ? ', o próximo vence em ' + dataHoraBRAdvertencia_(t.proximoVencimento) : '') + '</div>' +
+  '</div>' +
+  '<div class="advertencia-resumo" style="flex:1 1 220px;">' +
+    '<div class="advertencia-resumo-num">' + t.totalHistorico + '</div>' +
+    '<div class="advertencia-resumo-label">total histórico' + (t.desde ? ', desde ' + dataHoraBRAdvertencia_(t.desde) : '') + '</div>' +
+  '</div></div>';
 }
 function advertenciaEfeitoHtml_(){
   var e = advertenciaEfeito_;
@@ -2703,11 +2711,14 @@ function advertenciaAtalhoGestorHtml_(){
 function advertenciaListaHtml_(){
   if (!advertenciasAtual_.length) return '<div class="empty-state">Nenhum ponto tomado até agora.</div>';
   return advertenciasAtual_.map(function(r){
-    return '<div class="umaum-card">' +
-      '<div class="umaum-card-head"><span class="umaum-card-data">' + escUmAUm_(r.tipoNome) + '</span>' +
-        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + (r.pontos !== 1 ? ' pontos' : ' ponto') + (r.ativa ? ', ativa' : ', vencida') + '</span>' +
-        '<span class="umaum-card-gestor">Aplicada por ' + escUmAUm_(r.aplicadoPor) + ' em ' + dataHoraBRAdvertencia_(r.aplicadoEm) + ', validade de ' + r.validadeMeses + (r.validadeMeses !== 1 ? ' meses' : ' mês') + '</span></div>' +
+    var anulada = !!r.anuladaEm;
+    var situacao = anulada ? ', anulada' : (r.ativa ? ', ativa' : ', vencida');
+    return '<div class="umaum-card"' + (anulada ? ' style="opacity:.7;"' : '') + '>' +
+      '<div class="umaum-card-head"><span class="umaum-card-data"' + (anulada ? ' style="text-decoration:line-through;"' : '') + '>' + escUmAUm_(r.tipoNome) + '</span>' +
+        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + (r.pontos !== 1 ? ' pontos' : ' ponto') + situacao + '</span>' +
+        '<span class="umaum-card-gestor">' + (r.origem === 'sistema' ? 'Automático' : 'Aplicado por ' + escUmAUm_(r.aplicadoPor)) + ' em ' + dataHoraBRAdvertencia_(r.aplicadoEm) + ', válida até ' + dataHoraBRAdvertencia_(r.validoAte) + '</span></div>' +
       (r.observacao ? '<div class="umaum-card-campo"><b>Observação</b>' + escUmAUm_(r.observacao) + '</div>' : '') +
+      (anulada ? '<div class="umaum-card-campo"><b>Anulada</b>' + escUmAUm_(r.motivoAnulacao || '') + '</div>' : '') +
     '</div>';
   }).join('');
 }

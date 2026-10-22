@@ -86,11 +86,11 @@ assert.equal(segundaFeiraBRT(new Date('2026-10-12T02:00:00Z')), '2026-10-05', 'd
 
 // advertências: vencida não desconta
 const agora = new Date('2026-10-07T12:00:00Z');
-assert.equal(advertenciaAtiva('2026-09-29T17:23:46Z', 1, agora), true);
-assert.equal(advertenciaAtiva('2026-08-01T12:00:00Z', 1, agora), false);
+assert.equal(advertenciaAtiva('2026-10-29T17:23:46Z', agora), true);
+assert.equal(advertenciaAtiva('2026-09-01T12:00:00Z', agora), false);
 assert.equal(pontuacaoAtiva([
-  { aplicado_em: '2026-09-29T17:23:46Z', validade_meses: 1, pontos: 10 },
-  { aplicado_em: '2026-08-01T12:00:00Z', validade_meses: 1, pontos: 5 },
+  { valido_ate: '2026-10-29T17:23:46Z', pontos: 10 },
+  { valido_ate: '2026-09-01T12:00:00Z', pontos: 5 },
 ], agora), 10);
 
 console.log('indicadores-base: todos os testes aprovados');

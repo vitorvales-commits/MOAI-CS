@@ -216,9 +216,9 @@ export async function setVezesDestaque(sb: SupabaseClient, nome: string, vezes: 
 // pontos/validade CONGELADOS na aplicação — mudar o catálogo depois não altera aplicações já
 // feitas). Toda escrita passa por RPC SECURITY DEFINER (mesmo padrão do resto do arquivo),
 // checando is_gestor() de novo dentro do banco.
-export type AdvertenciaTipo = { id: string; nome: string; pontos: number; validadeMeses: number; ativo: boolean };
+export type AdvertenciaTipo = { id: string; nome: string; pontos: number; validadeMeses: number; validadeRegra: 'meses' | 'fim_do_mes'; codigo: string | null; ativo: boolean };
 function mapAdvertenciaTipoRow(r: any): AdvertenciaTipo {
-  return { id: r.id, nome: r.nome, pontos: r.pontos, validadeMeses: r.validade_meses, ativo: !!r.ativo };
+  return { id: r.id, nome: r.nome, pontos: r.pontos, validadeMeses: r.validade_meses, validadeRegra: r.validade_regra || 'meses', codigo: r.codigo ?? null, ativo: !!r.ativo };
 }
 export async function listarAdvertenciaTipos(sb: SupabaseClient): Promise<AdvertenciaTipo[]> {
   const { data, error } = await sb.from('advertencia_tipos').select('*').order('nome');
@@ -240,17 +240,26 @@ export async function editarAdvertenciaTipo(sb: SupabaseClient, id: string, nome
 
 export type AdvertenciaAplicada = {
   id: string; csNome: string; tipoId: string | null; tipoNome: string; pontos: number; validadeMeses: number;
+  validoAte: string; origem: 'manual' | 'sistema'; chaveOrigem: string | null;
+  anuladaEm: string | null; anuladaPor: string | null; motivoAnulacao: string | null;
   observacao: string | null; aplicadoPor: string; aplicadoEm: string; ativa: boolean;
 };
 function mapAdvertenciaAplicadaRow(r: any): AdvertenciaAplicada {
   return {
     id: r.id, csNome: r.cs_nome, tipoId: r.tipo_id, tipoNome: r.tipo_nome,
     pontos: r.pontos, validadeMeses: r.validade_meses, observacao: r.observacao,
+    validoAte: r.valido_ate, origem: r.origem === 'sistema' ? 'sistema' : 'manual', chaveOrigem: r.chave_origem ?? null,
+    anuladaEm: r.anulada_em ?? null, anuladaPor: r.anulada_por ?? null, motivoAnulacao: r.motivo_anulacao ?? null,
     aplicadoPor: r.aplicado_por, aplicadoEm: r.aplicado_em,
-    ativa: advertenciaAtiva(r.aplicado_em, r.validade_meses),
+    ativa: !r.anulada_em && advertenciaAtiva(r.valido_ate),
   };
 }
-export type AdvertenciasCS = { registros: AdvertenciaAplicada[]; pontuacaoAtiva: number };
+// Números vêm de pontos_cs (fonte única no banco): ativos, total histórico (inclui vencidas, exclui anuladas),
+// próxima data de vencimento e a data da primeira advertência.
+export type AdvertenciasCS = {
+  registros: AdvertenciaAplicada[]; pontuacaoAtiva: number;
+  totalHistorico: number; proximoVencimento: string | null; desde: string | null; qtdPorTipo: Record<string, number>;
+};
 // Pontuação ativa = soma dos pontos de advertências cuja validade (congelada na aplicação)
 // ainda não expirou (advertenciaAtiva em lib/indicadores-base.ts, regra única). Desde 07/10/2026
 // a pontuação ativa deixou de ser só indicador visual: ela desconta do Health da Base do CS
@@ -259,8 +268,18 @@ export async function listarAdvertenciasCS(sb: SupabaseClient, csNome: string): 
   const { data, error } = await sb.from('advertencias_aplicadas').select('*').eq('cs_nome', csNome).order('aplicado_em', { ascending: false });
   if (error) throw new Error('Erro ao buscar advertências: ' + error.message);
   const registros = (data || []).map(mapAdvertenciaAplicadaRow);
-  const pontuacaoAtiva = registros.filter((r) => r.ativa).reduce((soma, r) => soma + r.pontos, 0);
-  return { registros, pontuacaoAtiva };
+  const { data: pts, error: errPts } = await sb.rpc('pontos_cs', { p_cs: csNome });
+  if (errPts) throw new Error('Erro ao buscar pontos: ' + errPts.message);
+  const p: any = (pts || [])[0] || {};
+  return {
+    registros, pontuacaoAtiva: p.pontos_ativos ?? 0, totalHistorico: p.total_historico ?? 0,
+    proximoVencimento: p.proximo_vencimento ?? null, desde: p.desde ?? null, qtdPorTipo: p.qtd_por_tipo || {},
+  };
+}
+export async function anularAdvertencia(sb: SupabaseClient, id: string, motivo: string): Promise<void> {
+  const { error } = await sb.rpc('anular_advertencia', { p_id: id, p_motivo: motivo });
+  if (error) throw new Error('Erro ao anular advertência: ' + error.message);
+  invalidarDadosBrutosCache(); // Health da Base depende da pontuação ativa
 }
 export async function aplicarAdvertencia(sb: SupabaseClient, csNome: string, tipoId: string, observacao: string | null): Promise<string> {
   const { data: id, error } = await sb.rpc('aplicar_advertencia', { p_cs_nome: csNome, p_tipo_id: tipoId, p_observacao: observacao });
@@ -646,7 +665,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     () => fetchConfigHomeIndicadores(sb),
     // Health da Base (07/10/2026): a pontuação de advertência ativa de cada CS desconta do Health
     // da Base. Uma leitura só aqui, em vez de uma consulta por CS dentro de generateCSReport.
-    () => fetchAll(sb, 'advertencias_aplicadas', 'cs_nome,pontos,validade_meses,aplicado_em'),
+    () => fetchAll(sb, 'advertencias_aplicadas', 'cs_nome,pontos,valido_ate,aplicado_em,anulada_em'),
     // Report individual (07/10/2026): membros elegíveis da rede, fonte única no banco. O mesmo
     // resultado para qualquer usuário MOAI, por isso pode ficar no cache global.
     () => fetchMembrosElegiveis(sb) as Promise<any[]>,
@@ -657,7 +676,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
     npsDestaqueAliases, metasResolvidas: metasResolvidas as unknown as MetaResolvidaRow[],
     configHomeIndicadores: configHomeIndicadores as unknown as ConfigHomeIndicadorRow[],
-    advertenciasAplicadas: advertenciasAplicadas as { cs_nome: string; pontos: number; validade_meses: number; aplicado_em: string }[],
+    advertenciasAplicadas: advertenciasAplicadas as { cs_nome: string; pontos: number; valido_ate: string; aplicado_em: string; anulada_em: string | null }[],
     membrosElegiveis: membrosElegiveis as unknown as MembroElegivel[],
   };
 }
@@ -3628,7 +3647,7 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 
   const advertencias = await secaoIsolada('advertencias', async () => {
     const [lista, tipos] = await Promise.all([listarAdvertenciasCS(sb, nome), listarAdvertenciaTipos(sb)]);
-    return { registros: lista.registros, pontuacaoAtiva: lista.pontuacaoAtiva, tipos: tipos.filter((t) => t.ativo) };
+    return { ...lista, tipos: tipos.filter((t) => t.ativo && !t.codigo) };
   });
 
   return { periodo: { mes: seletorMes, ano }, cabecalho, radar, gtd, criticos, health, advertencias };

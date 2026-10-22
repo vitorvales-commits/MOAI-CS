@@ -137,11 +137,7 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   let pontos: { ativos: number; proximoVencimento: string | null } | null = null;
   try {
     const adv = await advertenciasP;
-    const vencimentos = adv.registros.filter((r) => r.ativa).map((r) => {
-      const d = new Date(r.aplicadoEm); d.setMonth(d.getMonth() + r.validadeMeses);
-      return d.toISOString().slice(0, 10);
-    }).sort();
-    pontos = { ativos: adv.pontuacaoAtiva, proximoVencimento: vencimentos[0] || null };
+    pontos = { ativos: adv.pontuacaoAtiva, proximoVencimento: adv.proximoVencimento ? adv.proximoVencimento.slice(0, 10) : null };
   } catch { pontos = null; }
 
   return {

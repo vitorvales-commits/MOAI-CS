@@ -45,7 +45,7 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
 
     // Pontos ativos em cada semana: advertências aplicadas até o fim da semana e ainda válidas
     // nesse momento (mesma regra de validade de pontuacaoAtiva), para o Health da linha do tempo.
-    const registrosAdv = advertencias.registros.map((r) => ({ aplicado_em: r.aplicadoEm, validade_meses: r.validadeMeses, pontos: r.pontos }));
+    const registrosAdv = advertencias.registros.map((r) => ({ aplicado_em: r.aplicadoEm, valido_ate: r.validoAte, anulada_em: r.anuladaEm, pontos: r.pontos }));
     const pontosNa = (fimSemana: string) => {
       const ref = new Date(fimSemana + 'T23:59:59-03:00');
       return pontuacaoAtiva(registrosAdv.filter((r) => new Date(r.aplicado_em) <= ref), ref);
