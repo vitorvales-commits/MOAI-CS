@@ -48,6 +48,24 @@ Deno.serve(async (req) => {
     return resposta({ error: 'unauthorized' }, 401);
   }
   try {
+    // Envio de teste: {"teste": ["a@x", "b@y"]} manda um email de exemplo (assunto com [TESTE]) e não toca nos alertas.
+    // Também devolve quais secrets a função enxerga, só como verdadeiro ou falso, nunca os valores.
+    const corpo = await req.json().catch(() => ({}));
+    if (Array.isArray(corpo?.teste)) {
+      const chave = Deno.env.get('RESEND_API_KEY'), remetente = Deno.env.get('ALERTAS_REMETENTE'), site = Deno.env.get('SITE_URL');
+      const secrets = { RESEND_API_KEY: !!chave, ALERTAS_REMETENTE: !!remetente, SITE_URL: !!site };
+      if (!chave || !remetente) return resposta({ status: 'envio_desligado', secrets });
+      const exemplo = montarEmail([
+        { id: 'teste', group_id: corpo.grupo || 'group_mktkwg6v', mes: 'Outubro 2026', criterio: 'detrator', respondente_nome: 'Membro de teste', valor: 5, referencia: 6, amostra: null,
+          detalhe: { comentario: 'Este é um envio de teste. Nenhum alerta real foi criado.' }, conselho: 'Conselho de teste (CS responsável)', cs_responsavel: 'CS de teste', expirado: false },
+      ], site || 'https://moai-cs-dashboard.vercel.app');
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: remetente, to: corpo.teste, subject: '[TESTE] ' + exemplo.assunto, html: exemplo.html, text: exemplo.texto }),
+      });
+      const texto = await r.text();
+      return resposta({ status: r.ok ? 'enviado' : 'recusado', http: r.status, resposta_resend: texto.slice(0, 500), secrets, link_do_botao: exemplo.html.match(/href="([^"]+)"/)?.[1] }, r.ok ? 200 : 502);
+    }
     const avaliados: any[] = await rpc('avaliar_alertas_nps', { p_simular: false });
     const novos = avaliados.filter((a) => a.acao === 'novo').length;
 
