@@ -38,6 +38,7 @@ import { insightsGestor, type CtxInsights } from './insights';
 import { listarAlertasNps } from './alertas-nps-dados';
 import { listarEncontrosRelatorio } from './relatorio-conselho-dados';
 import { resumoRelatoriosPorCS } from './relatorio-conselho';
+import { churnDaArea } from './churn-area';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
@@ -1623,14 +1624,11 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
 
-  // Churn do time = Carteira atual, lido da MESMA base da tela de churn (churn_base no banco). Se a
-  // RPC falhar, cai na soma dos CS, que usa a mesma definição em TypeScript (parseChurn).
-  let churnCarteiraTime: number | null = null;
-  {
-    const { data: totalCarteira, error: errCarteira } = await sb.rpc('churn_total_carteira', { p_inicio: mesInicio, p_fim: mesFim });
-    if (!errCarteira && typeof totalCarteira === 'number') churnCarteiraTime = totalCarteira;
-    else console.warn('[generateEquipeReport] churn_total_carteira falhou, usando a soma dos CS:', errCarteira?.message);
-  }
+  // Churn e revenue churn do time (26/10/2026): os dois saem da mesma definição, churnDaArea
+  // (lib/churn-area.ts). Todo churn com CS identificado, ativo ou ex CS, sem a Comunidade. Antes a
+  // contagem vinha de churn_total_carteira (só CS ativos hoje) e o revenue churn da soma dos CS de
+  // cs_config, e a saída do Marcos tirou 2 churns de outubro do card mantendo o valor deles na receita.
+  const churnArea = churnDaArea(dados.churn, mesInicio, mesFim);
 
   // BUG FIX (26/09/2026): contagem única pro total do time — ver contarCasesUnicosTime e vizinhas,
   // logo acima de parseUpsellDownsell. Usa nome_completo (não o nome curto de nomesConhecidos
@@ -1679,8 +1677,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     configHomeIndicadores: dados.configHomeIndicadores,
     recordes,
     indicadores: {
-      churn: churnCarteiraTime === null ? somaInd('churn') : { ...somaInd('churn'), alcancado: churnCarteiraTime },
-      revenueChurn: somaInd('revenueChurn'),
+      churn: { ...somaInd('churn'), alcancado: churnArea.qtd },
+      revenueChurn: { ...somaInd('revenueChurn'), alcancado: churnArea.receita, detalheProdutos: churnArea.porProduto },
       // casesSucesso/rounds/upsell/downsell: meta continua somando a de cada CS normalmente
       // (somaInd), só o `alcancado` troca pra contagem única de linha (ver BUG FIX 26/09/2026
       // acima) — nunca soma o `calculado` já creditado a cada CS do registro compartilhado.
