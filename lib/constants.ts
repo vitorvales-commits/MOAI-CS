@@ -338,3 +338,11 @@ export const RELATORIO_MOTIVO_ATENCAO_MAX = 200;
 export const RELATORIO_JUSTIFICATIVA_MAX = 200;
 // Foco de hoje: relatório com prazo em até este número de dias, ou atrasado, passa à frente do GTD.
 export const HOME_FOCO_DIAS_RELATORIO = 2;
+
+// Acompanhamento dos relatórios do conselho na visão de gestor (27/10/2026).
+export const REL_GESTOR_JANELA_HISTORICO_DIAS = 90; // histórico usado para reincidência (faltas, avaliação em queda, membro em atenção)
+export const REL_GESTOR_FALTAS_RECORRENTES_MIN = 2; // faltas do mesmo membro na janela para virar leitura
+export const REL_GESTOR_SEM_RETORNO_MIN = 2; // faltas "Sem retorno do membro" no mês para virar leitura
+export const REL_GESTOR_ATRASOS_REINCIDENTES_MIN = 2; // relatórios fora do prazo de um mesmo CS no mês para virar leitura
+export const REL_GESTOR_LEITURAS_VISIVEIS = 5; // leituras na primeira dobra; o resto abre por clique
+export const REL_GESTOR_DETALHES_VISIVEIS = 6; // relatórios listados antes do "Ver todos"

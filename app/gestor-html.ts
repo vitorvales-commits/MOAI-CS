@@ -19,8 +19,9 @@ import { FAIXAS_PRESENCA, SCORE_FAIXA_SAUDAVEL, SCORE_FAIXA_ATENCAO, MAPA_RITMO_
 import { RADAR_SVG_SCRIPT } from '../lib/radar-svg.ts';
 import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema.ts';
 import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
+import { RELATORIOS_GESTOR_CSS, RELATORIOS_GESTOR_HTML, RELATORIOS_GESTOR_SCRIPT } from '../lib/ui/relatorios-gestor-ui.ts';
 
-export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + `
+export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_CSS + `
 :root{
   /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts), para as abas ainda não redesenhadas */
   --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
@@ -855,6 +856,7 @@ ${ICONES_SVG}
       <div class="gc-ctl" id="consImpCtl"></div>
       <div id="consImpacto"></div>
     </section>
+${RELATORIOS_GESTOR_HTML}
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
@@ -2120,8 +2122,10 @@ function carregarConselhos_() {
     gcErro('consGrade', err && err.message ? err.message : err);
     gcErro('consImpacto', err && err.message ? err.message : err);
   });
+  carregarRelatoriosGestor_();
 }
 ${GRADE_CONSELHOS_SCRIPT}
+${RELATORIOS_GESTOR_SCRIPT}
 
 // ============ controle de perfis: gestores ============
 
