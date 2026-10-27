@@ -846,7 +846,8 @@ ${ICONES_SVG}
   </aside>
 
   <div class="tab-panel" id="tab-conselhos" data-tab="conselhos">
-    <section class="panel" aria-labelledby="h-cons-grade">
+${RELATORIOS_GESTOR_HTML}
+    <section class="panel" style="margin-top:22px" aria-labelledby="h-cons-grade">
       <div class="ph"><div><h2 id="h-cons-grade">Conselhos da rede</h2><p id="consSituacao">Carregando a situação dos conselhos.</p></div></div>
       <div class="gc-ctl" id="consCtl"></div>
       <div id="consGrade"></div>
@@ -856,7 +857,6 @@ ${ICONES_SVG}
       <div class="gc-ctl" id="consImpCtl"></div>
       <div id="consImpacto"></div>
     </section>
-${RELATORIOS_GESTOR_HTML}
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
@@ -1661,7 +1661,7 @@ function itensFila_() {
         titulo: 'Relatórios do conselho: ' + c.cs,
         texto: c.pendentes + (c.pendentes === 1 ? ' pendente' : ' pendentes') + ' e ' + c.atrasados + (c.atrasados === 1 ? ' atrasado' : ' atrasados') +
           (c.atrasados > 0 ? '. Maior atraso: ' + c.maiorAtrasoDias + (c.maiorAtrasoDias === 1 ? ' dia' : ' dias') : '') + '. Cobrar o preenchimento; cada relatório atrasado gera 5 pontos.',
-        quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(c.cs) } });
+        quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver relatórios', href: '/gestor?aba=conselhos#h-rel-gestor' } });
     });
   }
   var an = ACOES_.alertasNps;
