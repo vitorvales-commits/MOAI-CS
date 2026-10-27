@@ -21,6 +21,7 @@ import { casaBusca } from '../lib/indicadores-base.ts';
 import { TEMA_CSS, ICONES_SVG, DOCK_SCRIPT } from '../lib/ui/tema.ts';
 import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
 import { RELATORIO_CSS, RELATORIO_PAINEL_HTML, RELATORIO_SCRIPT } from '../lib/ui/relatorio-conselho-ui.ts';
+import { REDESENHO_CS_CSS, REDESENHO_CS_SCRIPT } from '../lib/ui/redesenho-cs-ui.ts';
 import { LIMIAR_PRESENCA_ATENCAO } from '../lib/constants.ts';
 import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
 
@@ -38,6 +39,7 @@ export const DASHBOARD_HTML = `<!DOCTYPE html>
 ${TEMA_CSS}
 ${GRADE_CONSELHOS_CSS}
 ${RELATORIO_CSS}
+${REDESENHO_CS_CSS}
 :root {
   /* M da MOAI usado como máscara do "M líquido" nos cards de KPI — valor real, copiado do doc "Index". */
   --m-white: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABiCAYAAACvUNYzAAAC70lEQVR42u2dMWtUQRSFzyz+An+AKVJZpQgWsUiVJlumSyeKpBEsIph/EBBttLHYFdLY2bqFlQS0iZDKSgKm9zeMzUCCqGyWO3PPnTkHAtns2zv33I839828xyblnCH5aaISCIAASFwAZgDyDX42Bq7fxg1rNatxBpwPDOC8xhmwika8lDLxbNkDvg9UfDOvlgDuAtgfoPj7xSvlVdD7AQCYeqxxGdpzPzD3NomSaI/Fr70QO+6o+NW81ARw1BGAo4gAepmKqnqYRDcQPfdWm3EfAxa/Sc6tAOwC2ApU/K2SczcAAOBLIADNcm19PyBCP2iao8cNmZ/ExW+emweAOwAOCIt/UHLrHgAAvCUE4JKT5z1hpn7glstkVOMsOTA8FfFm0LFpADwZdGwaAF7TAEUPYnowK49WfDYAAPC5kzHCAtgGsFMx/k4ZQwD+o09BY3cDoNYcTbkRaA1gbhjrF2msOfsZ8MAozm0AhwZxDkssJm9VAZwAuDSK9ZIkBoqnkyg9YI1k7s6knpo04eQMIZN6aXoVdM+p+c1JPTQHcAZgYRTrIYD1JY5bL8daaFE8hF4HTA1j/TA6xiN314VYq34QYt73WglbGjpb8m/UxffYinhhFGcTwN6113uEOVICeG4Y68Mfv28S5kgHoEY/CDfvewNwMcqak+d29COi4rvl4gngHYALguJflFyGA4AlV7Zd58BwRywNOjYNAAC4P8iYtAC+wm7TbhktypgCcE3TTscKA6DVnEy1BmF8LCWNUnxWAADwKkjMbgE8CxKzWwDW00ViNcn+vaGp5+JHAAAAj50+KwBFM6z2pN0l/vJFqQKwmtYafUYAjObyFMVUtC/v3jY6RgBW1Cn+vWn3rbx3KgB1NV3xPQGo3A9SRCO3EFcJV4+kpKgmIgMAgNfB8w8P4Gl0APofMgIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgCYAASAIgAJIACIAkAAIgVVDKOasKOgMEQJLG1G93i33gLv0k4gAAAABJRU5ErkJggg==);
@@ -977,22 +979,30 @@ ${ICONES_SVG}
       <div id="conselhos"></div>
     </div>
     <div id="aba-acompanhamento" class="panel">
-      <div class="section-title">1:1 com a liderança<div class="line"></div></div>
-      <div id="umaum"></div>
-      <div class="section-title" style="margin-top:30px;">Report semanal<div class="line"></div></div>
-      <div id="report"></div>
-      <div class="section-title" style="margin-top:30px;">Pontos tomados<div class="line"></div></div>
-      <div id="advertencias"></div>
+      <div class="rd-stack">
+        <div id="rdAbertura"></div>
+        <div id="rdRitmo"></div>
+        <div class="rd-grid rd-g2">
+          <div id="report" class="rd-slot"></div>
+          <div id="reportHist" class="rd-slot"></div>
+        </div>
+        <div class="rd-grid rd-g3">
+          <div id="umaum" class="rd-slot"></div>
+          <div id="advertencias" class="rd-slot"></div>
+          <div id="rdRelatorios" class="rd-slot"></div>
+        </div>
+      </div>
     </div>
     <div id="aba-reconhecimento" class="panel">
-      <div id="restritoExtras" style="display:none;margin-bottom:30px;">
-        <div class="section-title">Minha posição no time<div class="line"></div></div>
-        <div id="restritoPosicao"></div>
-        <div class="section-title" style="margin-top:22px;">CS Top 3 do mês<div class="line"></div></div>
-        <div id="restritoTop3"></div>
+      <div class="rd-stack">
+        <div id="restritoExtras" style="display:none;">
+          <div class="rd-pos">
+            <div id="restritoPosicao"></div>
+            <div id="restritoTop3"></div>
+          </div>
+        </div>
+        <div id="feedbacks"></div>
       </div>
-      <div class="section-title">O que o time diz<div class="line"></div></div>
-      <div id="feedbacks"></div>
     </div>
   </div>
 </div>
@@ -1004,8 +1014,9 @@ ${RELATORIO_PAINEL_HTML}
 <script>
 ${GTD_CHECKLIST_SCRIPT}
 ${RELATORIO_SCRIPT}
-// Depois de salvar um relatório, a home recalcula o foco (o relatório pendente sai da frente).
-window.rcAoSalvar_ = function () { if (typeof carregarInicio_ === 'function') carregarInicio_(); };
+${REDESENHO_CS_SCRIPT}
+// Depois de salvar um relatório, a home recalcula o foco (o relatório pendente sai da frente) e a aba Acompanhamento relê o report.
+window.rcAoSalvar_ = function () { if (typeof carregarInicio_ === 'function') carregarInicio_(); if (typeof currentCS !== 'undefined' && currentCS) carregarReport(currentCS); };
 // ============ RUNTIME_SHIM ============
 // Substitui google.script.run (Apps Script) por chamadas fetch() às rotas /api/* deste app
 // Next.js. Implementa a mesma interface encadeada (withSuccessHandler/withFailureHandler +
@@ -1565,11 +1576,13 @@ function abrirPessoa(nome){
   atualizarBadgeDestaque(nome);
   umAUmVisao_ = null; advertenciasCarregadas_ = false; reportEstadoAtual_ = null;
   renderPendencias();
-  document.getElementById('umaum').innerHTML = '<div class="empty-state">Carregando...</div>';
+  document.getElementById('umaum').innerHTML = rdMsgCartao_('1:1 com a liderança', 'Carregando', 'Buscando o histórico da 1:1.', false);
   carregarUmAUm(nome);
-  document.getElementById('advertencias').innerHTML = '<div class="empty-state">Carregando...</div>';
+  document.getElementById('advertencias').innerHTML = rdMsgCartao_('Pontos tomados', 'Carregando', 'Buscando os pontos de advertência.', false);
   carregarAdvertencias(nome);
   reportDados_ = null;
+  renderAcompanhamentoTopo_();
+  document.getElementById('reportHist').innerHTML = rdMsgCartao_('Críticos ao longo do tempo', 'Carregando', 'Buscando o histórico de críticos.', false);
   carregarReport(nome);
 }
 function atualizarBadgeDestaque(nome){
@@ -1581,7 +1594,7 @@ function atualizarBadgeDestaque(nome){
   }).withFailureHandler(function(){}).getVezesDestaquePublico(nome);
 }
 
-function skelKpi(){ return '<div class="kpi skel" style="background:#1A1A1A;"><div style="height:100%;"></div></div>'; }
+function skelKpi(){ return '<div class="kpi skel"><div style="height:100%;"></div></div>'; }
 function renderSkeletonPessoa(){
   document.getElementById('pessoaFoto').style.display='none';
   document.getElementById('pessoaFotoFallback').style.display='none';
@@ -1866,9 +1879,9 @@ function formatarMesAbrevAno(iso){
 function valorKpiTexto_(ind, unidade){
   if (ind.statusReport === 'sem_report') return 'Sem report';
   if (ind.semApuracao) return 'Sem apuração';
-  if (ind.alcancado===null||ind.alcancado===undefined) return '—';
+  if (ind.alcancado===null||ind.alcancado===undefined) return 'Sem dado';
   if (ind.composicao && ind.unidade === '%') return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
-  return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado;
+  return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : rdNum_(ind.alcancado);
 }
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   var c = calcIndicador(ind);
@@ -1877,9 +1890,9 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   else if (ind.statusReport === 'desatualizado') { c.pillLabel = 'Desatualizado'; c.pill = 'py'; }
   if (ind.composicao) recorde = null;
   var valorMostrado = valorKpiTexto_(ind, unidade);
-  var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
+  var metaMostrada = (ind.meta===null||ind.meta===undefined) ? 'sem meta' : rdNum_(ind.meta);
   var fonteHtml = ind.fonte ? '<span class="kpi-fonte'+(ind.fonte==='manual'?' manual':'')+'"><span class="kpi-fonte-dot"></span>'+(ind.fonte==='manual'?'Validado no Monday':'Calculado automático')+'</span>' : '';
-  var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+metaMostrada+' · '+c.pctLabel);
+  var subLabel = modoGeralAtual ? c.pctLabel : (ind.meta==null ? '' : 'meta '+metaMostrada+' · ') + c.pctLabel;
   var timeHtml = '';
   if (timeInd) {
     var valorTime = valorKpiTexto_(timeInd, unidade);
@@ -1889,7 +1902,7 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   // dos meses fechados (ou o manual, se melhor) — recorde_efetivo/metas_time_mensal no banco.
   var recordeBadge = (recorde && recorde.emRecorde) ? '<span class="kpi-recorde-badge">Recorde</span>' : '';
   var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
-    ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
+    ? '<div class="kpi-recorde-linha">recorde '+rdNum_(recorde.recordeValor)+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
   // Tooltip: composição por CS (nome, críticos, carteira, percentual), do maior percentual para o menor, quando
   // o indicador traz detalheCS; senão, a composição resumida. Dentro desta template literal o separador de linha é &#10;.
   var tooltipCard = (ind.detalheCS && ind.detalheCS.length)
@@ -1916,10 +1929,10 @@ function animarMFills(scopeEl){
   });
 }
 
-function lineChart(pontos, corLinha){
+function lineChart(pontos, corLinha, dim){
   corLinha = corLinha || '#6ee7b7';
   if (pontos.length < 2) return '<div style="color:#807E7E;font-size:11.5px;padding:20px 0;">Poucos pontos pra desenhar uma linha ainda.</div>';
-  var w = 720, h = 130, pad = 20;
+  var w = dim ? dim.w : 720, h = dim ? dim.h : 130, pad = 20;
   var vals = pontos.map(function(p){return p.v;});
   var max = Math.max.apply(null, vals), min = Math.min.apply(null, vals);
   if (max === min) { max += 1; min -= 1; }
@@ -1931,7 +1944,7 @@ function lineChart(pontos, corLinha){
   var showEvery = Math.ceil(coords.length / 10);
   var labels = coords.map(function(c,i){ return i%showEvery===0 ? '<text x="'+c.x.toFixed(1)+'" y="'+(h-2)+'" font-size="9" fill="#807E7E" text-anchor="middle" font-family="Inter">'+c.lbl+'</text>' : ''; }).join('');
   var gradId = 'grad'+Math.random().toString(36).slice(2);
-  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:130px;overflow:visible;">' +
+  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:'+(dim ? 'auto' : '130px')+';overflow:visible;">' +
     '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+corLinha+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+corLinha+'" stop-opacity="0"/></linearGradient></defs>' +
     '<path d="'+areaD+'" fill="url(#'+gradId+')"/><path d="'+pathD+'" fill="none" stroke="'+corLinha+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' + dots + labels + '</svg>';
 }
@@ -1998,6 +2011,14 @@ function coletarPendencias_(){
     if (r.estado.estado === 'atrasado') itens.push({ g:0, ord:0, titulo:'Report desta semana atrasado', det:'Atrasado há ' + fmtHorasR_(r.estado.horas_atraso) + '. O Health da Base fica sem apuração até o envio.', acao:'<a class="pend-acao" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Enviar no Monday</a>' });
     else if (r.estado.estado === 'pendente') itens.push({ g:1, ord:0, titulo:'Enviar o report da semana', det:'Prazo: sexta até 19h, no board de report do Monday.', acao:'<a class="pend-acao" href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Abrir no Monday</a>' });
   }
+  if (r && r.relatoriosPendentes) r.relatoriosPendentes.forEach(function(x){
+    var atras = x.estado === 'atrasado';
+    var quando = atras
+      ? (x.diasRestantes >= 0 ? 'O prazo venceu hoje.' : 'Atrasado há ' + (-x.diasRestantes) + (x.diasRestantes === -1 ? ' dia.' : ' dias.'))
+      : (x.estado === 'vence_hoje' ? 'O prazo vence hoje, às 23h59.' : 'Vence em ' + x.diasRestantes + (x.diasRestantes === 1 ? ' dia.' : ' dias.'));
+    itens.push({ g: atras || x.diasRestantes <= 2 ? 0 : 1, ord:1.5 + x.diasRestantes / 1000, titulo:'Relatório do conselho ' + x.conselho, det:'Encontro de ' + dataCurtaR_(x.dataEncontro) + '. ' + quando,
+      acao:'<button type="button" class="pend-acao" data-rc-abrir="1" data-rc-grupo="' + escHtml_(x.groupId) + '" data-rc-data="' + escHtml_(x.dataEncontro) + '">Preencher</button>' });
+  });
   if (r && r.regularidade) {
     var anterior = somarDiasR_(r.semana, -7);
     var regAnt = r.regularidade.filter(function(x){ return String(x.semana_inicio).slice(0,10) === anterior; })[0];
@@ -2055,7 +2076,7 @@ function renderPendencias(){
     ? (urgentes ? urgentes + (urgentes === 1 ? ' urgente' : ' urgentes') + ' · ' : '') + r.itens.length + ' no total'
     : '';
   var badge = document.getElementById('tabBadgeAcomp');
-  var nAcomp = r.itens.filter(function(x){ return x.g < 2 && (x.ord === 0 || x.ord === 1 || x.ord === 4 || x.ord === 6); }).length;
+  var nAcomp = r.itens.filter(function(x){ return x.g < 2 && (x.ord === 0 || Math.floor(x.ord) === 1 || x.ord === 4 || x.ord === 6); }).length;
   if (badge) { badge.hidden = !nAcomp; badge.textContent = nAcomp; }
   if (!r.itens.length) {
     lista.innerHTML = r.carregando
@@ -2161,11 +2182,11 @@ function renderSemanal(data){
   var lista = data.casesRegistrados || [];
   casesAtuais = lista;
 
-  var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+(ind.meta==null?'—':ind.meta)+' · '+c.pctLabel);
+  var subLabel = modoGeralAtual ? c.pctLabel : ((ind.meta==null?'':'meta '+rdNum_(ind.meta)+' · ')+c.pctLabel);
   var html = '<div class="hero-grid">' +
     '<div class="dark-card cases-hero-card">' +
       '<div class="m-fill-wrap" style="width:90px;height:90px;flex-shrink:0;"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-      '<div class="cases-hero-text"><div class="dark-label">Cases de sucesso</div><div class="dark-value num '+c.corTxt+'" style="font-size:44px;">'+(ind.alcancado==null?'—':ind.alcancado)+'</div><div class="dark-sub">'+subLabel+'</div></div>' +
+      '<div class="cases-hero-text"><div class="dark-label">Cases de sucesso</div><div class="dark-value num '+c.corTxt+'" style="font-size:44px;">'+(ind.alcancado==null?'Sem dado':rdNum_(ind.alcancado))+'</div><div class="dark-sub">'+subLabel+'</div></div>' +
     '</div>' +
     '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
       '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Status</div><span class="kpi-pill '+c.pill+'" style="width:fit-content;">'+c.pillLabel+'</span></div>' +
@@ -2515,9 +2536,11 @@ function renderFeedback(data){
   '</div>';
   // Pulso de CS (05/10/2026): de outubro de 2026 em diante vale o pulso. Até setembro vale a avaliação
   // entre pares antiga. Visão Geral mostra as duas, cada uma na sua seção.
-  if (modo === 'pulso' || modo === 'ambos') html += feedbackPulsoHtml_(pulso);
-  if (modo === 'ambos') html += '<div class="fb-line-wrap" style="margin-top:30px;"><span style="color:#807E7E">Histórico anterior ao Pulso, até setembro</span><div class="fb-line"></div></div>';
-  if (modo === 'legado' || modo === 'ambos') html += feedbackLegadoHtml_(fb);
+  var corpo = '';
+  if (modo === 'pulso' || modo === 'ambos') corpo += feedbackPulsoHtml_(pulso);
+  if (modo === 'ambos') corpo += '<div class="rd-div">Histórico anterior ao Pulso, até setembro</div>';
+  if (modo === 'legado' || modo === 'ambos') corpo += feedbackLegadoHtml_(fb);
+  html += rdCartao_('O que o time diz', modo === 'legado' ? '' : 'Pulso de CS, respostas anônimas do time neste período. As falas são as originais dos colegas.', corpo);
   document.getElementById('feedbacks').innerHTML = html;
   setTimeout(function(){ document.querySelectorAll('.voto-row-bar-fill').forEach(function(el){ el.style.width = el.getAttribute('data-w')+'%'; }); }, 50);
 }
@@ -2525,24 +2548,15 @@ function renderFeedback(data){
 // Pulso de CS: o que os colegas escreveram sobre este CS e quantos o indicaram como destaque em
 // colaboração. Nada identifica quem respondeu, e a autoavaliação já vem excluída pelo banco.
 function feedbackPulsoHtml_(p){
-  var h = '<p class="fb-intro">Pulso de CS · respostas anônimas do time · '+(p ? p.respostas : 0)+' resposta(s) neste período. As observações abaixo são as falas originais dos colegas sobre este CS, embaralhadas para preservar o anonimato.</p>';
-  if (!p) return h + '<div class="empty-state" style="padding:20px;">O Pulso de CS não está disponível para este período.</div>';
-  if (p.erro) return h + '<div class="empty-state" style="padding:20px;">Não foi possível carregar o Pulso de CS: '+escHtml_(p.erro)+'</div>';
-  if (p.respostas === 0) {
-    return h + '<div class="no-feedback"><div class="no-feedback-title">Sem respostas do Pulso neste período</div><div class="no-feedback-sub">As respostas aparecem aqui assim que o formulário mensal do Pulso de CS for preenchido pelo time.</div></div>';
-  }
-  h += '<div class="votos-bar-card"><div class="dark-label">'+ICONS.trophy+'Reconhecimento no Pulso</div>' +
-    '<div class="voto-row"><div class="voto-row-label">Colegas que deixaram uma observação sobre este CS</div><div class="voto-row-num num">'+p.avaliadores+'</div></div>' +
-    '<div class="voto-row"><div class="voto-row-label">Colegas que o indicaram como destaque em colaboração e apoio ao time</div><div class="voto-row-num num">'+p.destaques+'</div></div>' +
-  '</div>';
-  h += '<div class="fb-line-wrap"><span style="color:#3D8B5F">'+ICONS.check+'O que o time disse</span><div class="fb-line"></div></div>';
-  if (!p.falas || p.falas.length === 0) {
-    h += '<div class="empty-state" style="padding:20px;">Nenhum colega deixou observação sobre este CS neste período.</div>';
-  } else {
-    p.falas.slice(0, MAX_QUOTES_VISIVEIS * 2).forEach(function(f){ h += '<div class="quote-block"><span class="quote-mark">"</span><div class="quote-text" style="white-space:pre-line;">'+escHtml_(f)+'</div></div>'; });
-    if (p.falas.length > MAX_QUOTES_VISIVEIS * 2) h += '<div class="fb-mais">+ '+(p.falas.length-MAX_QUOTES_VISIVEIS*2)+' outra(s) observação(ões) neste período.</div>';
-  }
-  return h;
+  if (!p) return rdAviso_('Pulso de CS indisponível', 'O Pulso de CS não está disponível para este período.');
+  if (p.erro) return rdAviso_('Não foi possível carregar o Pulso de CS', p.erro, true);
+  if (p.respostas === 0) return rdAviso_('Sem respostas do Pulso neste período', 'As respostas aparecem aqui assim que o formulário mensal do Pulso de CS for preenchido pelo time.');
+  var h = '<div class="rd-pulso-res"><div class="rd-big">' + p.respostas + '<small>' + (p.respostas === 1 ? 'resposta' : 'respostas') + '</small></div>' +
+    '<div class="rd-big">' + p.destaques + '<small>' + (p.destaques === 1 ? 'colega o indicou' : 'colegas o indicaram') + ' como destaque em colaboração e apoio ao time</small></div></div>';
+  if (!p.falas || p.falas.length === 0) return h + rdAviso_('Nenhuma observação neste período', 'Nenhum colega deixou observação sobre este CS neste período.');
+  h += '<div class="rd-falas">' + p.falas.slice(0, MAX_QUOTES_VISIVEIS * 2).map(function(f){ return '<div class="rd-fala"><p>' + escHtml_(f) + '</p></div>'; }).join('') + '</div>';
+  if (p.falas.length > MAX_QUOTES_VISIVEIS * 2) h += '<div class="rd-mais">+ ' + (p.falas.length - MAX_QUOTES_VISIVEIS * 2) + ' outra(s) observação(ões) neste período.</div>';
+  return h + '<p class="rd-nota">As falas são embaralhadas e não identificam quem respondeu.</p>';
 }
 
 function feedbackLegadoHtml_(fb){
@@ -2617,47 +2631,47 @@ function carregarUmAUm(nome){
   }).catch(function(err){
     umAUmVisao_ = { erro: true, registros: [], passosLiderado: [], compromissosLideranca: [] };
     renderPendencias();
-    document.getElementById('umaum').innerHTML = '<div class="empty-state">Não foi possível carregar a 1:1: ' + escUmAUm_(err.message) + '.</div>';
+    document.getElementById('umaum').innerHTML = rdMsgCartao_('1:1 com a liderança', 'Não foi possível carregar', err.message, true);
   });
 }
 // O resumo da última 1:1 saiu do topo (13/10/2026): os passos em aberto entram em "O que fazer agora".
 function renderUltimoUmAUm(){ renderPendencias(); }
 function umItemLinhaHtml_(i){
   var meta = '';
-  if (i.prioridade === 'alta') meta += '<span style="color:#C89A2E;font-weight:700;">Prioridade alta</span> ';
+  if (i.prioridade === 'alta') meta += '<span class="rd-alta">Prioridade alta</span> ';
   if (i.prazo) {
     meta += i.vencido
-      ? '<span style="color:#C0433D;font-weight:700;">vencido há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') + '</span>'
+      ? '<span class="rd-venc">vencido há ' + i.diasVencido + (i.diasVencido === 1 ? ' dia' : ' dias') + '</span>'
       : '<span>prazo ' + dataBRUmAUm_(i.prazo) + '</span>';
   }
-  return '<div class="umaum-card-campo" style="padding:8px 0;border-bottom:1px solid #E9E9E9;"><div>' + escUmAUm_(i.texto) + '</div>' +
-    (meta ? '<div style="font-size:11.5px;margin-top:4px;">' + meta + '</div>' : '') + '</div>';
+  return '<div class="rd-item"><div>' + escUmAUm_(i.texto) + '</div>' + (meta ? '<div class="rd-meta">' + meta + '</div>' : '') + '</div>';
 }
 function renderAbaUmAUm(){
   var el = document.getElementById('umaum');
   var v = umAUmVisao_;
   if (!v) return;
+  var titulo = '1:1 com a liderança', sub = 'Conversa individual para destravar o que está difícil.';
   var link = souGestor && currentCS
-    ? '<div class="umaum-card-campo" style="margin-bottom:14px;">Para registrar ou editar, conduza a 1:1 na <a href="/gestor/cs/' + encodeURIComponent(currentCS) + '#secUmAUm">página do CS</a>.</div>'
+    ? '<p class="rd-linkgestor">Para registrar ou editar, conduza a 1:1 na <a href="/gestor/cs/' + encodeURIComponent(currentCS) + '#secUmAUm">página do CS</a>.</p>'
     : '';
   if (!v.registros.length) {
-    el.innerHTML = link + '<div class="empty-state">Ainda não há 1:1 registrada.</div>';
+    el.innerHTML = rdCartao_(titulo, sub, link + rdAviso_('Nenhuma 1:1 registrada', 'Combine a primeira com a liderança. Depois dela, os combinados aparecem aqui.'));
     return;
   }
   var passos = v.passosLiderado.length
     ? v.passosLiderado.map(umItemLinhaHtml_).join('')
-    : '<div class="umaum-card-campo">Nenhum passo seu em aberto.</div>';
+    : '<p class="rd-nota" style="margin-top:4px;">Nenhum passo seu em aberto.</p>';
   var compromissos = v.compromissosLideranca.length
     ? v.compromissosLideranca.map(umItemLinhaHtml_).join('')
-    : '<div class="umaum-card-campo">Nenhum compromisso da liderança em aberto.</div>';
+    : '<p class="rd-nota" style="margin-top:4px;">Nenhum compromisso da liderança em aberto.</p>';
   var historico = v.registros.map(function(r){
-    return '<div class="umaum-card-campo" style="padding:8px 0;border-bottom:1px solid #E9E9E9;"><b>' + dataBRUmAUm_(r.data) + '</b>' +
-      (r.resumoCompartilhado ? '<div style="white-space:pre-wrap;">' + escUmAUm_(r.resumoCompartilhado) + '</div>' : '<div>Sem resumo compartilhado.</div>') + '</div>';
+    return '<div class="rd-item"><b>' + dataBRUmAUm_(r.data) + '</b>' +
+      (r.resumoCompartilhado ? '<div style="white-space:pre-wrap;">' + escUmAUm_(r.resumoCompartilhado) + '</div>' : '<div class="rd-meta">Sem resumo compartilhado.</div>') + '</div>';
   }).join('');
-  el.innerHTML = link +
-    '<div class="umaum-card"><div class="umaum-card-head"><span class="umaum-card-data">Meus próximos passos</span></div>' + passos + '</div>' +
-    '<div class="umaum-card"><div class="umaum-card-head"><span class="umaum-card-data">O que a liderança se comprometeu</span></div>' + compromissos + '</div>' +
-    '<div class="umaum-card"><div class="umaum-card-head"><span class="umaum-card-data">Histórico</span></div>' + historico + '</div>';
+  el.innerHTML = rdCartao_(titulo, sub, link +
+    '<div class="rd-bloco" style="margin-top:0;"><span class="rd-lab">Meus próximos passos</span>' + passos + '</div>' +
+    '<div class="rd-bloco"><span class="rd-lab">O que a liderança se comprometeu</span>' + compromissos + '</div>' +
+    '<details class="rd-det"><summary>Histórico, ' + v.registros.length + (v.registros.length === 1 ? ' registro' : ' registros') + '</summary>' + historico + '</details>');
 }
 
 // ============ pontos tomados (antes, aba Advertências; 07/10/2026) ============
@@ -2688,54 +2702,48 @@ function carregarAdvertencias(nome){
     renderPendencias();
   }).catch(function(err){
     if (currentCS !== nome) return;
-    document.getElementById('advertencias').innerHTML = '<div class="empty-state">Erro ao carregar os pontos tomados: ' + escUmAUm_(err.message) + '</div>';
+    document.getElementById('advertencias').innerHTML = rdMsgCartao_('Pontos tomados', 'Não foi possível carregar', err.message, true);
   });
 }
 function advertenciaResumoHtml_(){
   var destaque = advertenciaPontuacaoAtiva_ > LIMIAR_ADVERTENCIA_DESTAQUE_;
   var t = advertenciaTotais_;
-  return '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
-  '<div class="advertencia-resumo' + (destaque ? ' destaque' : '') + '" style="flex:1 1 220px;">' +
-    '<div class="advertencia-resumo-num">' + advertenciaPontuacaoAtiva_ + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ + '</div>' +
-    '<div class="advertencia-resumo-label">' + (advertenciaPontuacaoAtiva_ === 1 ? 'ponto ativo' : 'pontos ativos') + (destaque ? ', acima do limite' : '') + (t.proximoVencimento ? ', o próximo vence em ' + dataHoraBRAdvertencia_(t.proximoVencimento) : '') + '</div>' +
-  '</div>' +
-  '<div class="advertencia-resumo" style="flex:1 1 220px;">' +
-    '<div class="advertencia-resumo-num">' + t.totalHistorico + '</div>' +
-    '<div class="advertencia-resumo-label">total histórico' + (t.desde ? ', desde ' + dataHoraBRAdvertencia_(t.desde) : '') + '</div>' +
-  '</div></div>';
+  var bolas = '';
+  for (var k = 0; k < LIMIAR_ADVERTENCIA_DESTAQUE_; k++) bolas += '<i class="' + (k < advertenciaPontuacaoAtiva_ ? 'on' : '') + '"></i>';
+  return '<div class="rd-pts" role="img" aria-label="' + advertenciaPontuacaoAtiva_ + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ + ' pontos ativos">' + bolas + '</div>' +
+    '<div class="rd-big">' + advertenciaPontuacaoAtiva_ + ' de ' + LIMIAR_ADVERTENCIA_DESTAQUE_ + '<small>' + (advertenciaPontuacaoAtiva_ === 1 ? 'ponto ativo' : 'pontos ativos') + (destaque ? ', acima do limite' : '') + '</small></div>' +
+    '<p class="rd-nota">Total histórico: ' + t.totalHistorico + (t.desde ? ', desde ' + dataHoraBRAdvertencia_(t.desde) : '') +
+    (t.proximoVencimento ? '. O próximo ponto vence em ' + dataHoraBRAdvertencia_(t.proximoVencimento) : '') + '.</p>';
 }
 function advertenciaEfeitoHtml_(){
   var e = advertenciaEfeito_;
   if (!e) return '';
-  var fmt = function(d){ return (d/10).toFixed(1).replace('.', ',') + '%'; };
-  if (e.semApuracao || e.comPontosDecimos === null || e.comPontosDecimos === undefined) {
-    return '<div class="umaum-card-campo" style="margin-bottom:14px;"><b>Efeito no Health da Base</b>Sem apuração: sem report com críticos e base.</div>';
-  }
-  return '<div class="umaum-card-campo" style="margin-bottom:14px;"><b>Efeito no Health da Base</b>' +
-    'Com os pontos ativos: ' + fmt(e.comPontosDecimos) + '. Sem eles: ' + fmt(e.semPontosDecimos) + '.</div>';
+  if (e.semApuracao || e.comPontosDecimos === null || e.comPontosDecimos === undefined) return '<p class="rd-nota">Efeito no Health da Base: sem apuração, falta um report com críticos e base.</p>';
+  if (e.comPontosDecimos === e.semPontosDecimos) return '<p class="rd-nota">Nenhum efeito no Health da Base: ' + rdPct_(e.comPontosDecimos) + ' com pontos e ' + rdPct_(e.semPontosDecimos) + ' sem.</p>';
+  return '<p class="rd-nota">Efeito no Health da Base: ' + rdPct_(e.comPontosDecimos) + ' com os pontos ativos e ' + rdPct_(e.semPontosDecimos) + ' sem eles.</p>';
 }
 function advertenciaAtalhoGestorHtml_(){
   if (!souGestor) return '';
-  return '<div style="margin-bottom:14px;"><a class="destaque-form-btn" style="display:inline-block;text-decoration:none;" href="/gestor/cs/' + encodeURIComponent(currentCS) +
+  return '<div style="margin-top:12px;"><a class="rd-btn" href="/gestor/cs/' + encodeURIComponent(currentCS) +
     '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + '">Aplicar, editar ou excluir na página do CS</a></div>';
 }
 function advertenciaListaHtml_(){
-  if (!advertenciasAtual_.length) return '<div class="empty-state">Nenhum ponto tomado até agora.</div>';
-  return advertenciasAtual_.map(function(r){
+  if (!advertenciasAtual_.length) return '';
+  var itens = advertenciasAtual_.map(function(r){
     var anulada = !!r.anuladaEm;
-    var situacao = anulada ? ', anulada' : (r.ativa ? ', ativa' : ', vencida');
-    return '<div class="umaum-card"' + (anulada ? ' style="opacity:.7;"' : '') + '>' +
-      '<div class="umaum-card-head"><span class="umaum-card-data"' + (anulada ? ' style="text-decoration:line-through;"' : '') + '>' + escUmAUm_(r.tipoNome) + '</span>' +
-        '<span class="umaum-status-pill" style="background:' + (r.ativa ? '#C0433D' : '#9F9F9F') + ';">' + r.pontos + (r.pontos !== 1 ? ' pontos' : ' ponto') + situacao + '</span>' +
-        '<span class="umaum-card-gestor">' + (r.origem === 'sistema' ? 'Automático' : 'Aplicado por ' + escUmAUm_(r.aplicadoPor)) + ' em ' + dataHoraBRAdvertencia_(r.aplicadoEm) + ', válida até ' + dataHoraBRAdvertencia_(r.validoAte) + '</span></div>' +
-      (r.observacao ? '<div class="umaum-card-campo"><b>Observação</b>' + escUmAUm_(r.observacao) + '</div>' : '') +
-      (anulada ? '<div class="umaum-card-campo"><b>Anulada</b>' + escUmAUm_(r.motivoAnulacao || '') + '</div>' : '') +
-    '</div>';
+    var situacao = anulada ? 'anulada' : (r.ativa ? 'ativa' : 'vencida');
+    return '<div class="rd-item"' + (anulada ? ' style="opacity:.7;"' : '') + '><div><b' + (anulada ? ' style="text-decoration:line-through;"' : '') + '>' + escUmAUm_(r.tipoNome) + '</b> ' +
+      '<span class="rd-pill ' + (r.ativa && !anulada ? 'red' : 'neutro') + '">' + r.pontos + (r.pontos !== 1 ? ' pontos' : ' ponto') + ', ' + situacao + '</span></div>' +
+      '<div class="rd-meta">' + (r.origem === 'sistema' ? 'Automático' : 'Aplicado por ' + escUmAUm_(r.aplicadoPor)) + ' em ' + dataHoraBRAdvertencia_(r.aplicadoEm) + ', válida até ' + dataHoraBRAdvertencia_(r.validoAte) + '</div>' +
+      (r.observacao ? '<div class="rd-meta">Observação: ' + escUmAUm_(r.observacao) + '</div>' : '') +
+      (anulada ? '<div class="rd-meta">Anulada: ' + escUmAUm_(r.motivoAnulacao || '') + '</div>' : '') + '</div>';
   }).join('');
+  return '<details class="rd-det"><summary>Ver os ' + advertenciasAtual_.length + (advertenciasAtual_.length === 1 ? ' registro' : ' registros') + '</summary>' + itens + '</details>';
 }
 function renderAbaAdvertencias(){
   var el = document.getElementById('advertencias');
-  el.innerHTML = advertenciaResumoHtml_() + advertenciaAtalhoGestorHtml_() + advertenciaEfeitoHtml_() + advertenciaListaHtml_();
+  el.innerHTML = rdCartao_('Pontos tomados', 'Pontos de advertência ativos e o efeito deles no Health da Base.', advertenciaResumoHtml_() + advertenciaEfeitoHtml_() + advertenciaAtalhoGestorHtml_() +
+    advertenciaListaHtml_());
 }
 
 // ============ agenda visual (Parte C, 28/09/2026) ============
@@ -2923,33 +2931,44 @@ function abrirScoreModal(idx){
   document.getElementById('caseModalOverlay').classList.add('ativo');
 }
 
+// Pódio do mês (2º, 1º, 3º). Só desenha o top3 que /api/home-resumo já devolve; o nome do próprio CS ganha o selo Você.
 function renderCSTop(csTop, targetId){
   var el = document.getElementById(targetId || 'csTop');
-  if (!csTop || csTop.length === 0) { el.innerHTML = '<div class="empty-state">Sem dados suficientes pra calcular o Top 3 neste período.</div>'; return; }
-  var medalhas = ['1º lugar','2º lugar','3º lugar'];
-  var html = '<div class="cstop-grid">';
-  csTop.forEach(function(c, i){
-    var fotoHtml = c.fotoUrl ? '<img class="cstop-foto" src="'+c.fotoUrl+'">' : '<div class="cstop-foto-fallback" style="background:'+corPara(c.nomeCompleto||c.nome)+'">'+iniciais(c.nomeCompleto||c.nome)+'</div>';
+  var sub = 'Pontuação do mês corrente, com as regras do ranking.';
+  if (!csTop || csTop.length === 0) { el.innerHTML = rdCartao_('CS Top 3 do mês', sub, rdAviso_('Sem dados suficientes', 'Ainda não há pontuação para montar o Top 3 neste período.')); return; }
+  var cartoes = [1, 0, 2].filter(function(i){ return csTop[i]; }).map(function(i){
+    var c = csTop[i];
+    var eu = c.nome === currentCS;
+    var inicial = String(c.nomeCompleto || c.nome || '?').trim().charAt(0).toUpperCase();
+    var av = c.fotoUrl ? '<img src="' + escHtml_(c.fotoUrl) + '" alt="">' : escHtml_(inicial);
     var idxModal = registrarScoreModal_(c.nome, c.score, c.detalhamento);
-    html += '<div class="cstop-card pos'+(i+1)+'"><div class="cstop-medalha">'+(medalhas[i]||((i+1)+'º lugar'))+'</div>' +
-      fotoHtml + '<div class="cstop-nome">'+c.nome+'</div>' +
-      '<div class="cstop-score num">'+c.score+'<button class="info-btn" onclick="abrirScoreModal('+idxModal+')" title="Como essa pontuação foi composta">ⓘ</button></div><div class="cstop-score-lbl">pontos</div></div>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
+    return '<div class="rd-pd' + (i === 0 ? ' p1' : '') + (eu ? ' eu' : '') + '"><span class="rd-md">' + (i + 1) + 'º</span><div class="rd-av">' + av + '</div>' +
+      '<b class="rd-nm">' + escHtml_(c.nome) + (eu ? ' <span class="rd-pill neutro" style="padding:1px 8px;font-size:11px;">Você</span>' : '') + '</b>' +
+      '<div class="rd-n">' + rdNum_(c.score) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta" aria-label="Como essa pontuação foi composta">ⓘ</button></div><span class="rd-l">pontos</span></div>';
+  }).join('');
+  el.innerHTML = rdCartao_('CS Top 3 do mês', sub, '<div class="rd-podio">' + cartoes + '</div>');
 }
 
 // Exceção 2 da Parte A (25/09/2026): só a PRÓPRIA posição no ranking geral, nunca a lista inteira
-// de nomes/posições dos colegas.
+// de nomes/posições dos colegas. A comparação usa as pontuações do pódio que a própria aba já mostra.
 function renderMinhaPosicao(resumo){
   var el = document.getElementById('restritoPosicao');
   if (!el) return;
-  if (resumo.minhaPosicao === null || resumo.minhaPosicao === undefined) { el.innerHTML = ''; return; }
+  var pai = el.parentNode;
+  if (resumo.minhaPosicao === null || resumo.minhaPosicao === undefined) { el.innerHTML = ''; pai.className = 'rd-pos so1'; return; }
+  pai.className = 'rd-pos';
   var idxModal = registrarScoreModal_(currentCS, resumo.meuScore, resumo.meuDetalhamento);
-  el.innerHTML = '<div class="minha-posicao-badge">Você está em <strong>'+resumo.minhaPosicao+'º lugar</strong> geral' +
-    (resumo.totalRankeados ? ' de '+resumo.totalRankeados : '') +
-    (resumo.meuScore !== null && resumo.meuScore !== undefined ? ' · '+resumo.meuScore+' pontos' : '') +
-    '<button class="info-btn dark" onclick="abrirScoreModal('+idxModal+')" title="Como essa pontuação foi composta">ⓘ</button></div>';
+  var pos = resumo.minhaPosicao;
+  var tem = resumo.meuScore !== null && resumo.meuScore !== undefined;
+  var top = (resumo.top3 || []).map(function(c){ return Number(c.score); });
+  var larg = tem && top.length && top[0] > 0 ? Math.max(0, Math.min(100, Number(resumo.meuScore) / top[0] * 100)) : (pos === 1 ? 100 : 0);
+  var info = '<button class="info-btn dark" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta" aria-label="Como essa pontuação foi composta">ⓘ</button>';
+  el.innerHTML = '<section class="rd-pos-card" aria-label="Sua posição"><span class="rd-lab">Sua posição no time</span>' +
+    '<div class="rd-pos-n">' + pos + 'º' + (resumo.totalRankeados ? '<small>de ' + resumo.totalRankeados + ' CS</small>' : '') + '</div>' +
+    (tem ? '<p>' + rdNum_(resumo.meuScore) + ' pontos no mês.' + (pos > 1 && top.length ? ' O 1º lugar tem ' + rdNum_(top[0]) + '.' : '') + info + '</p>' +
+      '<div class="rd-prog" role="img" aria-label="' + rdNum_(resumo.meuScore) + (top.length ? ' de ' + rdNum_(top[0]) + ' pontos' : ' pontos') + '"><i style="width:' + larg.toFixed(0) + '%"></i></div>' +
+      (top.length ? '<p>' + rdEsc_(rdFrasePosicao_(pos, Number(resumo.meuScore), top)) + '</p>' : '')
+      : '<p>Sem pontuação neste período.</p>') + '</section>';
 }
 
 function showTab(id, e){
@@ -3010,123 +3029,50 @@ function carregarReport(nome, semana){
   var meu = ++reportReq_;
   reportCS_ = nome;
   var el = document.getElementById('report');
-  if (!reportDados_ || reportDados_.cs !== nome) el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  if (!reportDados_ || reportDados_.cs !== nome) el.innerHTML = rdMsgCartao_('Report da semana', 'Carregando', 'Buscando o report da semana.', false);
   var url = '/api/cs/' + encodeURIComponent(nome) + '/report' + (semana ? '?semana=' + encodeURIComponent(semana) : '');
   return fetchJSON_(url).then(function(d){
     if (meu !== reportReq_ || currentCS !== nome) return;
     reportDados_ = d;
     reportSemana_ = d.semana;
-    if (d.semana === d.semanaAtual) reportEstadoAtual_ = { estado: d.estado || null, semana: d.semana, regularidade: d.regularidade || [] };
+    if (d.semana === d.semanaAtual) reportEstadoAtual_ = { estado: d.estado || null, semana: d.semana, regularidade: d.regularidade || [], regularidadeRelatorio: d.regularidadeRelatorio || [], relatoriosPendentes: d.relatoriosPendentes || null, health: d.health || null };
     renderAbaReport();
     renderPendencias();
   }).catch(function(err){
     if (meu !== reportReq_) return;
-    el.innerHTML = '<div class="empty-state">Erro ao carregar o report: ' + escR_(err.message) + '</div>';
+    el.innerHTML = rdMsgCartao_('Report da semana', 'Não foi possível carregar o report', err.message, true);
+    if (!reportEstadoAtual_) [['rdAbertura', 'Sua semana'], ['rdRitmo', 'Seu ritmo nas últimas 8 semanas'], ['reportHist', 'Críticos ao longo do tempo'], ['rdRelatorios', 'Relatórios do conselho']].forEach(function(x){
+      document.getElementById(x[0]).innerHTML = rdMsgCartao_(x[1], 'Não foi possível carregar', err.message, true);
+    });
   });
-}
-
-function reportHealthHtml_(h){
-  if (!h) return '';
-  var selo = h.statusReport === 'desatualizado' ? '<span class="report-selo alerta">Desatualizado</span>' : '';
-  var valor = h.healthBaseDecimos === null || h.healthBaseDecimos === undefined ? (h.statusReport === 'sem_report' ? 'Sem report' : 'Sem apuração') : fmtDecR_(h.healthBaseDecimos) + '%';
-  return '<div class="report-health" title="' + escR_(h.composicao || '') + '" aria-label="Health da Base: ' + escR_(h.composicao || valor) + '">' +
-    '<span class="report-health-label">Health da Base</span><span class="report-health-valor">' + escR_(valor) + '</span>' + selo + '</div>';
 }
 
 function renderAbaReport(){
   var d = reportDados_; if (!d) return;
-  var rep = d.report;
-  var proxima = somarDiasR_(d.semana, 7);
-  var html = '<div class="report-topo">' +
-    '<div class="report-semana-nav">' +
-      '<button type="button" class="agenda-nav-btn" data-report-acao="semana" data-semana="' + somarDiasR_(d.semana, -7) + '" aria-label="Semana anterior">&lsaquo;</button>' +
-      '<div class="report-semana-label">' + escR_(rotuloSemanaR_(d.semana)) + '</div>' +
-      '<button type="button" class="agenda-nav-btn" data-report-acao="semana" data-semana="' + proxima + '" aria-label="Próxima semana"' + (proxima > d.semanaAtual ? ' disabled' : '') + '>&rsaquo;</button>' +
-      '<span class="report-selo ' + (rep ? 'ok' : 'pendente') + '">' + (rep ? 'Enviado no Monday' : 'Sem report nesta semana') + '</span>' +
-    '</div>' + reportHealthHtml_(d.health) + '</div>' +
-    '<p class="report-ajuda">Os reports são preenchidos no board do Monday. Esta aba mostra o que foi enviado. <a href="' + REPORT_MONDAY_URL_ + '" target="_blank" rel="noopener">Abrir no Monday</a></p>';
-  html += reportEstadoHtml_(d) + reportRegularidadeHtml_(d) + relatorioRegularidadeHtml_(d);
-  html += rep ? reportLeituraHtml_(rep) : '<div class="empty-state">Nenhum report encontrado para esta semana.</div>';
-  html += reportHistoricoHtml_();
-  document.getElementById('report').innerHTML = html;
+  document.getElementById('report').innerHTML = rdReportCartao_(d, REPORT_COMO_FOI_, REPORT_MONDAY_URL_);
+  document.getElementById('reportHist').innerHTML = rdHistoricoCartao_(d, lineChart);
+  renderAcompanhamentoTopo_();
+}
+// Abertura, ritmo e relatórios do conselho dependem só da semana corrente: não mudam ao navegar entre semanas.
+function renderAcompanhamentoTopo_(){
+  var b = reportEstadoAtual_;
+  document.getElementById('rdAbertura').innerHTML = rdAbertura_(b, REPORT_MONDAY_URL_);
+  document.getElementById('rdRitmo').innerHTML = rdRitmo_(b);
+  document.getElementById('rdRelatorios').innerHTML = b ? rdRelatoriosCartao_(b) : rdMsgCartao_('Relatórios do conselho', 'Carregando', 'Buscando os relatórios por preencher.', false);
 }
 
 function fmtHorasR_(h){ h = Number(h || 0); if (h >= 48) return Math.floor(h / 24) + ' dias'; return Math.round(h) + ' h'; }
-function reportEstadoHtml_(d){
-  var e = d.estado;
-  if (!e) return '<section class="report-secao"><h3>Estado da semana</h3><div class="empty-state">Este CS não tem report cobrado nesta semana.</div></section>';
-  var txt, cls;
-  if (e.estado === 'enviado_no_prazo') { txt = 'Enviado no prazo'; cls = 'ok'; }
-  else if (e.estado === 'enviado_com_atraso') { txt = 'Enviado com atraso, ' + fmtHorasR_(e.horas_atraso); cls = 'alerta'; }
-  else if (e.estado === 'pendente') { txt = 'Pendente. Prazo: sexta às 19h'; cls = 'pendente'; }
-  else { txt = 'Atrasado há ' + fmtHorasR_(e.horas_atraso); cls = 'alerta'; }
-  return '<section class="report-secao"><h3>Estado da semana</h3><span class="report-selo ' + cls + '">' + escR_(txt) + '</span></section>';
-}
-function reportRegularidadeHtml_(d){
-  var lista = d.regularidade || [];
-  if (!lista.length) return '';
-  var rot = { enviado_no_prazo: 'Enviado no prazo', enviado_com_atraso: 'Enviado com atraso', atrasado: 'Não enviado' };
-  var marcas = lista.map(function(r){
-    var cls = r.estado === 'enviado_no_prazo' ? 'ok' : (r.estado === 'enviado_com_atraso' ? 'atraso' : 'falta');
-    return '<span class="report-reg report-reg-' + cls + '" title="' + escR_(dataCurtaR_(r.semana_inicio) + ': ' + (rot[r.estado] || r.estado)) + '"></span>';
-  }).join('');
-  return '<section class="report-secao"><h3>Regularidade, últimas ' + lista.length + ' semanas</h3><div class="report-reg-linha">' + marcas + '</div></section>';
-}
-// Regularidade do relatório do conselho: o mesmo componente, um quadrado por encontro das últimas 8 semanas.
-function relatorioRegularidadeHtml_(d){
-  var lista = d.regularidadeRelatorio || [];
-  if (!lista.length) return '';
-  var rot = { enviado_no_prazo: 'Enviado no prazo', enviado_com_atraso: 'Enviado com atraso', atrasado: 'Não enviado', pendente: 'Pendente' };
-  var marcas = lista.map(function(r){
-    var cls = r.estado === 'enviado_no_prazo' ? 'ok' : (r.estado === 'enviado_com_atraso' ? 'atraso' : (r.estado === 'pendente' ? 'pendente' : 'falta'));
-    return '<span class="report-reg report-reg-' + cls + '" title="' + escR_('Semana de ' + dataCurtaR_(r.semana_inicio) + ': ' + (rot[r.estado] || r.estado)) + '"></span>';
-  }).join('');
-  return '<section class="report-secao"><h3>Relatório do conselho, últimas 8 semanas</h3><div class="report-reg-linha">' + marcas + '</div></section>';
-}
-function reportLeituraHtml_(rep){
-  var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === rep.como_foi_semana; })[0];
-  return '<div class="report-leitura">' +
-    '<div class="umaum-card-campo"><b>Como foi a semana</b>' + escR_(como ? como.rotulo : 'Não informado') + (rep.nota_semana !== null && rep.nota_semana !== undefined ? ', nota ' + rep.nota_semana : '') + '</div>' +
-    (rep.risco_se_ignorar ? '<div class="umaum-card-campo"><b>O que pode virar problema</b>' + escR_(rep.risco_se_ignorar) + '</div>' : '') +
-    (rep.por_que ? '<div class="umaum-card-campo"><b>Por quê</b>' + escR_(rep.por_que) + '</div>' : '') +
-    '<div class="umaum-card-campo"><b>Críticos declarados</b>' + (rep.criticos_total === null || rep.criticos_total === undefined ? 'Não informado' : rep.criticos_total + ' de ' + rep.base_total) + '</div>' +
-  '</div>';
-}
 
-function reportHistoricoHtml_(){
-  var hist = reportDados_.historico || [];
-  if (!hist.length) return '<section class="report-secao"><h3>Histórico</h3><div class="empty-state">Nenhum report registrado ainda.</div></section>';
-  var pontos = hist.slice().reverse().filter(function(r){ return r.percentualDecimos !== null && r.percentualDecimos !== undefined; })
-    .map(function(r){ return { v: r.percentualDecimos / 10, lbl: dataCurtaR_(r.semana_inicio) }; });
-  var rotCheck = { feito:'Feito', em_andamento:'Em andamento', parado:'Parado' };
-  var linhas = hist.map(function(r){
-    var como = REPORT_COMO_FOI_.filter(function(o){ return o.valor === r.como_foi_semana; })[0];
-    var checks = REPORT_CHECKLISTS_.map(function(c){ var v = r[c.campo]; return '<span class="report-check report-check-' + (v || 'nulo') + '" title="' + escR_(c.rotulo + ': ' + (rotCheck[v] || 'Não informado')) + '"></span>'; }).join('');
-    return '<tr data-report-acao="semana" data-semana="' + r.semana_inicio + '" tabindex="0" class="report-hist-linha">' +
-      '<td>' + dataCurtaR_(r.semana_inicio) + '</td>' +
-      '<td>' + (como ? '<span class="report-como report-como-' + como.valor + '">' + como.rotulo + '</span>' : 'Não informado') + '</td>' +
-      '<td class="num">' + (r.percentualDecimos === null || r.percentualDecimos === undefined ? 'Sem apuração' : fmtDecR_(r.percentualDecimos) + '%') + '</td>' +
-      '<td class="num">' + (r.healthDecimos === null || r.healthDecimos === undefined ? 'Sem apuração' : fmtDecR_(r.healthDecimos) + '%') + '</td>' +
-      '<td>' + checks + '</td></tr>';
-  }).join('');
-  return '<section class="report-secao"><h3>Histórico</h3>' +
-    (pontos.length >= 2 ? '<div class="report-grafico" role="img" aria-label="Percentual de críticos por semana">' + lineChart(pontos, '#C0433D') + '</div>' : '') +
-    '<div class="report-hist-wrap"><table class="report-hist"><thead><tr><th>Semana</th><th>Como foi</th><th class="num">Críticos</th><th class="num">Health da Base</th><th>Rotina</th></tr></thead><tbody>' + linhas + '</tbody></table></div></section>';
-}
-
+// Um só ouvinte no painel inteiro: os chips de semana do cartão de críticos ficam fora do cartão do report.
 function instalarEventosReport_(){
-  var raiz = document.getElementById('report'); if (!raiz || raiz.getAttribute('data-eventos')) return;
+  var raiz = document.getElementById('aba-acompanhamento'); if (!raiz || raiz.getAttribute('data-eventos')) return;
   raiz.setAttribute('data-eventos', '1');
   raiz.addEventListener('click', function(ev){
     var alvo = ev.target.closest ? ev.target.closest('[data-report-acao="semana"]') : null;
     if (alvo && !alvo.disabled) carregarReport(reportCS_, alvo.getAttribute('data-semana'));
   });
-  raiz.addEventListener('keydown', function(ev){
-    var linha = ev.target.closest ? ev.target.closest('tr.report-hist-linha') : null;
-    if (linha && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); carregarReport(reportCS_, linha.getAttribute('data-semana')); }
-  });
 }
-if (document.getElementById('report')) instalarEventosReport_(); else document.addEventListener('DOMContentLoaded', instalarEventosReport_);
+if (document.getElementById('aba-acompanhamento')) instalarEventosReport_(); else document.addEventListener('DOMContentLoaded', instalarEventosReport_);
 
 // ============ foto de perfil com recorte (brainstorm 29/09/2026) ============
 // Canvas simples, sem biblioteca externa (mesma filosofia zero-dependência do resto do arquivo):
