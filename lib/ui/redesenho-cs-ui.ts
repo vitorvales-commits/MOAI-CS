@@ -130,6 +130,32 @@ export const REDESENHO_CS_CSS = `
 .rd-div{display:flex;align-items:center;gap:10px;margin:22px 0 14px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
 .rd-div::after{content:"";flex:1;height:1px;background:var(--line2)}
 .rd-card .quote-block{background:var(--bg);border:0;border-left:4px solid var(--gold);border-radius:16px}
+
+/* Meus indicadores em fundo claro (27/10/2026): os cartões escuros do mês passam para o vidro claro da marca. O M segue a meta. */
+#aba-mes .kpi,#aba-mes .gtd-card,#aba-mes .dark-card,#aba-mes .chart-card{background:var(--surface);color:var(--ink);border:1px solid rgba(26,26,26,.06);box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 28px rgba(20,20,20,.04);border-radius:20px}
+#aba-mes .kpi{min-height:0}
+#aba-mes .kpi.skel{background:#E9E9E9;border-color:transparent}
+#aba-mes .kpi-label,#aba-mes .gtd-card-valor,#aba-mes .dark-value{color:var(--ink)}
+#aba-mes .kpi-fonte,#aba-mes .kpi-cobertura,#aba-mes .kpi-time-linha,#aba-mes .gtd-card-sub,#aba-mes .dark-label,#aba-mes .chart-title{color:var(--ink3)}
+#aba-mes .kpi-fonte.manual{color:var(--green)}
+#aba-mes .kpi-sub,#aba-mes .dark-sub,#aba-mes .kpi-time-valor{color:var(--ink2)}
+#aba-mes .gtd-card-label{color:var(--gold-ink)}
+#aba-mes .kpi-pill.pg{background:var(--green-soft);color:#2F6B49}
+#aba-mes .kpi-pill.py{background:var(--gold-soft);color:var(--gold-ink)}
+#aba-mes .kpi-pill.pr{background:var(--red-soft);color:var(--red-ink)}
+#aba-mes .kpi-pill.pgray{background:var(--bg);color:var(--ink2)}
+#aba-mes .kpi-recorde-badge{background:var(--gold-soft);color:var(--gold-ink)}
+#aba-mes .kpi-recorde-linha{color:var(--gold-ink)}
+#aba-mes .m-fill-wrap{background:rgba(26,26,26,.09)}
+#aba-mes .m-fill-liquid.g{background:linear-gradient(180deg,#5BB383,var(--green))}
+#aba-mes .m-fill-liquid.y{background:linear-gradient(180deg,#E3B94F,var(--gold))}
+#aba-mes .m-fill-liquid.r{background:linear-gradient(180deg,#D96A64,var(--red))}
+#aba-mes .m-fill-liquid.gray{background:linear-gradient(180deg,#C9C6C6,#B0ADAD)}
+#aba-mes .c-g{color:#2F6B49}#aba-mes .c-y{color:var(--gold-ink)}#aba-mes .c-r{color:var(--red-ink)}#aba-mes .c-gray{color:var(--ink3)}
+#aba-mes .info-btn{background:var(--bg);color:var(--ink2)}
+#aba-mes .gtd-card-bar-bg{background:var(--line)}
+#aba-mes .gtd-card-bar-fill{background:linear-gradient(90deg,#E3B94F,var(--gold))}
+#aba-mes .mini-stat{background:var(--bg)!important}
 @media(max-width:760px){
   .rd-hero{grid-template-columns:minmax(0,1fr);padding:22px 20px}
   .rd-hero h2{font-size:22px}

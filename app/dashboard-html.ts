@@ -1594,7 +1594,7 @@ function atualizarBadgeDestaque(nome){
   }).withFailureHandler(function(){}).getVezesDestaquePublico(nome);
 }
 
-function skelKpi(){ return '<div class="kpi skel" style="background:#1A1A1A;"><div style="height:100%;"></div></div>'; }
+function skelKpi(){ return '<div class="kpi skel"><div style="height:100%;"></div></div>'; }
 function renderSkeletonPessoa(){
   document.getElementById('pessoaFoto').style.display='none';
   document.getElementById('pessoaFotoFallback').style.display='none';
@@ -1879,9 +1879,9 @@ function formatarMesAbrevAno(iso){
 function valorKpiTexto_(ind, unidade){
   if (ind.statusReport === 'sem_report') return 'Sem report';
   if (ind.semApuracao) return 'Sem apuração';
-  if (ind.alcancado===null||ind.alcancado===undefined) return '—';
+  if (ind.alcancado===null||ind.alcancado===undefined) return 'Sem dado';
   if (ind.composicao && ind.unidade === '%') return ind.alcancado.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
-  return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : ind.alcancado;
+  return unidade==='R$' ? 'R$ '+ind.alcancado.toLocaleString('pt-BR') : rdNum_(ind.alcancado);
 }
 function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   var c = calcIndicador(ind);
@@ -1890,9 +1890,9 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   else if (ind.statusReport === 'desatualizado') { c.pillLabel = 'Desatualizado'; c.pill = 'py'; }
   if (ind.composicao) recorde = null;
   var valorMostrado = valorKpiTexto_(ind, unidade);
-  var metaMostrada = (ind.meta===null||ind.meta===undefined) ? '—' : ind.meta;
+  var metaMostrada = (ind.meta===null||ind.meta===undefined) ? 'sem meta' : rdNum_(ind.meta);
   var fonteHtml = ind.fonte ? '<span class="kpi-fonte'+(ind.fonte==='manual'?' manual':'')+'"><span class="kpi-fonte-dot"></span>'+(ind.fonte==='manual'?'Validado no Monday':'Calculado automático')+'</span>' : '';
-  var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+metaMostrada+' · '+c.pctLabel);
+  var subLabel = modoGeralAtual ? c.pctLabel : (ind.meta==null ? '' : 'meta '+metaMostrada+' · ') + c.pctLabel;
   var timeHtml = '';
   if (timeInd) {
     var valorTime = valorKpiTexto_(timeInd, unidade);
@@ -1902,7 +1902,7 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   // dos meses fechados (ou o manual, se melhor) — recorde_efetivo/metas_time_mensal no banco.
   var recordeBadge = (recorde && recorde.emRecorde) ? '<span class="kpi-recorde-badge">Recorde</span>' : '';
   var recordeLinha = (recorde && recorde.recordeValor !== null && recorde.recordeValor !== undefined)
-    ? '<div class="kpi-recorde-linha">recorde '+recorde.recordeValor+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
+    ? '<div class="kpi-recorde-linha">recorde '+rdNum_(recorde.recordeValor)+' em '+formatarMesAbrevAno(recorde.recordeMes)+'</div>' : '';
   // Tooltip: composição por CS (nome, críticos, carteira, percentual), do maior percentual para o menor, quando
   // o indicador traz detalheCS; senão, a composição resumida. Dentro desta template literal o separador de linha é &#10;.
   var tooltipCard = (ind.detalheCS && ind.detalheCS.length)
@@ -2182,11 +2182,11 @@ function renderSemanal(data){
   var lista = data.casesRegistrados || [];
   casesAtuais = lista;
 
-  var subLabel = modoGeralAtual ? c.pctLabel : ('meta '+(ind.meta==null?'—':ind.meta)+' · '+c.pctLabel);
+  var subLabel = modoGeralAtual ? c.pctLabel : ((ind.meta==null?'':'meta '+rdNum_(ind.meta)+' · ')+c.pctLabel);
   var html = '<div class="hero-grid">' +
     '<div class="dark-card cases-hero-card">' +
       '<div class="m-fill-wrap" style="width:90px;height:90px;flex-shrink:0;"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-      '<div class="cases-hero-text"><div class="dark-label">Cases de sucesso</div><div class="dark-value num '+c.corTxt+'" style="font-size:44px;">'+(ind.alcancado==null?'—':ind.alcancado)+'</div><div class="dark-sub">'+subLabel+'</div></div>' +
+      '<div class="cases-hero-text"><div class="dark-label">Cases de sucesso</div><div class="dark-value num '+c.corTxt+'" style="font-size:44px;">'+(ind.alcancado==null?'Sem dado':rdNum_(ind.alcancado))+'</div><div class="dark-sub">'+subLabel+'</div></div>' +
     '</div>' +
     '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
       '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Status</div><span class="kpi-pill '+c.pill+'" style="width:fit-content;">'+c.pillLabel+'</span></div>' +
