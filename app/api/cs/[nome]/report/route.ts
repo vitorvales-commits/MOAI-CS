@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { listarAdvertenciasCS } from '@/lib/reports';
+import { listarEncontrosRelatorio } from '@/lib/relatorio-conselho-dados';
 import { calcularHealthBase, percentualCriticosDecimos, pontuacaoAtiva, segundaFeiraBRT, statusReport } from '@/lib/indicadores-base';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return NextResponse.json({ error: 'Você só pode consultar o próprio report.' }, { status: 403 });
     }
     // Colunas de leitura só: nenhuma coluna de engajamento baixo, médio ou alto é lida aqui.
+    // Relatórios do conselho ainda por preencher (a fonte da home): alimenta a abertura da aba Acompanhamento.
+    // Falha aqui não derruba o report: a aba cai para a regularidade das 8 semanas.
+    const pendentesP = listarEncontrosRelatorio(supabase, nome).catch(() => null);
     const [histRes, repRes, advertencias, statusRes, regRes, healthRes, regRelRes] = await Promise.all([
       supabase.rpc('reports_historico_cs', { p_cs: nome }),
       supabase.from('reports_individuais')
@@ -75,9 +79,13 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
     };
     const estado = ((statusRes.data || []) as any[]).find((r) => r.cs_nome === nome) ?? null;
     const report = (repRes.data || [])[0] ?? null;
+    const pendentes = await pendentesP;
+    const relatoriosPendentes = pendentes === null ? null : pendentes
+      .filter((e) => e.estado === 'a_preencher' || e.estado === 'vence_hoje' || e.estado === 'atrasado')
+      .map((e) => ({ groupId: e.groupId, conselho: e.conselho, dataEncontro: e.dataEncontro, estado: e.estado, diasRestantes: e.diasRestantes }));
     return NextResponse.json({
       cs: nome, semana, semanaAtual,
-      report, historico, health, estado, regularidade: regRes.data || [], regularidadeRelatorio: regRelRes.error ? [] : regRelRes.data || [], pontosAtivos: advertencias.pontuacaoAtiva,
+      report, historico, health, estado, regularidade: regRes.data || [], regularidadeRelatorio: regRelRes.error ? [] : regRelRes.data || [], relatoriosPendentes, pontosAtivos: advertencias.pontuacaoAtiva,
     });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
