@@ -71,7 +71,7 @@ export const RELATORIOS_GESTOR_CSS = `
 `;
 
 export const RELATORIOS_GESTOR_HTML = `
-    <section class="panel" style="margin-top:22px" aria-labelledby="h-rel-gestor">
+    <section class="panel" aria-labelledby="h-rel-gestor">
       <div class="ph"><div><h2 id="h-rel-gestor">Relatórios pós conselho</h2><p id="relGestorSituacao">Carregando os relatórios dos encontros.</p></div></div>
       <div id="relGestor"></div>
     </section>
