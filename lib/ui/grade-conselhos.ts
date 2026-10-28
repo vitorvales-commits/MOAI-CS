@@ -25,6 +25,11 @@ export const GRADE_CONSELHOS_CSS = `
 .gc-var{font-weight:700}
 .gc-var.queda{color:var(--red-ink)}
 .gc-atas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--ink2)}
+.gc-item{display:flex;flex-direction:column;gap:8px;min-width:0}
+.gc-item>.gc-card{flex:1}
+.gc-rel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rd-card .gc-grid,.rd-card .gc-ctl,.rd-card .gc-vazio,.rd-card .gc-barras{padding-left:0;padding-right:0}
+.rd-card .gc-erro{margin-left:0;margin-right:0}
 .gc-sk{height:300px;border-radius:16px;background:linear-gradient(90deg,var(--line) 25%,#F6F5F5 50%,var(--line) 75%);background-size:200% 100%;animation:gcbrilho 1.3s linear infinite}
 @keyframes gcbrilho{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.gc-sk{animation:none}}
@@ -42,7 +47,9 @@ export const GRADE_CONSELHOS_CSS = `
 `;
 
 export const GRADE_CONSELHOS_SCRIPT = `
-var GC_ = { cards: [], ordem: 'produto', cs: '', mes: '', ano: 0, comCS: false, raiz: null, ctl: null };
+var GC_ = { cards: [], ordem: 'produto', cs: '', mes: '', ano: 0, comCS: false, raiz: null, ctl: null, pend: {} };
+// Relatórios por preencher, por groupId, na página do CS. Redesenha a grade quando ela já está na tela.
+function gcDefinirPend_(mapa){ GC_.pend = mapa || {}; if (GC_.raiz && GC_.cards.length && !GC_.comCS) gcDesenhar_(); }
 function gcEsc_(s){ return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
 function gcIniciais_(nome){ return String(nome || '?').split(' ').filter(Boolean).slice(0, 2).map(function(p){ return p.charAt(0).toUpperCase(); }).join(''); }
 function gcData_(iso){
@@ -101,11 +108,15 @@ function gcCartao_(c){
   var atas = a.membros === 0 ? '' : (a.comAta === 0
     ? '<div class="gc-atas">Nenhuma ata extraída no período</div>'
     : '<div class="gc-atas">Atas: ' + a.comAta + ' de ' + a.membros + (a.semAta > 0 ? ' <span class="tag gold">' + a.semAta + (a.semAta === 1 ? ' membro sem ata' : ' membros sem ata') + '</span>' : '') + '</div>');
-  return '<a class="gc-card' + (c.congelado ? ' congelado' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + qs + '">' +
+  var pd = GC_.pend && GC_.pend[c.groupId];
+  var rel = pd ? '<div class="gc-rel"><span class="rd-pill ' + (pd.estado === 'atrasado' ? 'red' : 'gold') + '">' +
+    (pd.estado === 'atrasado' ? 'Relatório atrasado' : pd.estado === 'vence_hoje' ? 'Relatório vence hoje' : 'Relatório vence em ' + pd.diasRestantes + (pd.diasRestantes === 1 ? ' dia' : ' dias')) +
+    '</span><button type="button" class="rd-btn" data-rc-abrir="1" data-rc-grupo="' + gcEsc_(pd.groupId) + '" data-rc-data="' + gcEsc_(pd.dataEncontro) + '">Preencher relatório</button></div>' : '';
+  return '<div class="gc-item"><a class="gc-card' + (c.congelado ? ' congelado' : '') + '" href="/conselho/' + encodeURIComponent(c.groupId) + qs + '">' +
     '<div class="gc-foto">' + foto + selo + health + '</div>' +
     '<div class="gc-corpo"><div class="gc-nome">' + gcEsc_(c.conselheiro) + '</div><div class="gc-nivel">' + gcEsc_(c.nivel) + '</div>' +
     '<div class="gc-lin">CS: <b>' + gcEsc_(c.csResponsavel) + '</b></div><div class="gc-lin">' + gcEsc_(prox) + '</div>' + atas +
-    '<div class="gc-rod"><span>' + c.membros + ' membros</span>' + pres + '</div></div></a>';
+    '<div class="gc-rod"><span>' + c.membros + ' membros</span>' + pres + '</div></div></a>' + rel + '</div>';
 }
 function gcDesenhar_(){
   var cards = GC_.cards.filter(function(c){ return !GC_.cs || c.csResponsavel === GC_.cs; });

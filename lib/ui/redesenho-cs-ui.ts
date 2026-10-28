@@ -156,6 +156,65 @@ export const REDESENHO_CS_CSS = `
 #aba-mes .gtd-card-bar-bg{background:var(--line)}
 #aba-mes .gtd-card-bar-fill{background:linear-gradient(90deg,#E3B94F,var(--gold))}
 #aba-mes .mini-stat{background:var(--bg)!important}
+
+/* Faixa do CS, pendências, Meu mês e Conselhos no mesmo padrão (28/10/2026) */
+#screenPessoa .jornada-hero{background:transparent;color:var(--ink);padding:18px 28px 0}
+#screenPessoa .jornada-hero-inner{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:20px;box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 28px rgba(20,20,20,.04);padding:14px 18px;gap:16px;max-width:984px}
+#screenPessoa .jornada-photo,#screenPessoa .jornada-photo-fallback,#screenPessoa .jornada-photo-wrap{width:56px;height:56px;border-radius:16px;font-size:22px}
+#screenPessoa .jornada-photo-editar{width:24px;height:24px;font-size:11px;bottom:-4px;right:-4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line2)}
+#screenPessoa .jornada-nome{font-size:22px;color:var(--ink);margin-bottom:2px;letter-spacing:-0.02em}
+#screenPessoa .jornada-sub{color:var(--ink2);font-size:13px;margin:0}
+#screenPessoa .jornada-meta{color:var(--ink3);margin-top:2px}
+#screenPessoa .jornada-badge{flex-direction:row;gap:10px;padding:0}
+#screenPessoa .jornada-badge-img-wrap{width:36px}
+#screenPessoa .jornada-badge-count{min-width:20px;height:20px;font-size:11px;bottom:-4px;right:-8px}
+#screenPessoa .jornada-badge-label{color:var(--gold-ink);margin-top:0;text-align:left}
+#screenPessoa .pessoa-faixa{display:block;padding:14px 28px 6px}
+#screenPessoa .pend-bloco{background:var(--surface);border:1px solid rgba(26,26,26,.06);border-radius:20px;box-shadow:0 1px 2px rgba(20,20,20,.04),0 10px 28px rgba(20,20,20,.04);padding:22px}
+#screenPessoa .pend-titulo{font-size:17px;letter-spacing:-0.01em}
+.rd-hero1{display:block}
+.rd-hero>div{position:relative;z-index:1}
+.rd-hero-sub{margin:0;color:rgba(255,255,255,.7);font-size:13px;line-height:1.5}
+.rd-hero .mes-barra{background:rgba(255,255,255,.14);margin:16px 0 4px;max-width:560px}
+.rd-hero .mes-linha{margin-top:12px}
+.rd-hero .mes-rot{color:rgba(255,255,255,.55)}
+.rd-hero .mes-chip{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.18)}
+.rd-hero .mes-chip.r{background:rgba(192,67,61,.25);color:#f6b4b0;border-color:transparent}
+.rd-hero .mes-chip.y{background:rgba(200,154,46,.25);color:#f0c869;border-color:transparent}
+.rd-donut{position:relative;z-index:1}
+#aba-mes .rd-g3>.kpi,#aba-mes .rd-g3>.rd-card{height:100%;box-sizing:border-box}
+#aba-mes .kpi{padding:18px 20px}
+#aba-mes .kpi-body{flex-direction:row;text-align:left;justify-content:flex-start;align-items:center;gap:16px;flex:0 0 auto}
+#aba-mes .kpi-value-block{width:auto;flex:1;min-width:0}
+#aba-mes .kpi-realizado{font-size:34px}
+#aba-mes .m-fill-wrap{width:60px;height:60px}
+.kpi-gtd{display:flex;flex-direction:column}
+.kpi-gtd .kpi-top{margin-bottom:14px}
+.rd-mb{position:relative;height:8px;border-radius:99px;background:var(--line);margin-top:14px}
+.rd-mb i{display:block;height:100%;border-radius:99px;background:var(--green)}
+.rd-mb i.y{background:var(--gold)}
+.rd-mb i.r{background:var(--red)}
+.rd-mb i.gray{background:#B0ADAD}
+.rd-mb u{position:absolute;top:-4px;width:2px;height:16px;background:var(--ink);border-radius:2px;text-decoration:none}
+.rd-cases-cab{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.rd-cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.rd-case{text-align:left;background:var(--bg);border:1px solid transparent;border-radius:16px;padding:14px 16px;cursor:pointer;font:inherit;color:inherit;min-width:0;display:flex;flex-direction:column;gap:3px}
+.rd-case:hover{border-color:var(--ink)}
+.rd-case b{font-size:13.5px;line-height:1.4;overflow-wrap:anywhere}
+.rd-case span{font-size:12px;color:var(--ink2)}
+.rd-case span.rd-lab{font-size:10.5px;color:var(--ink3)}
+.rd-ex-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.rd-ex{background:var(--bg);border-radius:16px;padding:14px 16px;border-left:4px solid var(--line2);display:flex;flex-direction:column;gap:6px;min-width:0;align-items:flex-start}
+.rd-ex.g0{border-left-color:var(--red)}
+.rd-ex.g1{border-left-color:var(--gold)}
+.rd-ex b{font-size:14px;overflow-wrap:anywhere}
+.rd-ex p{margin:0;font-size:12.5px;color:var(--ink2);line-height:1.45}
+#conselhos[hidden]{display:none}
+@media(max-width:820px){
+  #screenPessoa .jornada-hero{padding:14px 16px 0}
+  #screenPessoa .pessoa-faixa{padding:12px 16px 4px}
+  #screenPessoa .pend-bloco{padding:18px}
+}
 @media(max-width:760px){
   .rd-hero{grid-template-columns:minmax(0,1fr);padding:22px 20px}
   .rd-hero h2{font-size:22px}

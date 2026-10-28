@@ -954,7 +954,6 @@ ${ICONES_SVG}
       <div class="pend-cab"><h2 class="pend-titulo" id="pendTitulo">O que fazer agora</h2><span class="pend-sub" id="pendSub"></span></div>
       <div class="pend-lista" id="pendLista"><div class="pend-vazio">Carregando suas pendências…</div></div>
     </section>
-    <section class="mes-bloco" id="mesResumo" aria-label="Resumo das metas do mês"></section>
   </div>
   <div class="tabs" role="tablist">
     <div class="tab active" role="tab" data-aba="aba-mes" onclick="showTab('aba-mes',event)">Meu mês</div>
@@ -964,19 +963,24 @@ ${ICONES_SVG}
   </div>
   <div class="pessoa-conteudo">
     <div id="aba-mes" class="panel active">
-      <div id="indicadores"></div>
-      <div class="section-title" style="margin-top:30px;">Cases de sucesso registrados<div class="line"></div></div>
-      <div id="semanal"></div>
+      <div class="rd-stack">
+        <section id="mesResumo" aria-label="Resumo das metas do mês"></section>
+        <div id="indicadores"></div>
+        <div id="semanal"></div>
+      </div>
     </div>
     <div id="aba-conselhos" class="panel">
-      <div id="consGradeCS" hidden>
-        <div class="section-title">Meus conselhos<div class="line"></div></div>
-        <div class="gc-ctl" id="consGradeCtl"></div>
-        <div id="consGradeCorpo"></div>
+      <div class="rd-stack">
+        <div id="consAbertura"></div>
+        <div id="consAtencao"></div>
+        <section class="rd-card" aria-labelledby="agendaTit"><h2 id="agendaTit">Agenda</h2><p class="rd-sub">Os encontros da semana, com navegação por semana ou mês.</p><div id="agendaPessoa"></div></section>
+        <section class="rd-card" id="consGradeCS" hidden aria-labelledby="gradeTit">
+          <h2 id="gradeTit">Meus conselhos</h2>
+          <div class="gc-ctl" id="consGradeCtl"></div>
+          <div id="consGradeCorpo"></div>
+        </section>
+        <div id="conselhos"></div>
       </div>
-      <div id="agendaPessoa"></div>
-      <div class="section-title" style="margin-top:30px;">Carteira de conselhos<div class="line"></div></div>
-      <div id="conselhos"></div>
     </div>
     <div id="aba-acompanhamento" class="panel">
       <div class="rd-stack">
@@ -1602,7 +1606,9 @@ function renderSkeletonPessoa(){
   document.getElementById('pessoaNome').textContent = currentCS;
   document.getElementById('pessoaSub').textContent = 'Customer Success';
   document.getElementById('pessoaMeta').textContent = 'Carregando ' + currentMes + '/' + currentAno + '...';
-  document.getElementById('mesResumo').innerHTML = '<div class="skel" style="height:96px;border-radius:18px;"></div>';
+  document.getElementById('mesResumo').innerHTML = '<div class="skel" style="height:150px;border-radius:24px;"></div>';
+  document.getElementById('consAbertura').innerHTML = '<div class="skel" style="height:150px;border-radius:24px;"></div>';
+  document.getElementById('consAtencao').innerHTML = '';
   document.getElementById('indicadores').innerHTML = '<div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div><div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div><div class="grid3">'+skelKpi()+skelKpi()+skelKpi()+'</div>';
   document.getElementById('semanal').innerHTML = '<div class="chart-card skel" style="height:180px;"></div><div class="week-grid">'+Array(4).fill('<div class="week-card skel" style="height:90px;"></div>').join('')+'</div>';
   document.getElementById('conselhos').innerHTML = '<div class="council-grid">'+Array(3).fill('<div class="council-card skel" style="height:150px;"></div>').join('')+'</div>';
@@ -1806,7 +1812,7 @@ function carregarRelatorio(nome, mes, ano){
       document.getElementById('semanal').innerHTML = msgErro;
       document.getElementById('conselhos').innerHTML = msgErro;
       document.getElementById('feedbacks').innerHTML = msgErro;
-      document.getElementById('mesResumo').innerHTML = '';
+      document.getElementById('consAbertura').innerHTML = ''; document.getElementById('consAtencao').innerHTML = ''; document.getElementById('mesResumo').innerHTML = '';
     }
   }).getReportPublico(nome, mes, ano);
 }
@@ -1837,7 +1843,7 @@ function carregarRelatorioRestrito(nome, mes, ano){
       document.getElementById('semanal').innerHTML = msgErro;
       document.getElementById('conselhos').innerHTML = msgErro;
       document.getElementById('feedbacks').innerHTML = msgErro;
-      document.getElementById('mesResumo').innerHTML = '';
+      document.getElementById('consAbertura').innerHTML = ''; document.getElementById('consAtencao').innerHTML = ''; document.getElementById('mesResumo').innerHTML = '';
     }
   });
 }
@@ -1896,7 +1902,7 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   var timeHtml = '';
   if (timeInd) {
     var valorTime = valorKpiTexto_(timeInd, unidade);
-    timeHtml = '<div class="kpi-time-linha'+(blurTime?' kpi-blur':'')+'">Time: <span class="kpi-time-valor">'+valorTime+'</span></div>';
+    if (timeInd.alcancado !== null && timeInd.alcancado !== undefined) timeHtml = '<div class="kpi-time-linha'+(blurTime?' kpi-blur':'')+'">Time: <span class="kpi-time-valor">'+valorTime+'</span></div>';
   }
   // Selo de recorde (Parte G, 29/09/2026): só quando o indicador está batendo o recorde efetivo
   // dos meses fechados (ou o manual, se melhor) — recorde_efetivo/metas_time_mensal no banco.
@@ -1920,8 +1926,22 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
     : recordeLinha;
   return '<div class="kpi"'+(idDom?' id="'+idDom+'"':'')+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+terceiraLinha+'</div></div></div>';
+    '<div class="kpi-value-block"><div class="kpi-realizado num '+c.corTxt+'">'+valorMostrado+'</div><div class="kpi-sub">'+subLabel+'</div>'+timeHtml+terceiraLinha+'</div></div>'+barraMeta_(ind, c)+'</div>';
 }
+// Barra do cartão com o traço do esperado até hoje (ritmo linear do mês, só para meta de mínimo no mês corrente).
+function esperadoPct_(ind){
+  var p = periodoMes_;
+  if (!p || p.geral || ind.tipoMeta !== 'min' || !(ind.meta > 0)) return null;
+  var hj = new Date();
+  if (String(p.mes) !== MESES[hj.getMonth()] || Number(p.ano) !== hj.getFullYear()) return null;
+  return Math.round(hj.getDate() / new Date(hj.getFullYear(), hj.getMonth() + 1, 0).getDate() * 100);
+}
+function barraMeta_(ind, c){
+  if (modoGeralAtual || ind.meta === null || ind.meta === undefined || ind.alcancado === null || ind.alcancado === undefined || ind.semApuracao) return '';
+  var esp = esperadoPct_(ind);
+  return '<div class="rd-mb" role="img" aria-label="'+c.pctLabel+(esp === null ? '' : ', esperado até hoje '+esp+'% da meta')+'"><i class="'+c.cor+'" style="width:'+c.pct+'%"></i>'+(esp === null ? '' : '<u style="left:'+esp+'%" title="Esperado até hoje"></u>')+'</div>';
+}
+var periodoMes_ = null;
 function animarMFills(scopeEl){
   (scopeEl||document).querySelectorAll('.m-fill-liquid[data-target]').forEach(function(el, i){
     var target = el.getAttribute('data-target');
@@ -1974,7 +1994,8 @@ function renderJornadaHero(data){
   // Botão de trocar foto (brainstorm 29/09/2026): visível só pro gestor ou pro próprio CS dono do perfil.
   document.getElementById('pessoaFotoEditarBtn').style.display = (souGestor || data.cs.nome === meuCSNome) ? 'flex' : 'none';
   document.getElementById('pessoaNome').textContent = data.cs.nomeCompleto;
-  document.getElementById('pessoaSub').textContent = 'Customer Success · Conselho ' + data.cs.apelidoConselho;
+  var nCons = (data.conselhos || []).length;
+  document.getElementById('pessoaSub').textContent = 'Customer Success · Conselho ' + data.cs.apelidoConselho + ' · ' + nCons + (nCons === 1 ? ' conselho' : ' conselhos') + ' na carteira';
   var periodoTxt = data.periodo.geral ? 'Visão Geral · ' + data.periodo.ano : data.periodo.mes + '/' + data.periodo.ano;
   document.getElementById('pessoaMeta').textContent = periodoTxt + ' · dados de ' + new Date(data.periodo.geradoEm).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
@@ -2016,7 +2037,7 @@ function coletarPendencias_(){
     var quando = atras
       ? (x.diasRestantes >= 0 ? 'O prazo venceu hoje.' : 'Atrasado há ' + (-x.diasRestantes) + (x.diasRestantes === -1 ? ' dia.' : ' dias.'))
       : (x.estado === 'vence_hoje' ? 'O prazo vence hoje, às 23h59.' : 'Vence em ' + x.diasRestantes + (x.diasRestantes === 1 ? ' dia.' : ' dias.'));
-    itens.push({ g: atras || x.diasRestantes <= 2 ? 0 : 1, ord:1.5 + x.diasRestantes / 1000, titulo:'Relatório do conselho ' + x.conselho, det:'Encontro de ' + dataCurtaR_(x.dataEncontro) + '. ' + quando,
+    itens.push({ g: atras || x.diasRestantes <= 2 ? 0 : 1, ord:1.5 + x.diasRestantes / 1000, cons:1, conselho:x.conselho, mot:'Relatório do encontro de ' + dataCurtaR_(x.dataEncontro) + ' por preencher', titulo:'Relatório do conselho ' + x.conselho, det:'Encontro de ' + dataCurtaR_(x.dataEncontro) + '. ' + quando,
       acao:'<button type="button" class="pend-acao" data-rc-abrir="1" data-rc-grupo="' + escHtml_(x.groupId) + '" data-rc-data="' + escHtml_(x.dataEncontro) + '">Preencher</button>' });
   });
   if (r && r.regularidade) {
@@ -2030,7 +2051,7 @@ function coletarPendencias_(){
       var nome = nomeCurtoConselho_(c);
       if (c.gtd && c.gtd.atual && c.gtd.etapasAtrasadas && c.gtd.etapasAtrasadas.length) {
         var n = c.gtd.etapasAtrasadas.length;
-        itens.push({ g:0, ord:2, titulo:'GTD de ' + nome + ': ' + n + (n === 1 ? ' etapa atrasada' : ' etapas atrasadas'),
+        itens.push({ g:0, ord:2, cons:1, conselho:nome, mot:n + (n === 1 ? ' etapa do GTD atrasada' : ' etapas do GTD atrasadas'), titulo:'GTD de ' + nome + ': ' + n + (n === 1 ? ' etapa atrasada' : ' etapas atrasadas'),
           det:c.gtd.etapasAtrasadas.slice(0,2).map(function(e){ return String(e).replace(/^\\s*D\\s*[+\\-]\\s*\\d+\\s*/i, ''); }).join(' · ') + (n > 2 ? ' · e mais ' + (n-2) : ''),
           acao:'<button type="button" class="pend-acao" onclick="abrirConselhoModal(' + i + ')">Ver etapas</button>' });
       }
@@ -2040,7 +2061,7 @@ function coletarPendencias_(){
         var faixa = semaforoConfirmados_(qtd).chave;
         if (dias >= 0 && dias <= 7 && (faixa === 'vermelho' || faixa === 'laranja')) {
           var f = formatarDataConselho(c.proximaData);
-          itens.push({ g: dias <= 2 ? 0 : 1, ord:3 + dias / 10, titulo:'Confirmar presença no conselho ' + nome,
+          itens.push({ g: dias <= 2 ? 0 : 1, ord:3 + dias / 10, cons:1, conselho:nome, mot:'Poucos confirmados para o próximo encontro', titulo:'Confirmar presença no conselho ' + nome,
             det:(f ? f.texto + ' · ' : '') + (qtd === 0 ? 'nenhum confirmado ainda' : qtd + (qtd === 1 ? ' confirmado' : ' confirmados')) + '.',
             acao:'<button type="button" class="pend-acao" onclick="abrirConselhoModal(' + i + ')">Ver conselho</button>' });
         }
@@ -2075,6 +2096,8 @@ function renderPendencias(){
   document.getElementById('pendSub').textContent = r.itens.length
     ? (urgentes ? urgentes + (urgentes === 1 ? ' urgente' : ' urgentes') + ' · ' : '') + r.itens.length + ' no total'
     : '';
+  renderAtencaoConselhos_();
+  gcDefinirPend_(relatoriosPorGrupo_());
   var badge = document.getElementById('tabBadgeAcomp');
   var nAcomp = r.itens.filter(function(x){ return x.g < 2 && (x.ord === 0 || Math.floor(x.ord) === 1 || x.ord === 4 || x.ord === 6); }).length;
   if (badge) { badge.hidden = !nAcomp; badge.textContent = nAcomp; }
@@ -2099,8 +2122,7 @@ function renderResumoMes(data){
   var el = document.getElementById('mesResumo');
   var ind = data.indicadores;
   if (data.periodo.geral) {
-    el.innerHTML = '<div class="mes-cab"><span class="mes-eyebrow">Visão geral de ' + data.periodo.ano + '</span></div>' +
-      '<div class="mes-frase">Acumulado do ano, sem comparação com meta. Escolha um mês no topo para ver o que está no alvo.</div>';
+    el.innerHTML = '<div class="rd-hero rd-hero1"><div><span class="rd-lab">Visão geral de ' + data.periodo.ano + '</span><h2>Acumulado do ano, sem comparação com meta. Escolha um mês no topo para ver o que está no alvo.</h2></div></div>';
     return;
   }
   var lidos = INDICADORES_MES_.map(function(x){ return { l:x.l, k:x.k, ind:ind[x.k], c:calcIndicador(ind[x.k]) }; })
@@ -2115,14 +2137,21 @@ function renderResumoMes(data){
     var v = x.ind.tipoMeta === 'max' ? valorKpiTexto_(x.ind, x.k === 'revenueChurn' ? 'R$' : null) + ' para limite de ' + (x.k === 'revenueChurn' ? 'R$ ' + Number(x.ind.meta).toLocaleString('pt-BR') : x.ind.meta + (x.ind.composicao ? '%' : '')) : x.c.pctLabel.replace(' da meta','');
     return '<button type="button" class="mes-chip ' + cls + '" onclick="irParaAba(&#39;aba-mes&#39;,&#39;kpi-' + x.k + '&#39;)">' + x.l + ' <b>' + v + '</b></button>';
   };
-  el.innerHTML = '<div class="mes-cab"><span class="mes-eyebrow">Metas de ' + String(data.periodo.mes).toLowerCase() + '</span></div>' +
-    (total
-      ? '<div class="mes-frase"><b class="num">' + noAlvo.length + '</b> de ' + total + ' no alvo</div>' +
-        '<div class="mes-barra" role="img" aria-label="' + noAlvo.length + ' no alvo, ' + andamento.length + ' em andamento, ' + atencao.length + ' precisam de atenção">' + seg(noAlvo.length,'g') + seg(andamento.length,'y') + seg(atencao.length,'r') + '</div>' +
-        (atencao.length ? '<div class="mes-linha"><span class="mes-rot">Precisam de atenção</span>' + atencao.map(function(x){ return chip(x,'r'); }).join('') + '</div>' : '') +
-        (andamento.length ? '<div class="mes-linha"><span class="mes-rot">Em andamento</span>' + andamento.map(function(x){ return chip(x,'y'); }).join('') + '</div>' : '') +
-        (!atencao.length && !andamento.length ? '<div class="mes-linha"><span class="mes-rot ok">Todas as metas com dado estão no alvo.</span></div>' : '')
-      : '<div class="mes-frase pequeno">Ainda sem metas com dado neste mês.</div>');
+  var partes = [];
+  if (andamento.length) partes.push(andamento.length + ' em andamento');
+  if (atencao.length) partes.push(atencao.length + (atencao.length === 1 ? ' pede atenção' : ' pedem atenção'));
+  var frase = !total ? 'Ainda sem metas com dado neste mês.'
+    : (!partes.length ? 'Todas as ' + total + ' metas com dado estão no alvo.' : noAlvo.length + ' de ' + total + ' metas no alvo, ' + partes.join(' e ') + '.');
+  var hj = new Date();
+  var noMesAtual = String(data.periodo.mes) === MESES[hj.getMonth()] && Number(data.periodo.ano) === hj.getFullYear();
+  var faltam = new Date(hj.getFullYear(), hj.getMonth() + 1, 0).getDate() - hj.getDate();
+  var ritmo = noMesAtual ? (faltam === 0 ? 'Hoje é o último dia do mês. ' : 'Faltam ' + faltam + (faltam === 1 ? ' dia' : ' dias') + ' para fechar o mês. ') + 'Em cada cartão, o traço marca o esperado até hoje.' : '';
+  el.innerHTML = '<div class="rd-hero rd-hero1"><div><span class="rd-lab">Metas de ' + String(data.periodo.mes).toLowerCase() + '</span><h2>' + frase + '</h2>' +
+    (ritmo ? '<p class="rd-hero-sub">' + ritmo + '</p>' : '') +
+    (total ? '<div class="mes-barra" role="img" aria-label="' + noAlvo.length + ' no alvo, ' + andamento.length + ' em andamento, ' + atencao.length + ' precisam de atenção">' + seg(noAlvo.length,'g') + seg(andamento.length,'y') + seg(atencao.length,'r') + '</div>' +
+      (atencao.length ? '<div class="mes-linha"><span class="mes-rot">Precisam de atenção</span>' + atencao.map(function(x){ return chip(x,'r'); }).join('') + '</div>' : '') +
+      (andamento.length ? '<div class="mes-linha"><span class="mes-rot">Em andamento</span>' + andamento.map(function(x){ return chip(x,'y'); }).join('') + '</div>' : '') : '') +
+    '</div></div>';
 }
 
 // resumo (Parte A/B, 25/09/2026): só existe quando modoRestritoCS=true (payload de
@@ -2145,12 +2174,11 @@ function gtdCard(ind){
   var alcancado = ind.alcancado;
   var semDado = alcancado === null || alcancado === undefined;
   var pct = semDado ? 0 : Math.max(0, Math.min(100, Math.round(alcancado)));
-  return '<div class="gtd-card">' +
-    '<div class="gtd-card-top"><div class="gtd-card-label">'+ICONS.check+'Cumprimento do GTD de conselho</div>' +
-    '<div class="gtd-card-valor">'+(semDado?'Sem ciclo em aberto':pct+'%')+'</div></div>' +
-    '<div class="gtd-card-bar-bg"><div class="gtd-card-bar-fill" style="width:'+pct+'%;"></div></div>' +
-    '<div class="gtd-card-sub">Média das 9 etapas de acompanhamento (confirmação, jornada, encaminhamentos, matchmaking, upsell...) nos conselhos do ciclo atual. Clique em um conselho na aba Conselhos pra ver o detalhe etapa a etapa.</div>' +
-  '</div>';
+  return '<div class="rd-card kpi-gtd" id="kpi-gtd"><div class="kpi-top"><div class="kpi-label">'+ICONS.check+' GTD de conselho</div><span class="rd-pill neutro">'+(semDado?'Sem ciclo em aberto':'Média das 9 etapas')+'</span></div>' +
+    '<div class="rd-big num">'+(semDado?'Sem dado':pct+'%')+'</div>' +
+    '<div class="rd-mb" role="img" aria-label="Cumprimento do GTD '+pct+'%"><i class="y" style="width:'+pct+'%"></i></div>' +
+    '<p class="rd-nota">Média das etapas de acompanhamento (confirmação, jornada, encaminhamentos, matchmaking, upsell) nos conselhos do ciclo atual.</p>' +
+    '<div style="margin-top:12px"><button type="button" class="rd-btn" onclick="irParaAba(&#39;aba-conselhos&#39;)">Ver conselhos</button></div></div>';
 }
 // Parte G (29/09/2026): selo de recorde individual — recordesIndividuais vem junto de /api/cs/[nome]
 // (metas_cs_mensal_completo), null em "Visão Geral" (recorde só faz sentido pra um mês concreto).
@@ -2169,46 +2197,38 @@ function renderIndicadores(data, resumo){
   var blur = modoRestritoCS && !configRevelarIndicadoresTime;
   var rec = recordeIndividualMapa_(data);
   var PESO_ = { pr:0, py:1, pg:2, pgray:3 };
-  var lista = INDICADORES_MES_.map(function(x, i){ return { x:x, i:i, peso: modoGeralAtual ? 0 : (PESO_[calcIndicador(ind[x.k]).pill] === undefined ? 3 : PESO_[calcIndicador(ind[x.k]).pill]) }; })
+  periodoMes_ = data.periodo;
+  var lista = INDICADORES_MES_.filter(function(x){ return x.k !== 'casesSucesso'; }).map(function(x, i){ return { x:x, i:i, peso: modoGeralAtual ? 0 : (PESO_[calcIndicador(ind[x.k]).pill] === undefined ? 3 : PESO_[calcIndicador(ind[x.k]).pill]) }; })
     .sort(function(a, b){ return a.peso - b.peso || a.i - b.i; });
-  var html = '<div class="grid3">' + lista.map(function(o){
+  var html = '<div class="rd-grid rd-g3">' + lista.map(function(o){
     return kpiCard(o.x.l, ind[o.x.k], o.x.u || null, t && t[o.x.k], blur, rec[o.x.rec], 'kpi-' + o.x.k);
-  }).join('') + '</div>';
-  document.getElementById('indicadores').innerHTML = html + gtdCard(ind.cumprimentoGtd);
+  }).join('') + gtdCard(ind.cumprimentoGtd) + '</div>';
+  document.getElementById('indicadores').innerHTML = html;
 }
 function renderSemanal(data){
   var ind = data.indicadores.casesSucesso;
   var c = calcIndicador(ind);
   var lista = data.casesRegistrados || [];
   casesAtuais = lista;
-
-  var subLabel = modoGeralAtual ? c.pctLabel : ((ind.meta==null?'':'meta '+rdNum_(ind.meta)+' · ')+c.pctLabel);
-  var html = '<div class="hero-grid">' +
-    '<div class="dark-card cases-hero-card">' +
-      '<div class="m-fill-wrap" style="width:90px;height:90px;flex-shrink:0;"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
-      '<div class="cases-hero-text"><div class="dark-label">Cases de sucesso</div><div class="dark-value num '+c.corTxt+'" style="font-size:44px;">'+(ind.alcancado==null?'Sem dado':rdNum_(ind.alcancado))+'</div><div class="dark-sub">'+subLabel+'</div></div>' +
-    '</div>' +
-    '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Status</div><span class="kpi-pill '+c.pill+'" style="width:fit-content;">'+c.pillLabel+'</span></div>' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Registrados no período</div><div class="dark-value num">'+lista.length+'</div></div>' +
-    '</div></div>';
-
-  html += '<div class="section-title" style="margin-top:8px;">Cases registrados <span style="font-weight:600;text-transform:none;letter-spacing:0;color:#9F9F9F;">· clique pra ler o case completo</span><div class="line"></div></div>';
+  periodoMes_ = data.periodo;
+  var meta = ind.meta === null || ind.meta === undefined ? 'sem meta' : 'meta ' + rdNum_(ind.meta);
+  var cab = '<div class="rd-cases-cab"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
+    '<div><div class="rd-big num '+c.corTxt+'">'+(ind.alcancado === null || ind.alcancado === undefined ? 'Sem dado' : rdNum_(ind.alcancado))+(modoGeralAtual ? '' : '<small>'+meta+'</small>')+'</div>' +
+    '<div style="margin-top:8px"><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span></div></div></div>' +
+    barraMeta_(ind, c);
+  var corpo;
   if (lista.length === 0) {
-    html += '<div class="empty-state">Nenhum case de sucesso registrado neste período.</div>';
+    corpo = rdAviso_('Nenhum case registrado neste período', 'Os cases de sucesso registrados no período aparecem aqui, e cada um abre com o desafio, a decisão e o resultado.');
   } else {
-    html += '<div class="week-grid">';
-    lista.forEach(function(item, i){
-      html += '<div class="week-card case-card" onclick="abrirCaseModal('+i+')">' +
-        (item.produto ? '<div class="week-date">'+ICONS.calendar+item.produto+'</div>' : '') +
-        '<div style="font-size:12.5px;font-weight:700;color:#1A1A1A;line-height:1.4;">'+item.nome+'</div>' +
-        (item.empresa ? '<div style="font-size:10.5px;color:#9F9F9F;margin-top:3px;">'+item.empresa+'</div>' : '') +
-      '</div>';
-    });
-    html += '</div>';
+    corpo = '<div class="rd-div" style="margin-top:20px">Registrados no período: ' + lista.length + '. Toque para ler o case completo</div><div class="rd-cases">' + lista.map(function(item, i){
+      return '<button type="button" class="rd-case" onclick="abrirCaseModal('+i+')">' +
+        (item.produto ? '<span class="rd-lab">'+rdEsc_(item.produto)+'</span>' : '') +
+        '<b>'+rdEsc_(item.nome)+'</b>' + (item.empresa ? '<span>'+rdEsc_(item.empresa)+'</span>' : '') + '</button>';
+    }).join('') + '</div>';
   }
-  document.getElementById('semanal').innerHTML = html;
-  animarMFills(document.getElementById('semanal'));
+  var el = document.getElementById('semanal');
+  el.innerHTML = '<section class="rd-card" id="kpi-casesSucesso"><h2>Cases de sucesso</h2><p class="rd-sub">O que você levou de resultado para os membros no período.</p>' + cab + corpo + '</section>';
+  animarMFills(el);
 }
 
 var casesAtuais = [];
@@ -2279,27 +2299,59 @@ function proximoConselhoHtml_(c){
   var rotulo = c.proximaDataEhFutura ? 'Próximo: ' : 'Último registrado: ';
   return '<div class="council-proxima '+classe+'">'+ICONS.calendar+rotulo+f.texto+'</div>';
 }
+// Exceções da carteira por urgência: as pendências que são de um conselho (relatório, GTD, confirmação) mais a presença baixa.
+function excecoesConselhos_(data){
+  var itens = coletarPendencias_().itens.filter(function(x){ return x.cons; });
+  (data.conselhos || []).forEach(function(c, i){
+    if (c.status !== 'realizado' || c.congelado) return;
+    var reg = c.registros || (c.presente + c.ausente + c.reposicao);
+    var pct = reg ? Math.round(c.presente / reg * 100) : 0;
+    if (pct < 60) itens.push({ g:1, ord:2.5, cons:1, conselho:nomeCurtoConselho_(c), mot:'Presença abaixo de 60%',
+      det:'Presença de ' + pct + '% no último encontro realizado. Vale falar com os membros ausentes.',
+      acao:'<button type="button" class="pend-acao" onclick="abrirConselhoModal(' + i + ')">Ver membros</button>' });
+  });
+  return itens.sort(function(a, b){ return a.g - b.g || a.ord - b.ord; });
+}
+function relatoriosPorGrupo_(){
+  var mapa = {};
+  var r = reportEstadoAtual_;
+  if (r && r.relatoriosPendentes) r.relatoriosPendentes.forEach(function(x){ if (!mapa[x.groupId]) mapa[x.groupId] = x; });
+  return mapa;
+}
+// Abertura da aba (frase da carteira e presença) e cartões de exceção. Lê o payload já carregado da página.
+function renderAtencaoConselhos_(){
+  var ab = document.getElementById('consAbertura'), ex = document.getElementById('consAtencao');
+  var data = currentCS ? cachePessoa[chaveP(currentCS, currentMes, currentAno)] : null;
+  if (!ab || !ex || !data) return;
+  var lista = data.conselhos || [];
+  if (!lista.length) {
+    ab.innerHTML = rdMsgCartao_('Conselhos', 'Nenhum conselho na carteira', 'Não há conselho ativo neste período. Confira se o título do grupo no Monday traz o CS entre parênteses.', false);
+    ex.innerHTML = '';
+    return;
+  }
+  var a = agregarConselhos(lista);
+  var media = a.totalRegistros ? Math.round(a.totalPresente / a.totalRegistros * 100) : 0;
+  var r = coletarPendencias_();
+  var itens = excecoesConselhos_(data);
+  var nomes = {}; itens.forEach(function(x){ nomes[x.conselho] = 1; });
+  var nExc = Object.keys(nomes).length;
+  var quem = currentCS === meuCSNome ? 'Sua carteira tem ' : 'A carteira de ' + currentCS + ' tem ';
+  var frase = quem + a.total + (a.total === 1 ? ' conselho' : ' conselhos') + (a.totalRegistros ? ', com presença média de ' + media + '%' : ', sem encontro realizado no período') +
+    (nExc ? ' e ' + nExc + (nExc === 1 ? ' pede atenção.' : ' pedem atenção.') : (r.carregando ? '.' : ' e nenhum pede atenção.'));
+  var sub = a.totalMembros + ' membros ativos' + (a.congelados ? ' · ' + a.congelados + (a.congelados === 1 ? ' conselho congelado' : ' conselhos congelados') : '') + ' · presença direta, sem reposições';
+  ab.innerHTML = '<section class="rd-hero" aria-label="Situação da carteira"><div><span class="rd-lab">Conselhos e agenda</span><h2>' + rdEsc_(frase) + '</h2><p class="rd-hero-sub">' + rdEsc_(sub) + '</p></div>' +
+    '<div class="rd-donut">' + donutChart(a.totalPresente, a.totalAusente, a.totalReposicao, 130) + '</div></section>';
+  if (!itens.length) { ex.innerHTML = ''; return; }
+  ex.innerHTML = rdCartao_('Pontos de atenção', 'Ordenados por urgência. Cada cartão traz o motivo e o próximo passo.',
+    '<div class="rd-ex-l">' + itens.map(function(x){
+      return '<div class="rd-ex g' + x.g + '"><span class="rd-pill ' + (x.g === 0 ? 'red' : 'gold') + '">' + (x.g === 0 ? 'Urgente' : 'Esta semana') + '</span><b>' + rdEsc_(x.conselho) + '</b><p>' + rdEsc_(x.mot) + '</p><p>' + rdEsc_(x.det) + '</p>' + (x.acao || '') + '</div>';
+    }).join('') + '</div>');
+}
 function renderConselhos(data){
   conselhosAtuais = data.conselhos || [];
-  if (data.conselhos.length === 0) { document.getElementById('conselhos').innerHTML = '<div class="empty-state">Nenhum conselho encontrado.</div>'; return; }
-  var a = agregarConselhos(data.conselhos);
-  var mediaGeral = a.totalRegistros ? Math.round(a.totalPresente/a.totalRegistros*100) : 0;
-
-  var html = '<div class="hero-grid">' +
-    '<div class="dark-card" style="display:flex;align-items:center;gap:20px;">' + donutChart(a.totalPresente, a.totalAusente, a.totalReposicao, 130) +
-      '<div><div class="dark-label">Presença média</div><div class="dark-value num '+(mediaGeral>=60?'c-g':'c-r')+'">'+mediaGeral+'%</div><div class="dark-sub">direta, sem reposições</div></div></div>' +
-    '<div class="mini-stats" style="display:flex;flex-direction:column;gap:14px;">' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Conselhos'+(a.congelados>0?' · '+a.congelados+' congelado(s)':'')+'</div><div class="dark-value num">'+a.total+'</div></div>' +
-      '<div class="mini-stat" style="background:#1A1A1A;flex:1;display:flex;flex-direction:column;justify-content:center;"><div class="dark-label">Membros ativos</div><div class="dark-value num">'+a.totalMembros+'</div></div>' +
-    '</div></div>';
-
-  if (a.atencao.length > 0) {
-    html += '<div class="attention-box"><div class="attention-title">'+ICONS.warning+'Pontos de atenção</div><ul>';
-    a.atencao.forEach(function(x){ html += '<li>Presença abaixo de 60%: '+x+'</li>'; });
-    html += '</ul></div>';
-  }
-
-  html += '<div class="council-grid">';
+  renderAtencaoConselhos_();
+  if (conselhosAtuais.length === 0) { document.getElementById('conselhos').innerHTML = ''; return; }
+  var html = '<section class="rd-card"><h2>Conselhos da carteira</h2><p class="rd-sub">Toque num conselho para ver a presença por membro e as etapas do GTD.</p><div class="council-grid">';
   data.conselhos.forEach(function(c, i){
     var p = parseConselhoNome(c.nome);
     if (c.status !== 'realizado') {
@@ -2340,7 +2392,7 @@ function renderConselhos(data){
   html += '</div><div class="council-legend">' +
     '<span><span class="legend-dot" style="background:#3D8B5F;"></span>Presente</span>' +
     '<span><span class="legend-dot" style="background:#C0433D;"></span>Ausente</span>' +
-    '<span><span class="legend-dot" style="background:#7dd3fc;"></span>Reposição</span></div>';
+    '<span><span class="legend-dot" style="background:#7dd3fc;"></span>Reposição</span></div></section>';
   document.getElementById('conselhos').innerHTML = html;
   setTimeout(function(){ document.querySelectorAll('#conselhos .council-bar > div[data-w]').forEach(function(el){ el.style.width = el.getAttribute('data-w') + '%'; }); }, 50);
 }
@@ -2988,18 +3040,21 @@ function showTab(id, e){
 var gradeCSChave_ = null;
 function carregarGradeCS_(){
   var bloco = document.getElementById('consGradeCS');
-  if (!bloco || !meuCSNome || currentCS !== meuCSNome) { if (bloco) bloco.hidden = true; return; }
+  var lista = document.getElementById('conselhos');
+  if (!bloco || !meuCSNome || currentCS !== meuCSNome) { if (bloco) bloco.hidden = true; if (lista) lista.hidden = false; return; }
   var chave = currentMes + '|' + currentAno;
   if (gradeCSChave_ === chave) return;
   gradeCSChave_ = chave;
   var mes = currentMes, ano = currentAno;
   bloco.hidden = false;
+  if (lista) lista.hidden = true; // o mesmo conselho não aparece duas vezes: a grade substitui a lista
   document.getElementById('consGradeCtl').innerHTML = '';
   gcSkeleton('consGradeCorpo');
   fetchJSON_('/api/conselhos-grade?meus=1&mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano)).then(function(d){
     if (d.grade) gcIniciar({ raizId: 'consGradeCorpo', ctlId: 'consGradeCtl', grade: d.grade, mes: mes, ano: ano, comCS: false });
-    else gcErro('consGradeCorpo', d.gradeErro || 'erro sem mensagem');
-  }).catch(function(err){ gradeCSChave_ = null; gcErro('consGradeCorpo', err && err.message ? err.message : err); });
+    else { gcErro('consGradeCorpo', d.gradeErro || 'erro sem mensagem'); if (lista) lista.hidden = false; }
+    gcDefinirPend_(relatoriosPorGrupo_());
+  }).catch(function(err){ gradeCSChave_ = null; if (lista) lista.hidden = false; gcErro('consGradeCorpo', err && err.message ? err.message : err); });
 }
 ${GRADE_CONSELHOS_SCRIPT}
 // Atalho das pendências e do resumo do mês: troca de aba e rola até o alvo.
