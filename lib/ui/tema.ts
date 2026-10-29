@@ -74,6 +74,8 @@ button{font-family:inherit}
 .dsearch:hover,.dsearch:focus-within{width:300px;background:rgba(255,255,255,.75);box-shadow:inset 0 0 0 1px rgba(26,26,26,.08)}
 .dsearch:hover input,.dsearch:focus-within input,.dsearch:hover kbd,.dsearch:focus-within kbd{opacity:1}
 .dsync{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);padding:0 10px}
+.dsaude{font-size:11px;font-weight:500;color:var(--ink3);white-space:nowrap;padding:0 8px;border-radius:99px}
+.dsaude.atrasada{color:var(--red-ink);background:var(--red-soft);font-weight:700;padding:4px 10px}
 .dsync i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(61,139,95,.2)}
 .dock .av{width:34px;height:34px;font-size:13px;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
 
@@ -138,7 +140,7 @@ button{font-family:inherit}
 @media (max-width:820px){
   .dock-wrap{padding:10px 12px 0}
   .dock{gap:2px;padding:0 6px 0 8px;height:54px}
-  .brand-txt,.dsync,.dock-sep{display:none}
+  .brand-txt,.dsync,.dsaude:not(.atrasada),.dock-sep{display:none}
   .grp.on .grp-lbl,.grp:hover .grp-lbl,.grp:focus-within .grp-lbl{max-width:0;opacity:0;margin-left:0}
   .grp{position:static}
   .menu{left:12px;right:12px;top:72px;position:fixed;min-width:0}
@@ -247,6 +249,20 @@ function dockDefinirTime(nome) {
   var a = document.getElementById('dockTime'); if (!a || !nome) return;
   a.setAttribute('href', '/gestor/cs/' + encodeURIComponent(nome));
 }
+// Selo de saúde da sincronização: texto discreto, vermelho só quando o quadro mais atrasado passa do limite (15 min).
+function dockLigarSaude() {
+  var el = document.getElementById('dockSaude'); if (!el) return;
+  function atualizar() {
+    fetch('/api/sync-status', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || d.error) { el.textContent = ''; return; }
+      el.textContent = d.texto;
+      el.classList.toggle('atrasada', !!d.atrasado);
+      el.title = d.atrasado ? 'Sincronização parada há mais de ' + d.limiteMinutos + ' minutos' + (d.quadroMaisAtrasado ? ' (quadro ' + d.quadroMaisAtrasado + ')' : '') + '. Avise a gestão do dash.' : 'Última sincronização bem sucedida com o Monday';
+    }).catch(function () {});
+  }
+  atualizar(); setInterval(atualizar, 60000);
+}
+dockLigarSaude();
 function dockDefinirBadge(chave, n) {
   var a = document.querySelector('[data-badge="' + chave + '"]'); if (!a) return;
   var mostrar = n !== null && n !== undefined && Number(n) > 0;
@@ -388,6 +404,6 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
     '<a class="dock-brand" href="' + (perfil === 'gestor' ? '/gestor' : '/') + '"><span class="brand-mark">M</span><span class="brand-txt">MOAI<small>CS</small></span></a><span class="dock-sep"></span>' +
     partes.join('') +
     '<span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" id="dockBusca" aria-label="' + busca + '" placeholder="' + busca + '"><kbd>Ctrl K</kbd></label>' +
-    '<span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>' +
+    '<span class="dsaude" id="dockSaude" aria-live="polite"></span><span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>' +
     '<a class="av" href="/auth/signout" style="background:var(--gold);color:var(--side)" title="Sair da conta" aria-label="Sair da conta">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</a></nav></header>';
 }
