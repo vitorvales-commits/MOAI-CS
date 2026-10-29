@@ -20,8 +20,10 @@ import { RADAR_SVG_SCRIPT } from '../lib/radar-svg.ts';
 import { TEMA_CSS, ICONES_SVG } from '../lib/ui/tema.ts';
 import { GRADE_CONSELHOS_CSS, GRADE_CONSELHOS_SCRIPT } from '../lib/ui/grade-conselhos.ts';
 import { RELATORIOS_GESTOR_CSS, RELATORIOS_GESTOR_HTML, RELATORIOS_GESTOR_SCRIPT } from '../lib/ui/relatorios-gestor-ui.ts';
+import { REDESENHO_CS_CSS } from '../lib/ui/redesenho-cs-ui.ts';
+import { SAUDE_DADOS_CSS, SAUDE_DADOS_HTML, SAUDE_DADOS_SCRIPT } from '../lib/ui/saude-dados-ui.ts';
 
-export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_CSS + `
+export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_CSS + REDESENHO_CS_CSS + SAUDE_DADOS_CSS + `
 :root{
   /* Nomes antigos apontando para os tokens do tema v3 (lib/ui/tema.ts), para as abas ainda não redesenhadas */
   --cinza-fundo:var(--bg); --preto-tinta:var(--ink); --preto-profundo:var(--side); --grafite:var(--side);
@@ -744,6 +746,8 @@ ${ICONES_SVG}
       <select class="sel" id="selAnoGestor" aria-label="Ano"><option>2026</option><option>2027</option></select>
     </div>
   </header>
+
+${SAUDE_DADOS_HTML}
 
   <section class="panel consulta-painel gaveta" id="consultaPainel" hidden aria-label="Consulta rápida">
     <button class="consulta-fechar" type="button" id="consultaFechar" aria-label="Fechar a consulta">&times;</button>
@@ -4744,6 +4748,7 @@ function inicializarVoz_() {
   carregarVoz_(false);
 }
 
+${SAUDE_DADOS_SCRIPT}
 carregarVisaoGeral();
 carregarComplementos_();
 carregarAcoes();

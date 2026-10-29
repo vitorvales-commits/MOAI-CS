@@ -346,3 +346,21 @@ export const REL_GESTOR_SEM_RETORNO_MIN = 2; // faltas "Sem retorno do membro" n
 export const REL_GESTOR_ATRASOS_REINCIDENTES_MIN = 2; // relatórios fora do prazo de um mesmo CS no mês para virar leitura
 export const REL_GESTOR_LEITURAS_VISIVEIS = 5; // leituras na primeira dobra; o resto abre por clique
 export const REL_GESTOR_DETALHES_VISIVEIS = 6; // relatórios listados antes do "Ver todos"
+
+// Saúde dos dados (cartão da visão de gestor, 29/10/2026). Regras determinísticas sobre sync_log: um board está
+// atrasado quando a última execução bem sucedida é mais antiga que atrasadoMin, e crítico acima de criticoMin ou
+// com falhasCriticas falhas consecutivas. O sync-monday roda a cada 5 minutos (três ciclos = 15 minutos); as rotinas
+// de 15 minutos (granola e alertas_nps) usam três ciclos de folga no atraso e oito no crítico.
+export const SAUDE_DADOS_LIMITES = {
+  cincoMin: { atrasadoMin: 15, criticoMin: 60 },
+  quinzeMin: { atrasadoMin: 45, criticoMin: 120 },
+  falhasCriticas: 5,
+};
+export const SAUDE_DADOS_ROTINAS_15_MIN = ['granola', 'alertas_nps'];
+export const SAUDE_DADOS_NOMES: Record<string, string> = {
+  agenda: 'Agenda de conselhos', alertas_nps: 'Alertas de NPS e envio por email', cases: 'Cases de sucesso', churn: 'Churn',
+  conselheiros: 'Perfil dos conselheiros', conselheiros_fotos: 'Fotos dos conselheiros', conselhos: 'Conselhos e membros',
+  feedback: 'Feedback dos conselhos', granola: 'Notas de reunião do Granola', historico_gtd: 'Histórico do GTD',
+  matchmakings: 'Matchmakings', metas: 'Metas', nps_conselhos: 'NPS dos conselhos', reports_semanais: 'Reports semanais',
+  rounds: 'Rounds', status_usuarios: 'Status dos usuários do Monday', upsell_downsell: 'Upsell e downsell', visitas_churn: 'Visitas de churn',
+};
