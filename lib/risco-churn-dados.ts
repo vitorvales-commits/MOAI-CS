@@ -1,6 +1,6 @@
 // Monta os sinais de risco de churn por membro a partir do que já está espelhado no banco (29/10/2026) e aplica
 // calcularRisco. Mensalidade e data de início da fidelidade não existem em tabela espelhada: a fidelidade vem de
-// visitas_churn.fim_fidelidade (só para quem já teve pedido de visita) e a exposição fica nula sem mensalidade.
+// visitas_churn.fim_fidelidade e visitas_churn.mrr_em_risco (só para quem já teve pedido de visita); sem os dois a exposição fica nula.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getDadosBrutos, normalizeNome, parseTituloConselho } from './reports';
 import { listarAlertasNps } from './alertas-nps-dados';
@@ -77,7 +77,8 @@ export async function calcularRiscoCarteira(sb: SupabaseClient, semanasReportAtr
       statusRecentes: hist.map((x) => x[1]).filter((s) => APURADOS.has(norm(s))),
       semanasReportAtrasadoCs: semanasReportAtrasadoPorCS === null ? null : (semanasReportAtrasadoPorCS[g.cs] ?? 0),
       fimFidelidade: comFim ? String(comFim.fim_fidelidade).slice(0, 10) : null,
-      mensalidade: null,
+      // MRR informado no pedido de visita: único valor de mensalidade que o Monday entrega hoje, junto do fim da fidelidade.
+      mensalidade: comFim && comFim.mrr_em_risco !== null && comFim.mrr_em_risco !== undefined ? Number(comFim.mrr_em_risco) : null,
       visitaAberta: vs.some((v) => v.encerrada === false),
     };
     membros.push({ ...sinais, risco: calcularRisco(sinais, hoje, config) });
