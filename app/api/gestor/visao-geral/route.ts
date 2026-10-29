@@ -16,9 +16,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mes = searchParams.get('mes');
   const ano = Number(searchParams.get('ano'));
-  // Ponto 4 (correção 25/09/2026): toggle "mostrar ex-membros" na tela, desligado por padrão —
-  // ver comentário em generateVisaoGestor.
-  const incluirExMembros = searchParams.get('incluirExMembros') === 'true';
+  // O mês decide quem aparece (rosterDoMes, 29/10/2026); o antigo parâmetro incluirExMembros é ignorado.
   if (!mes || !ano) {
     return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
   }
@@ -29,9 +27,9 @@ export async function GET(req: NextRequest) {
     }
     // visaoGeralRede (Parte B, 25-26/09/2026): mesmo seletor de período, bloco separado do
     // ranking/radar por CS — olha a rede inteira de conselhos ativos, não um CS específico. Nunca
-    // usa ex-membros (não faz sentido pra membros da rede), então não recebe o toggle.
+    // usa ex-membros (não faz sentido pra membros da rede).
     const [data, visaoGeralRede] = await Promise.all([
-      generateVisaoGestor(supabase, mes, ano, incluirExMembros),
+      generateVisaoGestor(supabase, mes, ano),
       generateVisaoGeralRede(supabase, mes, ano),
     ]);
     // Variação do ranking contra o mês anterior (08/10/2026). Se o cálculo falhar, variacao fica nula e o resto segue.
