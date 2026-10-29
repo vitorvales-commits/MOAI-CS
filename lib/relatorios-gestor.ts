@@ -33,6 +33,8 @@ export type Relance = {
   cobertura: SegmentoBarra[]; // no prazo, com atraso, atrasado, a preencher
   avaliacoes: SegmentoBarra[]; // Muito bom, Bom, Regular, Ruim
   porCS: CoberturaCS[];
+  // Mesmo recorte do mês anterior, para comparar o preenchimento (exigidos, no prazo, atrasados, sem relatório).
+  anterior: { mes: string; exigidos: number; noPrazo: number; atrasados: number; semRelatorio: number };
   emAtencao: number; faltas: number; desistencias: number;
 };
 export type DetalheRelatorio = {
@@ -245,6 +247,10 @@ export function montarPainelRelatorios(ctx: CtxRelatorios): PainelRelatorios {
   const corte = new Date(ctx.hoje).getTime() - REL_GESTOR_JANELA_HISTORICO_DIAS * MS_DIA;
   const historico = ctx.relatorios.filter((r) => new Date(r.dataEncontro).getTime() >= corte);
 
+  const [ano, m] = ctx.mes.split('-').map(Number);
+  const mesAnt = m === 1 ? (ano - 1) + '-12' : ano + '-' + String(m - 1).padStart(2, '0');
+  const encAnt = ctx.encontros.filter((e) => mesDeBrasilia(e.dataEncontro) === mesAnt);
+  const contaAnt = (...estados: EstadoRelatorio[]) => encAnt.filter((e) => estados.includes(e.estado)).length;
   const conta = (...estados: EstadoRelatorio[]) => encontrosDoMes.filter((e) => estados.includes(e.estado)).length;
   const enviados = conta('enviado_no_prazo', 'enviado_com_atraso');
   const cobertura: SegmentoBarra[] = [
@@ -270,6 +276,7 @@ export function montarPainelRelatorios(ctx: CtxRelatorios): PainelRelatorios {
 
   const relance: Relance = {
     exigidos: encontrosDoMes.length, enviados, semRelatorio: encontrosDoMes.length - enviados, cobertura, avaliacoes, porCS,
+    anterior: { mes: mesAnt, exigidos: encAnt.length, noPrazo: contaAnt('enviado_no_prazo'), atrasados: contaAnt('atrasado'), semRelatorio: encAnt.length - contaAnt('enviado_no_prazo', 'enviado_com_atraso') },
     emAtencao: doMes.filter((r) => r.membroAtencaoId !== null).length,
     faltas: doMes.reduce((s, r) => s + r.faltas.filter((f) => f.tipo === 'falta').length, 0),
     desistencias: doMes.reduce((s, r) => s + r.faltas.filter((f) => f.tipo === 'desistencia').length, 0),

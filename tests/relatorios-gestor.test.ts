@@ -122,3 +122,8 @@ const todosTextos = JSON.stringify(p.leituras);
 assert.equal(/[-–—]/.test(todosTextos.replace(/"id":"[^"]*"/g, '')), false, 'texto das leituras sem traço');
 
 console.log('relatorios-gestor: todos os testes aprovados');
+
+// ---- comparação com o mês anterior ----
+p = montarPainelRelatorios(ctx([enc('a', 'Iasmin', '2026-09-10', 'enviado_no_prazo'), enc('b', 'Iasmin', '2026-09-20', 'atrasado'), enc('c', 'Iasmin', '2026-10-10', 'a_preencher')], []));
+assert.deepEqual(p.relance.anterior, { mes: '2026-09', exigidos: 2, noPrazo: 1, atrasados: 1, semRelatorio: 1 });
+assert.equal(montarPainelRelatorios({ ...ctx([], []), mes: '2026-01' }).relance.anterior.mes, '2025-12');

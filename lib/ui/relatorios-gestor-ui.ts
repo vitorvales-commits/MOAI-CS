@@ -10,6 +10,7 @@ export const RELATORIOS_GESTOR_CSS = `
 .rg-card h3{margin:0;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3)}
 .rg-grande{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:var(--ink)}
 .rg-grande small{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;color:var(--ink2);letter-spacing:0;margin-left:6px}
+.rg-comp{font-size:12.5px;color:var(--ink2);margin:6px 0 10px}
 .rg-barra{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--line)}
 .rg-barra span{display:block;height:100%;min-width:0}
 .rg-barra .ok{background:var(--green)}
@@ -107,7 +108,9 @@ function rgCartaoPreenchimento_(r) {
     return '<div class="rg-cs-l"><b title="' + rgEsc_(c.cs) + '">' + rgEsc_(c.cs) + '</b>' + rgBarra_(segs) +
       '<em class="' + (c.atrasados > 0 ? 'red' : '') + '">' + c.enviados + ' de ' + c.exigidos + '</em></div>';
   }).join('');
-  return '<div class="rg-card"><h3>Preenchimento</h3>' +
+  var a = r.anterior, noPrazoAgora = r.cobertura[0].qtd;
+  var comp = a && a.exigidos ? '<p class="rg-comp">Mês anterior: ' + a.noPrazo + ' de ' + a.exigidos + ' no prazo' + (a.atrasados ? ', ' + a.atrasados + (a.atrasados === 1 ? ' atrasado' : ' atrasados') : '') + '. Agora: ' + noPrazoAgora + ' de ' + r.exigidos + ' no prazo, ' + r.semRelatorio + ' sem relatório.</p>' : '<p class="rg-comp">Sem encontros no mês anterior para comparar.</p>';
+  return '<div class="rg-card"><h3>Preenchimento</h3>' + comp +
     '<div class="rg-grande">' + r.enviados + ' de ' + r.exigidos + '<small>' + (r.exigidos === 1 ? 'relatório enviado' : 'relatórios enviados') + '</small></div>' +
     rgBarra_(r.cobertura) + rgLegenda_(r.cobertura) + (linhas ? '<div class="rg-cs">' + linhas + '</div>' : '') + '</div>';
 }
