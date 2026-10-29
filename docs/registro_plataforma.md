@@ -76,6 +76,12 @@ Aplicada pelo Claude em sessão posterior, com autorização do Vitor.
 
 Os dois alertas pedidos foram a zero. O de funções executáveis por authenticated **não caiu**: o linter conta cada assinatura que authenticated pode chamar, e o inventário reúne praticamente todas as funções que o app usa, então o número ficou em 91 assinaturas (85 nomes). O ganho da etapa é outro: o conjunto passa a ser explícito e fechado por construção, funções novas nascem sem EXECUTE e as de cron, service role e trigger não são chamáveis por usuários. Reduzir esse número exige trocar funções específicas para SECURITY INVOKER ou movê-las para fora do schema exposto, o que fica como pendência de médio prazo. Os seis índices novos aparecem como sem uso apenas porque acabaram de ser criados; não foram removidos.
 
+## PR e entrega (29/10/2026)
+
+- PR 9 (vitorvales-commits/MOAI-CS), de feat/plataforma_robustez para main, merge commit preservando os commits.
+- Preview da Vercel (commit be0c9a7): READY, check verde, nenhum erro de execução nas últimas 2 horas. O preview é protegido pelo login da Vercel, então as rotas respondem 302 para o login e não foi possível abrir a página por perfil.
+- Hora do merge, estado do deployment de produção e resultado dos dez minutos de verificação (erros de execução, sync_log, rota /api/gestor/saude-dados) ficam registrados em comentário no PR 9, porque só existem depois do merge e este arquivo foi fechado antes dele para evitar um segundo PR.
+
 ## Pendências e passos manuais que restam ao Vitor (estado final)
 
 1. Ligar a proteção contra senhas vazadas no Supabase Auth (painel, Authentication, senhas). O advisor ainda mostra o alerta.
