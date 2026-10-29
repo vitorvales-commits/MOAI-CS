@@ -363,13 +363,55 @@ const ACTIVE_TO_REPO_MAP: Record<string, string> = {
 
 // ============ cliente Monday (GraphQL) ============
 
+// ============ tentativa com recuo exponencial (29/10/2026) ============
+// Toda chamada à API do Monday e todo acesso ao Supabase passam por aqui. Repete só erro transitório:
+// status 429, 500, 502, 503, 504, falha de rede (fetch lança TypeError) e corpo que não é JSON válido.
+// Os demais 4xx e os erros GraphQL do Monday não são repetidos. Esperas de 1, 3 e 9 segundos entre as
+// tentativas (a primeira mais três repetições, no máximo quatro), com variação aleatória de até 20%. Na falha final o
+// texto do erro leva o número de tentativas, e é ele que a sincronização grava em sync_log.
+class ErroHttp extends Error {
+  constructor(mensagem: string, public status: number) { super(mensagem); }
+}
+class ErroCorpoInvalido extends Error {}
+const ESPERAS_MS = [1000, 3000, 9000];
+const STATUS_TRANSITORIOS = new Set([429, 500, 502, 503, 504]);
+
+function ehTransitorio(e: unknown): boolean {
+  if (e instanceof ErroHttp) return STATUS_TRANSITORIOS.has(e.status);
+  return e instanceof TypeError || e instanceof ErroCorpoInvalido;
+}
+
+async function comTentativas<T>(fn: () => Promise<T>): Promise<T> {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (!ehTransitorio(e) || tentativa > ESPERAS_MS.length) {
+        throw new Error(`${e?.message || e} [tentativas: ${tentativa}]`);
+      }
+      const espera = Math.round(ESPERAS_MS[tentativa - 1] * (1 + Math.random() * 0.2));
+      console.warn(`[sync-monday] erro transitório (${e?.message || e}); nova tentativa em ${espera} ms`);
+      await new Promise((r) => setTimeout(r, espera));
+    }
+  }
+}
+
+// fetch com as regras acima: lança ErroHttp quando !res.ok. lerJson devolve o corpo já validado.
+async function requisitar(rotulo: string, url: string, init: RequestInit, lerJson = false): Promise<any> {
+  return comTentativas(async () => {
+    const res = await fetch(url, init);
+    if (!res.ok) throw new ErroHttp(`${rotulo}: ${res.status} ${await res.text()}`, res.status);
+    if (!lerJson) return res;
+    try { return await res.json(); } catch { throw new ErroCorpoInvalido(`${rotulo}: resposta que não é JSON válido`); }
+  });
+}
+
 async function mondayFetch(query: string, variables: Record<string, unknown> = {}) {
-  const res = await fetch('https://api.monday.com/v2', {
+  const body = await requisitar('Monday API', 'https://api.monday.com/v2', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: MONDAY_API_TOKEN! },
     body: JSON.stringify({ query, variables }),
-  });
-  const body = await res.json();
+  }, true);
   if (body.errors) throw new Error('Monday API error: ' + JSON.stringify(body.errors));
   return body.data;
 }
@@ -424,7 +466,7 @@ async function upsert(table: string, rows: any[], onConflict = 'id') {
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+    await requisitar(`Supabase upsert falhou (${table})`, `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -434,7 +476,6 @@ async function upsert(table: string, rows: any[], onConflict = 'id') {
       },
       body: JSON.stringify(chunk),
     });
-    if (!res.ok) throw new Error(`Supabase upsert falhou (${table}): ${res.status} ${await res.text()}`);
   }
 }
 
@@ -446,11 +487,9 @@ async function fetchAllFromSupabase(table: string, select: string): Promise<any[
   let allRows: any[] = [];
   let offset = 0;
   while (true) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${PAGE_SIZE}&offset=${offset}`, {
+    const data = await requisitar(`Supabase select falhou (${table})`, `${SUPABASE_URL}/rest/v1/${table}?select=${select}&limit=${PAGE_SIZE}&offset=${offset}`, {
       headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-    });
-    if (!res.ok) throw new Error(`Supabase select falhou (${table}): ${res.status} ${await res.text()}`);
-    const data = await res.json();
+    }, true);
     if (!data || data.length === 0) break;
     allRows = allRows.concat(data);
     if (data.length < PAGE_SIZE) break;
@@ -465,7 +504,7 @@ async function fetchAllFromSupabase(table: string, select: string): Promise<any[
 // insert-e-ignora-se-já-tiver.
 async function insertIgnorandoDuplicatas(table: string, rows: any[], onConflict: string) {
   if (rows.length === 0) return;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
+  await requisitar(`Supabase insert (ignore duplicates) falhou (${table})`, `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -475,7 +514,6 @@ async function insertIgnorandoDuplicatas(table: string, rows: any[], onConflict:
     },
     body: JSON.stringify(rows),
   });
-  if (!res.ok) throw new Error(`Supabase insert (ignore duplicates) falhou (${table}): ${res.status} ${await res.text()}`);
 }
 
 // insert puro (sem on_conflict) — pra log append-only (conselhos_status_historico), onde cada
@@ -485,7 +523,7 @@ async function insertRows(table: string, rows: any[]) {
   const chunkSize = 500;
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize);
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    await requisitar(`Supabase insert falhou (${table})`, `${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -495,13 +533,12 @@ async function insertRows(table: string, rows: any[]) {
       },
       body: JSON.stringify(chunk),
     });
-    if (!res.ok) throw new Error(`Supabase insert falhou (${table}): ${res.status} ${await res.text()}`);
   }
 }
 
 // DELETE puro por filtro PostgREST (ex.: "id=in.(1,2,3)") — base dos helpers de prune abaixo.
 async function deleteWhere(table: string, filtro: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filtro}`, {
+  await requisitar(`Supabase delete falhou (${table} ${filtro})`, `${SUPABASE_URL}/rest/v1/${table}?${filtro}`, {
     method: 'DELETE',
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -509,7 +546,6 @@ async function deleteWhere(table: string, filtro: string) {
       Prefer: 'return=minimal',
     },
   });
-  if (!res.ok) throw new Error(`Supabase delete falhou (${table} ${filtro}): ${res.status} ${await res.text()}`);
 }
 
 // ============ prune de linhas órfãs (25/09/2026 — pedido do Vitor) ============
@@ -562,15 +598,19 @@ function dedupePorChave<T extends Record<string, any>>(rows: T[], chaveFn: (r: T
 }
 
 async function logSync(board: string, status: 'sucesso' | 'erro', itens?: number, erro?: string) {
-  await fetch(`${SUPABASE_URL}/rest/v1/sync_log`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify([{ board, status, itens_sincronizados: itens ?? null, erro: erro ?? null, finished_at: new Date().toISOString() }]),
-  });
+  try {
+    await requisitar('Supabase insert falhou (sync_log)', `${SUPABASE_URL}/rest/v1/sync_log`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ board, status, itens_sincronizados: itens ?? null, erro: erro ?? null, finished_at: new Date().toISOString() }]),
+    });
+  } catch (e: any) {
+    console.error(`[sync-monday] não consegui gravar sync_log (${board}): ${e?.message || e}`);
+  }
 }
 
 // ============ casamento de grupo ativo <-> grupo de reposição por nome ============
@@ -952,7 +992,7 @@ async function syncReportsIndividuaisMonday(items: any[]) {
   }
 
   // Padrões b e c: CS e semana de cada report são recalculados no banco, em ordem de envio. Idempotente.
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/resolver_semana_reports`, {
+  await requisitar('Supabase rpc falhou (resolver_semana_reports)', `${SUPABASE_URL}/rest/v1/rpc/resolver_semana_reports`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
@@ -960,7 +1000,6 @@ async function syncReportsIndividuaisMonday(items: any[]) {
     },
     body: '{}',
   });
-  if (!res.ok) throw new Error(`Supabase rpc falhou (resolver_semana_reports): ${res.status} ${await res.text()}`);
 }
 
 async function syncMetas() {
@@ -1291,7 +1330,7 @@ function sugerirGroupIdParaNps(nomeNps: string, gruposAtivos: { group_id: string
 async function syncNpsConselhos() {
   const groups = await fetchGroups(BOARDS.NPS_CONSELHOS);
   const colIds = Object.values(NPS_COLS);
-  const fields = `id name column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}`;
+  const fields = `id name updated_at column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}`;
   const rows: any[] = [];
   const conselhoRawInfo = new Map<string, { nome: string; produto: string | null }>();
 
@@ -1321,6 +1360,7 @@ async function syncNpsConselhos() {
       rows.push({
         id: Number(item.id),
         mes_grupo_titulo: g.title,
+        monday_updated_at: item.updated_at ?? null,
         respondente_nome: item.name,
         conselho_raw: conselhoRaw,
         produto,
@@ -1365,7 +1405,18 @@ async function syncNpsConselhos() {
   aliasesAtuais.forEach((a: any) => { if (a.confirmado && a.group_id) groupIdConfirmadoPorRaw.set(a.conselho_raw, a.group_id); });
   rows.forEach((r) => { r.group_id = groupIdConfirmadoPorRaw.get(r.conselho_raw) || null; });
 
-  await upsert('nps_conselhos_items', rows);
+  // 29/10/2026: o board tem ~2100 respostas e o ciclo de 5 minutos regravava todas. O Monday expõe updated_at
+  // por item, então só vai para o upsert a resposta nova, alterada (updated_at diferente do guardado) ou cujo
+  // group_id mudou por confirmação de alias. Linhas antigas sem monday_updated_at são regravadas uma vez.
+  const guardadas = new Map<number, { monday_updated_at: string | null; group_id: string | null }>();
+  (await fetchAllFromSupabase('nps_conselhos_items', 'id,monday_updated_at,group_id')).forEach((r: any) => guardadas.set(Number(r.id), r));
+  const mudou = rows.filter((r) => {
+    const g = guardadas.get(r.id);
+    if (!g || !g.monday_updated_at || !r.monday_updated_at) return true;
+    return new Date(g.monday_updated_at).getTime() !== new Date(r.monday_updated_at).getTime() || (g.group_id ?? null) !== (r.group_id ?? null);
+  });
+  console.log(`[sync-monday] nps_conselhos: ${mudou.length} de ${rows.length} respostas novas ou alteradas`);
+  await upsert('nps_conselhos_items', mudou);
   await pruneOrfaos('nps_conselhos_items', new Set(rows.map((r) => r.id)));
   return rows.length;
 }
@@ -1513,10 +1564,9 @@ async function syncHistoricoGtd() {
 
 // atualiza o status de conta ativa (enabled) dos CS já cadastrados em cs_config
 async function syncStatusUsuarios() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/cs_config?select=id,nome,nome_completo,monday_user_id,tipo&monday_user_id=not.is.null`, {
+  const csConfig = await requisitar('Supabase select falhou (cs_config)', `${SUPABASE_URL}/rest/v1/cs_config?select=id,nome,nome_completo,monday_user_id,tipo&monday_user_id=not.is.null`, {
     headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-  });
-  const csConfig = await res.json();
+  }, true);
   const ids = csConfig.map((c: any) => c.monday_user_id);
   if (ids.length === 0) return 0;
   const data = await mondayFetch(`query($ids:[ID!]){users(ids:$ids){id name enabled}}`, { ids });
@@ -1546,7 +1596,7 @@ async function syncStatusUsuarios() {
     if (infoMonday.enabled === undefined) continue;
     // CS desligado na plataforma (tipo 'ex_membro_sem_conta', único valor de ex permitido por cs_config_tipo_check) não volta a ficar ativo só porque a conta do Monday segue ativa.
     if (c.tipo === 'ex_membro_sem_conta') continue;
-    await fetch(`${SUPABASE_URL}/rest/v1/cs_config?id=eq.${c.id}`, {
+    await requisitar('Supabase patch falhou (cs_config)', `${SUPABASE_URL}/rest/v1/cs_config?id=eq.${c.id}`, {
       method: 'PATCH',
       headers: {
         apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
