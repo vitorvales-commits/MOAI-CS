@@ -1,6 +1,13 @@
 {
   "extends": "next/core-web-vitals",
-  "rules": {
-    "@next/next/no-sync-scripts": "warn"
-  }
+  "overrides": [
+    {
+      "files": [
+        "app/gestor/cs/[[]nome]/page.tsx"
+      ],
+      "rules": {
+        "@next/next/no-sync-scripts": "warn"
+      }
+    }
+  ]
 }

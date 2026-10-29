@@ -2,6 +2,7 @@
 // só aparece para gestor, e quem decide de verdade é o servidor (/api/processos recusa escrita de quem
 // não é gestor, e processos_publicar reconfere is_gestor() no banco).
 import { redirect } from 'next/navigation';
+import Script from 'next/script';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { PROCESSOS_CSS, PROCESSOS_HTML } from '@/lib/processos-ui';
 
@@ -21,6 +22,7 @@ export default async function ProcessosPage() {
   }
   return (
     <>
+      {/* Aviso no-page-custom-font mantido de propósito: mover estas fontes para o layout raiz mudaria o carregamento de todas as páginas (inclui IBM Plex Mono, que só esta página usa). */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
@@ -29,7 +31,8 @@ export default async function ProcessosPage() {
       <style dangerouslySetInnerHTML={{ __html: PROCESSOS_CSS }} />
       <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: PROCESSOS_HTML }} />
       <script dangerouslySetInnerHTML={{ __html: 'window.PROCESSOS_CFG = ' + JSON.stringify({ podeEditar: isGestor }) + ';' }} />
-      <script src={'/processos.js?v=' + VERSAO_SCRIPT} />
+      {/* afterInteractive é equivalente ao script síncrono anterior: processos.js só inicia quando o DOM está pronto (document.readyState em iniciar) e lê window.PROCESSOS_CFG, definido pelo script inline acima. */}
+      <Script src={'/processos.js?v=' + VERSAO_SCRIPT} strategy="afterInteractive" />
     </>
   );
 }

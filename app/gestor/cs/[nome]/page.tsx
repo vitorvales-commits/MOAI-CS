@@ -39,6 +39,7 @@ export default async function GestorCSPage({ params }: { params: { nome: string 
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <script dangerouslySetInnerHTML={{ __html: DOCK_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: 'window.AGENDA_CFG = ' + agendaConfigJson() + ';' }} />
+      {/* Script síncrono mantido de propósito (aviso no-sync-scripts liberado só neste arquivo no .eslintrc.json): o script abaixo monta a agenda no evento load e depende de agenda-cs.js já executado. next/script afterInteractive pode rodar depois do load, e beforeInteractive só vale no layout raiz, o que carregaria o arquivo em todas as páginas. Sem como provar equivalência sem sessão de gestor, não troquei. */}
       <script src="/agenda-cs.js" />
       <script dangerouslySetInnerHTML={{ __html: gestorCSScript(decodificar(params.nome)) }} />
       <script dangerouslySetInnerHTML={{ __html: "window.addEventListener('load', function () { agendaMontar('agendaCs', { csNome: " + JSON.stringify(decodificar(params.nome)).replace(/</g, '\\u003c') + " }); });" }} />

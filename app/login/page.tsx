@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { getSupabaseBrowser } from '@/lib/supabase/client';
 import { TEMA_CSS, FONTES_LINK } from '@/lib/ui/tema';
 
@@ -40,7 +41,7 @@ export default function LoginPage() {
       <style dangerouslySetInnerHTML={{ __html: TEMA_CSS + CSS_LOGIN }} />
       <main className="login-main">
         <div className="panel login-card">
-          <img src="/logo/moai-logo-black.png" alt="MOAI" />
+          <Image src="/logo/moai-logo-black.png" alt="MOAI" width={563} height={181} style={{ width: 'auto' }} unoptimized priority />
           <h1>Painel de CS</h1>
           <p>Acesso restrito à equipe MOAI (@moaiclubedelideres.com)</p>
           <button type="button" className="btn pri" onClick={entrarComGoogle} disabled={loading}>
