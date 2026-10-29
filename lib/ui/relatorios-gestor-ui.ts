@@ -110,8 +110,8 @@ function rgCartaoPreenchimento_(r) {
   }).join('');
   var a = r.anterior, noPrazoAgora = r.cobertura[0].qtd;
   var comp = a && a.exigidos ? '<p class="rg-comp">Mês anterior: ' + a.noPrazo + ' de ' + a.exigidos + ' no prazo' + (a.atrasados ? ', ' + a.atrasados + (a.atrasados === 1 ? ' atrasado' : ' atrasados') : '') + '. Agora: ' + noPrazoAgora + ' de ' + r.exigidos + ' no prazo, ' + r.semRelatorio + ' sem relatório.</p>' : '<p class="rg-comp">Sem encontros no mês anterior para comparar.</p>';
-  return '<div class="rg-card"><h3>Preenchimento</h3>' + comp +
-    '<div class="rg-grande">' + r.enviados + ' de ' + r.exigidos + '<small>' + (r.exigidos === 1 ? 'relatório enviado' : 'relatórios enviados') + '</small></div>' +
+  return '<div class="rg-card"><h3>Preenchimento</h3>' +
+    '<div class="rg-grande">' + r.enviados + ' de ' + r.exigidos + '<small>' + (r.exigidos === 1 ? 'relatório enviado' : 'relatórios enviados') + '</small></div>' + comp +
     rgBarra_(r.cobertura) + rgLegenda_(r.cobertura) + (linhas ? '<div class="rg-cs">' + linhas + '</div>' : '') + '</div>';
 }
 function rgCartaoAvaliacao_(r) {
