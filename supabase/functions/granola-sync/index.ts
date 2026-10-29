@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
 
   const bruto = Deno.env.get('GRANOLA_FONTES');
   if (!bruto) {
-    await logSync('granola', 'sucesso', 0, 'GRANOLA_FONTES ausente');
+    await logSync('granola', 'sucesso', 0, 'AVISO: o secret GRANOLA_FONTES não está cadastrado, então nenhuma gravação do Granola foi lida. Cadastre o secret na função granola-sync.');
     return resposta({ status: 'sem_configuracao' });
   }
 
