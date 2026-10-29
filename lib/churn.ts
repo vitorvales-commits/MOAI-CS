@@ -169,7 +169,7 @@ export function recorteParaQuery(r: Recorte): string {
   return p.toString();
 }
 
-// Chave que identifica a seleção em churn_analises.filtro_produto. Nula só para o recorte antigo
+// Chave que identifica a seleção de produtos de um recorte. Nula só para o recorte antigo
 // (toda a rede, todos os produtos e Comunidade dentro), que é o que a coluna nula já significava.
 export function chaveProdutos(r: Pick<Recorte, 'base' | 'produtos' | 'incluirComunidade'>): string | null {
   const lista = r.produtos === null ? 'todos' : ([...r.produtos].sort().join('|') || 'nenhum');
