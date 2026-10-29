@@ -32,7 +32,7 @@ import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoC
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
 import { ACOES_POR_INDICADOR } from '../config/acoes-por-indicador';
-import { csDoMes, type LinhaPeriodo } from './cs-periodos';
+import { csDoMes, nomesDoRoster, grafiasDoCS, type LinhaPeriodo, type ModoRoster } from './cs-periodos';
 import { semanaReferenciaReport, semanasRecentes, statusReportSemana, type EnvioReport, type StatusReport } from './report-semana';
 import { insightsGestor, type CtxInsights } from './insights';
 import { listarAlertasNps } from './alertas-nps-dados';
@@ -58,10 +58,13 @@ export function normalizeNome(s: any): string {
 // partir das tabelas brutas a cada request). syncStatusUsuarios (Edge Function) agora compara
 // nome_completo contra o nome real do Monday pra esse monday_user_id e avisa no log quando
 // divergir — não corrige sozinho, só alerta (nome_completo é editado à mão).
-export function nomeBateColunaPessoa(textoColuna: string | null, nomeCompletoCS: string | null): boolean {
+// Aceita uma grafia ou a lista de grafias da pessoa (nome completo e aliases de cs_periodos, 29/10/2026):
+// ex CS aparecem nos boards com nome completo, nome curto ou e-mail de conta excluída.
+export function nomeBateColunaPessoa(textoColuna: string | null, nomeCompletoCS: string | string[] | null): boolean {
   if (!textoColuna || !nomeCompletoCS) return false;
-  const alvo = normalizeNome(nomeCompletoCS);
-  return textoColuna.split(',').map((s) => normalizeNome(s)).includes(alvo);
+  const alvos = (Array.isArray(nomeCompletoCS) ? nomeCompletoCS : [nomeCompletoCS]).map(normalizeNome).filter(Boolean);
+  if (!alvos.length) return false;
+  return textoColuna.split(',').map((s) => normalizeNome(s)).some((t) => alvos.includes(t));
 }
 
 export function tituloContemApelido(titulo: string, apelido: string | null): boolean {
@@ -135,7 +138,13 @@ function shuffle<T>(arr: T[]): T[] {
 
 // ============ CS list ============
 
-export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null; ativo: boolean; ex: boolean };
+// aliases (29/10/2026): grafias da pessoa nos boards, vindas de cs_periodos. Opcional para não quebrar quem monta CSConfig à mão.
+export type CSConfig = { nome: string; nomeCompleto: string; userId: number | null; apelidoConselho: string | null; vezesDestaque: number; fotoUrl: string | null; metaCarteira: number | null; ativo: boolean; ex: boolean; aliases?: string[] };
+
+// Todas as grafias de um CS para casar com os campos de texto dos boards.
+export function grafiasCS(c: Pick<CSConfig, 'nome' | 'nomeCompleto' | 'aliases'>): string[] {
+  return grafiasDoCS(c.nome, c.nomeCompleto, c.aliases);
+}
 
 // Foto customizada (cs_fotos, brainstorm 29/09/2026) tem prioridade sobre FOTOS_CS estático —
 // mesmo padrão de conselheiros_fotos/conselheiro-foto: só busca cs_nome aqui (nunca o
@@ -180,19 +189,29 @@ function invalidarCSListCache() {
 }
 export async function getCSListParaAgregados(sb: SupabaseClient): Promise<CSConfig[]> {
   if (csListCache && csListCache.expiraEm > Date.now()) return csListCache.valor;
-  const [{ data, error }, comFotoCustomizada] = await Promise.all([
+  const [{ data, error }, comFotoCustomizada, periodos] = await Promise.all([
     sb.from('cs_config').select('*').order('nome'),
     getCsFotosCustomizadasSet(sb),
+    periodosCsSeguro(sb),
   ]);
   if (error) throw new Error('Erro ao buscar cs_config: ' + error.message);
-  const ativos = (data || []).map((r: any) => ({
+  const periodoPorNome = new Map((periodos || []).map((p) => [normalizeNome(p.nome_curto), p]));
+  const ativos: CSConfig[] = (data || []).map((r: any) => ({
     nome: r.nome, nomeCompleto: r.nome_completo, userId: r.monday_user_id,
     apelidoConselho: r.apelido_conselho, vezesDestaque: r.vezes_destaque || 0,
     fotoUrl: resolverFotoUrl(r.nome, comFotoCustomizada), metaCarteira: r.meta_carteira ?? null, ativo: !!r.ativo && r.tipo !== 'ex_membro_sem_conta', ex: false,
+    aliases: periodoPorNome.get(normalizeNome(r.nome))?.aliases || [],
   }));
-  // Ex-membros sem conta nunca têm meta individual própria (não são CS cadastrados em cs_config) —
-  // sempre caem no fallback automático (metaCarteiraEfetiva), mesmo tratamento de sempre.
-  const exMembros = (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira' | 'ativo' | 'ex'>[]).map((m) => ({ ...m, fotoUrl: resolverFotoUrl(m.nome, comFotoCustomizada), metaCarteira: null as number | null, ativo: false, ex: true }));
+  // Ex CS (29/10/2026): quem está em cs_periodos e não está em cs_config. Substitui a lista fixa
+  // EX_MEMBROS_SEM_CONTA, que tinha só quatro nomes, sem nome completo real e sem Alejandro e Lucas, e por
+  // isso zerava os meses antigos. A lista fixa só volta se a tabela não existir.
+  const emConfig = new Set(ativos.map((c) => normalizeNome(c.nome)));
+  const exMembros: CSConfig[] = periodos
+    ? periodos.filter((p) => !emConfig.has(normalizeNome(p.nome_curto))).map((p) => ({
+      nome: p.nome_curto, nomeCompleto: p.nome_completo, userId: null, apelidoConselho: p.nome_curto, vezesDestaque: 0,
+      fotoUrl: resolverFotoUrl(p.nome_curto, comFotoCustomizada), metaCarteira: null, ativo: false, ex: true, aliases: p.aliases || [],
+    }))
+    : (EX_MEMBROS_SEM_CONTA as Omit<CSConfig, 'fotoUrl' | 'metaCarteira' | 'ativo' | 'ex'>[]).map((m) => ({ ...m, fotoUrl: resolverFotoUrl(m.nome, comFotoCustomizada), metaCarteira: null as number | null, ativo: false, ex: true, aliases: [] }));
   const resultado = ativos.concat(exMembros);
   csListCache = { valor: resultado, expiraEm: Date.now() + CS_LIST_TTL_MS };
   return resultado;
@@ -1075,12 +1094,13 @@ function parseMetas(metasSubitensRows: any[], metasResolvidasRows: MetaResolvida
   return out;
 }
 
-export function parseChurn(churnRows: any[], nomeCS: string, mesInicio: string, mesFim: string) {
+export function parseChurn(churnRows: any[], nomeCS: string | string[], mesInicio: string, mesFim: string) {
   let churnCount = 0, revenueChurn = 0;
+  const alvos = (Array.isArray(nomeCS) ? nomeCS : [nomeCS]).map(normalizeNome).filter(Boolean);
   const detalheProdutos: Record<string, number> = {};
   churnRows.forEach((r) => {
     const cs = r.quem_e_seu_cs;
-    if (!cs || CHURN_EXCLUIR.includes(cs) || normalizeNome(cs) !== normalizeNome(nomeCS)) return;
+    if (!cs || CHURN_EXCLUIR.includes(cs) || !alvos.includes(normalizeNome(cs))) return;
     // Contagem de churn (Carteira atual, simplificação de 05/10/2026): mesma definição da tela de
     // churn (data_referencia = data do Monday, senão o dia de criação) e a Comunidade nunca entra,
     // pois ela não tem CS, mesmo quando o membro está sob um CS ativo.
@@ -1111,7 +1131,7 @@ function parseChurnOrfao(churnRows: any[], nomesConhecidosNormalizados: string[]
   return { qtd, detalhe: Object.keys(porNome).map((n) => ({ nome: n, qtd: porNome[n] })) };
 }
 
-function parseCases(casesRows: any[], nomeCompletoCS: string, mes: string, ano: number, geral: boolean) {
+function parseCases(casesRows: any[], nomeCompletoCS: string | string[], mes: string, ano: number, geral: boolean) {
   const filtradas = geral ? filtrarAnoFlexivel(casesRows, ano) : filtrarPorMesAnoFlexivel(casesRows, mes, ano);
   return filtradas.filter((r) => nomeBateColunaPessoa(r.cs_raw, nomeCompletoCS))
     .map((r) => ({ id: r.id, nome: r.nome, empresa: r.empresa || '', produto: r.produto || '' }));
@@ -1123,12 +1143,12 @@ function parseMatchmakings(mmRows: any[], userId: number | null, mes: string, an
   return filtradas.filter((r) => Number(r.creator_id) === userId).length;
 }
 
-function parseRounds(roundsRows: any[], nomeCompletoCS: string, mes: string, geral: boolean) {
+function parseRounds(roundsRows: any[], nomeCompletoCS: string | string[], mes: string, geral: boolean) {
   const filtradas = geral ? filtrarAnoSeguro(roundsRows) : filtrarPorMesSeguro(roundsRows, mes);
   return filtradas.filter((r) => r.status === ROUNDS_STATUS_VALIDO && nomeBateColunaPessoa(r.cs_responsavel_raw, nomeCompletoCS)).length;
 }
 
-function parseUpsellDownsell(udRows: any[], nomeCompletoCS: string, mesInicio: string, mesFim: string) {
+function parseUpsellDownsell(udRows: any[], nomeCompletoCS: string | string[], mesInicio: string, mesFim: string) {
   let upsell = 0, downsell = 0;
   udRows.forEach((r) => {
     if (!nomeBateColunaPessoa(r.cs_raw, nomeCompletoCS) || r.status !== UD_STATUS_VALIDO) return;
@@ -1426,26 +1446,22 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const resumo = resumoParam || (await buscarResumoReports(sb));
 
   const listaCS = await getCSListParaAgregados(sb);
-  let cfg: CSConfig | undefined = listaCS.find((c) => c.nome === nomeCS);
-  if (!cfg) {
-    // Ex CS que não está mais em cs_config: calcula com os dados de cs_periodos (C3). Sem user id, o
-    // indicador de matchmakings próprio fica zerado, como já acontece para quem não tem user id.
-    const periodo = (await periodosCsSeguro(sb))?.find((p) => p.nome_curto === nomeCS);
-    if (periodo) cfg = { nome: periodo.nome_curto, nomeCompleto: periodo.nome_completo, userId: null, apelidoConselho: periodo.nome_curto,
-      vezesDestaque: 0, fotoUrl: null, metaCarteira: null, ativo: true, ex: false } as unknown as CSConfig;
-  }
+  // A lista já traz os ex CS de cs_periodos com as grafias deles. Sem user id, o indicador de
+  // matchmakings próprio de um ex CS fica zerado, como já acontece para quem não tem user id.
+  const cfg: CSConfig | undefined = listaCS.find((c) => c.nome === nomeCS);
   if (!cfg) throw new Error(`CS "${nomeCS}" não encontrado`);
+  const grafias = grafiasCS(cfg);
 
   const agendaMap = buildAgendaMap(dados.agenda);
   const temUserId = cfg.userId !== null && cfg.userId !== undefined;
 
   const metas = parseMetas(dados.metas, dados.metasResolvidas, cfg.nome, seletorMes, ano, geral);
-  const churn = parseChurn(dados.churn, cfg.nome, mesInicio, mesFim);
-  const casesRegistrados = parseCases(dados.cases, cfg.nomeCompleto, seletorMes, ano, geral);
+  const churn = parseChurn(dados.churn, grafias, mesInicio, mesFim);
+  const casesRegistrados = parseCases(dados.cases, grafias, seletorMes, ano, geral);
   const casesCalc = casesRegistrados.length;
   const mmCalc = parseMatchmakings(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
-  const roundsCalc = parseRounds(dados.rounds, cfg.nomeCompleto, seletorMes, geral);
-  const upDown = parseUpsellDownsell(dados.upsellDownsell, cfg.nomeCompleto, mesInicio, mesFim);
+  const roundsCalc = parseRounds(dados.rounds, grafias, seletorMes, geral);
+  const upDown = parseUpsellDownsell(dados.upsellDownsell, grafias, mesInicio, mesFim);
   const semanal = parseReportsSemanais(resumo, cfg.nome, mesInicio, mesFim);
   const indicacoesCalc = somaIndicacoesSemanal(semanal);
   const feedback = parseFeedback(dados.feedback, cfg.nome, seletorMes, ano, geral);
@@ -1528,6 +1544,11 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const dados = await getDadosBrutos(sb);
   const membros = await getCSListParaAgregados(sb);
   const resumo = await buscarResumoReports(sb);
+  // Time do mês (29/10/2026): os totais somam todo mundo que já foi CS, mas ranking, Top 3 e a grade do
+  // Time de CS mostram só quem era CS no mês escolhido (ou quem está ativo hoje, no mês corrente).
+  const rosterEquipe = await rosterDoMes(sb, seletorMes, ano, geral);
+  const noRoster = new Set(rosterEquipe.membros.map((m) => normalizeNome(m.nome)));
+  const estaNoRoster = (nome: string) => noRoster.has(normalizeNome(nome));
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
     try { return await generateCSReport(sb, m.nome, seletorMes, ano, dados, resumo); }
@@ -1612,7 +1633,7 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   const mesAlvoCarteira = geral ? `${ano}-12-01` : mesInicio;
   const pontuacaoPorCS = relatorios.map((r) => {
     const metaPropria = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
-    return { nome: r.cs.nome, ativo: r.cs.ativo, ex: r.cs.ex, pontuacao: pontuarCS(r.indicadores, r.conselhos.length, metaPropria),
+    return { nome: r.cs.nome, ativo: estaNoRoster(r.cs.nome), ex: false, pontuacao: pontuarCS(r.indicadores, r.conselhos.length, metaPropria),
       extra: { nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl } };
   });
   const rankingGeralPorScore = rankingCSAtivos(pontuacaoPorCS).map((x) => ({
@@ -1621,7 +1642,7 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   }));
   const csTop = rankingGeralPorScore.slice(0, 3);
 
-  const nomesConhecidos = membros.map((c) => normalizeNome(c.nome));
+  const nomesConhecidos = membros.flatMap((c) => grafiasCS(c).map(normalizeNome));
   const churnOrfao = parseChurnOrfao(dados.churn, nomesConhecidos, mesInicio, mesFim);
 
   // Churn e revenue churn do time (26/10/2026): os dois saem da mesma definição, churnDaArea
@@ -1634,7 +1655,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // logo acima de parseUpsellDownsell. Usa nome_completo (não o nome curto de nomesConhecidos
   // acima, que é o campo usado por churn) porque cs_raw/cs_responsavel_raw desses três boards são
   // comparados via nomeBateColunaPessoa, sempre contra nome_completo.
-  const nomesCompletosConhecidos = new Set(membros.map((m) => normalizeNome(m.nomeCompleto)).filter(Boolean));
+  // Inclui as grafias de cs_periodos (29/10/2026), para que cases e trocas de ex CS em meses antigos entrem no total.
+  const nomesCompletosConhecidos = new Set(membros.flatMap((m) => grafiasCS(m).map(normalizeNome)).filter(Boolean));
   const casesUnicosTime = contarCasesUnicosTime(dados.cases, nomesCompletosConhecidos, seletorMes, ano, geral);
   const roundsUnicosTime = contarRoundsUnicosTime(dados.rounds, nomesCompletosConhecidos, seletorMes, geral);
   const upsellDownsellUnicosTime = contarUpsellDownsellUnicosTime(dados.upsellDownsell, nomesCompletosConhecidos, mesInicio, mesFim);
@@ -1706,9 +1728,10 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     // Cases do time inteiro, com o CS de cada um (campo aditivo da home do gestor). Sem ordenação por data: o
     // registro traz o grupo de mês do Monday, não a data do case.
     casesDoTime: relatorios.flatMap((r) => (r.casesRegistrados || []).map((c) => ({ ...c, cs: r.cs.nome }))),
-    // CS ativos de cs_config, sem inativos e sem EX_MEMBROS_SEM_CONTA: a lista do Time de CS da home do gestor.
-    // membrosIncluidos segue com todos, porque os totais do time ainda somam o histórico de quem saiu.
-    csAtivos: relatorios.filter((r) => r.cs.ativo && !r.cs.ex).map((r) => ({ nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl || null })),
+    // Time de CS da home do gestor: quem compõe o time no mês escolhido (rosterDoMes). No mês corrente são os
+    // ativos de cs_config; num mês fechado, quem era CS naquele mês. Os totais seguem somando todo mundo.
+    csAtivos: relatorios.filter((r) => estaNoRoster(r.cs.nome)).map((r) => ({ nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl || null })),
+    roster: { modo: rosterEquipe.modo },
     ranking: rankingIndicadores,
     csTop,
     // Lista completa (nome + score + detalhamento) — usada internamente por generateHomeResumoCS
@@ -2117,7 +2140,9 @@ function montarRitmoDoMes(porCS: any[], dados: DadosBrutos, seletorMes: string, 
 // está vazia, devolve null e o chamador usa a lista de cs_config como antes.
 export async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo[] | null> {
   try {
-    const { data, error } = await sb.from('cs_periodos').select('nome_curto, nome_completo, primeiro_mes, ultimo_mes');
+    let { data, error } = await sb.from('cs_periodos').select('nome_curto, nome_completo, primeiro_mes, ultimo_mes, aliases');
+    // Tabela da migração antiga, sem a coluna aliases: lê sem ela.
+    if (error) ({ data, error } = await sb.from('cs_periodos').select('nome_curto, nome_completo, primeiro_mes, ultimo_mes') as any);
     if (error || !data || !data.length) return null;
     return data as LinhaPeriodo[];
   } catch {
@@ -2125,34 +2150,47 @@ export async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo
   }
 }
 
-// Roster do mês: meses fechados usam só quem era CS naquele mês (ex CS incluídos). Mês atual ou futuro soma
-// os CS ativos de cs_config, porque ainda não tem meta lançada para todos. Visão geral do ano não muda.
-async function rosterDoMes(sb: SupabaseClient, base: CSConfig[], seletorMes: string, ano: number, geral: boolean): Promise<CSConfig[]> {
-  const numero = MESES_ORDEM.indexOf(seletorMes) + 1;
-  if (geral || !numero) return base;
-  const mesIso = `${ano}-${String(numero).padStart(2, '0')}`;
+// Time do mês (reescrito em 29/10/2026). Fonte única de quem aparece em ranking, cards, mapa e Time de CS.
+// Mês corrente ou futuro: só os ativos de cs_config, então quem saiu nunca aparece no presente. Mês fechado:
+// quem era CS naquele mês segundo cs_periodos, inclusive ex CS, com as grafias deles para casar os dados.
+// Ano inteiro: no ano corrente, os ativos; em ano passado, todos que foram CS em algum mês dele. Cada membro
+// devolvido vem com ativo verdadeiro, porque "ativo" aqui quer dizer ativo no recorte escolhido. Sem a
+// tabela cs_periodos, mantém o comportamento antigo (ativos de cs_config) e avisa pelo modo.
+export async function rosterDoMes(sb: SupabaseClient, seletorMes: string, ano: number, geral: boolean): Promise<{ modo: ModoRoster | 'sem_historico'; membros: CSConfig[] }> {
+  const lista = await getCSListParaAgregados(sb);
+  const ativosHoje = lista.filter((c) => c.ativo && !c.ex);
   const periodos = await periodosCsSeguro(sb);
-  if (!periodos) return base;
-  const doMes = csDoMes(periodos, mesIso);
-  if (!doMes.length) return base;
+  if (!periodos) return { modo: 'sem_historico', membros: ativosHoje };
   const hoje = hojeSP();
-  const mesAtualOuFuturo = mesIso >= hoje.slice(0, 7);
-  const chave = (n: string) => normalizeNome(n);
-  const porNome = new Map<string, CSConfig>();
-  doMes.forEach((p) => porNome.set(chave(p.nome_curto), {
-    nome: p.nome_curto, nomeCompleto: p.nome_completo, userId: null, apelidoConselho: p.nome_curto,
-    vezesDestaque: 0, fotoUrl: null, metaCarteira: null, ativo: true, ex: false,
-  } as unknown as CSConfig));
-  if (mesAtualOuFuturo) {
-    base.filter((c) => c.ativo && !c.ex).forEach((c) => { if (!porNome.has(chave(c.nome))) porNome.set(chave(c.nome), c); });
+  const porNome = new Map(lista.map((c) => [normalizeNome(c.nome), c]));
+  const comoAtivoNoRecorte = (c: CSConfig): CSConfig => ({ ...c, ativo: true, ex: false });
+
+  let modo: ModoRoster;
+  let nomes: string[];
+  const numero = MESES_ORDEM.indexOf(seletorMes) + 1;
+  if (geral || !numero) {
+    if (ano >= Number(hoje.slice(0, 4))) { modo = 'ativos_hoje'; nomes = ativosHoje.map((c) => c.nome); }
+    else {
+      modo = 'quem_era_cs';
+      const set = new Set<string>();
+      for (let m = 1; m <= 12; m++) csDoMes(periodos, `${ano}-${String(m).padStart(2, '0')}`).forEach((p) => set.add(p.nome_curto));
+      nomes = Array.from(set);
+    }
+  } else {
+    const r = nomesDoRoster(periodos, `${ano}-${String(numero).padStart(2, '0')}`, hoje, ativosHoje.map((c) => c.nome));
+    modo = r.modo; nomes = r.nomes;
   }
-  return Array.from(porNome.values());
+  const membros = nomes.map((n) => porNome.get(normalizeNome(n))).filter(Boolean).map((c) => comoAtivoNoRecorte(c as CSConfig))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return { modo, membros };
 }
 
-export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, incluirExMembros: boolean = false) {
+// incluirExMembros foi aposentado em 29/10/2026: o mês escolhido decide sozinho quem aparece (rosterDoMes).
+// O parâmetro continua na assinatura só para não quebrar quem chama.
+export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string, ano: number, _incluirExMembros: boolean = false) {
   const dados = await getDadosBrutos(sb);
-  const baseMembros = incluirExMembros ? await getCSListParaAgregados(sb) : await getCSListCompleto(sb);
-  const membros = await rosterDoMes(sb, baseMembros, seletorMes, ano, periodoDatas(seletorMes, ano).geral);
+  const roster = await rosterDoMes(sb, seletorMes, ano, periodoDatas(seletorMes, ano).geral);
+  const membros = roster.membros;
   const resumo = await buscarResumoReports(sb);
 
   const relatorios = (await Promise.all(membros.map(async (m) => {
@@ -2163,7 +2201,8 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   const maxConselhosTime = relatorios.reduce((max, r) => Math.max(max, r.conselhos.length), 0);
   const { mesInicio: mesInicioVisao, geral: geralVisao } = periodoDatas(seletorMes, ano);
   const mesAlvoCarteiraVisao = geralVisao ? `${ano}-12-01` : mesInicioVisao;
-  const porCS = relatorios.map((r) => montarVisaoGestorCS(r, maxConselhosTime, dados, mesAlvoCarteiraVisao));
+  // Todo membro do recorte conta como ativo no ranking e nos cards, inclusive ex CS num mês fechado.
+  const porCS = relatorios.map((r) => ({ ...montarVisaoGestorCS(r, maxConselhosTime, dados, mesAlvoCarteiraVisao), ativo: true, ex: false }));
 
   const radarEquipe = RADAR_EIXOS.map((_, idx) => {
     const vals = porCS.map((c) => c.radar[idx]).filter((v) => v !== null && v !== undefined) as number[];
@@ -2178,6 +2217,8 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
 
   return {
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
+    // Qual recorte de time a tela mostra: ativos hoje (mês corrente) ou quem era CS no mês (mês fechado).
+    roster: { modo: roster.modo, total: membros.length },
     ritmo: montarRitmoDoMes(porCS, dados, seletorMes, ano),
     indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos', 'healthDaBase'],
     labelsIndicador: LABELS_INDICADOR,
@@ -3627,13 +3668,14 @@ function ondePontosCS(cs: VisaoGestorCS) {
 }
 
 export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMes: string, ano: number) {
-  const [visao, ativos, dados] = await Promise.all([
-    generateVisaoGestor(sb, seletorMes, ano, false), getCSListCompleto(sb), getDadosBrutos(sb),
+  // Lista completa (ativos e ex CS): num mês fechado a página abre para quem era CS naquele mês.
+  const [visao, todos, dados] = await Promise.all([
+    generateVisaoGestor(sb, seletorMes, ano, false), getCSListParaAgregados(sb), getDadosBrutos(sb),
   ]);
   const cs = visao.porCS.find((c) => c.nome === nome);
-  const cfg = ativos.find((c) => c.nome === nome);
+  const cfg = todos.find((c) => c.nome === nome);
   if (!cs || !cfg) {
-    const e: any = new Error(`CS "${nome}" não encontrado entre os CS ativos.`);
+    const e: any = new Error(`CS "${nome}" não fazia parte do time no mês escolhido.`);
     e.status = 404;
     throw e;
   }

@@ -60,6 +60,8 @@ export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_C
 .block-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
 .block-head h2{font-size:22px;font-weight:700;margin:0 0 6px;}
 .block-head p{font-size:13px;color:var(--cinza-texto);margin:0;max-width:520px;line-height:1.55;}
+.roster-nota{font-size:12px;color:var(--cinza-texto);font-weight:600;white-space:nowrap;}
+.roster-nota b{color:var(--preto-tinta);font-weight:700;}
 .toggle-inline{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--cinza-texto);font-weight:600;cursor:pointer;white-space:nowrap;}
 .toggle-inline input{width:16px;height:16px;cursor:pointer;accent-color:var(--preto-tinta);}
 
@@ -782,10 +784,7 @@ ${SAUDE_DADOS_HTML}
           <div class="ph">
             <div><h2 id="h-mapa">Mapa do time</h2><p>Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
             <div class="r">
-              <label class="toggle-inline" title="Também afeta os números da página">
-                <input type="checkbox" id="chkExMembros">
-                <span>Mostrar ex membros</span>
-              </label>
+              <span class="roster-nota" id="rosterNota" aria-live="polite"></span>
               <div class="seg" role="group" aria-label="Ordenar" id="mapaOrdem"><button type="button" class="on" data-ordem="prioridade">Prioridade</button><button type="button" data-ordem="ranking">Ranking</button></div>
             </div>
           </div>
@@ -1610,7 +1609,9 @@ function renderMapa_() {
   try {
     var linhas = linhasMapa_();
     if (!linhas.length) {
-      el.innerHTML = '<div class="vazio-orienta">Nenhum CS ativo neste período. Confira os vínculos em Controle de perfis.</div>';
+      el.innerHTML = DADOS && DADOS.roster && DADOS.roster.modo === 'quem_era_cs'
+        ? '<div class="vazio-orienta">Não há registro de quem era CS neste mês. O histórico começa em julho de 2025; meses anteriores não têm dados nos boards.</div>'
+        : '<div class="vazio-orienta">Nenhum CS ativo neste período. Confira os vínculos em Controle de perfis.</div>';
       return;
     }
     var pts = pontosSerieArea_();
@@ -1992,20 +1993,18 @@ document.getElementById('btnToggleKanban').addEventListener('click', function ()
   this.classList.toggle('aberto', !aberto);
 });
 
-// Ponto 4 (correção 25/09/2026): toggle "Mostrar ex-membros", desligado por padrão — sem ele,
-// ranking e radar usam só cs_config ativo (getCSListCompleto no servidor); ligado, volta a incluir
-// EX_MEMBROS_SEM_CONTA (comportamento original). Os dois gráficos leem da mesma lista de membros
-// no servidor (ver generateVisaoGestor), então um único toggle já cobre ambos.
-var incluirExMembros = false;
-function inicializarToggleExMembros() {
-  var chk = document.getElementById('chkExMembros');
-  chk.checked = incluirExMembros;
-  chk.addEventListener('change', function () {
-    incluirExMembros = chk.checked;
-    carregarVisaoGeral();
-  });
+// Time do mês (29/10/2026): o antigo toggle "Mostrar ex membros" saiu. O mês escolhido decide quem aparece:
+// no mês corrente, só os CS ativos hoje; num mês fechado, quem era CS naquele mês, inclusive quem já saiu.
+// A nota ao lado do título diz ao gestor qual recorte ele está vendo.
+function renderRosterNota_() {
+  var el = document.getElementById('rosterNota');
+  if (!el || !DADOS || !DADOS.roster) { if (el) el.textContent = ''; return; }
+  var r = DADOS.roster;
+  var qtd = r.total === 1 ? '1 CS' : r.total + ' CS';
+  if (r.modo === 'quem_era_cs') el.innerHTML = 'Quem era CS em ' + escRA_(String(mesAtual).toLowerCase()) + ' de ' + escRA_(anoAtual) + ' · <b>' + qtd + '</b>';
+  else if (r.modo === 'ativos_hoje') el.innerHTML = 'CS ativos hoje · <b>' + qtd + '</b>';
+  else el.textContent = 'CS ativos hoje (histórico de CS indisponível)';
 }
-inicializarToggleExMembros();
 
 // ============ report da semana e Health da Base na Visão da área (etapa 3, report via Monday) ============
 var ENDPOINT_REPORT_SEMANA_AREA = '/api/gestor/report-semana';
@@ -2052,8 +2051,9 @@ document.getElementById('chkSomaAdvHealth').addEventListener('change', alternarA
 carregarAdvHealthChave_();
 
 function carregarVisaoGeral() {
-  fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual) + '&incluirExMembros=' + incluirExMembros).then(function (data) {
+  fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
     DADOS = data;
+    renderRosterNota_();
     renderKpis_();
     renderMapa_();
     renderRedeResumo_();

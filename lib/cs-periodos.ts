@@ -66,7 +66,7 @@ export function periodosPorMetas(
   }).sort((a, b) => a.primeiro_mes.localeCompare(b.primeiro_mes) || a.nome_curto.localeCompare(b.nome_curto, 'pt-BR'));
 }
 
-export interface LinhaPeriodo { nome_curto: string; nome_completo: string; primeiro_mes: string; ultimo_mes: string | null }
+export interface LinhaPeriodo { nome_curto: string; nome_completo: string; primeiro_mes: string; ultimo_mes: string | null; aliases?: string[] | null }
 
 // Quem era CS no mês AAAA-MM: período que começa até o mês e não termina antes dele (ultimo_mes nulo = ainda ativo).
 export function csDoMes(periodos: LinhaPeriodo[], mesIso: string): LinhaPeriodo[] {
@@ -74,4 +74,28 @@ export function csDoMes(periodos: LinhaPeriodo[], mesIso: string): LinhaPeriodo[
   return periodos
     .filter((p) => p.primeiro_mes.slice(0, 7) <= alvo && (p.ultimo_mes === null || p.ultimo_mes.slice(0, 7) >= alvo))
     .sort((a, b) => a.nome_curto.localeCompare(b.nome_curto, 'pt-BR'));
+}
+
+// Regra única do time exibido em cada mês (29/10/2026). Mês corrente ou futuro: só quem está ativo hoje em
+// cs_config, para que quem já saiu nunca apareça no presente. Mês fechado: quem era CS naquele mês segundo
+// cs_periodos, inclusive quem já saiu, e nunca quem só entrou depois. Devolve os nomes curtos e o modo,
+// que a tela usa para dizer ao gestor qual recorte está vendo.
+export type ModoRoster = 'ativos_hoje' | 'quem_era_cs';
+export function nomesDoRoster(periodos: LinhaPeriodo[], mesIso: string, hojeIso: string, ativosHoje: string[]): { modo: ModoRoster; nomes: string[] } {
+  if (mesIso.slice(0, 7) >= hojeIso.slice(0, 7)) return { modo: 'ativos_hoje', nomes: ativosHoje.slice() };
+  return { modo: 'quem_era_cs', nomes: csDoMes(periodos, mesIso).map((p) => p.nome_curto) };
+}
+
+// Todas as grafias de uma pessoa: nome curto, nome completo e aliases, sem repetição e sem vazios.
+export function grafiasDoCS(nomeCurto: string | null | undefined, nomeCompleto: string | null | undefined, aliases?: string[] | null): string[] {
+  const vistos = new Set<string>();
+  const saida: string[] = [];
+  [nomeCurto, nomeCompleto, ...(aliases || [])].forEach((n) => {
+    const t = String(n || '').trim();
+    const k = semAcento(t);
+    if (!t || vistos.has(k)) return;
+    vistos.add(k);
+    saida.push(t);
+  });
+  return saida;
 }
