@@ -554,6 +554,41 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .retorno-mot .barra i{display:block;height:100%;}
 .retorno-mot .barra .v{background:var(--preto-tinta);} .retorno-mot .barra .t{background:var(--cinza-linha);} .retorno-mot .barra .n{background:var(--vermelho);}
 .retorno-mot .num{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;}
+.risco-faixa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;}
+@media (max-width:760px){.risco-faixa{grid-template-columns:1fr;}}
+.risco-num{border:1px solid var(--cinza-borda);border-radius:16px;padding:14px 16px;background:var(--branco);}
+.risco-num b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:30px;line-height:1.05;}
+.risco-num b.alerta{color:var(--vermelho);}
+.risco-num span{font-size:12px;color:var(--cinza-texto);}
+.risco-cs{display:grid;gap:8px;margin:0 0 18px;}
+.risco-cs-linha{display:grid;grid-template-columns:minmax(90px,160px) minmax(0,1fr) 190px;gap:12px;align-items:center;font-size:12.5px;}
+.risco-cs-linha .barra{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--cinza-superficie);}
+.risco-cs-linha .barra i{display:block;height:100%;}
+.risco-cs-linha .c{background:var(--vermelho);} .risco-cs-linha .a{background:#D9A400;}
+.risco-cs-linha .num{text-align:right;font-variant-numeric:tabular-nums;}
+.risco-cs-linha .num.acima{color:var(--vermelho);font-weight:600;}
+@media (max-width:560px){.risco-cs-linha{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);}.risco-cs-linha .barra{grid-column:1 / -1;order:3;}}
+.risco-lista{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+@media (max-width:760px){.risco-lista{grid-template-columns:1fr;}}
+.risco-card{border:1px solid var(--cinza-borda);border-radius:16px;padding:14px 16px;background:var(--branco);}
+.risco-card.critico{border-color:var(--vermelho);}
+.risco-topo{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.risco-nivel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--cinza-texto);}
+.risco-card.critico .risco-nivel{color:var(--vermelho);}
+.risco-sub{font-size:12px;color:var(--cinza-apoio);margin:2px 0 8px;}
+.risco-barra{position:relative;height:8px;border-radius:99px;background:var(--cinza-superficie);margin:6px 0 10px;}
+.risco-barra i{display:block;height:100%;border-radius:99px;background:var(--preto-tinta);}
+.risco-card.critico .risco-barra i{background:var(--vermelho);}
+.risco-motivos{margin:0 0 8px;padding:0;list-style:none;font-size:12.5px;display:grid;gap:3px;}
+.risco-rodape{font-size:12px;color:var(--cinza-texto);display:grid;gap:2px;}
+.risco-rodape .alerta{color:var(--vermelho);font-weight:600;}
+.risco-aviso{font-size:12px;color:var(--cinza-apoio);margin:12px 0 0;}
+.risco-config{margin-top:14px;font-size:13px;}
+.risco-config summary{cursor:pointer;font-weight:600;}
+.risco-cfg-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin-top:10px;}
+@media (max-width:760px){.risco-cfg-grade{grid-template-columns:1fr;}}
+.risco-cfg-grade label{display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:8px;align-items:center;font-size:12px;}
+.risco-cfg-msg{font-size:12px;color:var(--cinza-apoio);margin-top:8px;}
 .rcq-talvez{font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer;}
 .rcq-filtros{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
 .rcq-filtro{font-family:inherit;font-size:12px;font-weight:600;color:var(--cinza-texto);background:var(--branco);border:1px solid var(--cinza-borda);border-radius:99px;padding:6px 12px;cursor:pointer;}
@@ -1128,6 +1163,12 @@ ${RELATORIOS_GESTOR_HTML}
       <div id="retornoResumo"><div class="gestor-empty">Carregando…</div></div>
     </section>
 
+    <section class="block" id="blocoRisco">
+      <div class="block-head"><div><h2>Risco de churn por membro</h2><p>Quem está mais perto de sair, pela nota do NPS, alertas, status e presença no conselho, report do CS e fim da fidelidade. Regras fixas, sem inteligência artificial. Os mais urgentes vêm primeiro.</p></div></div>
+      <div id="riscoPainel"><div class="gestor-empty">Carregando…</div></div>
+      <details class="risco-config" id="riscoConfig"><summary>Pesos e limiares do cálculo</summary><div id="riscoConfigCorpo"></div></details>
+    </section>
+
     <section class="block" id="blocoReconquista">
       <div class="block-head"><div><h2>Rastreio de reconquista</h2><p>Cada ex membro que disse que voltaria vira um contato a acompanhar: status, responsável, próximo contato e observação. Só gestores veem esta lista.</p></div>
         <label class="churn-campo rcq-talvez"><input type="checkbox" id="recTalvez"> Incluir quem deu 7 ou 8</label>
@@ -1628,20 +1669,16 @@ function renderMapa_() {
 }
 
 // ---------- nível 2: Fila de ação ----------
-function itensFila_() {
-  var itens = [], erros = [];
-  if (!ACOES_) return { itens: itens, erros: erros };
-  var nomesCS = {};
-  if (DADOS) DADOS.cards.forEach(function (c) { nomesCS[c.nome] = true; });
-  var u = ACOES_.urgencias;
-  if (u && u.erro) erros.push('Urgências indisponíveis: ' + u.erro);
-  if (u && u.dado) {
-    var r = u.dado.report;
+// Cada fonte da fila é uma entrada: chave é a seção devolvida por /api/gestor/visao-geral/acoes, rotulo aparece na
+// mensagem de erro e itens(dado, ctx) devolve os itens. Fonte nova = registrar uma entrada aqui, sem tocar na tela.
+var FONTES_FILA_ = [
+  { chave: 'urgencias', rotulo: 'Urgências', itens: function (dado) {
+    var itens = [], r = dado.report;
     if (r.pendentes.length) {
       itens.push({ tipo: 'semana', cor: 'gold', titulo: 'Report da semana pendente', texto: listaNomes_(r.pendentes) + '. Prazo sexta, 19h.',
         quem: r.pendentes.length + ' CS', quando: 'sex ' + dmAcoes_(r.prazo), acao: { rotulo: 'Cobrar', href: REPORT_MONDAY_BOARD_URL, externo: true } });
     }
-    u.dado.gtd.porCS.forEach(function (c) {
+    dado.gtd.porCS.forEach(function (c) {
       if (c.atrasadas > 0) {
         itens.push({ tipo: 'semana', cor: 'red', titulo: c.cs + ': ' + c.atrasadas + (c.atrasadas === 1 ? ' etapa de GTD atrasada' : ' etapas de GTD atrasadas'),
           texto: 'Maior atraso: ' + c.maiorAtrasoDias + (c.maiorAtrasoDias === 1 ? ' dia.' : ' dias.') + (c.aVencer ? ' ' + c.aVencer + (c.aVencer === 1 ? ' vence' : ' vencem') + ' nos próximos 7 dias.' : ''),
@@ -1651,40 +1688,53 @@ function itensFila_() {
           texto: 'Nenhuma etapa atrasada até agora.', quem: c.cs, quando: 'GTD', acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(c.cs) + '#secGtd' } });
       }
     });
-  }
-  var rl = ACOES_.relatorios;
-  if (rl && rl.erro) erros.push('Relatórios do conselho indisponíveis: ' + rl.erro);
-  if (rl && rl.dado) {
-    rl.dado.porCS.forEach(function (c) {
+    return itens;
+  } },
+  { chave: 'relatorios', rotulo: 'Relatórios do conselho', itens: function (dado) {
+    return dado.porCS.map(function (c) {
       var n = c.pendentes + c.atrasados;
-      itens.push({ tipo: 'semana', cor: c.atrasados > 0 ? 'red' : 'gold',
+      return { tipo: 'semana', cor: c.atrasados > 0 ? 'red' : 'gold',
         titulo: 'Relatórios do conselho: ' + c.cs,
         texto: c.pendentes + (c.pendentes === 1 ? ' pendente' : ' pendentes') + ' e ' + c.atrasados + (c.atrasados === 1 ? ' atrasado' : ' atrasados') +
           (c.atrasados > 0 ? '. Maior atraso: ' + c.maiorAtrasoDias + (c.maiorAtrasoDias === 1 ? ' dia' : ' dias') : '') + '. Cobrar o preenchimento; cada relatório atrasado gera 5 pontos.',
-        quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver relatórios', href: '/gestor?aba=conselhos#h-rel-gestor' } });
+        quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver relatórios', href: '/gestor?aba=conselhos#h-rel-gestor' } };
     });
-  }
-  var an = ACOES_.alertasNps;
-  if (an && an.erro) erros.push('Alertas de NPS indisponíveis: ' + an.erro);
-  if (an && an.dado) {
-    an.dado.forEach(function (a) {
-      itens.push({ tipo: 'semana', cor: a.criterio === 'detrator' ? 'red' : 'gold', titulo: a.texto.oQue,
+  } },
+  { chave: 'alertasNps', rotulo: 'Alertas de NPS', itens: function (dado) {
+    return dado.map(function (a) {
+      return { tipo: 'semana', cor: a.criterio === 'detrator' ? 'red' : 'gold', titulo: a.texto.oQue,
         texto: a.texto.numero + '. ' + a.texto.acao + (a.comentario ? ' Comentário: ' + a.comentario : ''),
-        quem: a.texto.quem, quando: a.mes, acao: { rotulo: 'Ver conselho', href: '/conselho/' + encodeURIComponent(a.groupId) }, tratar: a.id });
+        quem: a.texto.quem, quando: a.mes, acao: { rotulo: 'Ver conselho', href: '/conselho/' + encodeURIComponent(a.groupId) }, tratar: a.id };
     });
-  }
-  var ins = ACOES_.insights;
-  if (ins && ins.erro) erros.push('Insights indisponíveis: ' + ins.erro);
-  if (ins && ins.dado) {
-    ins.dado.visiveis.concat(ins.dado.restantes).forEach(function (i) {
+  } },
+  { chave: 'riscoChurn', rotulo: 'Risco de churn', itens: function (dado) {
+    return dado.map(function (m) {
+      return { tipo: 'semana', cor: 'red', titulo: m.nome + ': risco crítico de churn sem visita agendada',
+        texto: m.motivo + (m.mesesRestantes !== null && m.mesesRestantes !== undefined ? '. Faltam ' + m.mesesRestantes + (m.mesesRestantes === 1 ? ' mês' : ' meses') + ' de fidelidade' : '') + '. Pedir a visita de reversão ao CS responsável.',
+        quem: m.cs, quando: m.pontos + ' pontos', acao: { rotulo: 'Ver risco', href: '/gestor?aba=churn#blocoRisco' } };
+    });
+  } },
+  { chave: 'insights', rotulo: 'Insights', itens: function (dado, ctx) {
+    return dado.visiveis.concat(dado.restantes).map(function (i) {
       var resp = i.responsaveis || [];
       var texto = [i.numero, i.referencia].filter(function (t) { return t; }).map(trimPonto_).join('. ');
       if (texto) texto += '.';
       if (i.acao) texto += ' ' + i.acao;
-      itens.push({ tipo: 'insight', cor: i.severidade === 'alta' ? 'red' : (i.severidade === 'media' ? 'gold' : ''), titulo: i.oQue, texto: texto,
-        quem: resp.length ? resp.join(', ') : 'Área', quando: '', acao: resp.length === 1 && nomesCS[resp[0]] ? { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(resp[0]) } : null });
+      return { tipo: 'insight', cor: i.severidade === 'alta' ? 'red' : (i.severidade === 'media' ? 'gold' : ''), titulo: i.oQue, texto: texto,
+        quem: resp.length ? resp.join(', ') : 'Área', quando: '', acao: resp.length === 1 && ctx.nomesCS[resp[0]] ? { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(resp[0]) } : null };
     });
-  }
+  } }
+];
+function itensFila_() {
+  var itens = [], erros = [];
+  if (!ACOES_) return { itens: itens, erros: erros };
+  var ctx = { nomesCS: {} };
+  if (DADOS) DADOS.cards.forEach(function (c) { ctx.nomesCS[c.nome] = true; });
+  FONTES_FILA_.forEach(function (f) {
+    var s = ACOES_[f.chave];
+    if (s && s.erro) erros.push(f.rotulo + ' indisponíveis: ' + s.erro);
+    if (s && s.dado) itens = itens.concat(f.itens(s.dado, ctx));
+  });
   return { itens: itens, erros: erros };
 }
 function itemFilaHtml_(i) {
@@ -3288,6 +3338,8 @@ var churnRecFiltro_ = 'abertos';
 var churnRecLimite_ = 8;
 var churnRecEditando_ = null;
 var churnRecReq_ = 0;
+var ENDPOINT_RISCO = '/api/gestor/risco-churn';
+var riscoDados_ = null, riscoReq_ = 0, riscoLimite_ = 6;
 var churnVisitasErro_ = null;
 var churnTelaErro_ = null;
 
@@ -3302,6 +3354,73 @@ function churnRenderSeguro_(ids, fn) {
     console.error('Erro ao montar bloco do churn:', err);
     churnErroEm_(ids, err);
   }
+}
+
+// ===== Risco de churn por membro (29/10/2026) =====
+function riscoReais_(v) { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function riscoPct_(v) { return v === null || v === undefined ? 'sem dados' : String(v).replace('.', ',') + '%'; }
+function churnCarregarRisco_() {
+  var minha = ++riscoReq_;
+  return fetchJSON_(ENDPOINT_RISCO).then(function (d) {
+    if (minha !== riscoReq_) return;
+    riscoDados_ = d;
+    churnRenderSeguro_(['riscoPainel'], churnRenderRisco_);
+    churnRenderSeguro_(['riscoConfigCorpo'], churnRenderRiscoConfig_);
+  }).catch(function (err) {
+    if (minha !== riscoReq_) return;
+    churnErroEm_(['riscoPainel'], err);
+  });
+}
+function churnRenderRisco_() {
+  var d = riscoDados_, c = d.resumo.carteira, el = document.getElementById('riscoPainel');
+  if (!c.total) { el.innerHTML = '<p class="gestor-empty">Nenhum membro ativo com sinais para avaliar. Confira se a sincronização com o Monday está em dia.</p>'; return; }
+  var semVisita = d.membros.filter(function (m) { return m.risco.nivel === 'critico' && !m.risco.semDados && !m.visitaAberta; }).length;
+  var h = '<div class="risco-faixa">' +
+    '<div class="risco-num"><b' + (c.critico ? ' class="alerta"' : '') + '>' + c.critico + '</b><span>em nível crítico, ' + riscoPct_(c.pctCritico) + ' da carteira de ' + c.total + ' membros</span></div>' +
+    '<div class="risco-num"><b>' + c.atencao + '</b><span>em atenção, ' + riscoPct_(c.pctAtencao) + ' da carteira</span></div>' +
+    '<div class="risco-num"><b' + (semVisita ? ' class="alerta"' : '') + '>' + semVisita + '</b><span>críticos sem visita de reversão aberta</span></div></div>';
+  h += '<div class="risco-cs" role="list" aria-label="Risco por CS comparado com a carteira">' + d.resumo.porCS.map(function (r) {
+    var acima = r.pctCritico !== null && c.pctCritico !== null && r.pctCritico > c.pctCritico;
+    return '<div class="risco-cs-linha" role="listitem"><span>' + churnEsc_(r.cs) + '</span><span class="barra" title="' + r.critico + ' críticos e ' + r.atencao + ' em atenção de ' + r.total + '">' +
+      '<i class="c" style="width:' + (r.total ? r.critico / r.total * 100 : 0) + '%"></i><i class="a" style="width:' + (r.total ? r.atencao / r.total * 100 : 0) + '%"></i></span>' +
+      '<span class="num' + (acima ? ' acima' : '') + '">' + r.critico + ' de ' + r.total + ', ' + riscoPct_(r.pctCritico) + (acima ? ', acima da carteira' : '') + '</span></div>';
+  }).join('') + '</div>';
+  var lista = d.membros.filter(function (m) { return m.risco.nivel !== 'baixo'; });
+  if (!lista.length) h += '<p class="gestor-empty">Nenhum membro em atenção ou crítico agora. O cálculo roda a cada abertura desta aba.</p>';
+  else {
+    h += '<div class="risco-lista">' + lista.slice(0, riscoLimite_).map(function (m) {
+      var r = m.risco;
+      var fid = r.mesesRestantesFidelidade === null ? 'Fim da fidelidade ainda não sincronizado do Monday' :
+        'Faltam ' + r.mesesRestantesFidelidade + (r.mesesRestantesFidelidade === 1 ? ' mês' : ' meses') + ' de fidelidade, ' + r.pctMensalidadesRestantes + '% das mensalidades' + (r.exposicao !== null ? ', ' + riscoReais_(r.exposicao) + ' em exposição' : '');
+      return '<div class="risco-card ' + r.nivel + '"><div class="risco-topo"><span class="risco-nivel">' + (r.nivel === 'critico' ? 'Crítico' : 'Atenção') + '</span><b>' + churnEsc_(m.nome) + '</b></div>' +
+        '<div class="risco-sub">' + churnEsc_(m.conselho) + '</div>' +
+        '<div class="risco-barra" title="' + r.pontos + ' de 100 pontos"><i style="width:' + r.pontos + '%"></i></div>' +
+        '<ul class="risco-motivos">' + r.motivos.map(function (x) { return '<li>' + churnEsc_(x.texto) + ' (' + x.pontos + ')</li>'; }).join('') + '</ul>' +
+        '<div class="risco-rodape"><span>' + churnEsc_(fid) + '</span><span class="' + (m.visitaAberta ? '' : (r.nivel === 'critico' ? 'alerta' : '')) + '">' + (m.visitaAberta ? 'Visita de reversão em andamento' : 'Sem visita agendada') + ', CS ' + churnEsc_(m.cs) + '</span></div></div>';
+    }).join('') + '</div>';
+    if (lista.length > riscoLimite_) h += '<button type="button" class="aval-mais" data-ch="riscoMais">Ver mais ' + Math.min(6, lista.length - riscoLimite_) + ' (faltam ' + (lista.length - riscoLimite_) + ')</button>';
+  }
+  var avisos = [];
+  if (d.resumo.exposicaoTotal === null) avisos.push('A mensalidade e a data de início de cada membro ainda não vêm do Monday, por isso a exposição financeira mostra só os meses de fidelidade que faltam, e apenas para quem já teve pedido de visita.');
+  if (d.resumo.semDados) avisos.push(d.resumo.semDados + ' membros sem sinais suficientes ficam fora da leitura de nível.');
+  if (d.configOrigem === 'padrao') avisos.push('Os pesos estão no valor inicial do código; a tabela de configuração ainda não foi criada no banco.');
+  if (avisos.length) h += '<p class="risco-aviso">' + avisos.map(churnEsc_).join(' ') + '</p>';
+  el.innerHTML = h;
+}
+function churnRenderRiscoConfig_() {
+  var d = riscoDados_, el = document.getElementById('riscoConfigCorpo');
+  if (d.configOrigem !== 'banco') { el.innerHTML = '<p class="risco-cfg-msg">A edição fica disponível quando a tabela de pesos for criada no banco. Valores atuais: padrão do código.</p>'; return; }
+  el.innerHTML = '<div class="risco-cfg-grade">' + d.configLinhas.map(function (l) {
+    return '<label title="' + churnEsc_(l.descricao) + '"><span>' + churnEsc_(l.descricao) + '</span><input type="number" class="pill-select" min="0" max="1000" step="1" value="' + l.valor + '" data-risco-chave="' + churnEsc_(l.chave) + '"></label>';
+  }).join('') + '</div><p class="risco-cfg-msg" id="riscoCfgMsg" aria-live="polite">Cada alteração vale para o próximo cálculo.</p>';
+}
+function churnSalvarRiscoConfig_(input) {
+  var msg = document.getElementById('riscoCfgMsg');
+  msg.textContent = 'Salvando…';
+  return fetchJSON_(ENDPOINT_RISCO, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chave: input.getAttribute('data-risco-chave'), valor: Number(input.value) }) })
+    .then(function () { return churnCarregarRisco_(); })
+    .then(function () { var m = document.getElementById('riscoCfgMsg'); if (m) m.textContent = 'Salvo. Os níveis foram recalculados.'; })
+    .catch(function (err) { msg.textContent = 'Não foi possível salvar: ' + err.message; });
 }
 
 function churnRenderA1Atual_() {
@@ -3354,6 +3473,7 @@ function carregarChurnBlocos_() {
 
   // O rastreio de reconquista não depende do mês: só recarrega se ainda não veio
   if (!churnRecDados_) churnCarregarReconquista_();
+  if (!riscoDados_) churnCarregarRisco_();
   churnCarregarMelhorias_();
 }
 
@@ -4084,6 +4204,7 @@ function churnLigarBlocos_() {
     else if (acao === 'recFiltro') { churnRecFiltro_ = alvo.getAttribute('data-filtro'); churnRecLimite_ = 8; churnRecEditando_ = null; churnRenderReconquista_(); }
     else if (acao === 'recEditar') { var idRec = Number(alvo.closest('.rcq-item').getAttribute('data-churn')); churnRecEditando_ = churnRecEditando_ === idRec ? null : idRec; churnRenderReconquista_(); }
     else if (acao === 'recMais') { churnRecLimite_ += 8; churnRenderReconquista_(); }
+    else if (acao === 'riscoMais') { riscoLimite_ += 6; churnRenderRisco_(); }
     else if (acao === 'recSalvar') churnSalvarReconquista_(alvo.closest('.rcq-item'));
     else if (acao === 'criarMelhoria') churnAbrirFormMelhoria_(null, alvo.getAttribute('data-tema'), alvo.getAttribute('data-rotulo'));
     else if (acao === 'verExcluidas') { churnMelhoriasExcluidasAbertas_ = !churnMelhoriasExcluidasAbertas_; churnRenderMelhorias_(); }
@@ -4097,6 +4218,7 @@ function churnLigarBlocos_() {
   });
   painel.addEventListener('change', function (ev) {
     var alvo = ev.target;
+    if (alvo && alvo.getAttribute && alvo.getAttribute('data-risco-chave')) { churnSalvarRiscoConfig_(alvo); return; }
     if (!alvo || alvo.getAttribute('data-ch') !== 'status') return;
     var m = churnMelhoriaPorId_(alvo.closest('.voz-card').getAttribute('data-id'));
     if (m) churnSalvarMelhoria_(Object.assign({}, m, { status: alvo.value, tema_chave: m.tema_chave, etapa_origem: m.etapa_origem, prazo: m.prazo, observacao: m.observacao, responsavel: m.responsavel }));

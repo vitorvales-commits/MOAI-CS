@@ -3836,8 +3836,17 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
     return { porCS: resumoRelatoriosPorCS(await listarEncontrosRelatorio(sb, null)) };
   });
 
+  // Risco de churn (29/10/2026): membros em nível crítico sem visita aberta. Import dinâmico porque o carregador de
+  // risco lê getDadosBrutos deste arquivo. Report atrasado do CS entra como sinal de carteira.
+  const riscoChurn = await secaoIsolada('riscoChurn', async () => {
+    const rep = reports.dado;
+    const atraso = rep ? Object.fromEntries(nomes.map((n) => [n, semanas.filter((s) => statusReportSemana(s, rep.envios[n]) === 'com_atraso').length])) : null;
+    const { calcularRiscoCarteira, criticosSemVisita } = await import('./risco-churn-dados');
+    return criticosSemVisita((await calcularRiscoCarteira(sb, atraso)).membros);
+  });
+
   return {
-    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios,
+    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios, riscoChurn,
     carimbos: { gtdSnapshot: snapshot, ultimoReportCriadoEm: reports.dado ? reports.dado.ultimoEnvio : null },
   };
 }
