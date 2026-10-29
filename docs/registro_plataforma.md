@@ -51,22 +51,42 @@ O cartão já mostra um caso real hoje: alertas_nps com 659 falhas consecutivas 
 - A lógica de tentativa do sync-monday não tem teste automatizado: o arquivo é Deno e depende de Deno.env no topo. Foi conferida só por leitura, e o tsc do projeto não cobre a pasta das funções. Primeiro ciclo depois do deploy deve ser observado no sync_log.
 - Capturas da faixa em docs/capturas_plataforma_robustez: faixa_saudavel.png, faixa_atrasado.png, faixa_critico.png e painel_critico.png, geradas com scripts/harness-saude-dados.mts e dados fictícios.
 
-## Pendências
+## Aplicação em produção (29/10/2026)
 
-- **Edge Function notificar-alertas** falha com Resend HTTP 403 desde 22/10 e ficou fora do escopo, como pedido. O cartão de saúde já a mostra como crítica (alertas_nps). Os alertas continuam sendo gravados, só o email não sai.
-- Regravação incremental nos boards matchmakings (814), cases (420) e agenda_conselhos (353).
-- Funções criadas por supabase_admin (por exemplo pelo painel) seguem os privilégios padrão do Supabase, que dão EXECUTE a anon. A migração só altera os privilégios padrão do papel que a executa. Quem criar função pelo painel deve revogar à mão.
-- ESLint não configurado no projeto.
-- Rodar get_advisors de segurança e de performance em produção depois de aplicar as migrações.
-- A migração 1 apaga do sync_log, na hora em que for aplicada, o que tiver mais de 30 dias.
+Aplicada pelo Claude em sessão posterior, com autorização do Vitor.
 
-## Passos manuais do Vitor
+1. **Estado anterior verificado por consulta:** coluna monday_updated_at, seis índices, quatro policies negar_acesso_direto, sync_log_resumo_diario com RLS, função sync_log_arquivar com o job sync-log-arquivar-diario (0 3 * * *) e saude_dados existiam. Nada disso foi reaplicado. O supabase migration repair não se aplica: o histórico do banco usa versões por timestamp (por exemplo 20261029164619) e nunca teve os mesmos nomes dos arquivos do repositório, então não há correspondência para reparar.
+2. **Edge Function sync-monday publicada** pela CLI (supabase functions deploy, com verify_jwt mantido). Em 10 minutos, 57 execuções bem sucedidas, nenhum erro novo (o único erro é o alertas_nps com Resend HTTP 403, já conhecido) e todos os boards de 5 minutos com 3 ciclos. Em nps_conselhos, a primeira execução preencheu monday_updated_at nas 2123 linhas e as duas execuções seguintes regravaram 0 linhas (conferido pelo xmin das linhas). O sync_log continua registrando o total lido (2123) em itens_sincronizados, por decisão, então a queda só aparece nas regravações.
+3. **Arquivo bruto antes do arquivamento:** ~/moai_backups/sync_log_antes_20261029.csv, 42.126 linhas (o pedido estimava cerca de 45 mil; o corte de 30 dias dá 42.126), 2.486 falhas, 8.406.220 itens, de 17/09 a 28/09. Conferido com leitor de CSV com aspas (os erros têm vírgulas e quebras de linha, então wc -l não serve). SHA256 começa com b70bc7df.
+4. **sync_log_arquivar() executada:** apagou 42.126 linhas. O resumo ficou com 156 linhas, 42.126 execuções, 2.486 falhas e 8.406.220 itens, idêntico ao arquivo. Conservação: falhas do resumo (2.486) mais as do sync_log (808) dão 3.294, igual ao total anterior; linhas do resumo mais as do sync_log (141.274) dão 183.400, igual ao total anterior. A linha mais antiga do sync_log passou a ser de 29/09.
+5. **Decisão das 11 funções:** ver a decisão 8. Todas mantidas.
+6. **Migração 20261029c aplicada** pelo MCP com o nome endurecer_funcoes_security_definer. Resultado: 91 assinaturas (85 nomes) SECURITY DEFINER executáveis por authenticated, contra 91 antes; anon 0. Das 91 originais, o conjunto muda pouco porque as funções de cron e service role já estavam fechadas, e o ganho real é o resto ficar fechado por construção e os privilégios padrão. O inventário no arquivo tem 90 nomes, dos quais 5 (churn_tela, recordes_painel, metas_time_mensal, metas_cs_mensal_completo, metas_resolvidas_periodo) não são SECURITY DEFINER e por isso não entram na contagem.
+7. **scripts/testes/rpc_permissoes.ts executado com a service role** (chave obtida pela CLI, nunca impressa): 23 de 23. Em todas, o CS foi negado (42501) e o gestor aceito. Os usuários de teste foram removidos no fim.
+8. **Teste de fumaça com sessão de gestor e de CS pela tela: não executado.** Não há credenciais de gestor nem de CS nesta máquina. Como evidência substituta: nos logs do Postgres, zero ocorrências de permission denied for function desde a aplicação, e nos logs da API as chamadas reais (is_gestor, meu_cs, reports_resumo_cs, health_base_area, metas_time_mensal e outras) responderam 200. O volume de tráfego real nesse intervalo foi baixo, então a recomendação é o Vitor abrir cada aba como gestor e como CS e fazer uma escrita por perfil. Se aparecer permissão negada inesperada, rodar supabase/rollbacks/20261029c_endurecer_funcoes_security_definer_rollback.sql e incluir a função no inventário.
 
-1. Ativar a proteção contra senhas vazadas no painel do Supabase Auth (Authentication, Providers, Email, "Prevent use of leaked passwords"). Não há API para isso aqui.
-2. Aplicar as migrações em produção na ordem dos arquivos: 20261029, 20261029b, 20261029c, 20261029d, 20261029e. A 20261029d precisa estar aplicada antes de publicar a nova versão da Edge Function sync-monday.
-3. Antes da 20261029c, conferir a lista da decisão 8 e rodar scripts/testes/rpc_permissoes.ts depois dela. Se algo quebrar, rodar o arquivo de rollback.
-4. Publicar a Edge Function sync-monday (supabase functions deploy sync-monday) e olhar o sync_log do primeiro ciclo.
-5. Avaliar a migração do Vercel do plano Hobby para o Pro. O Supabase também está no plano gratuito, sem branches (Pro).
+## Advisors do Supabase de produção, antes e depois (29/10/2026)
+
+| Alerta | Antes | Depois |
+| --- | --- | --- |
+| Chaves estrangeiras sem índice (performance) | 6 | 0 |
+| Tabelas com RLS ativo e sem policy (segurança) | 4 | 0 |
+| Funções SECURITY DEFINER executáveis por authenticated (segurança) | 91 | 91 |
+| Índices sem uso (performance, informativo) | 5 | 11 |
+| Proteção contra senhas vazadas (segurança) | desligada | desligada |
+
+Os dois alertas pedidos foram a zero. O de funções executáveis por authenticated **não caiu**: o linter conta cada assinatura que authenticated pode chamar, e o inventário reúne praticamente todas as funções que o app usa, então o número ficou em 91 assinaturas (85 nomes). O ganho da etapa é outro: o conjunto passa a ser explícito e fechado por construção, funções novas nascem sem EXECUTE e as de cron, service role e trigger não são chamáveis por usuários. Reduzir esse número exige trocar funções específicas para SECURITY INVOKER ou movê-las para fora do schema exposto, o que fica como pendência de médio prazo. Os seis índices novos aparecem como sem uso apenas porque acabaram de ser criados; não foram removidos.
+
+## Pendências e passos manuais que restam ao Vitor (estado final)
+
+1. Ligar a proteção contra senhas vazadas no Supabase Auth (painel, Authentication, senhas). O advisor ainda mostra o alerta.
+2. Resolver o Resend HTTP 403 da Edge Function notificar-alertas (chave ou domínio remetente). Fora do escopo e não alterada. O cartão de saúde dos dados a mostra como crítica enquanto não for resolvida.
+3. Avaliar a migração do Vercel do plano Hobby para o Pro. O Supabase também está no plano gratuito e não oferece branches (exigem Pro).
+4. Configurar um ESLint padrão do Next.js: npm run lint abre o assistente interativo porque o projeto não tem configuração.
+5. Abrir cada aba como gestor e como CS e fazer uma escrita por perfil (salvar uma meta, salvar e remover um relatório de conselho de teste, registrar e remover um 1 a 1 de teste). Não foi possível sem credenciais. Se houver permissão negada inesperada, aplicar o rollback de supabase/rollbacks/.
+6. Regravação incremental nos boards matchmakings (814), cases (420) e agenda_conselhos (353).
+7. Funções criadas por supabase_admin pelo painel seguem os privilégios padrão do Supabase (com EXECUTE para anon). Revogar à mão ao criar.
+8. Reduzir o número de funções SECURITY DEFINER executáveis por authenticated (91) convertendo para SECURITY INVOKER as que puderem.
+9. O arquivo ~/moai_backups/sync_log_antes_20261029.csv guarda o detalhe de 17/09 a 28/09. Guardar em local seguro ou descartar quando não for mais necessário.
 
 ## Texto do PR
 
