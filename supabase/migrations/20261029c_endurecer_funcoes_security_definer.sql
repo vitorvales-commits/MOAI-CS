@@ -35,6 +35,9 @@ declare
     'definir_advertencia_soma_health','criar_advertencia_tipo','editar_advertencia_tipo','aplicar_advertencia',
     'anular_advertencia','excluir_advertencia_aplicada','definir_recorde_manual','configurar_home_indicadores',
     'set_revelar_indicadores_equipe','processos_publicar','processos_restaurar',
+    -- funcionalidade pronta sem tela hoje: mantidas por pertencerem a frentes que existem no banco
+    'churn_recorte_hash','salvar_churn_analise','publicar_churn_analise','registrar_rascunho_churn_ia','reservar_geracao_churn_ia',
+    'criar_um_a_um','editar_um_a_um','marcar_status_um_a_um','cs_do_grupo','definir_vinculo_conselheiro','report_resolver_cs',
     -- etapa 5
     'saude_dados'
   ];
