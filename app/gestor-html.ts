@@ -563,7 +563,7 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .risco-num b.alerta{color:var(--vermelho);}
 .risco-num span{font-size:12px;color:var(--cinza-texto);}
 .risco-cs{display:grid;gap:8px;margin:0 0 18px;}
-.risco-cs-linha{display:grid;grid-template-columns:minmax(90px,160px) minmax(0,1fr) 190px;gap:12px;align-items:center;font-size:12.5px;}
+.risco-cs-linha{display:grid;grid-template-columns:minmax(90px,160px) minmax(0,1fr) 240px;gap:12px;align-items:center;font-size:12.5px;}
 .risco-cs-linha .barra{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--cinza-superficie);}
 .risco-cs-linha .barra i{display:block;height:100%;}
 .risco-cs-linha .c{background:var(--vermelho);} .risco-cs-linha .a{background:#D9A400;}
