@@ -3401,7 +3401,7 @@ function churnRenderRisco_() {
     if (lista.length > riscoLimite_) h += '<button type="button" class="aval-mais" data-ch="riscoMais">Ver mais ' + Math.min(6, lista.length - riscoLimite_) + ' (faltam ' + (lista.length - riscoLimite_) + ')</button>';
   }
   var avisos = [];
-  if (d.resumo.exposicaoTotal === null) avisos.push('A mensalidade e a data de início de cada membro ainda não vêm do Monday, por isso a exposição financeira mostra só os meses de fidelidade que faltam, e apenas para quem já teve pedido de visita.');
+  if (d.resumo.exposicaoTotal === null) avisos.push('O valor da mensalidade e o fim da fidelidade só chegam do Monday para quem já teve pedido de visita (MRR e fim da fidelidade da visita). Para os demais, a tela mostra apenas os meses de fidelidade que faltam.');
   if (d.resumo.semDados) avisos.push(d.resumo.semDados + ' membros sem sinais suficientes ficam fora da leitura de nível.');
   if (d.configOrigem === 'padrao') avisos.push('Os pesos estão no valor inicial do código; a tabela de configuração ainda não foi criada no banco.');
   if (avisos.length) h += '<p class="risco-aviso">' + avisos.map(churnEsc_).join(' ') + '</p>';
