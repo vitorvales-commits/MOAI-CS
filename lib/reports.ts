@@ -2150,6 +2150,48 @@ export async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo
   }
 }
 
+// Realizado do mês (30/10/2026). Num mês fechado a pergunta do gestor é "como o time foi", não "como está
+// contra a meta": antes de junho de 2026 não há meta cadastrada, e a tela inteira caía em "Sem dado" mesmo
+// com churn e cases registrados. Este bloco entrega os realizados por CS (do mesmo generateCSReport) e os
+// totais do time no mês e no mês anterior, contados uma vez só por item, inclusive itens de ex CS.
+// Matchmakings e indicações ficam fora: dependem do usuário do Monday, que ex CS não têm, e viriam zerados.
+export const INDICADORES_REALIZADO = ['churn', 'casesSucesso', 'upsell', 'downsell', 'rounds'] as const;
+export type ChaveRealizado = typeof INDICADORES_REALIZADO[number];
+export type TotaisRealizado = Record<ChaveRealizado, number> & { revenueChurn: number };
+
+function mesAnterior(seletorMes: string, ano: number): { mes: string; ano: number } | null {
+  const i = MESES_ORDEM.indexOf(seletorMes);
+  if (i === -1) return null;
+  return i === 0 ? { mes: MESES_ORDEM[11], ano: ano - 1 } : { mes: MESES_ORDEM[i - 1], ano };
+}
+
+export function totaisRealizadoTime(dados: DadosBrutos, nomesConhecidos: Set<string>, seletorMes: string, ano: number): TotaisRealizado {
+  const { mesInicio, mesFim, geral } = periodoDatas(seletorMes, ano);
+  const churn = churnDaArea(dados.churn as any[], mesInicio, mesFim);
+  const ud = contarUpsellDownsellUnicosTime(dados.upsellDownsell, nomesConhecidos, mesInicio, mesFim);
+  return {
+    churn: churn.qtd, revenueChurn: churn.receita,
+    casesSucesso: contarCasesUnicosTime(dados.cases, nomesConhecidos, seletorMes, ano, geral),
+    upsell: ud.upsell, downsell: ud.downsell,
+    rounds: contarRoundsUnicosTime(dados.rounds, nomesConhecidos, seletorMes, geral),
+  };
+}
+
+function realizadoDoMes(dados: DadosBrutos, todos: CSConfig[], porCS: { nome: string; indicadores: any }[], seletorMes: string, ano: number) {
+  const nomesConhecidos = new Set(todos.flatMap((m) => grafiasCS(m).map(normalizeNome)).filter(Boolean));
+  const ant = mesAnterior(seletorMes, ano);
+  const valor = (c: { indicadores: any }, k: ChaveRealizado) => {
+    const v = c.indicadores?.[k]?.calculado;
+    return v === null || v === undefined ? 0 : Number(v);
+  };
+  return {
+    indicadores: INDICADORES_REALIZADO.map((k) => ({ chave: k, label: LABELS_INDICADOR[k] || k, menorMelhor: k === 'churn' || k === 'downsell' })),
+    porCS: porCS.map((c) => ({ nome: c.nome, valores: Object.fromEntries(INDICADORES_REALIZADO.map((k) => [k, valor(c, k)])) as Record<ChaveRealizado, number> })),
+    time: totaisRealizadoTime(dados, nomesConhecidos, seletorMes, ano),
+    anterior: ant ? { mes: ant.mes, ano: ant.ano, ...totaisRealizadoTime(dados, nomesConhecidos, ant.mes, ant.ano) } : null,
+  };
+}
+
 // Time do mês (reescrito em 29/10/2026). Fonte única de quem aparece em ranking, cards, mapa e Time de CS.
 // Mês corrente ou futuro: só os ativos de cs_config, então quem saiu nunca aparece no presente. Mês fechado:
 // quem era CS naquele mês segundo cs_periodos, inclusive ex CS, com as grafias deles para casar os dados.
@@ -2219,6 +2261,8 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
     periodo: { mes: seletorMes, ano, geradoEm: new Date().toISOString() },
     // Qual recorte de time a tela mostra: ativos hoje (mês corrente) ou quem era CS no mês (mês fechado).
     roster: { modo: roster.modo, total: membros.length },
+    // Realizados do mês por CS e do time (30/10/2026). A tela usa este bloco nos meses fechados.
+    realizado: geralVisao ? null : realizadoDoMes(dados, await getCSListParaAgregados(sb), porCS, seletorMes, ano),
     ritmo: montarRitmoDoMes(porCS, dados, seletorMes, ano),
     indicadoresOrdem: [...INDICADORES_GESTOR, 'cumprimentoGtd', 'numConselhos', 'healthDaBase'],
     labelsIndicador: LABELS_INDICADOR,
