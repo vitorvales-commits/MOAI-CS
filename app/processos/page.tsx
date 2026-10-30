@@ -4,17 +4,21 @@
 import { redirect } from 'next/navigation';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { PROCESSOS_CSS, PROCESSOS_HTML } from '@/lib/processos-ui';
+import { perfilDock } from '@/lib/ui/tema';
+import { montarVitorio } from '@/lib/vitorio/montagem';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Processos de CS · MOAI' };
 
 // Troque ao alterar public/processos.js, para o navegador não usar a cópia antiga em cache.
-const VERSAO_SCRIPT = '20261030';
+const VERSAO_SCRIPT = '20261030b';
 
-export default async function ProcessosPage() {
+// ?item=colecao:id (links do Vitorio) abre o documento direto no item.
+export default async function ProcessosPage({ searchParams }: { searchParams?: { item?: string } }) {
   let isGestor = false;
+  let csNome: string | null = null;
   try {
-    ({ isGestor } = await requireMoaiUser());
+    ({ isGestor, csNome } = await requireMoaiUser());
   } catch (e) {
     if (e instanceof AuthError) redirect('/login');
     throw e;
@@ -28,8 +32,9 @@ export default async function ProcessosPage() {
       />
       <style dangerouslySetInnerHTML={{ __html: PROCESSOS_CSS }} />
       <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: PROCESSOS_HTML }} />
-      <script dangerouslySetInnerHTML={{ __html: 'window.PROCESSOS_CFG = ' + JSON.stringify({ podeEditar: isGestor }) + ';' }} />
+      <script dangerouslySetInnerHTML={{ __html: 'window.PROCESSOS_CFG = ' + JSON.stringify({ podeEditar: isGestor, item: (searchParams?.item || '').slice(0, 200) }) + ';' }} />
       <script src={'/processos.js?v=' + VERSAO_SCRIPT} />
+      <div dangerouslySetInnerHTML={{ __html: montarVitorio(perfilDock(isGestor, csNome)) }} />
     </>
   );
 }

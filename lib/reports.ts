@@ -39,6 +39,8 @@ import { listarAlertasNps } from './alertas-nps-dados';
 import { listarEncontrosRelatorio } from './relatorio-conselho-dados';
 import { resumoRelatoriosPorCS } from './relatorio-conselho';
 import { churnDaArea } from './churn-area';
+import { listarDuvidasSemResposta } from './vitorio/fila';
+import { VITORIO_FILA_JANELA_DIAS } from './constants';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
 // ============ util ============
@@ -3878,8 +3880,11 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
     return { porCS: resumoRelatoriosPorCS(await listarEncontrosRelatorio(sb, null)) };
   });
 
+  // Dúvidas sem resposta do Vitorio (30/10/2026): consultas repetidas que os processos não souberam responder, regra em lib/vitorio/fila.ts.
+  const duvidas = await secaoIsolada('duvidas', async () => ({ itens: await listarDuvidasSemResposta(sb), janelaDias: VITORIO_FILA_JANELA_DIAS }));
+
   return {
-    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios,
+    geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios, duvidas,
     carimbos: { gtdSnapshot: snapshot, ultimoReportCriadoEm: reports.dado ? reports.dado.ultimoEnvio : null },
   };
 }

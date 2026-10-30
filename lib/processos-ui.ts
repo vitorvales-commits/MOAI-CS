@@ -149,7 +149,7 @@ export const PROCESSOS_HTML = `
     <div class="pr-ed-lista" id="prEdLista"></div>
   </aside>
   <main class="pr-doc-wrap">
-    <iframe class="pr-doc" id="prDoc" title="Documento de processos" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals" allow="fullscreen; clipboard-write"></iframe>
+    <iframe class="pr-doc" id="prDoc" data-tour="documento" title="Documento de processos" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals" allow="fullscreen; clipboard-write"></iframe>
   </main>
 </div>
 <dialog class="pr-dlg" id="prDlg"><div class="pr-dlg-in">

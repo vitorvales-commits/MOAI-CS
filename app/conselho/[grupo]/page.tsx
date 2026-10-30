@@ -5,7 +5,7 @@
 // sempre checada de novo em /api/conselho/[grupo].
 import { redirect } from 'next/navigation';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
-import { montarDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
+import { montarDock, perfilDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
 import { CONSELHO_STYLE, CONSELHO_HTML, conselhoScript } from '../../conselho-html';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export default async function ConselhoPage({ params }: { params: { grupo: string
 
   // Dock do perfil real: gestor sem perfil de CS vê o de gestão; quem tem perfil de CS vê o do CS.
   const inicial = email ? email.charAt(0) : '?';
-  const dock = isGestor && !csNome
+  const dock = perfilDock(isGestor, csNome) === 'gestor'
     ? montarDock('gestor', 'conselhos', {}, { inicial })
     : montarDock('cs', 'meus-conselhos', {}, { inicial, tambemGestor: isGestor });
   const html = CONSELHO_HTML.replace('<!--DOCK-->', dock);

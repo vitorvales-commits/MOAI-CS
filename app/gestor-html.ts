@@ -771,7 +771,7 @@ ${SAUDE_DADOS_HTML}
 
   <main class="content">
   <div class="tab-panel active" id="tab-visaoGeral" data-tab="visaoGeral">
-    <section class="kpis" id="kpisArea" aria-label="Leitura de relance">
+    <section class="kpis" id="kpisArea" data-tour="kpis" aria-label="Leitura de relance">
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
@@ -780,7 +780,7 @@ ${SAUDE_DADOS_HTML}
 
     <div class="layout" style="margin-top:22px">
       <div class="coluna">
-        <section class="panel" id="mapa-time" aria-labelledby="h-mapa">
+        <section class="panel" id="mapa-time" data-tour="mapa-time" aria-labelledby="h-mapa">
           <div class="ph">
             <div><h2 id="h-mapa">Mapa do time</h2><p>Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
             <div class="r">
@@ -792,7 +792,7 @@ ${SAUDE_DADOS_HTML}
           <div class="legend"><span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Agir agora</span><span><i style="background:var(--gold-soft);box-shadow:inset 0 0 0 1px #EBD39C"></i>Acompanhar</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1px var(--line2)"></i>Dentro do esperado</span><span style="margin-left:auto">Traço na barra: mediana do time</span></div>
         </section>
 
-        <section class="panel" id="rede-conselhos" aria-labelledby="h-rede">
+        <section class="panel" id="rede-conselhos" data-tour="rede-conselhos" aria-labelledby="h-rede">
           <div class="ph"><div><h2 id="h-rede">Rede de conselhos</h2><p>Todos os conselhos ativos, sem recorte por CS.</p></div></div>
           <div class="rede" id="redeResumo"><div><span class="sk sk-linha" style="margin:0"></span></div></div>
           <div class="rede-detalhe" id="redeDetalhe" hidden>
@@ -826,7 +826,7 @@ ${SAUDE_DADOS_HTML}
         </section>
       </div>
 
-      <aside class="panel fila" id="filaAcao" aria-labelledby="h-fila">
+      <aside class="panel fila" id="filaAcao" data-tour="fila-acao" aria-labelledby="h-fila">
         <div class="ph"><h2 id="h-fila">Fila de ação</h2><span class="count" id="filaTotal">0</span><div class="r"><button type="button" class="link" id="filaVerTodas" style="background:none;border:0;cursor:pointer;font-family:inherit">Ver todas</button></div></div>
         <div class="filtros" id="filaFiltros"></div>
         <div id="filaCorpo"><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span></div>
@@ -1669,6 +1669,16 @@ function itensFila_() {
         quem: c.cs, quando: n + (n === 1 ? ' relatório' : ' relatórios'), acao: { rotulo: 'Ver relatórios', href: '/gestor?aba=conselhos#h-rel-gestor' } });
     });
   }
+  // Dúvidas sem resposta do Vitorio (30/10/2026): perguntas repetidas que os processos não souberam responder.
+  var dv = ACOES_.duvidas;
+  if (dv && dv.erro) erros.push('Dúvidas sem resposta indisponíveis: ' + dv.erro);
+  if (dv && dv.dado) {
+    dv.dado.itens.forEach(function (d) {
+      itens.push({ tipo: 'duvida', cor: 'gold', titulo: 'Dúvida sem resposta: ' + d.consulta,
+        texto: 'Foi perguntada ' + d.ocorrencias + ' vezes nos últimos ' + dv.dado.janelaDias + ' dias e os processos não responderam. Documente a resposta no processo ou cadastre a pergunta num item que já existe.',
+        quem: 'Time', quando: d.ocorrencias + ' vezes', acao: { rotulo: 'Abrir o editor de Processos', href: '/processos' }, duvida: d.consulta });
+    });
+  }
   var an = ACOES_.alertasNps;
   if (an && an.erro) erros.push('Alertas de NPS indisponíveis: ' + an.erro);
   if (an && an.dado) {
@@ -1696,7 +1706,34 @@ function itemFilaHtml_(i) {
   var acao = i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '';
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
     '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
-    + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '') + '</div></div>';
+    + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '')
+    + (i.duvida ? '<button type="button" class="btn sm" data-duvida="' + escCS_(i.duvida) + '">Cadastrar como pergunta</button>' : '') + '</div></div>';
+}
+// Cadastrar a frase como pergunta extra de um item do Vitorio (processo, navegação ou glossário). As consultas iguais saem da fila.
+var VITORIO_DOCS_ = null;
+function abrirCadastroDuvida_(btn) {
+  var conteudo = btn.closest('.item').children[1];
+  if (conteudo.querySelector('.duvida-form')) return;
+  var consulta = btn.getAttribute('data-duvida');
+  conteudo.insertAdjacentHTML('beforeend', '<div class="duvida-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><select aria-label="Item que responde a esta pergunta" style="flex:1 1 220px;min-width:0;"><option value="">Carregando itens…</option></select><button type="button" class="btn sm pri" data-duvida-ok="' + escCS_(consulta) + '" disabled>Cadastrar</button></div>');
+  var sel = conteudo.querySelector('.duvida-form select');
+  var ok = conteudo.querySelector('.duvida-form button');
+  sel.onchange = function () { ok.disabled = !sel.value; };
+  var carregar = VITORIO_DOCS_ ? Promise.resolve(VITORIO_DOCS_) : fetchJSON_('/api/vitorio/indice?perfil=gestor').then(function (p) {
+    VITORIO_DOCS_ = p.documentos.slice().sort(function (a, b) { return (a.origem + a.titulo).localeCompare(b.origem + b.titulo, 'pt-BR'); });
+    return VITORIO_DOCS_;
+  });
+  carregar.then(function (docs) {
+    sel.innerHTML = '<option value="">Escolha o item que responde</option>' + docs.map(function (d) { return '<option value="' + escCS_(d.chave) + '">' + escCS_(d.origem + '. ' + d.titulo) + '</option>'; }).join('');
+  }).catch(function (err) { sel.innerHTML = '<option value="">Não foi possível carregar os itens</option>'; });
+}
+function salvarDuvida_(ok) {
+  var sel = ok.parentNode.querySelector('select');
+  if (!sel.value) return;
+  var consulta = ok.getAttribute('data-duvida-ok');
+  ok.disabled = true;
+  fetchJSON_('/api/vitorio/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chave: sel.value, frase: consulta, tratar: [consulta] }) })
+    .then(carregarAcoes).catch(function (err) { ok.disabled = false; ok.textContent = 'Erro: ' + err.message; });
 }
 function renderFilaAcao_() {
   var corpo = document.getElementById('filaCorpo');
@@ -1715,6 +1752,10 @@ function renderFilaAcao_() {
     html += mostrar.length ? mostrar.map(itemFilaHtml_).join('') : '<div class="vazio-orienta">Nada pede ação neste filtro. A fila se atualiza com o relatório da semana e o GTD.</div>';
     corpo.innerHTML = html;
     corpo.onclick = function (ev) {
+      var dbtn = ev.target.closest('button[data-duvida]');
+      if (dbtn) { abrirCadastroDuvida_(dbtn); return; }
+      var dok = ev.target.closest('button[data-duvida-ok]');
+      if (dok) { salvarDuvida_(dok); return; }
       var b = ev.target.closest('button[data-tratar]');
       if (b) {
         var conteudo = b.closest('.item').children[1];
