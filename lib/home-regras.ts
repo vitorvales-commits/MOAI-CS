@@ -321,3 +321,76 @@ export function dicaRitmo(args: { label: string; meta: number; realizado: number
   return args.label + ' está atrás do ritmo: ' + (falta === 1 ? 'falta 1' : 'faltam ' + numeroPt(falta)) +
     ' em ' + args.diasRestantes + ' dias, cerca de ' + numeroPt(porSemana) + ' por semana.';
 }
+
+// ============ mês fechado sem metas (30/10/2026) ============
+// Antes de junho de 2026 não havia meta cadastrada. A home caía em "O time está no ritmo em todas as frentes",
+// porque nenhuma meta atrasada parecia significar tudo em dia, e todos os números saíam "Sem dado". Num mês
+// fechado sem metas, a pergunta do gestor é como o time fechou o mês: o realizado, comparado ao mês anterior,
+// e onde o churn se concentrou. Nada aqui afirma ritmo ou meta.
+
+export type TotaisMesFechado = { churn: number; revenueChurn: number; churnSemValor: number; casesSucesso: number; upsell: number; downsell: number; rounds: number };
+export type RealizadoMesFechado = {
+  porCS: { nome: string; valores: { churn: number; casesSucesso: number; upsell: number; downsell: number; rounds: number } }[];
+  time: TotaisMesFechado;
+  anterior: (TotaisMesFechado & { mes: string; ano: number }) | null;
+};
+export type LinhaMesFechado = { chave: string; label: string; valor: number; anterior: number | null; variacao: number | null; menorMelhor: boolean; texto: string };
+export type ResumoMesFechado = {
+  saudacao: string; frase: string; apoio: string;
+  crescimento: LinhaMesFechado[]; retencao: LinhaMesFechado[];
+  receita: { valor: number; semValor: number; total: number };
+  concentracao: { nome: string; churn: number } | null;
+};
+
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MESES_LONGOS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+function idxMes(mes: string): number {
+  const n = mes.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  return MESES_LONGOS.findIndex((m) => m.normalize('NFD').replace(/[̀-ͯ]/g, '') === n);
+}
+export function rotuloMesCurto(mes: string, ano: number): string {
+  const i = idxMes(mes);
+  return (i >= 0 ? MESES_CURTOS[i] : mes) + '/' + String(ano).slice(2);
+}
+
+// "3 a mais que dez/25", "2 a menos que dez/25", "igual a dez/25"; sem mês anterior, texto vazio.
+export function textoVariacao(atual: number, anterior: number | null, rotuloAnterior: string | null): string {
+  if (anterior === null || rotuloAnterior === null) return '';
+  const d = atual - anterior;
+  if (d === 0) return 'igual a ' + rotuloAnterior;
+  return Math.abs(d) + (d > 0 ? ' a mais' : ' a menos') + ' que ' + rotuloAnterior;
+}
+
+export function resumoMesFechado(mes: string, ano: number, r: RealizadoMesFechado): ResumoMesFechado {
+  const t = r.time, a = r.anterior;
+  const rotAnt = a ? rotuloMesCurto(a.mes, a.ano) : null;
+  const nomeMes = mes.charAt(0).toUpperCase() + mes.slice(1).toLowerCase();
+  const linha = (chave: keyof TotaisMesFechado, label: string, menorMelhor: boolean): LinhaMesFechado => {
+    const valor = Number(t[chave] || 0), ant = a ? Number(a[chave] || 0) : null;
+    return { chave, label, valor, anterior: ant, variacao: ant === null ? null : valor - ant, menorMelhor, texto: textoVariacao(valor, ant, rotAnt) };
+  };
+  const crescimento = [linha('casesSucesso', 'Cases de sucesso', false), linha('upsell', 'Upsell', false), linha('rounds', 'Rounds', false)];
+  const retencao = [linha('churn', 'Churn', true), linha('downsell', 'Downsell', true)];
+
+  // Concentração: o CS com mais churn no mês, quando tem pelo menos 2 e responde por ao menos um terço do total.
+  const ordenado = r.porCS.slice().sort((x, y) => y.valores.churn - x.valores.churn || x.nome.localeCompare(y.nome, 'pt-BR'));
+  const topo = ordenado[0];
+  const concentracao = topo && topo.valores.churn >= 2 && t.churn > 0 && topo.valores.churn * 3 >= t.churn ? { nome: topo.nome, churn: topo.valores.churn } : null;
+
+  const churnTxt = t.churn === 1 ? '1 churn' : t.churn + ' churns';
+  const casesTxt = t.casesSucesso === 1 ? '1 case de sucesso' : t.casesSucesso + ' cases de sucesso';
+  const varChurn = textoVariacao(t.churn, a ? a.churn : null, rotAnt);
+  const frase = nomeMes + ' fechou com ' + churnTxt + (varChurn ? ', ' + varChurn : '') + '.';
+  const partesApoio: string[] = [];
+  const varCases = textoVariacao(t.casesSucesso, a ? a.casesSucesso : null, rotAnt);
+  partesApoio.push('Foram ' + casesTxt + (varCases ? ' (' + varCases + ')' : '') + '.');
+  if (concentracao) partesApoio.push(concentracao.nome + ' concentrou ' + concentracao.churn + ' dos ' + t.churn + ' churns do mês.');
+  partesApoio.push('Não havia metas cadastradas neste mês, por isso não há ritmo nem pontuação.');
+  return {
+    saudacao: nomeMes + ' de ' + ano + ' já fechou.',
+    frase, apoio: partesApoio.join(' '),
+    crescimento, retencao,
+    receita: { valor: t.revenueChurn, semValor: t.churnSemValor, total: t.churn },
+    concentracao,
+  };
+}

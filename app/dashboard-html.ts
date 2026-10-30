@@ -890,17 +890,17 @@ ${ICONES_SVG}
     <div class="gh-bento">
       <section class="gh-w gh-escuro gh-c8" id="ghFoco" aria-labelledby="ghFocoTit"><div class="gh-sk"></div></section>
       <section class="gh-w gh-c4" aria-labelledby="ghTimeTit">
-        <div class="gh-w-h"><span class="gh-w-t" id="ghTimeTit">Time de CS</span><a class="gh-link" href="/gestor?aba=visaoGeral#mapa-time">Mapa do time</a></div>
+        <div class="gh-w-h"><span class="gh-w-t" id="ghTimeTit">Time de CS</span><a class="gh-link gh-link-periodo" href="/gestor?aba=visaoGeral#mapa-time">Mapa do time</a></div>
         <div id="ghTime"><div class="gh-sk"></div></div>
-        <div class="gh-legenda"><span><i class="gh-sw red"></i>Em risco</span><span><i class="gh-sw gold"></i>Acompanhar</span><span>Número: pontuação do mês</span></div>
+        <div class="gh-legenda" id="ghTimeLegenda"><span><i class="gh-sw red"></i>Em risco</span><span><i class="gh-sw gold"></i>Acompanhar</span><span>Número: pontuação do mês</span></div>
       </section>
       <section class="gh-w gh-c12" aria-labelledby="ghIndsTit">
         <div class="gh-w-h">
           <span class="gh-w-t" id="ghIndsTit">Indicadores da área</span>
-          <span class="gh-ajuda">O M enche conforme a meta. O traço na barra marca onde o time deveria estar hoje.</span>
+          <span class="gh-ajuda" id="ghIndsAjuda">O M enche conforme a meta. O traço na barra marca onde o time deveria estar hoje.</span>
         </div>
         <div class="gh-grupo"><span class="gh-grupo-lbl">Crescimento, quanto mais, melhor</span><div class="gh-inds" id="ghCrescimento"><div class="gh-sk"></div></div></div>
-        <div class="gh-grupo"><span class="gh-grupo-lbl">Retenção, limite máximo do mês</span><div class="gh-inds gh-tres" id="ghRetencao"><div class="gh-sk"></div></div></div>
+        <div class="gh-grupo"><span class="gh-grupo-lbl" id="ghRetencaoLbl">Retenção, limite máximo do mês</span><div class="gh-inds gh-tres" id="ghRetencao"><div class="gh-sk"></div></div></div>
         <div id="ghChurnOrfao"></div>
         <div class="gh-ajuda" id="ghJanelaHistorico"></div>
       </section>
@@ -910,12 +910,12 @@ ${ICONES_SVG}
         <div class="gh-w-h" style="margin-top:4px"><div id="farolSemana" class="gh-ajuda" aria-live="polite"></div></div>
       </section>
       <section class="gh-w gh-podio-w gh-c7" aria-labelledby="ghPodioTit">
-        <div class="gh-w-h"><span class="gh-w-t" id="ghPodioTit">Top 3 do mês</span><a class="gh-link" href="/gestor?aba=visaoGeral#mapa-time">Ranking completo</a></div>
+        <div class="gh-w-h"><span class="gh-w-t" id="ghPodioTit">Top 3 do mês</span><a class="gh-link gh-link-periodo" href="/gestor?aba=visaoGeral#mapa-time">Ranking completo</a></div>
         <div id="ghPodio"><div class="gh-sk"></div></div>
         <div id="ghPodioRodape"></div>
       </section>
       <section class="gh-w gh-c5" id="ghCasos" aria-labelledby="ghCasosTit">
-        <div class="gh-w-h"><span class="gh-w-t" id="ghCasosTit">Cases de sucesso do time</span><a class="gh-link" href="/gestor?aba=visaoGeral">Visão da área</a></div>
+        <div class="gh-w-h"><span class="gh-w-t" id="ghCasosTit">Cases de sucesso do time</span><a class="gh-link gh-link-periodo" href="/gestor?aba=visaoGeral">Visão da área</a></div>
         <div id="ghCases"><div class="gh-sk"></div></div>
       </section>
       <section class="gh-w gh-c12" aria-labelledby="ghRedeTit">
@@ -1618,7 +1618,7 @@ function renderSkeletonPessoa(){
 function ghFmt_(n){ return n === null || n === undefined ? 'Sem dado' : Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
 function ghSincronizar(){ var b = document.getElementById('dockSync'); if (b) b.click(); }
 var GH_TOM_ = { nenhum_ainda: 'red', acelerar: 'red', quase_no_ritmo: 'gold', no_ritmo: 'green' };
-var GH_HEX_ = { red: '#C0433D', gold: '#C89A2E', green: '#3D8B5F' };
+var GH_HEX_ = { red: '#C0433D', gold: '#C89A2E', green: '#3D8B5F', neutro: '#6E6E6E' };
 var ghClipN_ = 0;
 var GH_SECOES_ = ['ghFoco', 'ghTime', 'ghCrescimento', 'ghRetencao', 'ghPodio', 'ghCases', 'ghConselhos'];
 function renderSkeletonEquipe(){
@@ -1655,7 +1655,10 @@ function renderEquipe(data){
   modoGeralAtual = !!data.periodo.geral;
   var h = data.homeGestor || {};
   if (h.erro) { ghErroTudo_(h.erro); return; }
-  document.getElementById('ghFrase').textContent = h.resumo ? ' ' + h.resumo.saudacao : '';
+  var fechado = h.fechado || null;
+  document.getElementById('ghFrase').textContent = fechado ? ' ' + fechado.saudacao : (h.resumo ? ' ' + h.resumo.saudacao : '');
+  ghAjustarTextosFechado_(!!fechado);
+  ghLinksDoPeriodo_();
   renderEquipeSecao_('ghFoco', function () { renderGhFoco_(data, h); });
   renderEquipeSecao_('ghTime', function () { renderGhTime_(h); });
   renderEquipeSecao_('ghCrescimento', function () { renderGhCrescimento_(h); });
@@ -1664,12 +1667,68 @@ function renderEquipe(data){
   renderEquipeSecao_('ghCases', function () { renderGhCases_(h); });
   renderEquipeSecao_('ghConselhos', function () { renderGhConselhos_(h); });
   document.getElementById('ghChurnOrfao').innerHTML = renderChurnOrfao(data.churnOrfao);
-  document.getElementById('ghJanelaHistorico').innerHTML = modoGeralAtual ? '' : renderLegendaJanelaHistorico();
+  document.getElementById('ghJanelaHistorico').innerHTML = (modoGeralAtual || fechado) ? '' : renderLegendaJanelaHistorico();
   animarMFills(document.getElementById('ghCrescimento'));
   animarMFills(document.getElementById('ghRetencao'));
 }
+// Mês fechado sem metas (30/10/2026): a home mostra como o mês fechou, comparado ao anterior, sem falar em
+// ritmo, meta ou pontuação. Os textos fixos que explicam meta e ritmo trocam junto, e voltam no mês com metas.
+var GH_TEXTOS_PADRAO_ = null;
+function ghAjustarTextosFechado_(fechado){
+  var ids = ['ghTimeLegenda', 'ghIndsAjuda', 'ghRetencaoLbl'];
+  if (!GH_TEXTOS_PADRAO_) { GH_TEXTOS_PADRAO_ = {}; ids.forEach(function (id) { var e = document.getElementById(id); if (e) GH_TEXTOS_PADRAO_[id] = e.innerHTML; }); }
+  var alt = {
+    ghTimeLegenda: '<span>Sob a foto: churns e cases do CS no mês</span>',
+    ghIndsAjuda: 'Mês fechado sem metas cadastradas. Cada número vem comparado ao mês anterior.',
+    ghRetencaoLbl: 'Retenção, quanto menos, melhor',
+  };
+  ids.forEach(function (id) { var e = document.getElementById(id); if (e) e.innerHTML = fechado ? alt[id] : GH_TEXTOS_PADRAO_[id]; });
+}
+// Os atalhos da home abrem a Visão da área no mesmo mês e ano escolhidos aqui.
+function ghLinksDoPeriodo_(){
+  document.querySelectorAll('a.gh-link-periodo, a.gh-btn-periodo').forEach(function (a) {
+    var base = a.getAttribute('data-base') || a.getAttribute('href');
+    a.setAttribute('data-base', base);
+    var partes = base.split('#');
+    var sep = partes[0].indexOf('?') >= 0 ? '&' : '?';
+    a.setAttribute('href', partes[0] + sep + 'mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + (partes[1] ? '#' + partes[1] : ''));
+  });
+}
+function ghReceitaTexto_(rc){
+  if (!rc.total) return 'Nenhum churn no mês';
+  if (rc.semValor >= rc.total) return 'Receita perdida sem apuração: produto não informado';
+  return 'Receita perdida aprox. R$ ' + ghFmt_(rc.valor) + (rc.semValor ? ', sem ' + rc.semValor + ' sem produto' : '');
+}
+function ghLinhaFechadoHtml_(l){
+  var piorou = l.variacao !== null && l.variacao !== 0 && ((l.variacao > 0) === l.menorMelhor);
+  var tag = l.variacao === null || l.variacao === 0 ? '' : '<span class="gh-tag ' + (piorou ? 'red' : 'green') + '">' + (l.variacao > 0 ? '▲ ' : '▼ ') + Math.abs(l.variacao) + '</span>';
+  var ref = Math.max(l.valor, l.anterior || 0);
+  var frac = ref > 0 ? l.valor / ref : 0;
+  return '<div class="gh-ind">' + ghM_(piorou ? 'red' : 'neutro', frac, 'ghClip' + (++ghClipN_)) +
+    '<div class="gh-ind-top"><b>' + escHtml_(l.label) + '</b>' + tag + '</div>' +
+    '<div class="gh-ind-v">' + ghFmt_(l.valor) + '<small>no mês</small></div>' +
+    '<div class="gh-ind-foot"><span class="gh-ind-txt">' + escHtml_(l.texto || 'Sem mês anterior para comparar') + '</span></div></div>';
+}
+function renderGhFocoFechado_(data, f){
+  var el = document.getElementById('ghFoco');
+  var churn = f.retencao.filter(function (x) { return x.chave === 'churn'; })[0];
+  var cases = f.crescimento.filter(function (x) { return x.chave === 'casesSucesso'; })[0];
+  var up = f.crescimento.filter(function (x) { return x.chave === 'upsell'; })[0];
+  var down = f.retencao.filter(function (x) { return x.chave === 'downsell'; })[0];
+  var churnPiorou = churn.variacao !== null && churn.variacao > 0;
+  el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">' + escHtml_(data.periodo.mes) + ' fechado</span><span class="gh-tag">Mês encerrado</span></div>' +
+    '<div><h2 id="ghFocoTit">' + escHtml_(f.frase) + '</h2><p>' + escHtml_(f.apoio) + '</p></div>' +
+    '<div class="gh-mini-row">' +
+      '<div class="gh-glass gh-mini"><span>Churn no mês</span><b class="' + (churnPiorou ? 'at' : '') + '">' + ghFmt_(churn.valor) + '</b><small>' + escHtml_(ghReceitaTexto_(f.receita)) + '</small></div>' +
+      '<div class="gh-glass gh-mini"><span>Cases de sucesso</span><b>' + ghFmt_(cases.valor) + '</b><small>' + escHtml_(cases.texto) + '</small></div>' +
+      '<div class="gh-glass gh-mini"><span>Upsell e downsell</span><b>' + ghFmt_(up.valor) + ' e ' + ghFmt_(down.valor) + '</b><small>' + escHtml_(up.texto ? 'Upsell ' + up.texto : '') + '</small></div>' +
+    '</div>' +
+    '<div class="gh-acoes"><a class="gh-btn claro gh-btn-periodo" href="/gestor?aba=visaoGeral#mapa-time">Ver o mapa do mês</a><a class="gh-btn vidro" href="#ghCasos">Ver cases do mês</a></div>';
+  ghLinksDoPeriodo_();
+}
 function renderGhFoco_(data, h){
   var el = document.getElementById('ghFoco');
+  if (h.fechado) { renderGhFocoFechado_(data, h.fechado); return; }
   if (!h.resumo) {
     el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t">Visão Geral</span></div><div><h2>Acumulado do ano</h2><p>Escolha um mês no topo para ver o que está no ritmo.</p></div>';
     return;
@@ -1694,6 +1753,10 @@ function renderGhFoco_(data, h){
     '</div>' +
     '<div class="gh-acoes"><a class="gh-btn claro" href="/gestor?aba=visaoGeral">Abrir a fila de ação</a><a class="gh-btn vidro" href="#ghCasos">Ver cases do mês</a></div>';
 }
+function ghRotuloPessoa_(p){
+  if (p.realizado) return p.realizado.churn + (p.realizado.churn === 1 ? ' churn' : ' churns') + ' · ' + p.realizado.casesSucesso + (p.realizado.casesSucesso === 1 ? ' case' : ' cases');
+  return p.score === null || p.score === undefined ? 'sem dados' : String(p.score);
+}
 function renderGhTime_(h){
   var el = document.getElementById('ghTime');
   var lista = h.time || [];
@@ -1705,7 +1768,7 @@ function renderGhTime_(h){
     var fundo = foto ? '' : ' style="background:' + corPara(p.nomeCompleto || p.nome) + '"';
     return '<a class="gh-pessoa" href="/gestor/cs/' + encodeURIComponent(p.nome) + '?mes=' + encodeURIComponent(currentMes) + '&ano=' + encodeURIComponent(currentAno) + '">' +
       '<span class="gh-av"' + fundo + '>' + miolo + (anel ? '<i class="gh-ring' + anel + '"></i>' : '') + '</span>' +
-      '<b>' + escHtml_(p.nome) + '</b><small>' + (p.score === null || p.score === undefined ? 'sem dados' : p.score) + '</small></a>';
+      '<b>' + escHtml_(p.nome) + '</b><small>' + escHtml_(ghRotuloPessoa_(p)) + '</small></a>';
   }).join('') + '</div>';
 }
 function ghM_(tom, frac, id){
@@ -1713,6 +1776,7 @@ function ghM_(tom, frac, id){
 }
 function renderGhCrescimento_(h){
   var el = document.getElementById('ghCrescimento');
+  if (h.fechado) { el.innerHTML = h.fechado.crescimento.map(ghLinhaFechadoHtml_).join(''); return; }
   if (!h.resumo) { el.innerHTML = '<div class="gh-vazio">Escolha um mês para ver as metas de crescimento.</div>'; return; }
   var rec = h.recordes || {};
   var html = h.resumo.crescimento.map(function (l) {
@@ -1732,6 +1796,7 @@ function renderGhCrescimento_(h){
 }
 function renderGhRetencao_(h){
   var el = document.getElementById('ghRetencao');
+  if (h.fechado) { el.innerHTML = h.fechado.retencao.map(ghLinhaFechadoHtml_).join(''); return; }
   if (!h.resumo) { el.innerHTML = '<div class="gh-vazio">Escolha um mês para ver a retenção.</div>'; return; }
   var fracMes = h.periodo.diasNoMes ? Math.min(100, h.periodo.diasDecorridos / h.periodo.diasNoMes * 100) : 0;
   el.innerHTML = h.resumo.retencao.map(function (l) {
@@ -1751,7 +1816,7 @@ function renderGhRetencao_(h){
 function renderGhPodio_(h){
   var el = document.getElementById('ghPodio'), rod = document.getElementById('ghPodioRodape');
   var p = (h.podio && h.podio.pessoas) || [];
-  if (!p.length) { el.innerHTML = '<div class="gh-vazio">Sem CS com dados suficientes para o ranking deste período.</div>'; rod.innerHTML = ''; return; }
+  if (!p.length) { el.innerHTML = '<div class="gh-vazio">' + (h.fechado ? 'Sem metas cadastradas neste mês, então não há ranking.' : 'Sem CS com dados suficientes para o ranking deste período.') + '</div>'; rod.innerHTML = ''; return; }
   var ordem = [{ i: 1, cls: 'p2', med: 'prata', n: 2 }, { i: 0, cls: 'p1', med: 'ouro', n: 1 }, { i: 2, cls: 'p3', med: 'bronze', n: 3 }];
   el.innerHTML = '<div class="gh-podio">' + ordem.filter(function (o) { return p[o.i]; }).map(function (o) {
     var x = p[o.i];

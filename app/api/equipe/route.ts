@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
           indicadores: data.indicadores as any, rankingGeral: data.rankingGeralPorScore as any,
           csAtivos: data.csAtivos, variacoes: variacoes ?? new Map(), conselhos: data.conselhos as any,
           recordes: data.recordes, casesDoTime: data.casesDoTime, casesPorCS: data.casesPorCS,
+          rosterModo: (data as any).roster?.modo ?? null, realizado: (data as any).realizado ?? null,
         });
       } catch (err: any) {
         console.error('equipe homeGestor', err);

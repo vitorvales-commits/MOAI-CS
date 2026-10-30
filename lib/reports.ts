@@ -1732,6 +1732,9 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
     // ativos de cs_config; num mês fechado, quem era CS naquele mês. Os totais seguem somando todo mundo.
     csAtivos: relatorios.filter((r) => estaNoRoster(r.cs.nome)).map((r) => ({ nome: r.cs.nome, nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl || null })),
     roster: { modo: rosterEquipe.modo },
+    // Realizados do mês por CS do recorte e do time (30/10/2026), para a home do gestor em mês fechado sem metas.
+    realizado: geral ? null : realizadoDoMes(dados, membros,
+      relatorios.filter((r) => estaNoRoster(r.cs.nome)).map((r) => ({ nome: r.cs.nome, indicadores: r.indicadores })), seletorMes, ano),
     ranking: rankingIndicadores,
     csTop,
     // Lista completa (nome + score + detalhamento) — usada internamente por generateHomeResumoCS

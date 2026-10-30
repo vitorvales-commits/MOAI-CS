@@ -2174,6 +2174,14 @@ var MESES_GESTOR = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
 var agoraGestor = new Date();
 var mesAtual = MESES_GESTOR[agoraGestor.getMonth()];
 var anoAtual = agoraGestor.getFullYear();
+// Período vindo da URL (?mes=Janeiro&ano=2026), usado pelos atalhos da home. Ano futuro ou anterior a 2025 é ignorado.
+(function () {
+  try {
+    var q = new URLSearchParams(location.search), m = q.get('mes'), a = Number(q.get('ano'));
+    if (m && (MESES_GESTOR.indexOf(m) >= 0 || m === 'Visão Geral')) mesAtual = m;
+    if (a && a >= ANO_INICIO_HISTORICO && a <= agoraGestor.getFullYear()) anoAtual = a;
+  } catch (e) {}
+})();
 
 function inicializarSeletorPeriodoGestor() {
   var selMes = document.getElementById('selMesGestor');
