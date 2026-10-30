@@ -749,7 +749,7 @@ ${ICONES_SVG}
     </div>
     <div class="top-r" id="topPeriodo">
       <select class="sel" id="selMesGestor" aria-label="Mês"></select>
-      <select class="sel" id="selAnoGestor" aria-label="Ano"></select>
+      <select class="sel" id="selAnoGestor" aria-label="Ano" data-anos="historico"></select>
     </div>
   </header>
 
@@ -943,7 +943,7 @@ ${RELATORIOS_GESTOR_HTML}
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <select class="pill-select" id="selMesMatriz"></select>
-          <select class="pill-select" id="selAnoMatriz"><option>2026</option><option>2027</option></select>
+          <select class="pill-select" id="selAnoMatriz" data-anos="planejamento"></select>
           <label class="toggle-inline"><input type="checkbox" id="chkMostrarOcultosMatriz"><span>Mostrar ocultos</span></label>
           <button class="btn-remover" id="btnCopiarMesAnterior" style="color:var(--preto-tinta);">Copiar do mês anterior</button>
           <button class="btn gold" id="btnSugerirMetas" type="button">Sugerir metas</button>
@@ -1222,7 +1222,7 @@ ${RELATORIOS_GESTOR_HTML}
       <div class="block-head"><div><h2>Relatório mensal de Conselhos</h2><p>NPS de conselheiro, conselho e CS, dados operacionais dos encontros e ranking de destaque de um mês, num único HTML autônomo para baixar e compartilhar.</p></div></div>
       <div class="churn-filtros">
         <select class="pill-select" id="selMesRelatorio" aria-label="Mês do relatório"></select>
-        <select class="pill-select" id="selAnoRelatorio" aria-label="Ano do relatório"><option>2026</option><option>2027</option></select>
+        <select class="pill-select" id="selAnoRelatorio" aria-label="Ano do relatório" data-anos="historico"></select>
         <button class="toggle-btn" type="button" onclick="preVisualizarRelatorioMensal()">Ver prévia</button>
         <button class="toggle-btn" type="button" onclick="baixarRelatorioMensal()">Baixar HTML</button>
       </div>
@@ -1475,7 +1475,7 @@ function renderKpisHistorico_(el) {
   function comp(k) { return a ? (a[k] + ref) : 'sem mês anterior'; }
   var k1 = kpiHtml_({
     rotulo: 'Churn do time', delta: a ? deltaNum_(t.churn, a.churn, false) : null, alerta: a ? t.churn > a.churn : false,
-    num: t.churn, foot: 'Receita perdida aprox. ' + fmtReais_(t.revenueChurn) + ' · ' + comp('churn')
+    num: t.churn, foot: rodapeReceita_(t) + ' · ' + comp('churn')
   });
   var k2 = kpiHtml_({ rotulo: 'Cases de sucesso', delta: a ? deltaNum_(t.casesSucesso, a.casesSucesso, true) : null, num: t.casesSucesso, foot: comp('casesSucesso') });
   var k3 = kpiHtml_({
@@ -1484,6 +1484,14 @@ function renderKpisHistorico_(el) {
   });
   var k4 = kpiHtml_({ rotulo: 'Rounds realizados', delta: a ? deltaNum_(t.rounds, a.rounds, true) : null, num: t.rounds, foot: comp('rounds') });
   el.innerHTML = k1 + k2 + k3 + k4;
+}
+// Receita perdida só é afirmada quando há produto nos churns. Sem produto, o valor é desconhecido, não zero.
+function rodapeReceita_(t) {
+  var sem = Number(t.churnSemValor || 0);
+  if (!t.churn) return 'Nenhum churn no mês';
+  if (sem >= t.churn) return 'Receita perdida sem apuração: produto não informado';
+  if (sem > 0) return 'Receita perdida aprox. ' + fmtReais_(t.revenueChurn) + ', sem ' + sem + ' sem produto';
+  return 'Receita perdida aprox. ' + fmtReais_(t.revenueChurn);
 }
 function fmtReais_(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }); }
 
@@ -2162,8 +2170,6 @@ function carregarVisaoGeral() {
 // jeito de trocar — igual ao seletor de mês/ano que já existe no dashboard principal
 // (dashboard-html.ts), mas nunca tinha sido conectado aqui. mesAtual/anoAtual eram sempre "agora"
 // e carregarVisaoGeral() nunca era chamado de novo com outro período.
-// Primeiro ano com registro de CS nos boards (cs_periodos começa em julho de 2025).
-var ANO_INICIO_HISTORICO_ = 2025;
 var MESES_GESTOR = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 var agoraGestor = new Date();
 var mesAtual = MESES_GESTOR[agoraGestor.getMonth()];
@@ -2174,10 +2180,8 @@ function inicializarSeletorPeriodoGestor() {
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);
   MESES_GESTOR.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
   selMes.value = mesAtual;
-  // Anos do primeiro com registro de CS (ANO_INICIO_HISTORICO_) até o corrente, sem anos futuros vazios.
-  var selAno = document.getElementById('selAnoGestor');
-  for (var a = anoAtual; a >= ANO_INICIO_HISTORICO_; a--) { var oa = document.createElement('option'); oa.textContent = String(a); selAno.appendChild(oa); }
-  selAno.value = anoAtual;
+  // As opções de ano vêm de anosPreencher (lib/ui/tema.ts), do primeiro ano com registro até o corrente.
+  document.getElementById('selAnoGestor').value = anoAtual;
   selMes.addEventListener('change', onFiltroChangeGestor);
   document.getElementById('selAnoGestor').addEventListener('change', onFiltroChangeGestor);
 }

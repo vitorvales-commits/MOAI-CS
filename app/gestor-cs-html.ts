@@ -270,7 +270,7 @@ ${ICONES_SVG}
     <div class="top-r">
       <div class="nav-cs" id="navCS" aria-label="Navegar entre os CS"><a class="off" id="csAnt" href="#">&larr; Anterior</a><a class="off" id="csProx" href="#">Próximo &rarr;</a></div>
       <select class="sel" id="selMesCS" aria-label="Mês"></select>
-      <select class="sel" id="selAnoCS" aria-label="Ano"><option>2025</option><option>2026</option><option>2027</option></select>
+      <select class="sel" id="selAnoCS" aria-label="Ano" data-anos="historico"></select>
     </div>
   </header>
 

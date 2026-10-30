@@ -2157,7 +2157,7 @@ export async function periodosCsSeguro(sb: SupabaseClient): Promise<LinhaPeriodo
 // Matchmakings e indicações ficam fora: dependem do usuário do Monday, que ex CS não têm, e viriam zerados.
 export const INDICADORES_REALIZADO = ['churn', 'casesSucesso', 'upsell', 'downsell', 'rounds'] as const;
 export type ChaveRealizado = typeof INDICADORES_REALIZADO[number];
-export type TotaisRealizado = Record<ChaveRealizado, number> & { revenueChurn: number };
+export type TotaisRealizado = Record<ChaveRealizado, number> & { revenueChurn: number; churnSemValor: number };
 
 function mesAnterior(seletorMes: string, ano: number): { mes: string; ano: number } | null {
   const i = MESES_ORDEM.indexOf(seletorMes);
@@ -2170,7 +2170,7 @@ export function totaisRealizadoTime(dados: DadosBrutos, nomesConhecidos: Set<str
   const churn = churnDaArea(dados.churn as any[], mesInicio, mesFim);
   const ud = contarUpsellDownsellUnicosTime(dados.upsellDownsell, nomesConhecidos, mesInicio, mesFim);
   return {
-    churn: churn.qtd, revenueChurn: churn.receita,
+    churn: churn.qtd, revenueChurn: churn.receita, churnSemValor: churn.semValor,
     casesSucesso: contarCasesUnicosTime(dados.cases, nomesConhecidos, seletorMes, ano, geral),
     upsell: ud.upsell, downsell: ud.downsell,
     rounds: contarRoundsUnicosTime(dados.rounds, nomesConhecidos, seletorMes, geral),
