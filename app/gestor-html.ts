@@ -681,6 +681,10 @@ a.mrow:hover{background:#FAFAF9}
 .sc b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;width:28px}
 .sc .bar{flex:1}
 .med{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.35}
+.cell .rbar{display:block;width:56px;height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:3px}
+.cell .rbar i{display:block;height:100%;background:var(--ink3)}
+.cell.red .rbar i{background:var(--red)}
+.mrow .sem-meta{font-size:12px;color:var(--ink3);font-weight:600}
 .cell{justify-content:center;font-weight:600;font-size:13px;border-left:1px solid var(--line);flex-direction:column;gap:1px;text-align:center}
 .cell small{font-size:11px;font-weight:500;color:var(--ink3)}
 .cell.gold{background:var(--gold-soft);color:var(--gold-ink)}
@@ -745,7 +749,7 @@ ${ICONES_SVG}
     </div>
     <div class="top-r" id="topPeriodo">
       <select class="sel" id="selMesGestor" aria-label="Mês"></select>
-      <select class="sel" id="selAnoGestor" aria-label="Ano"><option>2026</option><option>2027</option></select>
+      <select class="sel" id="selAnoGestor" aria-label="Ano"></select>
     </div>
   </header>
 
@@ -782,14 +786,14 @@ ${SAUDE_DADOS_HTML}
       <div class="coluna">
         <section class="panel" id="mapa-time" aria-labelledby="h-mapa">
           <div class="ph">
-            <div><h2 id="h-mapa">Mapa do time</h2><p>Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
+            <div><h2 id="h-mapa">Mapa do time</h2><p id="mapaSub">Uma linha por CS. A cor só aparece onde algo saiu do esperado.</p></div>
             <div class="r">
               <span class="roster-nota" id="rosterNota" aria-live="polite"></span>
               <div class="seg" role="group" aria-label="Ordenar" id="mapaOrdem"><button type="button" class="on" data-ordem="prioridade">Prioridade</button><button type="button" data-ordem="ranking">Ranking</button></div>
             </div>
           </div>
           <div class="mapa" id="mapaCorpo"><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span><span class="sk sk-linha"></span></div>
-          <div class="legend"><span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Agir agora</span><span><i style="background:var(--gold-soft);box-shadow:inset 0 0 0 1px #EBD39C"></i>Acompanhar</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1px var(--line2)"></i>Dentro do esperado</span><span style="margin-left:auto">Traço na barra: mediana do time</span></div>
+          <div class="legend" id="mapaLegenda"><span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Agir agora</span><span><i style="background:var(--gold-soft);box-shadow:inset 0 0 0 1px #EBD39C"></i>Acompanhar</span><span><i style="background:#fff;box-shadow:inset 0 0 0 1px var(--line2)"></i>Dentro do esperado</span><span style="margin-left:auto">Traço na barra: mediana do time</span></div>
         </section>
 
         <section class="panel" id="rede-conselhos" aria-labelledby="h-rede">
@@ -1459,9 +1463,34 @@ function pontosSerieArea_() {
   var s = DADOS.serieArea;
   return s && s.pontos && s.pontos.length ? s.pontos : [];
 }
+// Mês fechado (30/10/2026): a tela mostra o que o time realizou no mês, não a situação contra a meta.
+// Antes de junho de 2026 não havia meta cadastrada; pontuação, ritmo, GTD, advertências e report só
+// descrevem o presente. Os blocos de realizado vêm de DADOS.realizado, montado no servidor.
+function modoHistorico_() { return !!(DADOS && DADOS.roster && DADOS.roster.modo === 'quem_era_cs' && DADOS.realizado); }
+var MES_CURTO_ = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function rotuloMesAnt_(a) { var i = MESES_GESTOR.indexOf(a.mes); return (i >= 0 ? MES_CURTO_[i] : a.mes) + '/' + String(a.ano).slice(2); }
+function renderKpisHistorico_(el) {
+  var R = DADOS.realizado, t = R.time, a = R.anterior;
+  var ref = a ? ' em ' + rotuloMesAnt_(a) : '';
+  function comp(k) { return a ? (a[k] + ref) : 'sem mês anterior'; }
+  var k1 = kpiHtml_({
+    rotulo: 'Churn do time', delta: a ? deltaNum_(t.churn, a.churn, false) : null, alerta: a ? t.churn > a.churn : false,
+    num: t.churn, foot: 'Receita perdida aprox. ' + fmtReais_(t.revenueChurn) + ' · ' + comp('churn')
+  });
+  var k2 = kpiHtml_({ rotulo: 'Cases de sucesso', delta: a ? deltaNum_(t.casesSucesso, a.casesSucesso, true) : null, num: t.casesSucesso, foot: comp('casesSucesso') });
+  var k3 = kpiHtml_({
+    rotulo: 'Upsell', delta: a ? deltaNum_(t.upsell, a.upsell, true) : null, num: t.upsell,
+    foot: 'Downsell ' + t.downsell + (a ? ' · upsell ' + comp('upsell') : '')
+  });
+  var k4 = kpiHtml_({ rotulo: 'Rounds realizados', delta: a ? deltaNum_(t.rounds, a.rounds, true) : null, num: t.rounds, foot: comp('rounds') });
+  el.innerHTML = k1 + k2 + k3 + k4;
+}
+function fmtReais_(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 }); }
+
 function renderKpis_() {
   var el = document.getElementById('kpisArea');
   try {
+    if (modoHistorico_()) { renderKpisHistorico_(el); return; }
     var ativos = DADOS.porCS.filter(function (c) { return c.ativo && !c.ex; });
     var pts = pontosSerieArea_();
     var atual = pts.length ? pts[pts.length - 1].scoreMedio : null;
@@ -1604,9 +1633,67 @@ function linhaMapaHtml_(l, mediana, escala) {
     l.celulas.map(celulaHtml_).join('') + '</a>';
 }
 
+// Mapa do mês fechado: uma linha por CS com o que ele realizou. A barra mostra o valor em relação ao maior
+// do time no mês. Vermelho só para exceção: churn ou downsell em pelo menos o dobro da mediana do time e
+// com no mínimo HIST_MIN_EXCECAO_ itens. Prioridade ordena por churn, do maior para o menor.
+var HIST_MIN_EXCECAO_ = 2;
+function medianaNum_(v) { if (!v.length) return 0; var o = v.slice().sort(function (a, b) { return a - b; }), m = Math.floor(o.length / 2); return o.length % 2 ? o[m] : (o[m - 1] + o[m]) / 2; }
+function renderMapaHistorico_(el) {
+  var R = DADOS.realizado, porNome = {};
+  R.porCS.forEach(function (c) { porNome[c.nome] = c.valores; });
+  var linhas = DADOS.cards.map(function (card) { return { card: card, v: porNome[card.nome] || {} }; });
+  document.getElementById('mapaSub').textContent = 'O que cada CS realizou no mês. A cor só marca churn ou downsell bem acima do restante do time.';
+  document.getElementById('mapaLegenda').innerHTML = '<span><i style="background:var(--red-soft);box-shadow:inset 0 0 0 1px #EBC6C0"></i>Pelo menos o dobro da mediana do time</span><span style="margin-left:auto">Barra: valor em relação ao maior do time no mês</span>';
+  if (!linhas.length) {
+    el.innerHTML = '<div class="vazio-orienta">Não há registro de quem era CS neste mês. O histórico começa em julho de 2025; meses anteriores não têm dados nos boards.</div>';
+    return;
+  }
+  var maxPor = {}, medPor = {};
+  R.indicadores.forEach(function (ind) {
+    var vals = linhas.map(function (l) { return Number(l.v[ind.chave] || 0); });
+    maxPor[ind.chave] = Math.max.apply(null, vals.concat([0]));
+    medPor[ind.chave] = medianaNum_(vals);
+  });
+  if (mapaOrdem_ === 'prioridade') linhas.sort(function (a, b) { return (b.v.churn || 0) - (a.v.churn || 0) || (b.v.casesSucesso || 0) - (a.v.casesSucesso || 0) || a.card.nome.localeCompare(b.card.nome, 'pt-BR'); });
+  else linhas.sort(function (a, b) { var pa = a.card.posicao || 999, pb = b.card.posicao || 999; return pa - pb || a.card.nome.localeCompare(b.card.nome, 'pt-BR'); });
+  var comNota = linhas.filter(function (l) { return l.card.posicao !== null && l.card.posicao !== undefined; });
+  var maxNota = Math.max.apply(null, comNota.map(function (l) { return l.card.pontuacao; }).concat([100]));
+  var head = '<div class="mrow head"><span>CS</span><span class="sort">Pontuação</span>' + R.indicadores.map(function (ind) { return '<span class="cell">' + escCS_(ind.label) + '</span>'; }).join('') + '</div>';
+  var corpo = linhas.map(function (l) {
+    var card = l.card;
+    var foto = card.fotoUrl
+      ? '<span class="av"><img loading="lazy" src="' + escCS_(card.fotoUrl) + '" alt="Foto de ' + escCS_(card.nome) + '"></span>'
+      : '<span class="av" style="background:' + corDoNome_(card.nomeCompleto || card.nome) + '">' + escCS_((card.nome || '?').charAt(0).toUpperCase()) + '</span>';
+    var temNota = card.posicao !== null && card.posicao !== undefined;
+    var pont = temNota
+      ? (function () { var f = classificarScore(card.pontuacao); return '<span class="sc"><b style="color:' + f.cor + '">' + card.pontuacao + '</b><span class="bar"><span class="' + f.classe + '" style="width:' + Math.min(card.pontuacao / maxNota * 100, 100).toFixed(0) + '%"></span></span></span>'; })()
+      : '<span class="sem-meta">Sem metas no mês</span>';
+    // Esmaecer só faz sentido quando outros CS pontuam no mês; num mês sem metas ninguém fica de fora.
+    var algumComNota = comNota.length > 0;
+    var sub = temNota ? card.posicao + 'º no ranking do mês' : (algumComNota ? 'Fora do ranking' : '');
+    var cels = R.indicadores.map(function (ind) {
+      var v = Number(l.v[ind.chave] || 0), mx = maxPor[ind.chave];
+      var exc = ind.menorMelhor && v >= HIST_MIN_EXCECAO_ && v >= 2 * medPor[ind.chave] && medPor[ind.chave] > 0;
+      var excZero = ind.menorMelhor && v >= HIST_MIN_EXCECAO_ * 2 && medPor[ind.chave] === 0;
+      var larg = mx > 0 ? Math.round(v / mx * 100) : 0;
+      return '<span class="cell' + (exc || excZero ? ' red' : '') + '"' + (exc || excZero ? ' title="Pelo menos o dobro da mediana do time no mês"' : '') + '>' + v + '<span class="rbar"><i style="width:' + larg + '%"></i></span></span>';
+    }).join('');
+    var href = '/gestor/cs/' + encodeURIComponent(card.nome) + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual);
+    return '<a class="mrow' + (temNota || !algumComNota ? '' : ' fora') + '" href="' + href + '"><span class="who">' + foto + '<span><b>' + escCS_(card.nome) + '</b>' + (sub ? '<span>' + escCS_(sub) + '</span>' : '') + '</span></span>' + pont + cels + '</a>';
+  }).join('');
+  el.innerHTML = head + corpo;
+}
+var MAPA_SUB_PADRAO_ = 'Uma linha por CS. A cor só aparece onde algo saiu do esperado.';
+var MAPA_LEGENDA_PADRAO_ = null;
+
 function renderMapa_() {
   var el = document.getElementById('mapaCorpo');
+  var leg = document.getElementById('mapaLegenda');
+  if (MAPA_LEGENDA_PADRAO_ === null && leg) MAPA_LEGENDA_PADRAO_ = leg.innerHTML;
   try {
+    if (modoHistorico_()) { renderMapaHistorico_(el); return; }
+    document.getElementById('mapaSub').textContent = MAPA_SUB_PADRAO_;
+    if (leg && MAPA_LEGENDA_PADRAO_ !== null) leg.innerHTML = MAPA_LEGENDA_PADRAO_;
     var linhas = linhasMapa_();
     if (!linhas.length) {
       el.innerHTML = DADOS && DADOS.roster && DADOS.roster.modo === 'quem_era_cs'
@@ -2075,6 +2162,8 @@ function carregarVisaoGeral() {
 // jeito de trocar — igual ao seletor de mês/ano que já existe no dashboard principal
 // (dashboard-html.ts), mas nunca tinha sido conectado aqui. mesAtual/anoAtual eram sempre "agora"
 // e carregarVisaoGeral() nunca era chamado de novo com outro período.
+// Primeiro ano com registro de CS nos boards (cs_periodos começa em julho de 2025).
+var ANO_INICIO_HISTORICO_ = 2025;
 var MESES_GESTOR = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 var agoraGestor = new Date();
 var mesAtual = MESES_GESTOR[agoraGestor.getMonth()];
@@ -2085,7 +2174,10 @@ function inicializarSeletorPeriodoGestor() {
   var opt = document.createElement('option'); opt.textContent = 'Visão Geral'; selMes.appendChild(opt);
   MESES_GESTOR.forEach(function (m) { var o = document.createElement('option'); o.textContent = m; selMes.appendChild(o); });
   selMes.value = mesAtual;
-  document.getElementById('selAnoGestor').value = anoAtual;
+  // Anos do primeiro com registro de CS (ANO_INICIO_HISTORICO_) até o corrente, sem anos futuros vazios.
+  var selAno = document.getElementById('selAnoGestor');
+  for (var a = anoAtual; a >= ANO_INICIO_HISTORICO_; a--) { var oa = document.createElement('option'); oa.textContent = String(a); selAno.appendChild(oa); }
+  selAno.value = anoAtual;
   selMes.addEventListener('change', onFiltroChangeGestor);
   document.getElementById('selAnoGestor').addEventListener('change', onFiltroChangeGestor);
 }
