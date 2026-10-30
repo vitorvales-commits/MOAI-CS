@@ -864,11 +864,11 @@ ${ICONES_SVG}
       </div>
     </header>
     <div class="gh-bento">
-      <section class="gh-w gh-escuro gh-c8" id="inFoco" aria-labelledby="inFocoTit"><div class="gh-sk"></div></section>
-      <section class="gh-w gh-c4" id="inPontuacao" aria-labelledby="inPontTit"><div class="gh-sk"></div></section>
-      <section class="gh-w gh-c5" id="inMetas" aria-labelledby="h-metas"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-escuro gh-c8" id="inFoco" data-tour="foco" aria-labelledby="inFocoTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c4" id="inPontuacao" data-tour="pontuacao" aria-labelledby="inPontTit"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c5" id="inMetas" data-tour="metas-mes" aria-labelledby="h-metas"><div class="gh-sk"></div></section>
       <section class="gh-w gh-c7" id="inSemana" aria-labelledby="inSemanaTit"><div class="gh-sk"></div></section>
-      <section class="gh-w gh-c5 pn" id="inTarefas" aria-labelledby="h-tar"><div class="gh-sk"></div></section>
+      <section class="gh-w gh-c5 pn" id="inTarefas" data-tour="tarefas" aria-labelledby="h-tar"><div class="gh-sk"></div></section>
       <section class="gh-w gh-c7 pn" id="inCarteira" aria-labelledby="h-cart"><div class="gh-sk"></div></section>
     </div>
   </div>
@@ -973,27 +973,27 @@ ${ICONES_SVG}
       <div class="rd-stack">
         <div id="consAbertura"></div>
         <div id="consAtencao"></div>
-        <section class="rd-card" aria-labelledby="agendaTit"><h2 id="agendaTit">Agenda</h2><p class="rd-sub">Os encontros da semana, com navegação por semana ou mês.</p><div id="agendaPessoa"></div></section>
+        <section class="rd-card" aria-labelledby="agendaTit"><h2 id="agendaTit">Agenda</h2><p class="rd-sub">Os encontros da semana, com navegação por semana ou mês.</p><div id="agendaPessoa" data-tour="agenda"></div></section>
         <section class="rd-card" id="consGradeCS" hidden aria-labelledby="gradeTit">
           <h2 id="gradeTit">Meus conselhos</h2>
           <div class="gc-ctl" id="consGradeCtl"></div>
           <div id="consGradeCorpo"></div>
         </section>
-        <div id="conselhos"></div>
+        <div id="conselhos" data-tour="conselhos"></div>
       </div>
     </div>
     <div id="aba-acompanhamento" class="panel">
       <div class="rd-stack">
         <div id="rdAbertura"></div>
-        <div id="rdRitmo"></div>
+        <div id="rdRitmo" data-tour="ritmo"></div>
         <div class="rd-grid rd-g2">
-          <div id="report" class="rd-slot"></div>
+          <div id="report" class="rd-slot" data-tour="report"></div>
           <div id="reportHist" class="rd-slot"></div>
         </div>
         <div class="rd-grid rd-g3">
           <div id="umaum" class="rd-slot"></div>
-          <div id="advertencias" class="rd-slot"></div>
-          <div id="rdRelatorios" class="rd-slot"></div>
+          <div id="advertencias" class="rd-slot" data-tour="advertencias"></div>
+          <div id="rdRelatorios" class="rd-slot" data-tour="relatorios"></div>
         </div>
       </div>
     </div>

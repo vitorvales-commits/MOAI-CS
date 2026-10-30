@@ -1,6 +1,7 @@
 // Tema compartilhado v3 (redesenho aprovado em redesenho_v3/). Uso obrigatório em toda tela nova:
 // tokens, ícones, dock e sparkline saem daqui e de nenhum outro lugar. Os tokens de TEMA_CSS são
 // os de redesenho_v3/fonte/base.css, sem alteração.
+import { montarVitorio } from '../vitorio/montagem.ts';
 
 // Tokens, dock de vidro, painéis, botões e utilitários.
 export const TEMA_CSS = `
@@ -302,6 +303,10 @@ function dockDefinirBadge(chave, n) {
 `;
 
 export type PerfilDock = 'gestor' | 'cs';
+// Regra única do perfil na tela: gestor sem perfil de CS vê a gestão; quem tem perfil de CS vê o dock e o Vitorio do CS.
+export function perfilDock(isGestor: boolean, csNome: string | null): PerfilDock {
+  return isGestor && !csNome ? 'gestor' : 'cs';
+}
 // Chaves de página ativa. Gestor: inicio, area, time, conselhos, metas, churn, nps, voz, perfis.
 // CS: inicio, agenda, meus-conselhos, indicadores, pontos, report, gestor.
 export type BadgesDock = {
@@ -319,12 +324,12 @@ export type OpcoesDock = {
   placeholderBusca?: string;
 };
 
-type Item = { chave: string; href: string; icone: string; titulo: string; sub: string; badge?: 'urgencias' | 'report' };
-type Grupo = { icone: string; rotulo: string; titulo: string; itens: Item[] };
+export type ItemDock = { chave: string; href: string; icone: string; titulo: string; sub: string; badge?: 'urgencias' | 'report' };
+export type GrupoDock = { icone: string; rotulo: string; titulo: string; itens: ItemDock[] };
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function gruposGestor(o: OpcoesDock): Grupo[] {
+export function gruposGestor(o: OpcoesDock): GrupoDock[] {
   const time = o.primeiroCS ? '/gestor/cs/' + encodeURIComponent(o.primeiroCS) : '/gestor?aba=visaoGeral#mapa-time';
   return [
     { icone: 'i-area', rotulo: 'Gestão', titulo: 'Gestão', itens: [
@@ -346,8 +351,8 @@ function gruposGestor(o: OpcoesDock): Grupo[] {
   ];
 }
 
-function gruposCS(o: OpcoesDock): Grupo[] {
-  const g: Grupo[] = [
+export function gruposCS(o: OpcoesDock): GrupoDock[] {
+  const g: GrupoDock[] = [
     { icone: 'i-home', rotulo: 'Início', titulo: 'Meu trabalho', itens: [
       { chave: 'inicio', href: '/', icone: 'i-home', titulo: 'Início', sub: 'Seu dia e seu mês' },
       { chave: 'agenda', href: '/?aba=agenda', icone: 'i-cal', titulo: 'Agenda', sub: 'Conselhos e rounds' },
@@ -369,7 +374,7 @@ function gruposCS(o: OpcoesDock): Grupo[] {
   return g;
 }
 
-function itemHtml(i: Item, ativo: string, b: BadgesDock): string {
+function itemHtml(i: ItemDock, ativo: string, b: BadgesDock): string {
   const n = i.badge === 'urgencias' ? b.urgencias : null;
   let selo = '';
   let marca = '';
@@ -386,7 +391,8 @@ function itemHtml(i: Item, ativo: string, b: BadgesDock): string {
 }
 
 // Gera o HTML do dock. perfil escolhe os grupos; ativo é a chave da página atual; badges traz
-// os contadores reais (urgências da semana e report pendente).
+// os contadores reais (urgências da semana e report pendente). Anexa o Vitorio (botão flutuante e painel), que por isso
+// aparece em toda página que monta o dock.
 export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock = {}, opcoes: OpcoesDock = {}): string {
   const grupos = perfil === 'gestor' ? gruposGestor(opcoes) : gruposCS(opcoes);
   const marcaSync = opcoes.horaSync ? esc(opcoes.horaSync) : 'Sincronizar';
@@ -410,5 +416,5 @@ export function montarDock(perfil: PerfilDock, ativo: string, badges: BadgesDock
     partes.join('') +
     '<span class="dock-fill"></span><label class="dsearch"><svg aria-hidden="true"><use href="#i-search"/></svg><input type="text" id="dockBusca" aria-label="' + busca + '" placeholder="' + busca + '"><kbd>Ctrl K</kbd></label>' +
     '<span class="dsync" id="dockSync" title="' + titSync + '"><i></i>' + marcaSync + '</span>' +
-    '<a class="av" href="/auth/signout" style="background:var(--gold);color:var(--side)" title="Sair da conta" aria-label="Sair da conta">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</a></nav></header>';
+    '<a class="av" href="/auth/signout" style="background:var(--gold);color:var(--side)" title="Sair da conta" aria-label="Sair da conta">' + esc((opcoes.inicial || '?').slice(0, 1).toUpperCase()) + '</a></nav></header>' + montarVitorio(perfil);
 }

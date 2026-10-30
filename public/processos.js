@@ -127,6 +127,7 @@
     'window.addEventListener("error",function(e){env({tipo:"proc-erro",msg:String(e.message||e)})});' +
     'window.addEventListener("unhandledrejection",function(e){env({tipo:"proc-erro",msg:String(e.reason&&e.reason.message||e.reason)})});' +
     'window.addEventListener("load",function(){setTimeout(function(){env({tipo:"proc-ok"})},700)});' +
+    'window.addEventListener("message",function(ev){if(ev.source===parent&&ev.data&&ev.data.tipo==="proc-ir"&&typeof ev.data.alvo==="string"){try{if(typeof go==="function")go(ev.data.alvo);else location.hash=ev.data.alvo}catch(e){}return}});' +
     'window.addEventListener("message",function(ev){if(ev.source!==parent||!ev.data||ev.data.tipo!=="proc-percorrer")return;' +
     'var abas=Array.prototype.slice.call(document.querySelectorAll("[data-t],[role=tab],.tab")).slice(0,20),i=0;' +
     '(function prox(){if(i>=abas.length){setTimeout(function(){env({tipo:"proc-percorrido"})},300);return}try{abas[i++].click()}catch(e){env({tipo:"proc-erro",msg:String(e.message||e)})}setTimeout(prox,180)})()});' +
@@ -515,8 +516,23 @@
     if (modo === 'editar' && rascunho) return rascunho;
     return publicado;
   }
+  // ?item=colecao:id (links do Vitorio): a rota interna do item vem do índice do Vitorio, que já conhece a estrutura dos dados.
+  // Roda uma vez, depois que o documento carrega no iframe.
+  var itemPedido = CFG.item || '';
+  function abrirItemPedido() {
+    if (!itemPedido || modo !== 'ler') return;
+    var chave = itemPedido; itemPedido = '';
+    $('prDoc').addEventListener('load', function irAoItem() {
+      $('prDoc').removeEventListener('load', irAoItem);
+      fetchJSON('/api/vitorio/indice').then(function (p) {
+        var doc = (p.documentos || []).filter(function (x) { return x.chave === chave; })[0];
+        if (doc && doc.alvo) setTimeout(function () { $('prDoc').contentWindow.postMessage({ tipo: 'proc-ir', alvo: doc.alvo }, '*'); }, 600);
+      }).catch(function () { /* sem o índice o documento abre na página inicial */ });
+    });
+  }
   function pintarDocumento() {
     var d = docVisivel();
+    abrirItemPedido();
     $('prDoc').srcdoc = d && d.moldura ? montarHtml(d) : '<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;color:#9F9F9F;display:flex;align-items:center;justify-content:center;height:90vh">Nenhum conteúdo no rascunho ainda.</body>';
   }
 
@@ -529,7 +545,7 @@
     else if (d && d.versao) meta = 'Versão ' + d.versao + ', publicada em ' + fmtData(d.atualizadoEm) + (d.atualizadoPor ? ' por ' + nomeDoEmail(d.atualizadoPor) : '');
     $('prMeta').textContent = meta;
     var acoes = '';
-    if (CFG.podeEditar && modo === 'ler' && d && d.versao) acoes = '<button type="button" class="pr-btn pr-btn-ouro" data-acao="editar">Editar processos</button>';
+    if (CFG.podeEditar && modo === 'ler' && d && d.versao) acoes = '<button type="button" class="pr-btn pr-btn-ouro" data-acao="editar" data-tour="editar-processos">Editar processos</button>';
     if (modo === 'versao') acoes = '<button type="button" class="pr-btn" data-acao="sair-versao">Voltar</button><button type="button" class="pr-btn pr-btn-ouro" data-acao="restaurar">Restaurar esta versão</button>';
     $('prAcoesTopo').innerHTML = acoes;
     document.body.setAttribute('data-modo', modo);

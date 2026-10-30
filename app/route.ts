@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { DASHBOARD_HTML } from './dashboard-html';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
-import { montarDock } from '@/lib/ui/tema';
+import { montarDock, perfilDock } from '@/lib/ui/tema';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     if (!(e instanceof AuthError)) throw e;
   }
   const inicial = email ? email.charAt(0) : '?';
-  const dock = isGestor && !csNome
+  const dock = perfilDock(isGestor, csNome) === 'gestor'
     ? montarDock('gestor', 'inicio', {}, { inicial })
     : montarDock('cs', 'inicio', {}, { inicial, tambemGestor: isGestor });
   return new NextResponse(DASHBOARD_HTML.replace('<!--DOCK-->', dock), {

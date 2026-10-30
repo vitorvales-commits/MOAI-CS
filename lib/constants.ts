@@ -364,3 +364,18 @@ export const SAUDE_DADOS_NOMES: Record<string, string> = {
   matchmakings: 'Matchmakings', metas: 'Metas', nps_conselhos: 'NPS dos conselhos', reports_semanais: 'Reports semanais',
   rounds: 'Rounds', status_usuarios: 'Status dos usuários do Monday', upsell_downsell: 'Upsell e downsell', visitas_churn: 'Visitas de churn',
 };
+
+// ============ Vitorio (30/10/2026) ============
+// Mascote com busca determinística nos processos, no registro de navegação e no glossário. Sem IA. Código em lib/vitorio/.
+// Registrar a pessoa junto da consulta? false: a tabela guarda só o perfil (cs ou gestor). Mudar aqui não exige refatorar.
+export const VITORIO_REGISTRAR_PESSOA = false;
+// Sobe quando o formato dos documentos do índice muda, para invalidar o índice guardado no navegador.
+export const VITORIO_VERSAO_CORPUS = 1;
+// Classificação do resultado (calibrados com tests/vitorio-busca.test.ts sobre o conteúdo publicado real).
+export const VITORIO_LIMIAR_RESPOSTA = 0.55; // primeiro resultado com pelo menos esta pontuação normalizada é candidato a resposta
+export const VITORIO_LIMIAR_MINIMO = 0.3; // abaixo disto o Vitorio diz que não encontrou
+export const VITORIO_MARGEM_AMBIGUIDADE = 0.12; // o primeiro precisa superar o segundo por esta margem para ser resposta única
+// Fila de ação "Dúvidas sem resposta": uma entrada por consulta que ficou sem resposta ou foi marcada como não útil
+// pelo menos esta quantidade de vezes dentro da janela.
+export const VITORIO_FILA_MIN_OCORRENCIAS = 2;
+export const VITORIO_FILA_JANELA_DIAS = 14;

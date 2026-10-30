@@ -1,0 +1,36 @@
+// Dicionário da casa do Vitorio (30/10/2026): grupos de termos equivalentes. A busca expande a consulta pelo grupo
+// quando encontra qualquer frase dele. Frases sem acento e em minúsculas; a normalização é feita pelo motor.
+// Para acrescentar vocabulário novo, inclua uma frase no grupo certo ou crie outro grupo.
+export const SINONIMOS: string[][] = [
+  ['churn', 'cancelamento', 'saida', 'distrato', 'cancelar', 'desistencia', 'sair do conselho'],
+  ['1a1', 'uma a uma', 'reuniao individual', 'one on one'],
+  ['conselho', 'encontro', 'reuniao do conselho'],
+  ['report', 'relatorio semanal', 'reporte'],
+  ['relatorio pos conselho', 'relatorio do conselho', 'ata do cs'],
+  ['advertencia', 'pontos', 'ponto', 'penalidade'],
+  ['health', 'saude da base', 'criticos'],
+  ['nps', 'nota', 'pesquisa de satisfacao'],
+  ['gtd', 'etapas', 'checklist do conselho'],
+  ['membro', 'conselheiro', 'cliente', 'lider'],
+  ['round', 'rodada'],
+  ['matchmaking', 'conexao', 'match'],
+  ['big deal', 'negocio fechado'],
+  ['upsell', 'upgrade', 'expansao'],
+  ['fidelidade', 'multa', 'rescisao'],
+  // vocabulário recorrente no documento de processos publicado
+  ['onboarding', 'integracao', 'boas vindas', 'novo membro'],
+  ['designacao', 'designar', 'escolher conselho', 'vaga'],
+  ['congelamento', 'congelar', 'pausa'],
+  ['suspensao', 'suspender', 'inadimplencia'],
+  ['downsell', 'downgrade', 'reducao de plano'],
+  ['offboarding', 'desligamento', 'saida organizada'],
+  ['reposicao', 'repor', 'reposicao de conselho', 'ausente'],
+  ['case', 'case de sucesso', 'caso de sucesso'],
+  ['indicacao', 'indicar', 'soma', 'programa de indicacao'],
+  ['evento', 'escala de evento', 'convite de evento'],
+  ['prazo', 'vencimento', 'deadline'],
+  ['meta', 'metas do mes', 'objetivo do mes'],
+  ['pop', 'procedimento operacional', 'procedimento padrao'],
+  ['modelo', 'template', 'documento modelo'],
+  ['ata', 'registro do conselho', 'resumo do conselho'],
+];

@@ -276,10 +276,10 @@ ${ICONES_SVG}
 
   <main class="content">
   <div class="cs-layout">
-    <aside class="panel ficha" id="heroCS"><div class="vazio" style="margin:18px">Carregando…</div></aside>
+    <aside class="panel ficha" id="heroCS" data-tour="ficha-cs"><div class="vazio" style="margin:18px">Carregando…</div></aside>
 
     <div class="cs-main" style="min-width:0">
-      <div class="abas" role="tablist" id="abasCS">
+      <div class="abas" role="tablist" id="abasCS" data-tour="abas-cs">
         <button type="button" role="tab" class="on" data-aba="diagnostico">Diagnóstico</button>
         <button type="button" role="tab" data-aba="indicadores">Indicadores</button>
         <button type="button" role="tab" data-aba="gtd">GTD<span class="count" id="contaGtd" hidden></span></button>
@@ -288,9 +288,9 @@ ${ICONES_SVG}
       </div>
 
       <div class="aba on" id="aba-diagnostico" data-aba="diagnostico" role="tabpanel">
-        <section class="panel" id="secPontos" aria-labelledby="h-pontos"><div class="vazio" style="margin:18px">Carregando…</div></section>
+        <section class="panel" id="secPontos" data-tour="pontos-cs" aria-labelledby="h-pontos"><div class="vazio" style="margin:18px">Carregando…</div></section>
         <div class="cs-duas">
-          <section class="panel" id="secPauta" aria-labelledby="h-pauta"><div class="vazio" style="margin:18px">Carregando…</div></section>
+          <section class="panel" id="secPauta" data-tour="pauta-cs" aria-labelledby="h-pauta"><div class="vazio" style="margin:18px">Carregando…</div></section>
           <section class="panel" id="secGtdAtencao" aria-labelledby="h-gtdatt"><div class="vazio" style="margin:18px">Carregando…</div></section>
         </div>
         <section class="block" id="secEvolucao">
