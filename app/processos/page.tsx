@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Processos de CS · MOAI' };
 
 // Troque ao alterar public/processos.js, para o navegador não usar a cópia antiga em cache.
-const VERSAO_SCRIPT = '20261013b';
+const VERSAO_SCRIPT = '20261030';
 
 export default async function ProcessosPage() {
   let isGestor = false;

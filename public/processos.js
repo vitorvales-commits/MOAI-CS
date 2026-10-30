@@ -104,6 +104,7 @@
     declaracoes.forEach(function (dc, k) {
       var ate = k + 1 < declaracoes.length ? declaracoes[k + 1].inicio : fim;
       dc.fonte = linhas.slice(dc.inicio, ate).join('\n').replace(/\s+$/, '');
+      dc.linha = dc.inicio - i0; // linha relativa ao início da região, para apontar onde está um erro
       delete dc.inicio;
     });
     var regiao = linhas.slice(i0, fim).join('\n');
@@ -383,19 +384,60 @@
       document.body.appendChild(f);
     });
   }
-  // Executa só a região de dados e devolve cada constante como valor JSON ou como código (funções).
+  // Lê os valores da região de dados executando o próprio documento num iframe isolado, no mesmo
+  // contexto em que ele roda de verdade: com o corpo do HTML presente e com as funções do script já
+  // içadas (hoisting), porque constantes de dados podem chamar funções declaradas mais abaixo ou ler
+  // atributos do DOM. A coleta acontece logo depois da última constante de dados, antes do restante
+  // do motor rodar, para guardar os valores originais e não versões já alteradas pelo motor; em
+  // seguida o script é interrompido por um sinal próprio. Qualquer erro dentro da região vira uma
+  // mensagem que diz qual constante falhou, em vez de esperar o limite de tempo.
+  var SINAL_FIM = '__proc_fim_coleta__';
+  function nomeNaLinha(ext, linhaRegiao) {
+    var nome = '';
+    ext.declaracoes.forEach(function (dc) { if (typeof dc.linha === 'number' && dc.linha <= linhaRegiao) nome = dc.nome; });
+    return nome;
+  }
   function avaliarDados(ext) {
-    var coletor = ext.declaracoes.map(function (d) {
-      return 'try{r[' + JSON.stringify(d.nome) + ']=(typeof ' + d.nome + '==="function")?{fn:1}:{v:JSON.parse(JSON.stringify(' + d.nome + '))}}catch(e){r[' + JSON.stringify(d.nome) + ']={erro:String(e)}}';
-    }).join(';');
-    var src = '<!doctype html><meta charset="utf-8"><script>window.onerror=function(m){parent.postMessage({tipo:"aval",erro:String(m)},"*")};<\/script>' +
-      '<script>' + ext.regiao + '\n;(function(){var r={};' + coletor + ';parent.postMessage({tipo:"aval",r:r},"*")})();<\/script>';
-    var erros = [];
+    var nomes = ext.declaracoes.map(function (d) { return d.nome; });
+    var coletor = '<script>(function(){var env=function(m){try{parent.postMessage(m,"*")}catch(e){}};' +
+      'window.addEventListener("error",function(e){var m=String(e.message||e);if(m.indexOf(' + JSON.stringify(SINAL_FIM) + ')>=0){e.preventDefault();return}' +
+      'env({tipo:"aval",erro:m,linha:e.lineno||0})},true);' +
+      // Sem eval (a CSP herdada não libera): cada nome vira uma leitura direta, resolvida na hora da chamada.
+      'window.__procColetar=function(){var r={},g=function(n,f){try{var v=f();r[n]=typeof v==="function"?{fn:1}:' +
+      '{v:JSON.parse(JSON.stringify(v===undefined?null:v))}}catch(e){r[n]={erro:String(e&&e.message||e)}}};' +
+      nomes.map(function (n) { return 'g(' + JSON.stringify(n) + ',function(){return ' + n + '})'; }).join(';') +
+      ';env({tipo:"aval",r:r})};})();<\/script>';
+    var moldura = String(ext.moldura || '');
+    var partes = moldura.split(MARCADOR);
+    if (partes.length !== 2) return Promise.reject(new Error('O arquivo não tem um bloco de dados reconhecível.'));
+    var antes = partes[0] + '\n';
+    var src = antes + ext.regiao + '\n;window.__procColetar();throw ' + JSON.stringify(SINAL_FIM) + ';\n' + partes[1];
+    var h = /<head[^>]*>/i.exec(src);
+    src = h ? src.slice(0, h.index + h[0].length) + coletor + src.slice(h.index + h[0].length) : coletor + src;
+    // Linha do srcdoc em que a região começa, para traduzir o lineno do erro em constante.
+    var cabeca = h ? src.slice(0, src.indexOf(ext.regiao, h.index)) : src.slice(0, src.indexOf(ext.regiao));
+    var linhaInicio = cabeca.split('\n').length;
+    var erros = [], espera = null;
+    function descreverErro(e) {
+      var rel = e.linha ? e.linha - linhaInicio : -1;
+      var nome = rel >= 0 ? nomeNaLinha(ext, rel) : '';
+      return nome ? 'Erro ao ler ' + nome + ' (linha ' + (rel + 1) + ' do bloco de dados): ' + e.erro
+        : 'Erro ao executar o arquivo antes dos dados: ' + e.erro;
+    }
     return iframeIsolado(src, function (d, fim) {
-      if (d.tipo === 'tempo') fim(new Error('A leitura dos dados demorou demais.'));
+      if (d.tipo === 'tempo') {
+        clearTimeout(espera);
+        fim(new Error(erros.length ? descreverErro(erros[0]) : 'O arquivo não terminou de carregar os dados em 15 segundos. Confira se ele abre normalmente no navegador.'));
+        return;
+      }
       if (d.tipo !== 'aval') return;
-      if (d.erro) { erros.push(d.erro); return; }
-      if (erros.length) { fim(new Error('Erro ao ler os dados do arquivo: ' + erros[0])); return; }
+      if (d.erro) {
+        erros.push(d);
+        // Erro dentro da região impede a coleta; se o resultado não chegar logo, a falha é real.
+        if (!espera) espera = setTimeout(function () { fim(new Error(descreverErro(erros[0]))); }, 1500);
+        return;
+      }
+      clearTimeout(espera);
       var dados = [];
       for (var i = 0; i < ext.declaracoes.length; i++) {
         var dc = ext.declaracoes[i], x = d.r[dc.nome];
@@ -403,7 +445,7 @@
         dados.push(x.fn ? { nome: dc.nome, tipo: 'fonte', fonte: dc.fonte } : { nome: dc.nome, tipo: 'valor', valor: x.v });
       }
       fim(null, dados);
-    }, 10000);
+    }, 15000);
   }
   // Abre o documento montado e coleta erros de execução nos primeiros instantes.
   // Depois de carregar, clica em cada aba do documento para exercitar as telas que só se desenham sob
