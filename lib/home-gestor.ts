@@ -4,8 +4,8 @@
 import { LIMIAR_PRESENCA_ATENCAO, MESES_ORDEM } from './constants';
 import { hojeSP } from './gtd-prazos';
 import {
-  INDICADORES_CRESCIMENTO_HOME, esperadoAteHoje, faixaPessoa, frasesPodio, resumoMesGestor, statusCrescimento,
-  type IndicadorCrescimentoEntrada, type IndicadorRetencaoEntrada, type PessoaPodio,
+  INDICADORES_CRESCIMENTO_HOME, esperadoAteHoje, faixaPessoa, frasesPodio, resumoMesGestor, resumoMesFechado, statusCrescimento,
+  type IndicadorCrescimentoEntrada, type IndicadorRetencaoEntrada, type PessoaPodio, type RealizadoMesFechado,
 } from './home-regras';
 
 const ROTULOS_CRESCIMENTO: Record<string, string> = {
@@ -41,6 +41,9 @@ export function montarHomeGestor(args: {
   recordes: Record<string, unknown>;
   casesDoTime: { nome: string; empresa?: string; produto?: string; csRaw?: string | null; cs: string; mesGrupo?: string }[];
   casesPorCS: { nome: string; qtd: number }[];
+  // Recorte do time (rosterDoMes) e realizados do mês, do generateEquipeReport. Opcionais para não quebrar testes.
+  rosterModo?: string | null;
+  realizado?: RealizadoMesFechado | null;
 }) {
   const periodo = diasDoPeriodo(args.mes, args.ano, args.geral);
   const ind = args.indicadores;
@@ -61,7 +64,13 @@ export function montarHomeGestor(args: {
     retencao.push({ chave: 'healthDaBase', label: 'Membros críticos', realizado: Number(criticos.alcancado), limite: Number(criticos.meta), fluxo: false });
   }
 
-  const resumo = periodo
+  // Mês fechado sem nenhuma meta (30/10/2026): o resumo de ritmo diria "no ritmo em todas as frentes" só porque
+  // não há meta atrasada. Nesse caso a home mostra o fechamento do mês (resumoMesFechado) e o resumo de ritmo some.
+  const semMetas = crescimento.length === 0 && retencao.length === 0;
+  const fechado = periodo && !periodo.emCurso && semMetas && args.rosterModo === 'quem_era_cs' && args.realizado
+    ? resumoMesFechado(args.mes, args.ano, args.realizado)
+    : null;
+  const resumo = periodo && !fechado
     ? resumoMesGestor({ diasDecorridos: periodo.diasDecorridos, diasNoMes: periodo.diasNoMes, crescimento, retencao })
     : null;
   const linhasRetencaoExtra = resumo ? resumo.retencao.map((r) => ({
@@ -101,10 +110,16 @@ export function montarHomeGestor(args: {
   // Time de CS: só CS ativos de cs_config (nunca ex CS nem inativos), com a pontuação de quem está no ranking e
   // "sem dados" para quem ainda não tem indicador suficiente. Ordem alfabética, sem ordenar por nota.
   const porNome = new Map(args.rankingGeral.map((l) => [l.nome, l]));
+  const realizadoPorNome = new Map((args.realizado?.porCS || []).map((r) => [r.nome, r.valores]));
   const time = args.csAtivos.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map((c) => {
     const l = porNome.get(c.nome);
     const score = l ? l.score : null;
-    return { nome: c.nome, nomeCompleto: c.nomeCompleto || l?.nomeCompleto || c.nome, fotoUrl: c.fotoUrl || l?.fotoUrl || null, score, faixa: faixaPessoa(score) };
+    const v = realizadoPorNome.get(c.nome);
+    return {
+      nome: c.nome, nomeCompleto: c.nomeCompleto || l?.nomeCompleto || c.nome, fotoUrl: c.fotoUrl || l?.fotoUrl || null, score, faixa: faixaPessoa(score),
+      // No mês fechado sem metas, o número sob a foto é o realizado do CS, não a pontuação.
+      realizado: fechado && v ? { churn: v.churn, casesSucesso: v.casesSucesso } : null,
+    };
   });
 
   // Conselhos consolidados (a mesma soma que a home fazia no navegador, agora no servidor).
@@ -134,6 +149,7 @@ export function montarHomeGestor(args: {
   return {
     periodo: { mes: args.mes, ano: args.ano, geral: args.geral, diasDecorridos: periodo?.diasDecorridos ?? null, diasNoMes: periodo?.diasNoMes ?? null, emCurso: !!periodo?.emCurso },
     resumo: resumo ? { ...resumo, retencao: linhasRetencaoExtra } : null,
+    fechado,
     podio: { pessoas: podio, distanciaPrimeiroQuarto: primeiro !== null && quarto !== null ? primeiro - quarto : null, maiorAlta: maiorAlta ? { nome: maiorAlta.nome, pontos: maiorAlta.variacaoPontos } : null },
     time,
     conselhos: conselhosBloco,
