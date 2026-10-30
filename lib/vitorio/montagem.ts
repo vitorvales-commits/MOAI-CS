@@ -83,10 +83,13 @@ const PAINEL_CSS = `
 `;
 
 export const VITORIO_ESTILO = VITORIO_CSS + PAINEL_CSS;
+// Folga no fim do conteúdo rolável em celular: altura do botão (76) mais a margem de baixo (12) e uma respiração (12), para o botão
+// nunca cobrir a última linha. Vale para toda página que monta o Vitorio; /processos (corpo de altura fixa) pede folga: false.
+export const FOLGA_CELULAR_CSS = '@media (max-width:640px){body{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}}';
 
-export function montarVitorio(perfil: PerfilVitorio): string {
+export function montarVitorio(perfil: PerfilVitorio, opcoes: { folga?: boolean } = {}): string {
   const v = '?v=' + VERSAO_SCRIPT_VITORIO;
-  return '<style id="vitorioCss">' + VITORIO_ESTILO + '</style>' +
+  return '<style id="vitorioCss">' + VITORIO_ESTILO + (opcoes.folga === false ? '' : FOLGA_CELULAR_CSS) + '</style>' +
     '<div id="vitorio-raiz" data-perfil="' + perfil + '">' +
     '<button type="button" class="vt-fab" id="vtFab" data-tour="vitorio" aria-label="Pergunte ao Vitorio" aria-haspopup="dialog" aria-expanded="false" aria-controls="vtPainel">' + vitorioHtml('vtfab', VITORIO_TAMANHOS.botao) + '</button>' +
     '<div class="vt-convite" id="vtConvite" role="group" aria-label="Convite para o tour" hidden><p id="vtConviteTxt"></p><div><button type="button" class="vt-btn sm" id="vtConviteSim">Começar o tour</button><button type="button" class="vt-btn sm claro" id="vtConviteNao">Agora não</button></div></div>' +

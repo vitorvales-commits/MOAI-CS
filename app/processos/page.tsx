@@ -34,7 +34,7 @@ export default async function ProcessosPage({ searchParams }: { searchParams?: {
       <div style={{ display: 'contents' }} dangerouslySetInnerHTML={{ __html: PROCESSOS_HTML }} />
       <script dangerouslySetInnerHTML={{ __html: 'window.PROCESSOS_CFG = ' + JSON.stringify({ podeEditar: isGestor, item: (searchParams?.item || '').slice(0, 200) }) + ';' }} />
       <script src={'/processos.js?v=' + VERSAO_SCRIPT} />
-      <div dangerouslySetInnerHTML={{ __html: montarVitorio(perfilDock(isGestor, csNome)) }} />
+      <div dangerouslySetInnerHTML={{ __html: montarVitorio(perfilDock(isGestor, csNome), { folga: false }) }} />
     </>
   );
 }

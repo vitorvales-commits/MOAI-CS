@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { VITORIO_VERSAO_CORPUS } from '../constants.ts';
-import { montarCorpus, type ExtrasPerguntas, type Perfil } from './corpus.ts';
+import { extrasOrfas, montarCorpus, type ExtrasPerguntas, type Perfil } from './corpus.ts';
 
 // Perfil que a página montou: o cliente informa em ?perfil=, o servidor só confirma que ele pode ter aquele perfil.
 // Gestor pode pedir cs (ao abrir a página do CS); quem não é gestor nunca recebe gestor.
@@ -40,4 +40,13 @@ export async function corpusDoPerfil(sb: SupabaseClient, perfil: Perfil, publica
   const { data, error } = await sb.from('processos_documento').select('dados').eq('id', 1).maybeSingle();
   if (error) throw new Error('Erro ao ler processos_documento: ' + error.message);
   return montarCorpus({ dados: Array.isArray(data?.dados) ? data.dados : [], publicadoEm, perfil, extras });
+}
+
+// Perguntas extras órfãs, para o gestor reatribuir ou descartar na Fila de ação. Compara com o corpus do gestor (o mais completo).
+export async function listarExtrasOrfas(sb: SupabaseClient) {
+  const { extras } = await lerExtras(sb);
+  if (!Object.keys(extras).length) return [];
+  // união dos dois perfis: uma chave só existe para o CS (ou só para o gestor) e não é órfã por isso
+  const docs = [...(await corpusDoPerfil(sb, 'gestor', null, {})), ...(await corpusDoPerfil(sb, 'cs', null, {}))];
+  return extrasOrfas(extras, docs);
 }

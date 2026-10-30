@@ -26,7 +26,9 @@ export function textoDe(v: unknown): string {
   return '';
 }
 const tira = (s: string) => s.replace(/\s+/g, ' ').trim();
-export function slug(t: string): string { return normalizar(t).split(' ').slice(0, 8).join('-'); }
+// Chave da FAQ: a pergunta normalizada (minúsculas, sem acento nem pontuação, espaços colapsados). Pontuação e caixa não mudam
+// a chave; reescrever a pergunta muda, e as perguntas extras dela ficam órfãs (ver extrasOrfas).
+export function slug(t: string): string { return normalizar(t).slice(0, 190); }
 
 function dataBr(iso: string | null): string | null {
   if (!iso) return null;
@@ -94,6 +96,12 @@ export function corpusProcessos(m: Mapa, publicadoEm: string | null): DocVitorio
 }
 
 export type ExtrasPerguntas = Record<string, string[]>;
+
+// Perguntas extras cuja chave não existe mais no corpus (o item foi reescrito, renomeado ou removido). Frases vazias não contam.
+export function extrasOrfas(extras: ExtrasPerguntas, docs: { chave: string }[]): { chave: string; frases: string[] }[] {
+  const vivas = new Set(docs.map((d) => d.chave));
+  return Object.keys(extras).filter((k) => !vivas.has(k) && extras[k].length > 0).sort().map((k) => ({ chave: k, frases: extras[k] }));
+}
 
 // Corpus completo para um perfil. A navegação só traz páginas que o perfil enxerga; o glossário só traz definições
 // com destino para o perfil ou sem destino nenhum.

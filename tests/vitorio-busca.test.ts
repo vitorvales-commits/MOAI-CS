@@ -3,7 +3,7 @@
 // extraído do banco em 30/10/2026 com SQL de leitura; corpo dos modelos truncado em 1200 caracteres).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { montarCorpus, type Perfil } from '../lib/vitorio/corpus.ts';
+import { montarCorpus, corpusProcessos, extrasOrfas, type Perfil } from '../lib/vitorio/corpus.ts';
 import { indexar, buscar, normalizar, radical, trecho, type DocVitorio } from '../lib/vitorio/busca.ts';
 import { SINONIMOS } from '../lib/vitorio/sinonimos.ts';
 
@@ -49,7 +49,7 @@ assert.ok(chaves(canc).some((c) => soChurn.some((d) => d.chave === c)) || soChur
 // pergunta da FAQ reescrita com outras palavras encontra a própria FAQ
 const faq = buscar(gestor.ind, 'o cs faz o que pelos membros');
 assert.equal(faq.tipo, 'resposta');
-assert.equal(faq.itens[0].doc.chave, 'faq:o-que-o-cs-faz-pelo-membro');
+assert.equal(faq.itens[0].doc.chave, 'faq:o que o cs faz pelo membro');
 const faq2 = buscar(gestor.ind, 'quanto tempo dura o onboarding');
 assert.equal(faq2.itens[0].doc.colecao, 'faq');
 
@@ -94,6 +94,18 @@ assert.equal(r.itens[0].doc.chave, 'pops:ciclo');
 // trecho com os termos destacados
 const t = trecho('O prazo do report semanal vence na sexta às 19h.', ['report', 'prazo'].map((x) => radical(x)), 200);
 assert.ok(t.marcas.length >= 2 && t.texto.slice(t.marcas[0][0], t.marcas[0][1]) === 'prazo');
+
+// chave da FAQ: pontuação e caixa não mudam; reescrever a pergunta gera pergunta extra órfã
+const faqs = (q: string) => corpusProcessos({ FAQ: [{ q, a: 'Resposta.', cat: 'A área' }] }, null).filter((d) => d.colecao === 'faq')[0].chave;
+const base = faqs('O que o CS faz pelo membro?');
+assert.equal(base, 'faq:o que o cs faz pelo membro');
+assert.equal(faqs('  o QUE o cs faz, pelo membro!! '), base, 'caixa, pontuação e espaços não mudam a chave');
+assert.equal(faqs('O que o CS faz pelo Membro'), base);
+assert.notEqual(faqs('O que o CS faz pelos membros?'), base, 'reescrever a pergunta muda a chave');
+const extras = { [base]: ['o cs faz o que'], 'pops:ciclo': ['x'], 'faq:vazia': [] };
+const vivos = corpusProcessos({ FAQ: [{ q: 'O que o CS faz pelos membros?', a: 'R.' }], POPS: [{ id: 'ciclo', nome: 'Ciclo' }] }, null);
+assert.deepEqual(extrasOrfas(extras, vivos), [{ chave: base, frases: ['o cs faz o que'] }], 'órfã detectada; item vivo e lista vazia não contam');
+assert.deepEqual(extrasOrfas(extras, [{ chave: base }, { chave: 'pops:ciclo' }]), []);
 
 // chaves únicas
 assert.equal(new Set(gestor.docs.map((d) => d.chave)).size, gestor.docs.length, 'chaves repetidas no corpus');

@@ -40,6 +40,7 @@ import { listarEncontrosRelatorio } from './relatorio-conselho-dados';
 import { resumoRelatoriosPorCS } from './relatorio-conselho';
 import { churnDaArea } from './churn-area';
 import { listarDuvidasSemResposta } from './vitorio/fila';
+import { listarExtrasOrfas } from './vitorio/servidor';
 import { VITORIO_FILA_JANELA_DIAS } from './constants';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
@@ -3881,7 +3882,7 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
   });
 
   // Dúvidas sem resposta do Vitorio (30/10/2026): consultas repetidas que os processos não souberam responder, regra em lib/vitorio/fila.ts.
-  const duvidas = await secaoIsolada('duvidas', async () => ({ itens: await listarDuvidasSemResposta(sb), janelaDias: VITORIO_FILA_JANELA_DIAS }));
+  const duvidas = await secaoIsolada('duvidas', async () => ({ itens: await listarDuvidasSemResposta(sb), orfas: await listarExtrasOrfas(sb), janelaDias: VITORIO_FILA_JANELA_DIAS }));
 
   return {
     geradoEm: new Date().toISOString(), urgencias, insights, alertasNps, relatorios, duvidas,

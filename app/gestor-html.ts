@@ -1673,6 +1673,11 @@ function itensFila_() {
   var dv = ACOES_.duvidas;
   if (dv && dv.erro) erros.push('Dúvidas sem resposta indisponíveis: ' + dv.erro);
   if (dv && dv.dado) {
+    (dv.dado.orfas || []).forEach(function (o) {
+      itens.push({ tipo: 'duvida', cor: 'gold', titulo: 'Pergunta extra sem item: ' + o.chave,
+        texto: 'O item saiu dos processos ou teve o título reescrito. Frases cadastradas: ' + o.frases.join('; ') + '. Reatribua a um item que existe ou descarte.',
+        quem: 'Processos', quando: o.frases.length + (o.frases.length === 1 ? ' frase' : ' frases'), acao: null, orfa: o.chave });
+    });
     dv.dado.itens.forEach(function (d) {
       itens.push({ tipo: 'duvida', cor: 'gold', titulo: 'Dúvida sem resposta: ' + d.consulta,
         texto: 'Foi perguntada ' + d.ocorrencias + ' vezes nos últimos ' + dv.dado.janelaDias + ' dias e os processos não responderam. Documente a resposta no processo ou cadastre a pergunta num item que já existe.',
@@ -1707,7 +1712,29 @@ function itemFilaHtml_(i) {
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
     '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
     + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '')
-    + (i.duvida ? '<button type="button" class="btn sm" data-duvida="' + escCS_(i.duvida) + '">Cadastrar como pergunta</button>' : '') + '</div></div>';
+    + (i.duvida ? '<button type="button" class="btn sm" data-duvida="' + escCS_(i.duvida) + '">Cadastrar como pergunta</button>' : '')
+    + (i.orfa ? '<button type="button" class="btn sm" data-orfa="' + escCS_(i.orfa) + '">Reatribuir</button><button type="button" class="btn sm" data-orfa-descartar="' + escCS_(i.orfa) + '">Descartar</button>' : '') + '</div></div>';
+}
+// Pergunta extra órfã: reatribuir a um item existente ou descartar (dois cliques).
+function abrirReatribuicao_(btn) {
+  var conteudo = btn.closest('.item').children[1];
+  if (conteudo.querySelector('.duvida-form')) return;
+  conteudo.insertAdjacentHTML('beforeend', '<div class="duvida-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><select aria-label="Item que passa a ter estas perguntas" style="flex:1 1 220px;min-width:0;"><option value="">Carregando itens…</option></select><button type="button" class="btn sm pri" data-orfa-ok="' + escCS_(btn.getAttribute('data-orfa')) + '" disabled>Reatribuir</button></div>');
+  var sel = conteudo.querySelector('.duvida-form select');
+  var ok = conteudo.querySelector('.duvida-form button');
+  sel.onchange = function () { ok.disabled = !sel.value; };
+  var carregar = VITORIO_DOCS_ ? Promise.resolve(VITORIO_DOCS_) : fetchJSON_('/api/vitorio/indice?perfil=gestor').then(function (p) {
+    VITORIO_DOCS_ = p.documentos.slice().sort(function (a, b) { return (a.origem + a.titulo).localeCompare(b.origem + b.titulo, 'pt-BR'); });
+    return VITORIO_DOCS_;
+  });
+  carregar.then(function (docs) {
+    sel.innerHTML = '<option value="">Escolha o item que responde</option>' + docs.map(function (d) { return '<option value="' + escCS_(d.chave) + '">' + escCS_(d.origem + '. ' + d.titulo) + '</option>'; }).join('');
+  }).catch(function (err) { sel.innerHTML = '<option value="">Não foi possível carregar os itens</option>'; });
+}
+function enviarOrfa_(btn, corpo) {
+  btn.disabled = true;
+  fetchJSON_('/api/vitorio/extras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(carregarAcoes).catch(function (err) { btn.disabled = false; btn.textContent = 'Erro: ' + err.message; });
 }
 // Cadastrar a frase como pergunta extra de um item do Vitorio (processo, navegação ou glossário). As consultas iguais saem da fila.
 var VITORIO_DOCS_ = null;
@@ -1752,6 +1779,16 @@ function renderFilaAcao_() {
     html += mostrar.length ? mostrar.map(itemFilaHtml_).join('') : '<div class="vazio-orienta">Nada pede ação neste filtro. A fila se atualiza com o relatório da semana e o GTD.</div>';
     corpo.innerHTML = html;
     corpo.onclick = function (ev) {
+      var obtn = ev.target.closest('button[data-orfa]');
+      if (obtn) { abrirReatribuicao_(obtn); return; }
+      var ook = ev.target.closest('button[data-orfa-ok]');
+      if (ook) { var osel = ook.parentNode.querySelector('select'); if (osel.value) enviarOrfa_(ook, { acao: 'reatribuir', de: ook.getAttribute('data-orfa-ok'), para: osel.value }); return; }
+      var odes = ev.target.closest('button[data-orfa-descartar]');
+      if (odes) {
+        if (odes.getAttribute('data-confirma') !== '1') { odes.setAttribute('data-confirma', '1'); odes.textContent = 'Confirmar descarte'; return; }
+        enviarOrfa_(odes, { acao: 'descartar', de: odes.getAttribute('data-orfa-descartar') });
+        return;
+      }
       var dbtn = ev.target.closest('button[data-duvida]');
       if (dbtn) { abrirCadastroDuvida_(dbtn); return; }
       var dok = ev.target.closest('button[data-duvida-ok]');
