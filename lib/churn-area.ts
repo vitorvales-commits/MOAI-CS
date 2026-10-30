@@ -27,6 +27,9 @@ export interface LinhaChurnArea {
 export interface ChurnArea {
   qtd: number;
   receita: number;
+  // Churns sem produto com preço (30/10/2026): até maio de 2026 o board não tinha o produto preenchido,
+  // então a receita desses meses não é zero, é desconhecida. A tela usa este número para dizer isso.
+  semValor: number;
   porProduto: { produto: string; qtd: number; valorAprox: number | null }[];
 }
 
@@ -41,7 +44,7 @@ export function ehChurnDaArea(r: LinhaChurnArea): boolean {
 
 // Limites inclusivos no formato AAAA-MM-DD, os mesmos de periodoDatas.
 export function churnDaArea(rows: LinhaChurnArea[], inicio: string, fim: string): ChurnArea {
-  let qtd = 0, receita = 0;
+  let qtd = 0, receita = 0, semValor = 0;
   const porProduto = new Map<string, number>();
   rows.forEach((r) => {
     if (!ehChurnDaArea(r)) return;
@@ -50,12 +53,13 @@ export function churnDaArea(rows: LinhaChurnArea[], inicio: string, fim: string)
     qtd++;
     const produto = String(r.produto || '');
     const preco = PRODUCT_PRICES[produto];
-    if (preco) receita += preco;
+    if (preco) receita += preco; else semValor++;
     porProduto.set(produto, (porProduto.get(produto) || 0) + 1);
   });
   return {
     qtd,
     receita,
+    semValor,
     porProduto: Array.from(porProduto.entries())
       .map(([produto, n]) => ({ produto, qtd: n, valorAprox: PRODUCT_PRICES[produto] ?? null }))
       .sort((a, b) => b.qtd - a.qtd),

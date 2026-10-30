@@ -200,7 +200,7 @@ ${ICONES_SVG}
     </div>
     <div class="hero-selector">
       <select class="pick" id="selMesConselho"></select>
-      <select class="pick" id="selAnoConselho"><option>2025</option><option>2026</option><option>2027</option></select>
+      <select class="pick" id="selAnoConselho" data-anos="historico"></select>
     </div>
     <div class="metric-grid" id="metricGrid"></div>
   </section>

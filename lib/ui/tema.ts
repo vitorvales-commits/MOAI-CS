@@ -182,13 +182,34 @@ export const ICONES_SVG = `<svg width="0" height="0" style="position:absolute" a
 </svg>`;
 
 // Google Fonts já liberado no CSP.
+// Primeiro ano com registro de CS nos boards (cs_periodos começa em julho de 2025).
+export const ANO_INICIO_HISTORICO = 2025;
+
 export const FONTES_LINK = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">';
 
 // Comportamento do dock (abre por hover, foco e toque; fecha com Esc ou clique fora; Ctrl K foca a
 // busca) e função de sparkline. Script de navegador, sem dependências. Expõe:
-//  dockDefinirSync(texto, titulo), dockLigarSync(aposSync), dockDefinirTime(nome), dockDefinirBadge(chave, n), dockMarcarAtivo(chave, rotulo), sparkDesenhar(raiz).
+//  dockDefinirSync(texto, titulo), dockLigarSync(aposSync), dockDefinirTime(nome), dockDefinirBadge(chave, n), dockMarcarAtivo(chave, rotulo), sparkDesenhar(raiz),
+//  anosOpcoesHtml(tipo) e anosPreencher(raiz), a fonte única das opções dos seletores de ano.
 // A busca dispara o evento "dock-busca" (detail.texto) quando o usuário aperta Enter.
 export const DOCK_SCRIPT = `
+// Seletores de ano (30/10/2026). Um só lugar decide os anos oferecidos: "historico" vai do primeiro ano com
+// registro de CS nos boards até o ano corrente; "planejamento" acrescenta o ano seguinte, para cadastrar
+// metas com antecedência. Selects com data-anos são preenchidos aqui; os montados depois por script usam
+// anosOpcoesHtml. Mais recente primeiro.
+var ANO_INICIO_HISTORICO = ${ANO_INICIO_HISTORICO};
+function anosOpcoesHtml(tipo) {
+  var atual = new Date().getFullYear(), fim = tipo === 'planejamento' ? atual + 1 : atual, h = '';
+  for (var a = fim; a >= ANO_INICIO_HISTORICO; a--) h += '<option>' + a + '</option>';
+  return h;
+}
+function anosPreencher(raiz) {
+  (raiz || document).querySelectorAll('select[data-anos]').forEach(function (s) {
+    if (s.options.length) return;
+    s.innerHTML = anosOpcoesHtml(s.getAttribute('data-anos'));
+  });
+}
+anosPreencher();
 function sparkDesenhar(raiz) {
   (raiz || document).querySelectorAll('svg.spark').forEach(function (s) {
     var v = String(s.getAttribute('data-v') || '').split(',').map(Number).filter(function (x) { return isFinite(x); });

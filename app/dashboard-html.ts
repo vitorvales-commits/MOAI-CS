@@ -1228,7 +1228,7 @@ function renderTopbar(){
   var emHome = !emInicio && currentCS === null && document.getElementById('screenHome').style.display !== 'none';
   var isPessoa = currentCS !== null && !(modoRestritoCS || meuCSNome);
   var seletores = '<select class="pickmes" id="selMes" onchange="onFiltroChange()"></select>' +
-    '<select class="pickmes" id="selAno" onchange="onFiltroChange()"><option>2026</option><option>2027</option></select>';
+    '<select class="pickmes" id="selAno" onchange="onFiltroChange()">' + anosOpcoesHtml('historico') + '</select>';
   document.getElementById('topbarRight').innerHTML = (emInicio || emHome) ? '' :
     ((isPessoa ? '<span class="back-link" onclick="showHome()">' + ICONS.arrowleft + 'Time</span>' : '') + seletores);
   document.getElementById('ghPeriodo').innerHTML = emHome ? seletores : '';
