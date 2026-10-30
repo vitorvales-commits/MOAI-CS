@@ -179,6 +179,13 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // /api/sync-agora lê de process.env.SYNC_FUNCTION_SECRET no Vercel.
 const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 
+// v31 (30/10/2026 — normativa de dados, etapa 2): limiares da trava de sanidade dos prunes. Uma
+// resposta parcial da API do Monday faria o prune apagar linhas que continuam existindo. O prune só
+// roda se a leitura confirmar pelo menos LIMITE_PRESENCA_PRUNE das linhas existentes e se não remover
+// mais de LIMITE_REMOCAO_PRUNE linhas de uma vez.
+const LIMITE_PRESENCA_PRUNE = 0.8;
+const LIMITE_REMOCAO_PRUNE = 50;
+
 const BOARDS = {
   METAS: '18408969048',
   CHURN: '10008640053',
@@ -557,10 +564,28 @@ async function deleteWhere(table: string, filtro: string) {
 // o board INTEIRO a cada execução, então qualquer id que sobrou no Supabase e não veio nesta
 // leitura realmente não existe mais no Monday — sem risco de derrubar algo que só ficou fora do
 // escopo desta leitura por acaso).
+// Trava de sanidade (v31): devolve false quando o prune não deve rodar. Nesse caso nada é apagado,
+// o motivo com os números vai para sync_log e o ciclo segue normalmente.
+async function pruneSeguro(tabela: string, existentes: number, confirmadas: number, orfaos: number): Promise<boolean> {
+  const minimo = Math.ceil(existentes * LIMITE_PRESENCA_PRUNE);
+  if (confirmadas < minimo) {
+    await logSync(`prune:${tabela}`, 'erro', undefined,
+      `prune bloqueado: a leitura do Monday confirmou ${confirmadas} de ${existentes} linha(s) existentes (mínimo ${minimo}); nada foi removido`);
+    return false;
+  }
+  if (orfaos > LIMITE_REMOCAO_PRUNE) {
+    await logSync(`prune:${tabela}`, 'erro', undefined,
+      `prune bloqueado: ${orfaos} linha(s) sairiam de uma vez (limite ${LIMITE_REMOCAO_PRUNE}); nada foi removido`);
+    return false;
+  }
+  return true;
+}
+
 async function pruneOrfaos(table: string, idsValidos: Set<number>, colunaId = 'id'): Promise<number> {
   const existentes = await fetchAllFromSupabase(table, colunaId);
   const orfaos = existentes.map((r: any) => Number(r[colunaId])).filter((id) => !idsValidos.has(id));
   if (orfaos.length === 0) return 0;
+  if (!(await pruneSeguro(table, existentes.length, existentes.length - orfaos.length, orfaos.length))) return 0;
   await deleteWhere(table, `${colunaId}=in.(${orfaos.join(',')})`);
   console.warn(`[sync-monday] prune: removidas ${orfaos.length} linha(s) órfã(s) de ${table} (ids: ${orfaos.join(',')})`);
   return orfaos.length;
@@ -576,10 +601,12 @@ async function pruneOrfaos(table: string, idsValidos: Set<number>, colunaId = 'i
 // antes do pai, senão o Postgres rejeita o delete por violação de FK.
 async function prunarMembrosRemovidos(idsValidos: Set<number>, groupIdsEscopo: Set<string>): Promise<number> {
   const existentes = await fetchAllFromSupabase('conselhos_membros', 'id,group_id');
-  const orfaos = existentes
-    .filter((r: any) => groupIdsEscopo.has(r.group_id) && !idsValidos.has(Number(r.id)))
+  const noEscopo = existentes.filter((r: any) => groupIdsEscopo.has(r.group_id));
+  const orfaos = noEscopo
+    .filter((r: any) => !idsValidos.has(Number(r.id)))
     .map((r: any) => Number(r.id));
   if (orfaos.length === 0) return 0;
+  if (!(await pruneSeguro('conselhos_membros', noEscopo.length, noEscopo.length - orfaos.length, orfaos.length))) return 0;
   const filtro = `membro_id=in.(${orfaos.join(',')})`;
   await deleteWhere('conselhos_status_historico', filtro);
   await deleteWhere('conselhos_status_mensal', filtro);
@@ -984,9 +1011,10 @@ async function syncReportsIndividuaisMonday(items: any[]) {
   // tocado aqui (pruneOrfaos não serve: varreria a tabela inteira, incluindo o nativo).
   const idsBoard = new Set(items.map((it) => Number(it.id)));
   const existentes = await fetchAllFromSupabase('reports_individuais', 'monday_item_id,origem');
-  const orfaos = existentes.filter((r: any) => r.origem === 'monday' && r.monday_item_id !== null && !idsBoard.has(Number(r.monday_item_id)))
+  const deMonday = existentes.filter((r: any) => r.origem === 'monday' && r.monday_item_id !== null);
+  const orfaos = deMonday.filter((r: any) => !idsBoard.has(Number(r.monday_item_id)))
     .map((r: any) => Number(r.monday_item_id));
-  if (orfaos.length) {
+  if (orfaos.length && (await pruneSeguro('reports_individuais', deMonday.length, deMonday.length - orfaos.length, orfaos.length))) {
     await deleteWhere('reports_individuais', `origem=eq.monday&monday_item_id=in.(${orfaos.join(',')})`);
     console.warn(`[sync-monday] prune: removidas ${orfaos.length} linha(s) monday de reports_individuais (ids: ${orfaos.join(',')})`);
   }
