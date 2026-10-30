@@ -1,0 +1,94 @@
+name: Backup do banco
+
+# Backup diário independente do Supabase (plano gratuito, sem backup automático).
+# Tudo que sai do runner vai criptografado. O repositório é público: nenhum dump ou contagem
+# em texto plano pode virar artefato. Procedimento de restauração: docs/backup-e-restauracao.md
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-banco
+  cancel-in-progress: false
+
+jobs:
+  dump:
+    name: Dump criptografado
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gerar dump e contagens
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$DB_URL" || { echo 'Segredo SUPABASE_DB_URL não cadastrado'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/plano" "$RUNNER_TEMP/cifrado"
+          docker run --rm --user "$(id -u):$(id -g)" -e DB_URL \
+            -v "$RUNNER_TEMP/plano:/saida" \
+            -v "$PWD/scripts/backup:/scripts:ro" \
+            postgres:17 sh /scripts/gerar-backup.sh
+          python3 -I scripts/backup/tsv_para_json.py "$RUNNER_TEMP/plano/contagens.tsv" "$RUNNER_TEMP/plano/contagens.json"
+
+      - name: Criptografar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          for arquivo in banco.dump contagens.json; do
+            gpg --symmetric --cipher-algo AES256 --batch --yes --pinentry-mode loopback \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "$RUNNER_TEMP/cifrado/$arquivo.gpg" "$RUNNER_TEMP/plano/$arquivo"
+          done
+          rm -rf "$RUNNER_TEMP/plano"
+          ls -l "$RUNNER_TEMP/cifrado"
+
+      - name: Publicar artefato criptografado
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-banco-${{ github.run_id }}
+          path: ${{ runner.temp }}/cifrado/*.gpg
+          if-no-files-found: error
+          retention-days: 35
+
+  teste-restauracao:
+    name: Teste de restauração
+    needs: dump
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restauracao-${{ github.run_id }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: backup-banco-${{ github.run_id }}
+          path: ${{ runner.temp }}/baixado
+
+      - name: Restaurar em Postgres 17 descartável e comparar contagens
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          ALVO: postgresql://postgres:restauracao-${{ github.run_id }}@localhost:5432/postgres
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          bash scripts/backup/verificar-restauracao.sh "$RUNNER_TEMP/baixado" "$ALVO"
