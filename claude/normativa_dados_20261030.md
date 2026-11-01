@@ -76,3 +76,16 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 
 - Trava de sanidade do `sync-monday`: código pronto, deploy não feito. Falta implantar e disparar um ciclo completo para confirmar em `sync_log`.
 - Push bloqueado: o histórico de `feat/normativa-dados` foi reescrito pelo rebase sobre a `main` e o remoto ainda aponta para `bca5902`. O force-push foi negado pelo classificador automático, então a branch local está à frente do remoto só em histórico, sem conteúdo novo além do que já está lá. Aguardando decisão do Vitor.
+
+## Deploy automático e trava do sync-monday (01/11/2026)
+
+- PR #17 (`chore/deploy-functions`) mergeado. Workflow `deploy-functions.yml` com CLI fixada em 2.122.0.
+- PR #18 (`feat/normativa-dados`) mergeado. O push na `main` disparou o deploy (execução `41323481819`, verde). Publicou só `sync-monday`.
+- `sync-monday` no ar: versão 39 (era 38). `verify_jwt = true`, igual às outras funções.
+- Ciclo completo disparado com o comando do `pg_cron`. 16 boards com `sucesso`, nenhuma trava disparada. A trava ainda não foi exercitada num caso real de prune perigoso.
+- Avisos pré-existentes, sem relação com o deploy: `granola` sem o secret `GRANOLA_FONTES`; `alertas_nps` com `Resend HTTP 403`.
+
+## Etapa 3: backup antes da 20261030c
+
+- Execução `41323685184` (branch `main`, commit `c72c95e`): verde nos dois jobs. Artefato `backup-banco-41323685184` com 6.155.104 bytes, criptografado, retenção de 35 dias.
+- A migração `20261030c` ainda não foi escrita. Nada aplicado. Branch `feat/canonico-etapa3`.
