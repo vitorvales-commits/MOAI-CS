@@ -34,7 +34,7 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -e DB_URL \
             -v "$RUNNER_TEMP/plano:/saida" \
             -v "$PWD/scripts/backup:/scripts:ro" \
-            postgres:17 sh /scripts/gerar-backup.sh
+            postgres:17 bash /scripts/gerar-backup.sh
           python3 -I scripts/backup/tsv_para_json.py "$RUNNER_TEMP/plano/contagens.tsv" "$RUNNER_TEMP/plano/contagens.json"
 
       - name: Criptografar

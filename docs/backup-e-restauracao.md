@@ -20,7 +20,7 @@ O dump não traz os dados de `public.sync_log` (`--exclude-table-data`), porque 
 
 ## Como o teste de restauração funciona
 
-O job `teste-restauracao` sobe um Postgres 17 descartável como serviço do GitHub Actions, cria os papéis `anon`, `authenticated` e `service_role`, cria o schema `auth` com funções stub (`auth.uid()`, `auth.jwt()`, `auth.role()`) para que as policies restaurem, descriptografa o dump e roda `pg_restore --no-owner --no-acl`. Depois conta as linhas de cada tabela restaurada e compara com o arquivo de contagens da produção. Se qualquer tabela divergir, em qualquer direção, o job falha.
+O job `teste-restauracao` sobe um Postgres 17 descartável como serviço do GitHub Actions, cria os papéis `anon`, `authenticated` e `service_role`, cria o schema `auth` com funções stub (`auth.uid()`, `auth.jwt()`, `auth.role()`) para que as policies restaurem, descriptografa o dump e roda `pg_restore --no-owner --no-acl`. Depois conta as linhas de cada tabela restaurada e compara com o arquivo de contagens da produção. Se qualquer tabela divergir, em qualquer direção, o job falha. O `pg_restore` costuma registrar um erro `schema "public" already exists`, que é esperado, porque um Postgres novo já traz esse schema; ele não afeta as tabelas de dados.
 
 Erros isolados no `pg_restore` (por exemplo, extensões que a instância de teste não tem, como `pg_net` e `pg_cron`) não reprovam o teste por si. O critério de sucesso é a contagem.
 
@@ -71,3 +71,8 @@ Exclusões em tabelas protegidas passam pela lixeira da normativa (`seguranca.li
 - O schema `auth` e o Storage não entram (ver decisão acima).
 - O backup depende de dois segredos: `SUPABASE_DB_URL` (URI do Session pooler, porta 5432) e `BACKUP_PASSPHRASE`. Se a frase for perdida, o backup fica ilegível.
 - Trocar a senha do banco no painel do Supabase exige atualizar `SUPABASE_DB_URL` no GitHub.
+- O GitHub desativa agendamentos de workflows em repositórios públicos depois de 60 dias sem atividade no repositório. Nesse caso o backup diário para de rodar sem aviso por e-mail. Para reativar, abra a aba Actions do repositório, escolha o workflow "Backup do banco" e clique em Enable workflow. Vale também disparar uma execução manual para conferir que está verde.
+
+## Consistência entre contagens e dump
+
+O sync de 5 minutos e o uso do dash inserem linhas o tempo todo. Por isso o script de backup não lê o banco em momentos diferentes: uma sessão exporta um snapshot e o mantém aberto, a sessão de contagens e o `pg_dump` leem esse mesmo snapshot, e só depois a sessão recebe commit. Assim as contagens e o dump descrevem exatamente o mesmo estado do banco, e a comparação do teste de restauração não falha por linhas inseridas no meio do caminho. Nenhuma tabela é excluída da comparação para contornar isso; a única exceção é `public.sync_log`, pelo motivo já descrito.
