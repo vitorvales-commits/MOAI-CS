@@ -183,6 +183,7 @@ const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 // API do Monday faria o prune apagar linhas que continuam existindo. Os limiares (80% de presença e 50
 // remoções) ficam em prune-trava.ts, junto da decisão pura que os aplica e dos testes.
 import { decidirPrune } from './prune-trava.ts';
+import { parseGrupoAtivo } from './parse-grupo.ts';
 
 const BOARDS = {
   METAS: '18408969048',
@@ -654,16 +655,7 @@ function ehGrupoDeReposicao(titulo: string): boolean {
   return normalizarTexto(titulo).startsWith('reposi');
 }
 
-// Extrai { produto, nome } de um título de grupo ATIVO no padrão "Produto | Nome (Apelido)" —
-// tolera texto extra depois, ex: "C-Level | Gallo (Vitor) | Mapear Executivos bons, upsell.".
-function parseGrupoAtivo(titulo: string): { produto: string; nome: string } | null {
-  const partes = titulo.replace(/\[?congelado\]?/i, '').split('|');
-  if (partes.length < 2) return null;
-  const produto = partes[0].trim();
-  const nome = partes[1].trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
-  if (!nome) return null;
-  return { produto, nome };
-}
+// parseGrupoAtivo (Produto | Nome (Apelido)) está em parse-grupo.ts desde a etapa 3 (01/11/2026).
 
 // Extrai o nome do membro de um título de grupo de REPOSIÇÃO — sempre o texto depois do último
 // "|", em qualquer um dos dois padrões vistos no board: "Reposições no <Produto> | <Nome>" e o
