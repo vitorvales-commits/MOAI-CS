@@ -102,3 +102,13 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 ## Etapa 6 (parcial): trava dos prunes em função pura
 
 - `supabase/functions/sync-monday/prune-trava.ts` com `decidirPrune`. `index.ts` passa a usar essa função. Testes em `tests/prune-trava.test.ts`: leitura vazia, leitura abaixo de 80%, arredondamento, mais de 50 remoções, limites exatos e casos sem órfãos.
+
+## Etapa 3: fechamento (01/11/2026)
+
+- Lorena (fevereiro a março de 2026): identidade em `canonico.cs` (ID do Monday 98302554) e período em `cs_periodos`. Grafias "Lorena" e "Lorena Menezes Batista Pitt" confirmadas como CS.
+- Ale = Alejandro, confirmado com evidência de `metas_subitens` ("Ale - Maio") e dos 4 reports de 12/01 do admin.
+- CS do conselho pela regra do dash: apelido entre parênteses no fim do segundo bloco, depois de remover o marcador de congelado. Migração `20261030e` aplicada após backup `41346119908` verde. Teste de equivalência `tests/parse-grupo-equivalencia.test.ts` com os 67 títulos de `conselhos_grupos`.
+- Mateus no conselho `group_mm33rstr` (Executivo | João Vitor (Mateus) | EXTERNO): vigência aberta desde 2026-11-01.
+- "Novo grupo" (`group_mm7f2nx0`): 0 membros e sem vigência. Fora das regras de carteira, sem alteração.
+- "Fast Track | Livia" (`group_mm331w1n`): pendente de decisão de negócio. Sem alteração.
+- `v_cobertura` em 100% nas nove fontes. Pendências: zero.
