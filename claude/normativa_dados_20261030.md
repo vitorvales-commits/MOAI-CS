@@ -65,3 +65,14 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Artefato `backup-banco-41321452611` (id 13089716722): 6.144.774 bytes, criptografado, retenção de 35 dias.
 - Job "Teste de restauração": verde. `62 tabela(s) comparada(s), 0 divergência(s)`. O único erro do `pg_restore` foi `schema "public" already exists`, esperado num Postgres novo.
 - Tentativas anteriores (`41320857035` e `41321150142`) falharam por senha errada no pooler. O segredo `SUPABASE_DB_URL` foi redefinido e substituído pelo Vitor.
+
+## Etapa 2 (parcial): migração 20261030b aplicada em 01/11/2026
+
+- Teste reversível (`scripts/normativa/teste_seguranca_reversivel.sql` concatenado à migração, numa única chamada): falhou na primeira rodada com `churn_items` gerando erro, porque `seguranca.restaurar` tentava gravar a coluna gerada `data_referencia`. A transação foi desfeita, nada ficou aplicado. Corrigido: a função agora grava só as colunas que não são geradas (`attgenerated = ''`). Na segunda rodada, todas as verificações passaram: exclusão em cascata foi para a lixeira, restauração devolveu pai e filho, carimbo sozinho não gerou versão e alteração real gerou uma, TRUNCATE foi bloqueado, nenhuma tabela ficou sem classificação e há 144 gatilhos.
+- Aplicação com `apply_migration` (nome `20261030b_normativa_seguranca`). Depois: `sem_classificacao = nenhuma`, `catalogo_tabelas` com 63 linhas, 144 gatilhos `zz_seguranca%`, lixeira com 0 linhas.
+- Advisors de segurança: (a) RLS sem policy em `seguranca.catalogo_tabelas`, `lixeira` e `versoes`, intencional, acesso só por service role e funções; (b) `lixeira_recente` e `restaurar_da_lixeira` executáveis por `authenticated`, intencional, com checagem de gestor, no mesmo padrão de cerca de 87 RPCs já existentes; (c) proteção contra senha vazada desligada no Auth, fora desta entrega. Nenhum achado novo exige ação imediata.
+
+## Pendências desta etapa
+
+- Trava de sanidade do `sync-monday`: código pronto, deploy não feito. Falta implantar e disparar um ciclo completo para confirmar em `sync_log`.
+- Push bloqueado: o histórico de `feat/normativa-dados` foi reescrito pelo rebase sobre a `main` e o remoto ainda aponta para `bca5902`. O force-push foi negado pelo classificador automático, então a branch local está à frente do remoto só em histórico, sem conteúdo novo além do que já está lá. Aguardando decisão do Vitor.

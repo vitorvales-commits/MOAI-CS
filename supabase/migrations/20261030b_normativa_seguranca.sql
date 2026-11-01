@@ -244,6 +244,7 @@ language plpgsql security definer set search_path = '' as $fn$
 declare
   v record;
   v_inseridas int;
+  v_colunas text;
 begin
   if not (coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', 'postgres') in ('service_role', 'postgres')
           or public.is_gestor()) then
@@ -252,7 +253,12 @@ begin
   select * into v from seguranca.lixeira where id = p_id for update;
   if not found then raise exception 'Item % não está na lixeira.', p_id; end if;
   if v.restaurado_em is not null then return 'já restaurado em ' || v.restaurado_em::text; end if;
-  execute format('insert into public.%I select (jsonb_populate_record(null::public.%I, $1)).* on conflict do nothing', v.tabela, v.tabela)
+  -- colunas geradas (attgenerated) não aceitam valor no insert: ficam de fora e são recalculadas pelo banco
+  select string_agg(format('%I', a.attname), ', ' order by a.attnum) into v_colunas
+  from pg_attribute a
+  where a.attrelid = format('public.%I', v.tabela)::regclass and a.attnum > 0 and not a.attisdropped and a.attgenerated = '';
+  execute format('insert into public.%I (%s) select %s from jsonb_populate_record(null::public.%I, $1) on conflict do nothing',
+                 v.tabela, v_colunas, v_colunas, v.tabela)
     using v.linha;
   get diagnostics v_inseridas = row_count;
   if v_inseridas = 0 then
