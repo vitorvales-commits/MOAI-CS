@@ -89,3 +89,16 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 
 - Execução `41323685184` (branch `main`, commit `c72c95e`): verde nos dois jobs. Artefato `backup-banco-41323685184` com 6.155.104 bytes, criptografado, retenção de 35 dias.
 - A migração `20261030c` ainda não foi escrita. Nada aplicado. Branch `feat/canonico-etapa3`.
+
+## Etapa 3: confirmações do gestor e complemento (01/11/2026)
+
+- Vínculo de monday_user_id aos ex CS, com evidência de `reports_individuais.autor_monday_id` e `cs_nome_original`: Alejandro (80007640), Luma (67648894), Yasmim (84002101), Vinicius W. (49770403), Lucas (97950299).
+- Classe área (decisão do gestor): Tainara Lopes da Silva Costa, Juliane Scheidt de Cristo, Malu Sarnícola, Juliana Aguiar, Natasha Caldas do Prado, barbara@mmoai.com.br, autor 96958790 (Pedro Paulo Santos Braga, Produto) e autor 21005878 (Vinicius Postai, admin).
+- Confirmações gravadas em `canonico.cs_apelidos` com `origem = gestor`, e 13 linhas em `access_audit_log`. A função `canonico_confirmar_apelido` exige o login do gestor, então o registro foi feito em SQL, com a mesma regra e o mesmo registro de auditoria.
+- Migração `20261030d_canonico_relatorios` (backup `41326946254` verde antes da aplicação): autor que não é CS é classificado por `cs_apelidos`. Relatórios individuais viram fonte nova, com resolução pelo nome do item quando o autor não é CS.
+- Cobertura após as confirmações: 100% nas fontes de churn, cases, matchmakings, metas, histórico e rounds (cases 100% depois da classe área, matchmakings 100%). Relatórios individuais 96,19%, relatórios semanais 97,14%, upsell 94,81%.
+- Pendências restantes: ID 98302554 (Lorena, 6 relatórios semanais) e o texto "Lorena Menezes Batista Pitt" (4 upsells). Aguardando a resposta do gestor sobre a Lorena.
+
+## Etapa 6 (parcial): trava dos prunes em função pura
+
+- `supabase/functions/sync-monday/prune-trava.ts` com `decidirPrune`. `index.ts` passa a usar essa função. Testes em `tests/prune-trava.test.ts`: leitura vazia, leitura abaixo de 80%, arredondamento, mais de 50 remoções, limites exatos e casos sem órfãos.
