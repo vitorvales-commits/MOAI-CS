@@ -1,0 +1,92 @@
+name: Deploy das Edge Functions
+
+# Publica no Supabase só as Edge Functions cujas pastas mudaram. Com o push na main, o diff indica
+# as pastas alteradas. Com workflow_dispatch, o nome da função vem do input. Nenhuma função é publicada
+# quando o diff não toca nenhuma pasta e o input está vazio.
+#
+# verify_jwt segue o padrão da CLI (true), que é o que as funções no ar usam. Não existe
+# supabase/config.toml no repositório, então a CLI não sobrescreve essa configuração.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+    inputs:
+      funcao:
+        description: 'Nome da função a publicar (pasta em supabase/functions). Vazio não publica nada.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publicar funções alteradas
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_REF: evwdfeumlnxeqnnakdvq
+      EVENT_BEFORE: ${{ github.event.before }}
+      EVENT_SHA: ${{ github.sha }}
+      EVENT_NAME: ${{ github.event_name }}
+      FUNCAO_INPUT: ${{ inputs.funcao }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+
+      - name: Escolher as funções a publicar
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            FUNCOES="$FUNCAO_INPUT"
+          else
+            # Um push sem commit anterior válido (zeros) publica tudo que existe; o caso normal usa o diff.
+            if [ "$EVENT_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              FUNCOES="$(ls -1 supabase/functions | grep -v '^_' || true)"
+            else
+              FUNCOES="$(git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- supabase/functions/ | awk -F/ 'NF>=3 {print $3}' | sort -u)"
+            fi
+          fi
+          : > "$RUNNER_TEMP/funcoes.txt"
+          for f in $FUNCOES; do
+            if ! [[ "$f" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+              echo "Nome de função inválido: $f" >&2
+              exit 1
+            fi
+            if [ -d "supabase/functions/$f" ]; then
+              echo "$f" >> "$RUNNER_TEMP/funcoes.txt"
+            else
+              echo "Pasta supabase/functions/$f não existe neste commit; nada a publicar para ela."
+            fi
+          done
+          echo "Funções a publicar:"
+          cat "$RUNNER_TEMP/funcoes.txt" || true
+
+      - name: Publicar
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo 'Segredo SUPABASE_ACCESS_TOKEN não cadastrado'; exit 1; }
+          if [ ! -s "$RUNNER_TEMP/funcoes.txt" ]; then
+            echo 'Nenhuma função alterada neste push. Nada publicado.'
+            exit 0
+          fi
+          while read -r f; do
+            echo "::group::Publicar $f"
+            supabase functions deploy "$f" --project-ref "$PROJECT_REF"
+            echo "::endgroup::"
+          done < "$RUNNER_TEMP/funcoes.txt"
