@@ -57,3 +57,11 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Aplicar a migração `20261030b`, rodar `scripts/normativa/teste_seguranca_reversivel.sql` e os advisors.
 - Implantar `sync-monday` com a trava.
 - Etapas 3 a 7.
+
+## Portão do backup (aceito em 01/11/2026)
+
+- Execução `41321452611` do workflow "Backup do banco", disparada manualmente pela `main` (commit `e0199e2`).
+- Job "Dump criptografado": verde. Dump de 6.525.848 bytes antes da criptografia, 62 tabelas contadas, snapshot `00000027-0000DE37-1`.
+- Artefato `backup-banco-41321452611` (id 13089716722): 6.144.774 bytes, criptografado, retenção de 35 dias.
+- Job "Teste de restauração": verde. `62 tabela(s) comparada(s), 0 divergência(s)`. O único erro do `pg_restore` foi `schema "public" already exists`, esperado num Postgres novo.
+- Tentativas anteriores (`41320857035` e `41321150142`) falharam por senha errada no pooler. O segredo `SUPABASE_DB_URL` foi redefinido e substituído pelo Vitor.
