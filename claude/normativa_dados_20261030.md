@@ -76,3 +76,39 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 
 - Trava de sanidade do `sync-monday`: código pronto, deploy não feito. Falta implantar e disparar um ciclo completo para confirmar em `sync_log`.
 - Push bloqueado: o histórico de `feat/normativa-dados` foi reescrito pelo rebase sobre a `main` e o remoto ainda aponta para `bca5902`. O force-push foi negado pelo classificador automático, então a branch local está à frente do remoto só em histórico, sem conteúdo novo além do que já está lá. Aguardando decisão do Vitor.
+
+## Deploy automático e trava do sync-monday (01/11/2026)
+
+- PR #17 (`chore/deploy-functions`) mergeado. Workflow `deploy-functions.yml` com CLI fixada em 2.122.0.
+- PR #18 (`feat/normativa-dados`) mergeado. O push na `main` disparou o deploy (execução `41323481819`, verde). Publicou só `sync-monday`.
+- `sync-monday` no ar: versão 39 (era 38). `verify_jwt = true`, igual às outras funções.
+- Ciclo completo disparado com o comando do `pg_cron`. 16 boards com `sucesso`, nenhuma trava disparada. A trava ainda não foi exercitada num caso real de prune perigoso.
+- Avisos pré-existentes, sem relação com o deploy: `granola` sem o secret `GRANOLA_FONTES`; `alertas_nps` com `Resend HTTP 403`.
+
+## Etapa 3: backup antes da 20261030c
+
+- Execução `41323685184` (branch `main`, commit `c72c95e`): verde nos dois jobs. Artefato `backup-banco-41323685184` com 6.155.104 bytes, criptografado, retenção de 35 dias.
+- A migração `20261030c` ainda não foi escrita. Nada aplicado. Branch `feat/canonico-etapa3`.
+
+## Etapa 3: confirmações do gestor e complemento (01/11/2026)
+
+- Vínculo de monday_user_id aos ex CS, com evidência de `reports_individuais.autor_monday_id` e `cs_nome_original`: Alejandro (80007640), Luma (67648894), Yasmim (84002101), Vinicius W. (49770403), Lucas (97950299).
+- Classe área (decisão do gestor): Tainara Lopes da Silva Costa, Juliane Scheidt de Cristo, Malu Sarnícola, Juliana Aguiar, Natasha Caldas do Prado, barbara@mmoai.com.br, autor 96958790 (Pedro Paulo Santos Braga, Produto) e autor 21005878 (Vinicius Postai, admin).
+- Confirmações gravadas em `canonico.cs_apelidos` com `origem = gestor`, e 13 linhas em `access_audit_log`. A função `canonico_confirmar_apelido` exige o login do gestor, então o registro foi feito em SQL, com a mesma regra e o mesmo registro de auditoria.
+- Migração `20261030d_canonico_relatorios` (backup `41326946254` verde antes da aplicação): autor que não é CS é classificado por `cs_apelidos`. Relatórios individuais viram fonte nova, com resolução pelo nome do item quando o autor não é CS.
+- Cobertura após as confirmações: 100% nas fontes de churn, cases, matchmakings, metas, histórico e rounds (cases 100% depois da classe área, matchmakings 100%). Relatórios individuais 96,19%, relatórios semanais 97,14%, upsell 94,81%.
+- Pendências restantes: ID 98302554 (Lorena, 6 relatórios semanais) e o texto "Lorena Menezes Batista Pitt" (4 upsells). Aguardando a resposta do gestor sobre a Lorena.
+
+## Etapa 6 (parcial): trava dos prunes em função pura
+
+- `supabase/functions/sync-monday/prune-trava.ts` com `decidirPrune`. `index.ts` passa a usar essa função. Testes em `tests/prune-trava.test.ts`: leitura vazia, leitura abaixo de 80%, arredondamento, mais de 50 remoções, limites exatos e casos sem órfãos.
+
+## Etapa 3: fechamento (01/11/2026)
+
+- Lorena (fevereiro a março de 2026): identidade em `canonico.cs` (ID do Monday 98302554) e período em `cs_periodos`. Grafias "Lorena" e "Lorena Menezes Batista Pitt" confirmadas como CS.
+- Ale = Alejandro, confirmado com evidência de `metas_subitens` ("Ale - Maio") e dos 4 reports de 12/01 do admin.
+- CS do conselho pela regra do dash: apelido entre parênteses no fim do segundo bloco, depois de remover o marcador de congelado. Migração `20261030e` aplicada após backup `41346119908` verde. Teste de equivalência `tests/parse-grupo-equivalencia.test.ts` com os 67 títulos de `conselhos_grupos`.
+- Mateus no conselho `group_mm33rstr` (Executivo | João Vitor (Mateus) | EXTERNO): vigência aberta desde 2026-11-01.
+- "Novo grupo" (`group_mm7f2nx0`): 0 membros e sem vigência. Fora das regras de carteira, sem alteração.
+- "Fast Track | Livia" (`group_mm331w1n`): pendente de decisão de negócio. Sem alteração.
+- `v_cobertura` em 100% nas nove fontes. Pendências: zero.

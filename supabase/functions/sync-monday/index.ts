@@ -179,12 +179,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // /api/sync-agora lê de process.env.SYNC_FUNCTION_SECRET no Vercel.
 const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 
-// v31 (30/10/2026 — normativa de dados, etapa 2): limiares da trava de sanidade dos prunes. Uma
-// resposta parcial da API do Monday faria o prune apagar linhas que continuam existindo. O prune só
-// roda se a leitura confirmar pelo menos LIMITE_PRESENCA_PRUNE das linhas existentes e se não remover
-// mais de LIMITE_REMOCAO_PRUNE linhas de uma vez.
-const LIMITE_PRESENCA_PRUNE = 0.8;
-const LIMITE_REMOCAO_PRUNE = 50;
+// v31 (30/10/2026 — normativa de dados, etapa 2): trava de sanidade dos prunes. Uma resposta parcial da
+// API do Monday faria o prune apagar linhas que continuam existindo. Os limiares (80% de presença e 50
+// remoções) ficam em prune-trava.ts, junto da decisão pura que os aplica e dos testes.
+import { decidirPrune } from './prune-trava.ts';
+import { parseGrupoAtivo } from './parse-grupo.ts';
 
 const BOARDS = {
   METAS: '18408969048',
@@ -564,21 +563,13 @@ async function deleteWhere(table: string, filtro: string) {
 // o board INTEIRO a cada execução, então qualquer id que sobrou no Supabase e não veio nesta
 // leitura realmente não existe mais no Monday — sem risco de derrubar algo que só ficou fora do
 // escopo desta leitura por acaso).
-// Trava de sanidade (v31): devolve false quando o prune não deve rodar. Nesse caso nada é apagado,
-// o motivo com os números vai para sync_log e o ciclo segue normalmente.
+// Trava de sanidade (v31, decisão em prune-trava.ts desde a etapa 6): devolve false quando o prune não
+// deve rodar. Nesse caso nada é apagado, o motivo com os números vai para sync_log e o ciclo segue.
 async function pruneSeguro(tabela: string, existentes: number, confirmadas: number, orfaos: number): Promise<boolean> {
-  const minimo = Math.ceil(existentes * LIMITE_PRESENCA_PRUNE);
-  if (confirmadas < minimo) {
-    await logSync(`prune:${tabela}`, 'erro', undefined,
-      `prune bloqueado: a leitura do Monday confirmou ${confirmadas} de ${existentes} linha(s) existentes (mínimo ${minimo}); nada foi removido`);
-    return false;
-  }
-  if (orfaos > LIMITE_REMOCAO_PRUNE) {
-    await logSync(`prune:${tabela}`, 'erro', undefined,
-      `prune bloqueado: ${orfaos} linha(s) sairiam de uma vez (limite ${LIMITE_REMOCAO_PRUNE}); nada foi removido`);
-    return false;
-  }
-  return true;
+  const decisao = decidirPrune(existentes, confirmadas, orfaos);
+  if (decisao.pode) return true;
+  await logSync(`prune:${tabela}`, 'erro', undefined, `prune bloqueado: ${decisao.motivo}`);
+  return false;
 }
 
 async function pruneOrfaos(table: string, idsValidos: Set<number>, colunaId = 'id'): Promise<number> {
@@ -664,16 +655,7 @@ function ehGrupoDeReposicao(titulo: string): boolean {
   return normalizarTexto(titulo).startsWith('reposi');
 }
 
-// Extrai { produto, nome } de um título de grupo ATIVO no padrão "Produto | Nome (Apelido)" —
-// tolera texto extra depois, ex: "C-Level | Gallo (Vitor) | Mapear Executivos bons, upsell.".
-function parseGrupoAtivo(titulo: string): { produto: string; nome: string } | null {
-  const partes = titulo.replace(/\[?congelado\]?/i, '').split('|');
-  if (partes.length < 2) return null;
-  const produto = partes[0].trim();
-  const nome = partes[1].trim().replace(/\s*\([^)]*\)\s*$/, '').trim();
-  if (!nome) return null;
-  return { produto, nome };
-}
+// parseGrupoAtivo (Produto | Nome (Apelido)) está em parse-grupo.ts desde a etapa 3 (01/11/2026).
 
 // Extrai o nome do membro de um título de grupo de REPOSIÇÃO — sempre o texto depois do último
 // "|", em qualquer um dos dois padrões vistos no board: "Reposições no <Produto> | <Nome>" e o
