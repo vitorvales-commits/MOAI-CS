@@ -299,7 +299,6 @@ begin
       v_desejado := null;
     else
       v_desejado := canonico.cs_do_titulo(r.titulo);
-      -- Grupo ativo sem CS identificado no título: não mexe na vigência atual.
       if v_desejado is null then continue; end if;
     end if;
 
