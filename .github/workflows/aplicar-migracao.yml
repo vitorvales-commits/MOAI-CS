@@ -1,0 +1,127 @@
+name: Aplicar migração
+
+# Aplica uma migração de supabase/migrations na produção. Só roda na main, e só depois de: dump com
+# snapshot restaurado com contagens idênticas, migração aplicada com sucesso numa cópia restaurada e nome
+# ainda não registrado em supabase_migrations.schema_migrations. Os jobs que tocam a produção usam o grupo
+# banco-producao, o mesmo do backup diário, então nunca rodam ao mesmo tempo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      arquivo:
+        description: 'Arquivo em supabase/migrations (ex.: 20261030f_sincronia_motor.sql)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    name: Dump com snapshot
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: banco-producao
+      cancel-in-progress: false
+    env:
+      ARQUIVO: ${{ inputs.arquivo }}
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir que a migração ainda não foi aplicada
+        run: bash scripts/backup/aplicar-migracao.sh checar "$ARQUIVO"
+
+      - name: Gerar dump e contagens no mesmo snapshot
+        run: |
+          set -euo pipefail
+          test -n "$DB_URL" || { echo 'Segredo SUPABASE_DB_URL não cadastrado'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/plano" "$RUNNER_TEMP/cifrado"
+          docker run --rm --user "$(id -u):$(id -g)" -e DB_URL \
+            -v "$RUNNER_TEMP/plano:/saida" \
+            -v "$PWD/scripts/backup:/scripts:ro" \
+            postgres:17 bash /scripts/gerar-backup.sh
+          python3 -I scripts/backup/tsv_para_json.py "$RUNNER_TEMP/plano/contagens.tsv" "$RUNNER_TEMP/plano/contagens.json"
+
+      - name: Criptografar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          for arquivo in banco.dump contagens.json; do
+            gpg --symmetric --cipher-algo AES256 --batch --yes --pinentry-mode loopback \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "$RUNNER_TEMP/cifrado/$arquivo.gpg" "$RUNNER_TEMP/plano/$arquivo"
+          done
+          rm -rf "$RUNNER_TEMP/plano"
+
+      - name: Publicar artefato criptografado
+        uses: actions/upload-artifact@v4
+        with:
+          name: migracao-${{ github.run_id }}
+          path: ${{ runner.temp }}/cifrado/*.gpg
+          if-no-files-found: error
+          retention-days: 7
+
+  testar:
+    name: Testar na cópia restaurada
+    needs: dump
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restauracao-${{ github.run_id }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      ARQUIVO: ${{ inputs.arquivo }}
+      ALVO: postgresql://postgres:restauracao-${{ github.run_id }}@localhost:5432/postgres
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: migracao-${{ github.run_id }}
+          path: ${{ runner.temp }}/baixado
+
+      - name: Restaurar e comparar contagens (para se divergir)
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          bash scripts/backup/verificar-restauracao.sh "$RUNNER_TEMP/baixado" "$ALVO"
+
+      - name: Aplicar a migração na cópia (single transaction)
+        run: bash scripts/backup/aplicar-migracao.sh testar "$ARQUIVO"
+
+  aplicar:
+    name: Aplicar na produção
+    needs: testar
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: banco-producao
+      cancel-in-progress: false
+    env:
+      ARQUIVO: ${{ inputs.arquivo }}
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aplicar com single transaction e registrar
+        run: |
+          set -euo pipefail
+          test -n "$DB_URL" || { echo 'Segredo SUPABASE_DB_URL não cadastrado'; exit 1; }
+          bash scripts/backup/aplicar-migracao.sh aplicar "$ARQUIVO"
