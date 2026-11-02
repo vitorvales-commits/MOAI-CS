@@ -121,3 +121,18 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Tarefa `fila_escrita` na sync-monday: consome a fila em lotes de 25, com reserva atômica. Regra de conflito em `fila-escrita.ts` (`decidirEscrita`), esperas de 1, 5, 30 e 120 minutos, 5 tentativas no total.
 - Isolamento: `executarCiclo` roda cada tarefa com try/catch. Erro de `fila_escrita` vai para `sync_log` com esse rótulo e não interrompe os boards.
 - Testes: `tests/fila-escrita.test.ts`.
+
+## Etapa 4a: teste de ponta a ponta (02/11/2026)
+
+- Item de teste fixo da fila: "teste" (ID `13441800409`) no board Visita Churns, grupo Churn. Fica no board como ambiente de teste da fila de escrita. Não usar em nenhum outro fim.
+- Edição com sucesso: comando `e2e-sucesso-1`, concluído. O Monday mostrou o texto gravado.
+- Conflito: comando `e2e-conflito-1`, com leitura anterior à edição feita no Monday. Ficou em `conflito`, sem escrita.
+- Os dois comandos foram marcados como `cancelado`, com motivo "teste de ponta a ponta" no campo `erro`, para não aparecerem na fila de ação do gestor.
+- Chave `fila_escrita_ativa`: desligada. Será ligada como último passo da etapa 4b, depois do merge, pela função auditada `public.sincronia_definir_fila_ativa`.
+
+## Etapa 4b: parte 1 (backend, em revisão)
+
+- Migração `20261030g_sincronia_leitura`: `public.sincronia_comando_status` (estado de um comando, para o cartão) e `public.sincronia_escritas_pendentes` (erro ou conflito, para a fila de ação). Entra pelo workflow `aplicar-migracao`, depois do merge.
+- Rotas: `POST /api/monday/editar` (enfileira pela função do banco; com a chave desligada devolve 503 com mensagem clara) e `GET /api/monday/comando/[id]`.
+- Lógica pura em `lib/sincronia.ts`: validação, estado visual (enviando, salvo, conflito, erro) e filtro da fila (erro ou conflito há mais de 24 horas). Testes em `tests/sincronia-edicao.test.ts`.
+- Pendente (parte 2): edição no cartão de visita com os estados e os botões "Usar o valor do Monday" e "Reaplicar a minha alteração"; bloco "Escritas no Monday pendentes" na Fila de ação; capturas em 1440 e 390 px.
