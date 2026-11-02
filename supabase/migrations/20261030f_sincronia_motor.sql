@@ -83,6 +83,11 @@ begin
   select command into v_cmd from cron.job where jobname = 'sync-monday-5min';
   v_secret := (regexp_match(v_cmd, '"X-Sync-Secret": "([^"]+)"'))[1];
   v_auth := (regexp_match(v_cmd, '"Authorization": "([^"]+)"'))[1];
+  if v_secret is null or v_auth is null then
+    -- Sem o valor no cron (cópia restaurada ou ambiente novo): avisa e segue. O gatilho trata a ausência do
+    -- segredo, e o ciclo de 5 minutos processa a fila quando ele existir.
+    raise notice 'segredo da sync-monday não encontrado no cron; o Vault não foi preenchido';
+  end if;
   if v_secret is not null and not exists (select 1 from vault.secrets where name = 'sync_function_secret') then
     perform vault.create_secret(v_secret, 'sync_function_secret', 'Segredo X-Sync-Secret da sync-monday, lido do cron');
   end if;

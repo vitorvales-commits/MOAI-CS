@@ -184,6 +184,7 @@ const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 // remoções) ficam em prune-trava.ts, junto da decisão pura que os aplica e dos testes.
 import { decidirPrune } from './prune-trava.ts';
 import { parseGrupoAtivo } from './parse-grupo.ts';
+import { decidirEscrita, executarCiclo, montarColumnValues, proximaTentativa } from './fila-escrita.ts';
 
 const BOARDS = {
   METAS: '18408969048',
@@ -1618,6 +1619,130 @@ async function syncStatusUsuarios() {
   return csConfig.length;
 }
 
+// ============ fila de escrita para o Monday (etapa 4a, 02/11/2026) ============
+// Consome sincronia.comandos e escreve no Monday. Só age com a chave sincronia.configuracao
+// fila_escrita_ativa ligada: desligada, não lê nem escreve nada. Os erros dela vão para sync_log com o rótulo
+// fila_escrita e nunca interrompem os boards (ver executarCiclo em fila-escrita.ts).
+const BOARD_TAREFA: Record<string, string> = { '18432210313': 'visitas_churn' };
+
+async function rpcSupabase(nome: string, corpo: unknown, lerJson = true): Promise<any> {
+  return requisitar(`Supabase rpc falhou (${nome})`, `${SUPABASE_URL}/rest/v1/rpc/${nome}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(corpo),
+  }, lerJson);
+}
+
+async function finalizarComando(
+  id: number,
+  estado: string,
+  resultado: unknown,
+  erro: string | null,
+  valoresAnteriores: unknown,
+  proxima: string | null,
+  tentativas: number,
+) {
+  await rpcSupabase('sincronia_finalizar_comando', {
+    p_id: id,
+    p_estado: estado,
+    p_resultado: resultado,
+    p_erro: erro,
+    p_valores_anteriores: valoresAnteriores,
+    p_proxima: proxima,
+    p_tentativas: tentativas,
+  }, false);
+}
+
+// Falha de execução: volta para pendente com espera, ou vai para erro quando esgota as tentativas.
+async function falharComando(c: any, erro: string) {
+  const tentativas = (c.tentativas ?? 0) + 1;
+  const proxima = proximaTentativa(tentativas, new Date());
+  await finalizarComando(c.id, proxima ? 'pendente' : 'erro', null, erro, null, proxima ? proxima.toISOString() : null, tentativas);
+}
+
+async function lerItemMonday(itemId: string, colIds: string[]): Promise<any | null> {
+  const query = `query($ids: [ID!]) { items(ids: $ids) { id updated_at column_values(ids: [${colIds.map((c) => `"${c}"`).join(',')}]) { id text } } }`;
+  const data = await mondayFetch(query, { ids: [itemId] });
+  return data.items[0] ?? null;
+}
+
+// Executa um comando reservado. Retorna o estado final: concluido ou conflito. Erro de execução lança exceção.
+async function executarComando(c: any): Promise<'concluido' | 'conflito'> {
+  if (c.operacao === 'criar_atualizacao') {
+    const data = await mondayFetch(
+      `mutation($item: ID!, $body: String!) { create_update(item_id: $item, body: $body) { id } }`,
+      { item: c.item_id, body: String(c.valores.body ?? '') },
+    );
+    await finalizarComando(c.id, 'concluido', { update_id: data.create_update.id }, null, null, null, c.tentativas ?? 0);
+    return 'concluido';
+  }
+  if (c.operacao === 'criar_item') {
+    const data = await mondayFetch(
+      `mutation($board: ID!, $group: String!, $name: String!, $cv: JSON) { create_item(board_id: $board, group_id: $group, item_name: $name, column_values: $cv) { id } }`,
+      { board: c.board_id, group: c.grupo_id, name: c.nome_item, cv: montarColumnValues(c.valores) },
+    );
+    await finalizarComando(c.id, 'concluido', { item_id: data.create_item.id }, null, null, null, c.tentativas ?? 0);
+    return 'concluido';
+  }
+  if (c.operacao !== 'atualizar_colunas') throw new Error(`operação desconhecida: ${c.operacao}`);
+
+  const colIds = Object.keys(c.valores);
+  const item = await lerItemMonday(String(c.item_id), colIds);
+  if (!item) {
+    await finalizarComando(c.id, 'erro', null, 'item não encontrado no Monday', null, null, c.tentativas ?? 0);
+    return 'conflito';
+  }
+  const atuais: Record<string, string | null> = Object.fromEntries(item.column_values.map((cv: any) => [cv.id, cv.text]));
+  if (decidirEscrita(c.lido_em, item.updated_at) === 'conflito') {
+    // O Monday venceu: nada é escrito. O usuário vê o valor atual e decide se reaplica.
+    await finalizarComando(c.id, 'conflito', { valores_atuais: atuais, atualizado_em_monday: item.updated_at }, null, null, null, c.tentativas ?? 0);
+    return 'conflito';
+  }
+  const anteriores = Object.fromEntries(colIds.map((k) => [k, atuais[k] ?? null]));
+  await mondayFetch(
+    `mutation($item: ID!, $board: ID!, $cv: JSON!) { change_multiple_column_values(item_id: $item, board_id: $board, column_values: $cv) { id } }`,
+    { item: String(c.item_id), board: String(c.board_id), cv: montarColumnValues(c.valores) },
+  );
+  await finalizarComando(c.id, 'concluido', { escrito_em: new Date().toISOString() }, null, anteriores, null, c.tentativas ?? 0);
+  return 'concluido';
+}
+
+// Tarefa fila_escrita. Retorna null quando a chave está desligada (o ciclo registra "desligada", sem erro).
+async function processarFilaEscrita(): Promise<number | null> {
+  const ativa = await rpcSupabase('sincronia_fila_ativa', {});
+  if (ativa !== true) return null;
+
+  const lote: any[] = (await rpcSupabase('sincronia_reservar_pendentes', { p_limite: 25 })) ?? [];
+  const boardsComEscrita = new Set<string>();
+  let concluidos = 0;
+  for (const c of lote) {
+    try {
+      const estado = await executarComando(c);
+      if (estado === 'concluido') {
+        concluidos++;
+        boardsComEscrita.add(String(c.board_id));
+      }
+    } catch (e: any) {
+      await falharComando(c, String(e?.message || e));
+    }
+  }
+  // O espelho do board é atualizado logo após a escrita. Falha aqui não desfaz a escrita.
+  for (const board of boardsComEscrita) {
+    const tarefa = BOARD_TAREFA[board];
+    if (!tarefa || !SYNC_TASKS[tarefa]) continue;
+    try {
+      await SYNC_TASKS[tarefa]();
+    } catch (e: any) {
+      await logSync(tarefa, 'erro', undefined, `após fila_escrita: ${String(e?.message || e)}`);
+    }
+  }
+  return concluidos;
+}
+
 // ============ orquestração ============
 
 const SYNC_TASKS: Record<string, () => Promise<number>> = {
@@ -1655,19 +1780,13 @@ Deno.serve(async (req) => {
   }
   const url = new URL(req.url);
   const somenteBoard = url.searchParams.get('board');
-  const tarefas = somenteBoard ? { [somenteBoard]: SYNC_TASKS[somenteBoard] } : SYNC_TASKS;
-
-  const resultados: Record<string, any> = {};
-  for (const [nome, fn] of Object.entries(tarefas)) {
-    if (!fn) { resultados[nome] = { erro: 'board desconhecido' }; continue; }
-    try {
-      const itens = await fn();
-      resultados[nome] = { status: 'sucesso', itens };
-      await logSync(nome, 'sucesso', itens);
-    } catch (e) {
-      resultados[nome] = { status: 'erro', erro: String(e?.message || e) };
-      await logSync(nome, 'erro', undefined, String(e?.message || e));
-    }
+  // A fila de escrita vem antes dos boards em cada ciclo completo. Ela nunca interrompe os boards.
+  const todas: Record<string, () => Promise<number | null>> = { fila_escrita: processarFilaEscrita, ...SYNC_TASKS };
+  const tarefas = somenteBoard ? (todas[somenteBoard] ? { [somenteBoard]: todas[somenteBoard] } : null) : todas;
+  if (!tarefas) {
+    return new Response(JSON.stringify({ erro: 'board desconhecido' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
+
+  const resultados = await executarCiclo(tarefas, (nome, status, itens, erro) => logSync(nome, status, itens, erro));
   return new Response(JSON.stringify(resultados, null, 2), { headers: { 'Content-Type': 'application/json' } });
 });
