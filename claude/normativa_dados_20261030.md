@@ -112,3 +112,12 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - "Novo grupo" (`group_mm7f2nx0`): 0 membros e sem vigência. Fora das regras de carteira, sem alteração.
 - "Fast Track | Livia" (`group_mm331w1n`): pendente de decisão de negócio. Sem alteração.
 - `v_cobertura` em 100% nas nove fontes. Pendências: zero.
+
+## Etapa 4a: motor da fila de escrita (02/11/2026, PR em revisão)
+
+- Migração `20261030f_sincronia_motor`: schema `sincronia` (configuração, campos editáveis com o piloto de Visita Churns, comandos sem operação de exclusão), `public.enfileirar_edicao_monday`, gatilho com `pg_net` e as funções `sincronia_*` para o serviço e para o gestor. Ainda não aplicada: entra pelo workflow `aplicar-migracao`, depois do merge.
+- Chave `fila_escrita_ativa` começa desligada. Com ela desligada, o enfileiramento é recusado e a tarefa `fila_escrita` não lê nem escreve nada.
+- Segredo da função: lido do cron e gravado no Vault sem exibir o valor. Se o cron não tiver o valor (cópia restaurada), a migração avisa e segue.
+- Tarefa `fila_escrita` na sync-monday: consome a fila em lotes de 25, com reserva atômica. Regra de conflito em `fila-escrita.ts` (`decidirEscrita`), esperas de 1, 5, 30 e 120 minutos, 5 tentativas no total.
+- Isolamento: `executarCiclo` roda cada tarefa com try/catch. Erro de `fila_escrita` vai para `sync_log` com esse rótulo e não interrompe os boards.
+- Testes: `tests/fila-escrita.test.ts`.
