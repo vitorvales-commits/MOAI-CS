@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
       p_item_id: v.edicao.itemId,
       p_valores: v.edicao.valores,
       p_lido_em: v.edicao.lidoEm,
-      p_chave: crypto.randomUUID(),
+      // A tela manda a chave da tentativa e a reutiliza nos reenvios; sem chave, gera uma nova.
+      p_chave: v.edicao.chave ?? crypto.randomUUID(),
     });
     if (error) {
       const msg = error.message || '';

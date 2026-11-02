@@ -130,9 +130,18 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Os dois comandos foram marcados como `cancelado`, com motivo "teste de ponta a ponta" no campo `erro`, para não aparecerem na fila de ação do gestor.
 - Chave `fila_escrita_ativa`: desligada. Será ligada como último passo da etapa 4b, depois do merge, pela função auditada `public.sincronia_definir_fila_ativa`.
 
-## Etapa 4b: parte 1 (backend, em revisão)
+## Etapa 4b: parte 1 (backend, em revisão pela segunda vez, 02/11/2026)
 
-- Migração `20261030g_sincronia_leitura`: `public.sincronia_comando_status` (estado de um comando, para o cartão) e `public.sincronia_escritas_pendentes` (erro ou conflito, para a fila de ação). Entra pelo workflow `aplicar-migracao`, depois do merge.
-- Rotas: `POST /api/monday/editar` (enfileira pela função do banco; com a chave desligada devolve 503 com mensagem clara) e `GET /api/monday/comando/[id]`.
-- Lógica pura em `lib/sincronia.ts`: validação, estado visual (enviando, salvo, conflito, erro) e filtro da fila (erro ou conflito há mais de 24 horas). Testes em `tests/sincronia-edicao.test.ts`.
-- Pendente (parte 2): edição no cartão de visita com os estados e os botões "Usar o valor do Monday" e "Reaplicar a minha alteração"; bloco "Escritas no Monday pendentes" na Fila de ação; capturas em 1440 e 390 px.
+- Migração `20261030g_sincronia_leitura` (ainda não aplicada; entra pelo workflow `aplicar-migracao` depois do merge):
+  - `sincronia.validar_edicao`: checagens da edição (fila ativa, colunas, papel e carteira) em uma função interna. Quem a usa são `public.enfileirar_edicao_monday` e `public.sincronia_resolver_conflito`, sem código duplicado.
+  - `public.enfileirar_edicao_monday`: mesma assinatura da 20261030f; passa a chamar `sincronia.validar_edicao`.
+  - `public.sincronia_comando_status(id)`: estado de um comando, para o cartão.
+  - `public.sincronia_escritas_pendentes()`: erro ou conflito, agora com `criado_por` e `valores`.
+  - `public.sincronia_resolver_conflito(id, acao, chave)`: só aceita comando em `conflito`; é permitida ao autor, a gestor ou ao chamador privilegiado. A ação `usar_monday` cancela o comando com o erro "resolvido: valor do Monday mantido" e retorna o próprio id. A ação `reaplicar` cancela o comando com "resolvido: reaplicado no comando N" e enfileira um `atualizar_colunas` com os mesmos board, item e valores, `lido_em` igual a agora e a chave informada, passando pelas mesmas checagens da edição normal. Cada resolução gera registro em `access_audit_log`. Revogada de public e anon; concedida a authenticated.
+- Rotas:
+  - `POST /api/monday/editar`: valida o corpo e aceita `chave` (de 8 a 100 caracteres). Só gera uma chave nova quando ela não vem. Com a chave desligada, devolve 503 com mensagem clara.
+  - `GET /api/monday/comando/[id]`: estado do comando e estado visual.
+  - `POST /api/monday/comando/[id]/resolver`: corpo `{ acao, chave }`. A chave é obrigatória só para `reaplicar`.
+- Lógica pura em `lib/sincronia.ts`: validação da edição (com chave), validação da resolução, estado visual (enviando, salvo, conflito, erro) e filtro da fila (erro ou conflito há mais de 24 horas). Testes em `tests/sincronia-edicao.test.ts`.
+- Verificação desta revisão: `tsc` sem erros; `tests/sincronia-edicao.test.ts` e `tests/fila-escrita.test.ts` passam; `npm run build` conclui. A migração 20261030g ainda não foi executada em banco. A execução real acontece na cópia de teste do workflow `aplicar-migracao`, antes de qualquer aplicação em produção.
+- Pendente (parte 2): edição no cartão de visita com os estados e os botões "Usar o valor do Monday" e "Reaplicar a minha alteração"; bloco "Escritas no Monday pendentes" na Fila de ação; capturas em 1440 e 390 px. A parte 2 começa só depois da revisão desta parte.
