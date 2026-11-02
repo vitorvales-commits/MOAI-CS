@@ -58,8 +58,8 @@ export function montarHomeGestor(args: {
   const moeda = (n: number) => 'R$ ' + Number(n).toLocaleString('pt-BR');
   const retencao: IndicadorRetencaoEntrada[] = [];
   const churn = ind.churn, rev = ind.revenueChurn, criticos = ind.healthDaBase;
-  if (churn && churn.meta && churn.meta > 0) retencao.push({ chave: 'churn', label: 'Churn', realizado: Number(churn.alcancado ?? 0), limite: Number(churn.meta), fluxo: true });
-  if (rev && rev.meta && rev.meta > 0) retencao.push({ chave: 'revenueChurn', label: 'Revenue churn', realizado: Number(rev.alcancado ?? 0), limite: Number(rev.meta), fluxo: true, formatar: moeda });
+  if (churn && churn.meta && churn.meta > 0) retencao.push({ chave: 'churn', label: 'Churn', realizado: Number(churn.alcancado ?? 0), limite: Number(churn.meta), fluxo: !!periodo?.emCurso });
+  if (rev && rev.meta && rev.meta > 0) retencao.push({ chave: 'revenueChurn', label: 'Revenue churn', realizado: Number(rev.alcancado ?? 0), limite: Number(rev.meta), fluxo: !!periodo?.emCurso, formatar: moeda });
   if (criticos && criticos.meta && criticos.meta > 0 && criticos.alcancado !== null && criticos.alcancado !== undefined) {
     retencao.push({ chave: 'healthDaBase', label: 'Membros críticos', realizado: Number(criticos.alcancado), limite: Number(criticos.meta), fluxo: false });
   }
