@@ -54,8 +54,8 @@ export const GLOSSARIO: DocNav[] = [
     ['o que são as metas do mês', 'como é definida a meta', 'o que significa no ritmo', 'o que significa acelerar', 'quando o mês fecha'], ['meta', 'ritmo', 'esperado'],
     { cs: '/?aba=indicadores', gestor: '/gestor?aba=metasDestaques' }),
   g('pontuacao-do-cs', 'Pontuação do CS',
-    'Nota de 0 a 100 do CS no mês, com pesos por indicador: cases de sucesso ' + pesos.casesSucesso + ', matchmakings ' + pesos.matchmakings + ', rounds ' + pesos.rounds + ', upsell ' + pesos.upsell + ', indicações ' + pesos.indicacoes +
-    ', churn ' + pesos.churn + ' e downsell ' + pesos.downsell + '. Os pesos são renormalizados entre os indicadores que têm meta, então bater todas as metas vale 100. A carteira não pontua. É preciso ter meta e dado em pelo menos ' +
+    'Nota de 0 a 100 do CS no mês, com pesos por indicador de crescimento: cases de sucesso ' + pesos.casesSucesso + ', matchmakings ' + pesos.matchmakings + ', rounds ' + pesos.rounds + ', upsell ' + pesos.upsell + ', indicações ' + pesos.indicacoes +
+    '. Os pesos são renormalizados entre os indicadores que têm meta, então bater todas as metas vale 100. A carteira não pontua. Churn (peso ' + pesos.churn + ') e downsell (peso ' + pesos.downsell + ') não somam pontos: só descontam, na proporção do estouro, quando passam do limite. É preciso ter meta e dado em pelo menos ' +
     PONTUACAO_MIN_INDICADORES_COM_META + ' indicadores para receber nota. Acima de ' + SCORE_FAIXA_SAUDAVEL + ' é saudável, entre ' + SCORE_FAIXA_ATENCAO + ' e ' + SCORE_FAIXA_SAUDAVEL + ' é atenção e abaixo de ' + SCORE_FAIXA_ATENCAO + ' é risco.',
     ['como é calculada a pontuação do cs', 'qual o peso de cada indicador', 'o que é o ranking', 'cs top 3', 'por que estou sem dados suficientes'], ['score', 'ranking', 'top 3', 'nota do cs'],
     { cs: '/?aba=indicadores', gestor: '/gestor?aba=visaoGeral#mapa-time' }),

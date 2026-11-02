@@ -6,6 +6,8 @@
 // definir_metas_lote (checa is_gestor de novo dentro do banco, audita uma linha só).
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
+import { criarContexto, pisosRevenueChurn } from '@/lib/metas-sugestao-dados';
+import { formatarReais } from '@/lib/metas-carteira';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +68,18 @@ export async function POST(req: NextRequest) {
     }));
     if (itens.some((it: any) => !it.indicador || !it.escopo || !Number.isFinite(it.valor))) {
       return NextResponse.json({ error: 'Item inválido no lote.' }, { status: 400 });
+    }
+
+    // Revenue Churn (02/11/2026): a meta de um CS não pode ficar abaixo do MRR do produto mais barato da carteira
+    // dele, senão não comporta nem um churn (lib/metas-carteira.ts). Só monta o contexto se o lote tiver esse item.
+    const revenue = itens.filter((it: any) => it.indicador === 'revenue_churn' && it.escopo === 'cs' && it.cs_nome);
+    if (revenue.length) {
+      const pisos = pisosRevenueChurn(await criarContexto(supabase));
+      const abaixo = revenue.filter((it: any) => { const p = pisos[it.cs_nome]?.piso; return p !== null && p !== undefined && it.valor < p; });
+      if (abaixo.length) {
+        const txt = abaixo.map((it: any) => `${it.cs_nome}: ${formatarReais(it.valor)} abaixo do piso de ${formatarReais(pisos[it.cs_nome].piso as number)}`).join('; ');
+        return NextResponse.json({ error: `Revenue Churn abaixo do MRR do produto mais barato da carteira. ${txt}.` }, { status: 400 });
+      }
     }
 
     const { data, error } = await supabase.rpc('definir_metas_lote', { p_mes: mes, p_itens: itens });

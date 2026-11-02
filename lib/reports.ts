@@ -1048,7 +1048,7 @@ function historicoDoCS(cicloAtual: any[], nomeCS: string) {
 // isso, já que o conjunto é fixo (catálogo sem tela de criação). Se um rótulo mudar no banco,
 // mudar aqui também (ver handoff/dados.pl).
 const ROTULO_INDICADOR_METAS: Record<string, string> = {
-  cases: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
+  cases: 'Cases de Sucesso', matchmakings: 'Matchmakings', matchmakings_resultado: 'Matchmakings com resultado', rounds: 'Rounds',
   indicacoes: 'Indicações', upsell: 'Upsell', downsell: 'Downsell',
   churn: 'Churn', revenue_churn: 'Revenue Churn', health_base: 'Health da Base', critico: 'Críticos',
 };
@@ -1140,10 +1140,18 @@ function parseCases(casesRows: any[], nomeCompletoCS: string | string[], mes: st
     .map((r) => ({ id: r.id, nome: r.nome, empresa: r.empresa || '', produto: r.produto || '' }));
 }
 
-function parseMatchmakings(mmRows: any[], userId: number | null, mes: string, ano: number, geral: boolean) {
-  if (userId === null || userId === undefined) return 0;
+function matchmakingsDoCS(mmRows: any[], userId: number | null, mes: string, ano: number, geral: boolean): any[] {
+  if (userId === null || userId === undefined) return [];
   const filtradas = geral ? filtrarAnoFlexivel(mmRows, ano) : filtrarPorMesAnoFlexivel(mmRows, mes, ano);
-  return filtradas.filter((r) => Number(r.creator_id) === userId).length;
+  return filtradas.filter((r) => Number(r.creator_id) === userId);
+}
+function parseMatchmakings(mmRows: any[], userId: number | null, mes: string, ano: number, geral: boolean) {
+  return matchmakingsDoCS(mmRows, userId, mes, ano, geral).length;
+}
+// Matchmaking com resultado (02/11/2026): o follow foi respondido, isto é, a coluna Resultado
+// (long_texto8zt8o1n) do board Matchmaking está preenchida. Fonte única desta regra.
+export function matchmakingTemResultado(r: { resultado?: string | null }): boolean {
+  return typeof r.resultado === 'string' && r.resultado.trim().length > 0;
 }
 
 function parseRounds(roundsRows: any[], nomeCompletoCS: string | string[], mes: string, geral: boolean) {
@@ -1462,7 +1470,9 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const churn = parseChurn(dados.churn, grafias, mesInicio, mesFim);
   const casesRegistrados = parseCases(dados.cases, grafias, seletorMes, ano, geral);
   const casesCalc = casesRegistrados.length;
-  const mmCalc = parseMatchmakings(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
+  const mmDoCS = matchmakingsDoCS(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
+  const mmCalc = mmDoCS.length;
+  const mmResultadoCalc = mmDoCS.filter(matchmakingTemResultado).length;
   const roundsCalc = parseRounds(dados.rounds, grafias, seletorMes, geral);
   const upDown = parseUpsellDownsell(dados.upsellDownsell, grafias, mesInicio, mesFim);
   const semanal = parseReportsSemanais(resumo, cfg.nome, mesInicio, mesFim);
@@ -1528,6 +1538,8 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
       revenueChurn: { meta: metas['Revenue Churn']?.meta ?? null, tipoMeta: 'max', alcancado: churn.revenueChurn, unidade: 'R$', detalheProdutos: churn.detalheProdutos },
       casesSucesso: { meta: metas['Cases de Sucesso']?.meta ?? null, tipoMeta: 'min', alcancado: casesR.valor, fonte: casesR.fonte, unidade: 'qtd', manual: casesR.manual, calculado: casesR.calculado },
       matchmakings: { meta: metas['Matchmakings']?.meta ?? null, tipoMeta: 'min', alcancado: mmR.valor, fonte: mmR.fonte, unidade: 'qtd', manual: mmR.manual, calculado: mmR.calculado },
+      // Matchmakings do CS com o follow respondido (Resultado preenchido no Monday) e a base de matchmakings do período.
+      matchmakingsResultado: { meta: metas['Matchmakings com resultado']?.meta ?? null, tipoMeta: 'min', alcancado: mmResultadoCalc, fonte: 'calculado', unidade: 'qtd', manual: null, calculado: mmResultadoCalc, base: mmCalc },
       rounds: { meta: metas['Rounds']?.meta ?? null, tipoMeta: 'min', alcancado: roundsR.valor, fonte: roundsR.fonte, unidade: 'qtd', manual: roundsR.manual, calculado: roundsR.calculado },
       upsell: { meta: metas['Upsell']?.meta ?? null, tipoMeta: 'min', alcancado: upsellR.valor, fonte: upsellR.fonte, unidade: 'qtd', manual: upsellR.manual, calculado: upsellR.calculado },
       downsell: { meta: metas['Downsell']?.meta ?? null, tipoMeta: 'max', alcancado: downsellR.valor, fonte: downsellR.fonte, unidade: 'qtd', manual: downsellR.manual, calculado: downsellR.calculado },
@@ -1575,6 +1587,7 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // O ALCANÇADO não muda: continua exatamente a mesma conta de sempre (linha abaixo).
   const CHAVE_TS_PARA_INDICADOR: Record<string, string> = {
     churn: 'churn', revenueChurn: 'revenue_churn', casesSucesso: 'cases', matchmakings: 'matchmakings',
+    matchmakingsResultado: 'matchmakings_resultado',
     rounds: 'rounds', upsell: 'upsell', downsell: 'downsell', indicacoes: 'indicacoes', healthDaBase: 'health_base',
   };
   function metaTimeResolvida(chaveTs: string): number | null {
@@ -1681,7 +1694,7 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // meta/realizado/status/recorde calculados no banco (mesma regra de agregacao_time do catálogo).
   const INDICADOR_PARA_CHAVE_TS: Record<string, string> = {
     churn: 'churn', revenue_churn: 'revenueChurn', cases: 'casesSucesso', matchmakings: 'matchmakings',
-    rounds: 'rounds', upsell: 'upsell', downsell: 'downsell', indicacoes: 'indicacoes', health_base: 'healthDaBase',
+    matchmakings_resultado: 'matchmakingsResultado', rounds: 'rounds', upsell: 'upsell', downsell: 'downsell', indicacoes: 'indicacoes', health_base: 'healthDaBase',
   };
   const recordes: Record<string, { emRecorde: boolean; recordeValor: number | null; recordeMes: string | null }> = {};
   if (!geral) {
@@ -1709,6 +1722,8 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
       // acima) — nunca soma o `calculado` já creditado a cada CS do registro compartilhado.
       casesSucesso: { ...somaInd('casesSucesso'), alcancado: casesUnicosTime },
       matchmakings: somaInd('matchmakings'),
+      // Base é o total de matchmakings dos CS somados, para o card mostrar a taxa de follow respondido.
+      matchmakingsResultado: { ...somaInd('matchmakingsResultado'), base: somaInd('matchmakings').alcancado },
       rounds: { ...somaInd('rounds'), alcancado: roundsUnicosTime },
       upsell: { ...somaInd('upsell'), alcancado: upsellDownsellUnicosTime.upsell },
       downsell: { ...somaInd('downsell'), alcancado: upsellDownsellUnicosTime.downsell },
@@ -1957,10 +1972,10 @@ export async function generateHomeResumoCS(sb: SupabaseClient, seletorMes: strin
 // manual quando existe, e a divergência entre os dois — pra gestão enxergar quando um CS está
 // reportando manualmente um número mais otimista do que o sistema encontra sozinho.
 
-const INDICADORES_GESTOR = ['churn', 'casesSucesso', 'matchmakings', 'rounds', 'upsell', 'downsell', 'indicacoes'] as const;
+const INDICADORES_GESTOR = ['churn', 'casesSucesso', 'matchmakings', 'matchmakingsResultado', 'rounds', 'upsell', 'downsell', 'indicacoes'] as const;
 
 const LABELS_INDICADOR: Record<string, string> = {
-  churn: 'Churn', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds',
+  churn: 'Churn', casesSucesso: 'Cases de Sucesso', matchmakings: 'Matchmakings', matchmakingsResultado: 'Matchmakings com resultado', rounds: 'Rounds',
   upsell: 'Upsell', downsell: 'Downsell', indicacoes: 'Indicações', cumprimentoGtd: 'Cumprimento do GTD',
   numConselhos: 'Carteira de conselhos', healthDaBase: 'Health da Base',
 };

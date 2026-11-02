@@ -1988,6 +1988,7 @@ function kpiCard(label, ind, unidade, timeInd, blurTime, recorde, idDom){
   var terceiraLinha = (semValor && ind.observacaoSemValor) ? '<div class="kpi-sub">'+ind.observacaoSemValor+'</div>'
     : ind.cobertura ? '<div class="kpi-cobertura">'+ind.cobertura+'</div>'
     : (ind.percentualBase!==null && ind.percentualBase!==undefined) ? '<div class="kpi-sub">'+ind.percentualBase.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 })+'% da base de '+ind.membrosTotal+' membros</div>'
+    : (ind.base!==null && ind.base!==undefined && !semValor) ? '<div class="kpi-sub">'+(ind.base>0 ? Math.round(ind.alcancado/ind.base*100)+'% dos '+ind.base+' matchmakings com follow respondido' : 'Nenhum matchmaking no período')+'</div>'
     : recordeLinha;
   return '<div class="kpi"'+(idDom?' id="'+idDom+'"':'')+composicaoAttr+'><div class="kpi-top"><div class="kpi-label-wrap"><div class="kpi-label">'+label+'</div>'+fonteHtml+'</div><span class="kpi-pill '+c.pill+'">'+c.pillLabel+'</span>'+recordeBadge+'</div>' +
     '<div class="kpi-body"><div class="m-fill-wrap"><div class="m-fill-liquid '+c.cor+'" style="height:0%;" data-target="'+c.pct+'"></div></div>' +
@@ -2079,6 +2080,7 @@ var pendExpandida_ = false;
 var INDICADORES_MES_ = [
   { k:'churn', l:'Churn', rec:'churn' }, { k:'revenueChurn', l:'Revenue Churn', rec:'revenue_churn', u:'R$' },
   { k:'casesSucesso', l:'Cases de Sucesso', rec:'cases' }, { k:'matchmakings', l:'Matchmakings', rec:'matchmakings' },
+  { k:'matchmakingsResultado', l:'Matchmakings com resultado', rec:'matchmakings_resultado' },
   { k:'rounds', l:'Rounds', rec:'rounds' }, { k:'indicacoes', l:'Indicações', rec:'indicacoes' },
   { k:'healthDaBase', l:'Críticos', rec:'health_base' }, { k:'upsell', l:'Upsell', rec:'upsell' }, { k:'downsell', l:'Downsell', rec:'downsell' }
 ];
@@ -3031,20 +3033,20 @@ function abrirScoreModal(idx){
     var meta = (item.meta===null||item.meta===undefined) ? '—' : item.meta;
     var ach = (item.achievementPct===null||item.achievementPct===undefined) ? '—' : item.achievementPct+'%';
     var semMeta = !!item.semMeta;
-    var avisoMeta = semMeta ? '<span class="meta-aviso" title="Sem meta cadastrada: o indicador fica fora da média.">sem meta</span>' : (item.semPontos ? '<span class="meta-aviso" title="A carteira não dá pontos: mede alocação, não desempenho.">sem pontos</span>' : '');
+    var avisoMeta = semMeta ? '<span class="meta-aviso" title="Sem meta cadastrada: o indicador fica fora da média.">sem meta</span>' : (item.semPontos ? '<span class="meta-aviso" title="A carteira não dá pontos: mede alocação, não desempenho.">sem pontos</span>' : (item.redutor ? '<span class="meta-aviso" title="Churn e Downsell não somam pontos: só descontam quando passam do limite.">redutor</span>' : ''));
     var alem = (item.alemDaMetaPct > 0) ? ', ' + item.alemDaMetaPct + '% além da meta' : '';
     return '<div class="score-detalhe-row">' +
       '<span class="score-detalhe-label">'+item.label+avisoMeta+'</span>' +
       '<span class="score-detalhe-peso">peso '+item.peso+'</span>' +
       '<span class="score-detalhe-valor">'+(semMeta ? val+' · sem meta' : val+' / '+meta+' · '+ach+alem)+'</span>' +
-      '<span class="score-detalhe-pontos">'+(item.semPontos ? 'sem pontos' : ((semMeta||item.pontos===null||item.pontos===undefined) ? 'fora da média' : item.pontos+' pts'))+'</span>' +
+      '<span class="score-detalhe-pontos">'+(item.semPontos ? 'sem pontos' : ((semMeta||item.pontos===null||item.pontos===undefined) ? 'fora da média' : (item.redutor ? (item.pontos < 0 ? item.pontos+' pts' : 'dentro do limite') : item.pontos+' pts')))+'</span>' +
     '</div>';
   }).join('');
   document.getElementById('caseModalBody').innerHTML =
     '<div class="case-modal-header"><div><div class="case-modal-nome">'+d.nome+'</div>' +
     '<div class="case-modal-empresa">Pontuação: '+(d.score===null?'—':d.score)+'</div></div></div>' +
     '<div class="case-modal-campo"><div class="case-modal-label">Como a pontuação foi composta</div>' + linhas +
-    '<div class="case-modal-texto" style="margin-top:12px;color:#9F9F9F;">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos. Quem supera a meta passa de 100.</div></div>';
+    '<div class="case-modal-texto" style="margin-top:12px;color:#9F9F9F;">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos. Churn e Downsell não somam: só descontam, na proporção do estouro, quando passam do limite. Quem supera a meta passa de 100.</div></div>';
   document.getElementById('caseModalOverlay').classList.add('ativo');
 }
 

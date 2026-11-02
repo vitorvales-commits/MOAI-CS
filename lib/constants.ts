@@ -111,8 +111,10 @@ export const PESO_CARTEIRA_NA_PONTUACAO = 0;
 // Indicadores de máximo (Churn e Downsell) continuam limitados a 1. Para limitar, preencha aqui.
 export const TETO_APROVEITAMENTO_INDICADOR: number | null = null;
 
-// Pesos do CS Top 3 (pontuação ponderada). Sem a Carteira os demais somam 85 e são renormalizados
-// sobre os indicadores elegíveis, então bater exatamente todas as metas vale 100. Ver lib/pontuacao.ts.
+// Pesos do CS Top 3 (pontuação ponderada). Os de crescimento (cases, matchmakings, rounds, upsell,
+// indicações) somam 72 e são renormalizados sobre os elegíveis, então bater exatamente todas as metas vale
+// 100. Churn e Downsell são redutores (02/11/2026): o peso deles só define quanto descontam quando passam do
+// limite, nunca soma. Ver lib/pontuacao.ts.
 export const PESOS_SCORE_CS: Record<string, number> = {
   carteira: PESO_CARTEIRA_NA_PONTUACAO,
   casesSucesso: 18,
@@ -293,26 +295,27 @@ export const HOME_FOCO_DIAS_REPORT = 1;
 // Simulação da pontuação (7.5): o próximo patamar inteiro relevante é o múltiplo de 5 acima da nota atual.
 export const HOME_PATAMAR_PONTUACAO = 5;
 
-// ============ sugestão de metas (22/10/2026) ============
+// ============ sugestão de metas (22/10/2026, refeita em 02/11/2026) ============
 // Modelo determinístico em lib/metas-sugestao.ts, sem IA. Todas as constantes do modelo moram aqui.
-// Quantos meses fechados, antes do mês alvo, entram na estimativa da taxa (o mês corrente nunca entra).
+// A versão de 22/10 estimava taxa por conselho realizado e encolhia para a taxa do time; como o histórico de
+// conselhos realizados é parcial, a taxa ficava distorcida e as sugestões saíam abaixo do realizado. A versão
+// de 02/11 parte do que o próprio CS entregou nos últimos meses fechados, que é o número que o gestor reconhece.
+// Quantos meses fechados, antes do mês alvo, entram na estimativa (o mês corrente nunca entra).
 export const JANELA_SUGESTAO_MESES = 3;
-// Força do prior do time, em conselhos de exposição: o CS com poucos conselhos no histórico (como quem
-// acabou de entrar) herda a taxa do time; com muito histórico, prevalece a própria taxa.
-export const FORCA_PRIOR_CONSELHOS = 6;
-// Mesma ideia para o churn, cuja exposição é medida em membros ativos da carteira (cerca de 6 por conselho).
-export const FORCA_PRIOR_MEMBROS = 36;
+// Pesos dos meses da janela, do mais recente para o mais antigo. Renormalizados sobre os meses existentes.
+export const PESOS_MESES_SUGESTAO = [0.5, 0.3, 0.2];
+// Meses com dado próprio a partir dos quais a sugestão usa o histórico do CS; abaixo disso usa a média do time
+// por conselho aplicada à carteira dele, com a rampa de CS novo.
+export const MIN_MESES_HISTORICO_PROPRIO = 2;
 // Fator de carteira por mês de casa: primeiro mês 60%, segundo 80%, a partir do terceiro 100%.
 export const RAMPA_CS_NOVO = [0.6, 0.8];
 // Crescimento pedido sobre o esperado nos indicadores de direção mínima.
 export const CRESCIMENTO_ALVO = 0.1;
 // Redução pedida sobre o esperado nos indicadores de direção máxima (churn).
 export const REDUCAO_ALVO_RETENCAO = 0.1;
-// Esperado abaixo disto não vira meta (arredondaria para zero); a partir disto a meta mínima é 1.
+// Esperado abaixo disto não vira meta de crescimento (arredondaria para zero); a partir disto a meta mínima é 1.
 export const LIMIAR_META_MINIMA = 0.5;
-// Exposição total do time na janela (soma de conselhos realizados) abaixo disto: não sugere.
-export const MIN_EXPOSICAO_SUGESTAO = 6;
-// Erro médio acima disto bloqueia o botão do indicador até revisão do gestor.
+// Erro médio acima disto bloqueia o botão do indicador até revisão do gestor (validação retroativa).
 export const ERRO_MEDIO_MAX_SUGESTAO = 0.5;
 
 // ============ pontos automáticos, alerta de NPS e relatório do conselho (22/10/2026) ============

@@ -307,6 +307,13 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .matriz-input.invalido{border-color:var(--vermelho);}
 .matriz-col-time{background:rgba(200,154,46,0.06);}
 .matriz-input.sugerido{box-shadow:0 0 0 2px var(--dourado);}
+.matriz-input.reais{width:84px;}
+.matriz-ant{display:block;margin-top:4px;font-size:10.5px;line-height:1.25;color:var(--cinza-apoio);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.matriz-ant.abaixo{color:var(--vermelho);font-weight:600;}
+.matriz-ant.sk-ant{display:block;width:46px;height:9px;margin:5px auto 0;border-radius:4px;background:var(--cinza-fundo);}
+.matriz-piso{display:block;margin-top:2px;font-size:10px;color:var(--cinza-apoio);white-space:nowrap;}
+.matriz-piso.abaixo{color:var(--vermelho);font-weight:600;}
+.matriz-legenda{font-size:12px;color:var(--cinza-apoio);margin:0 0 10px;line-height:1.5;}
 .sg-fundo{position:fixed;inset:0;background:rgba(20,20,20,.35);z-index:80;}
 .sg-fundo[hidden],.sg-painel[hidden]{display:none;}
 .sg-painel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--bg);z-index:81;box-shadow:-12px 0 40px rgba(20,20,20,.18);display:flex;flex-direction:column;}
@@ -322,9 +329,10 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .sg-nota{font-size:12.5px;color:var(--ink2);line-height:1.5;margin:6px 0 10px;}
 .sg-linha{display:grid;grid-template-columns:78px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);}
 .sg-nome{font-size:12.5px;font-weight:600;}
-.sg-b{display:grid;grid-template-columns:54px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;color:var(--ink2);margin:2px 0;}
+.sg-b{display:grid;grid-template-columns:62px 1fr 64px;gap:8px;align-items:center;font-size:11.5px;color:var(--ink2);margin:2px 0;}
 .sg-b b{color:var(--ink);text-align:right;}
 .sg-b .bar{height:7px;}
+.sg-nb{display:block;font-size:10.5px;font-weight:600;color:var(--vermelho);}
 .sg-det{margin-top:8px;font-size:12px;color:var(--ink2);}
 .sg-det summary{cursor:pointer;font-weight:600;color:var(--ink);}
 .sg-det p{margin:6px 0 0;line-height:1.5;}
@@ -843,7 +851,7 @@ ${SAUDE_DADOS_HTML}
   <aside class="sg-painel" id="sgPainel" role="dialog" aria-modal="true" aria-labelledby="sgTitulo" hidden>
     <div class="sg-topo">
       <h2 id="sgTitulo">Sugerir metas</h2>
-      <p id="sgSub">O modelo usa os últimos meses fechados, encolhe a taxa de quem tem pouco histórico para a do time e pede crescimento. Na validação de jul a set as sugestões ficaram abaixo do realizado em quase todos os casos, então revise antes de salvar. Nada é salvo sem o seu clique em Salvar alterações.</p>
+      <p id="sgSub">Cada sugestão parte do que a pessoa realizou nos últimos três meses fechados, com mais peso no mais recente, e pede 10% de crescimento. Quem bateu a meta do mês anterior nunca recebe régua menor. CS sem histórico próprio herda a média do time por conselho, com rampa. Revenue Churn sai da carteira de cada CS, com piso no MRR do produto mais barato. Nada é salvo sem o seu clique em Salvar alterações.</p>
       <div class="sg-acoes">
         <button class="btn pri" id="sgAplicarTudo" type="button" disabled>Aplicar à matriz</button>
         <button class="btn" id="sgFechar" type="button">Fechar</button>
@@ -949,6 +957,7 @@ ${RELATORIOS_GESTOR_HTML}
           <button class="btn gold" id="btnSugerirMetas" type="button">Sugerir metas</button>
         </div>
       </div>
+      <p class="matriz-legenda" id="legendaMatriz">Abaixo de cada campo, quanto a pessoa realizou no mês anterior contra a meta daquele mês. Em vermelho, quem não bateu. No Revenue Churn, o piso é o MRR do produto mais barato da carteira: a meta não pode ficar abaixo dele.</p>
       <p class="erro-msg" id="avisoMesPassadoMatriz" style="color:var(--dourado);display:none;">Este é um mês passado — alterar a meta muda a pontuação retroativa já calculada, e fica registrado na auditoria.</p>
       <p class="erro-msg" id="erroMatriz"></p>
       <div class="table-wrap"><div class="table-scroll">
@@ -2761,6 +2770,39 @@ var MESES_ABREV_MATRIZ = ['jan','fev','mar','abr','mai','jun','jul','ago','set',
 
 var MATRIZ_DADOS = null;
 var MATRIZ_ALTERACOES = {};
+// Realizado do mês anterior contra a meta e piso do Revenue Churn (02/11/2026), de /api/gestor/metas/desempenho.
+// Chega depois da matriz: até lá cada célula mostra um traço de carregamento.
+var MATRIZ_DESEMPENHO = null;
+var MATRIZ_DESEMPENHO_ERRO = null;
+var matrizReqDesempenho_ = 0;
+function matrizEhReais_(indicador) {
+  var c = MATRIZ_DADOS && MATRIZ_DADOS.catalogo.filter(function (x) { return x.chave === indicador; })[0];
+  return !!(c && c.unidade === 'reais');
+}
+function matrizNumBR_(v) { return Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }); }
+function matrizReais_(v) { return 'R$ ' + Math.round(Number(v)).toLocaleString('pt-BR'); }
+// Lê o que foi digitado. Em reais aceita o formato brasileiro: 2.497 e 2.497,50 viram 2497 e 2497,5.
+function matrizLerValor_(raw, reais) {
+  var t = String(raw).trim().replace(/^R\\$\\s*/i, '');
+  if (reais) t = t.replace(/\\./g, '').replace(',', '.');
+  else t = t.replace(',', '.');
+  if (t === '' || !/^\\d+(\\.\\d+)?$/.test(t)) return null;
+  return Number(t);
+}
+function carregarDesempenhoMatriz_(mes) {
+  var minha = ++matrizReqDesempenho_;
+  MATRIZ_DESEMPENHO = null; MATRIZ_DESEMPENHO_ERRO = null;
+  fetchJSON_('/api/gestor/metas/desempenho?mes=' + encodeURIComponent(mes)).then(function (d) {
+    if (minha !== matrizReqDesempenho_) return;
+    MATRIZ_DESEMPENHO = d;
+    renderMatrizTabela_();
+  }).catch(function (err) {
+    if (minha !== matrizReqDesempenho_) return;
+    MATRIZ_DESEMPENHO_ERRO = err.message || String(err);
+    document.getElementById('legendaMatriz').textContent = 'Não foi possível trazer o realizado do mês anterior: ' + MATRIZ_DESEMPENHO_ERRO + '. A matriz continua editável.';
+    renderMatrizTabela_();
+  });
+}
 
 function matrizChave_(indicador, escopo, csNome) { return indicador + '|' + escopo + '|' + (csNome || ''); }
 function formatarMesAnoCurto_(iso) {
@@ -2795,6 +2837,7 @@ function carregarMatriz() {
     MATRIZ_ALTERACOES = {};
     atualizarStatusMatriz_();
     renderMatrizTabela_();
+    carregarDesempenhoMatriz_(mes);
     popularSelectRecordeIndicador_();
     popularSelectRecordeCS_();
   }).catch(function (err) {
@@ -2802,13 +2845,41 @@ function carregarMatriz() {
   });
 }
 
+// Linha do mês anterior abaixo do campo: realizado de meta, em vermelho só quando não bateu (cor só na exceção).
+function matrizAnteriorHtml_(indicador, escopo, csNome) {
+  if (MATRIZ_DESEMPENHO_ERRO) return '';
+  if (!MATRIZ_DESEMPENHO) return '<span class="matriz-ant sk-ant" aria-hidden="true"></span>';
+  var ant = MATRIZ_DESEMPENHO.anterior, por = ant && ant.porIndicador ? ant.porIndicador[indicador] : null;
+  var c = por ? (escopo === 'time' ? por.time : por.porCS[csNome]) : null;
+  var rot = formatarMesAnoCurto_(ant.mes).split('/')[0];
+  // Sem meta e sem realizado no mês anterior não há o que comparar: a célula fica limpa, sem ruído.
+  if (!c || (c.realizado === null && c.meta === null)) return '';
+  var reais = matrizEhReais_(indicador);
+  var f = function (v) { return v === null || v === undefined ? 'sem' : (reais ? matrizReais_(v) : matrizNumBR_(v)); };
+  var txt = c.meta === null ? rot + ' ' + f(c.realizado) + ', sem meta' : rot + ' ' + f(c.realizado) + ' de ' + f(c.meta) + (c.pct !== null ? ' (' + c.pct + '%)' : '');
+  var titulo = escopo === 'time' ? 'Time' : csNome;
+  return '<span class="matriz-ant' + (c.bateu === false ? ' abaixo' : '') + '" title="' + titulo + ' em ' + formatarMesAnoCurto_(ant.mes) + ': realizado ' + f(c.realizado) + ', meta ' + f(c.meta) + (c.bateu === false ? ', não bateu' : (c.bateu ? ', bateu' : '')) + '">' + txt + '</span>';
+}
+function matrizPisoHtml_(indicador, escopo, csNome, valor) {
+  if (indicador !== 'revenue_churn' || escopo !== 'cs' || !MATRIZ_DESEMPENHO || !MATRIZ_DESEMPENHO.pisosRevenueChurn) return '';
+  var p = MATRIZ_DESEMPENHO.pisosRevenueChurn[csNome];
+  if (!p || p.piso === null || p.piso === undefined) return '';
+  var abaixo = valor !== '' && valor !== null && valor !== undefined && Number(valor) < p.piso;
+  var comp = (p.composicao || []).map(function (x) { return x.conselhos + ' ' + x.produto; }).join(', ');
+  return '<span class="matriz-piso' + (abaixo ? ' abaixo' : '') + '" data-piso-de="' + matrizChave_(indicador, escopo, csNome) + '" title="Carteira: ' + comp + '">piso ' + matrizReais_(p.piso) + '</span>';
+}
 function matrizCelulaHtml_(indicador, escopo, csNome, resolvidoIndex, mesAtualMatriz) {
   var chave = matrizChave_(indicador, escopo, csNome);
   var resolvido = resolvidoIndex[chave];
-  var valor = (resolvido && resolvido.valor !== null && resolvido.valor !== undefined) ? resolvido.valor : '';
-  var herdado = !!(resolvido && resolvido.mes_origem && resolvido.mes_origem !== mesAtualMatriz);
+  var pendente = MATRIZ_ALTERACOES[chave];
+  var valorNum = pendente ? pendente.valor : ((resolvido && resolvido.valor !== null && resolvido.valor !== undefined) ? Number(resolvido.valor) : '');
+  var herdado = !pendente && !!(resolvido && resolvido.mes_origem && resolvido.mes_origem !== mesAtualMatriz);
   var titulo = herdado ? ' title="Herdado de ' + formatarMesAnoCurto_(resolvido.mes_origem) + '"' : '';
-  return '<input type="number" min="0" class="matriz-input' + (herdado ? ' herdado' : '') + '" data-chave="' + chave + '" data-indicador="' + indicador + '" data-escopo="' + escopo + '" data-cs="' + (csNome || '') + '" value="' + valor + '"' + titulo + '>';
+  var reais = matrizEhReais_(indicador);
+  var mostrado = valorNum === '' ? '' : (reais ? Math.round(valorNum).toLocaleString('pt-BR') : valorNum);
+  var tipo = reais ? 'type="text" inputmode="numeric" placeholder="R$"' : 'type="number" min="0"';
+  return '<input ' + tipo + ' class="matriz-input' + (reais ? ' reais' : '') + (herdado ? ' herdado' : '') + (pendente ? ' alterado' : '') + '" data-chave="' + chave + '" data-indicador="' + indicador + '" data-escopo="' + escopo + '" data-cs="' + (csNome || '') + '" value="' + mostrado + '"' + titulo + '>'
+    + matrizPisoHtml_(indicador, escopo, csNome, valorNum) + matrizAnteriorHtml_(indicador, escopo, csNome);
 }
 
 function renderMatrizTabela_() {
@@ -2846,12 +2917,26 @@ function onMatrizInputMudou_(input) {
   var raw = input.value.trim();
   input.classList.remove('invalido');
   if (raw === '') { delete MATRIZ_ALTERACOES[chave]; input.classList.remove('alterado'); atualizarStatusMatriz_(); return; }
-  var num = Number(raw);
-  if (!isFinite(num) || num < 0) { input.classList.add('invalido'); return; }
+  var num = matrizLerValor_(raw, matrizEhReais_(input.dataset.indicador));
+  if (num === null || !isFinite(num) || num < 0) { input.classList.add('invalido'); return; }
   MATRIZ_ALTERACOES[chave] = { indicador: input.dataset.indicador, escopo: input.dataset.escopo, csNome: input.dataset.cs || null, valor: num };
   input.classList.add('alterado');
   input.classList.remove('herdado');
+  var piso = document.querySelector('[data-piso-de="' + chave + '"]');
+  if (piso && MATRIZ_DESEMPENHO) {
+    var p = MATRIZ_DESEMPENHO.pisosRevenueChurn[input.dataset.cs];
+    piso.classList.toggle('abaixo', !!(p && p.piso !== null && num < p.piso));
+  }
   atualizarStatusMatriz_();
+}
+
+// Revenue Churn de CS abaixo do piso da carteira: bloqueia o salvamento com o motivo, igual ao servidor.
+function matrizAbaixoDoPiso_() {
+  if (!MATRIZ_DESEMPENHO || !MATRIZ_DESEMPENHO.pisosRevenueChurn) return [];
+  return Object.keys(MATRIZ_ALTERACOES).map(function (k) { return MATRIZ_ALTERACOES[k]; }).filter(function (a) {
+    var p = a.indicador === 'revenue_churn' && a.escopo === 'cs' ? MATRIZ_DESEMPENHO.pisosRevenueChurn[a.csNome] : null;
+    return p && p.piso !== null && a.valor < p.piso;
+  }).map(function (a) { return a.csNome + ' (piso ' + matrizReais_(MATRIZ_DESEMPENHO.pisosRevenueChurn[a.csNome].piso) + ')'; });
 }
 
 function atualizarStatusMatriz_() {
@@ -2864,6 +2949,11 @@ function salvarMatriz_() {
   var mes = matrizMesAtual_();
   var itens = Object.keys(MATRIZ_ALTERACOES).map(function (k) { return MATRIZ_ALTERACOES[k]; });
   if (!mes || !itens.length) return;
+  var abaixo = matrizAbaixoDoPiso_();
+  if (abaixo.length) {
+    document.getElementById('erroMatriz').textContent = 'Revenue Churn abaixo do MRR do produto mais barato da carteira: ' + abaixo.join(', ') + '. Ajuste antes de salvar.';
+    return;
+  }
   document.getElementById('btnSalvarMatriz').disabled = true;
   document.getElementById('erroMatriz').textContent = '';
   fetchJSON_(ENDPOINT_METAS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mes: mes, itens: itens }) })
@@ -3064,31 +3154,44 @@ function fecharSugestaoMetas_() {
   document.getElementById('sgFundo').hidden = true;
   document.getElementById('sgPainel').hidden = true;
 }
-function sgNum_(v) { return v === null || v === undefined ? 'sem' : String(Math.round(v * 10) / 10).replace('.', ','); }
-function sgBarra_(rotulo, valor, max, classe) {
-  var pct = valor === null || valor === undefined || !max ? 0 : Math.min(100, Math.round(valor / max * 100));
-  return '<div class="sg-b"><span>' + rotulo + '</span><span class="bar"><span class="' + (classe || '') + '" style="width:' + pct + '%"></span></span><b>' + sgNum_(valor) + '</b></div>';
+function sgNum_(v, reais) {
+  if (v === null || v === undefined) return 'sem';
+  return reais ? matrizReais_(v) : String(Math.round(v * 10) / 10).replace('.', ',');
 }
+function sgBarra_(rotulo, valor, max, classe, reais) {
+  var pct = valor === null || valor === undefined || !max ? 0 : Math.min(100, Math.round(valor / max * 100));
+  return '<div class="sg-b"><span>' + rotulo + '</span><span class="bar"><span class="' + (classe || '') + '" style="width:' + pct + '%"></span></span><b>' + sgNum_(valor, reais) + '</b></div>';
+}
+// Painel (02/11/2026): para cada pessoa, a meta do mês anterior, o que ela realizou e a sugestão. A leitura é a
+// pergunta do gestor ao definir a meta nova: quanto realizou da meta passada e para onde a régua vai agora.
 function renderSugestaoMetas_() {
   var d = SUGESTAO_;
   var nomes = Object.keys(d.indicadores.length ? d.indicadores[0].vigente.porCS : {});
+  var rotAnt = d.anterior ? formatarMesAnoCurto_(d.anterior.mes).split('/')[0] : 'anterior';
   var algum = false;
   var html = d.indicadores.map(function (ind) {
     if (ind.semModelo) {
       return '<div class="sg-cartao"><div class="sg-cab"><h3>' + escCS_(ind.rotulo) + '</h3><span class="tag">Por política</span></div><p class="sg-nota">' + escCS_(ind.semModelo) + '</p></div>';
     }
-    var valores = [ind.vigente.time, ind.mediaRealizada.time, ind.time && ind.time.sugerido];
-    nomes.forEach(function (n) { valores.push(ind.vigente.porCS[n], ind.mediaRealizada.porCS[n], ind.porCS[n] && ind.porCS[n].sugerido); });
+    var reais = ind.chave === 'revenue_churn';
+    var ant = d.anterior && d.anterior.porIndicador ? d.anterior.porIndicador[ind.chave] : null;
+    var celAnt = function (n) { return ant ? (n === null ? ant.time : ant.porCS[n]) : null; };
+    var valores = [];
+    var linhaDe = function (nome, rotulo, sug) {
+      var c = celAnt(nome) || {};
+      valores.push(c.meta, c.realizado, sug && sug.sugerido);
+      return { nome: rotulo, c: c, sug: sug };
+    };
+    var linhasDados = [linhaDe(null, 'Time', ind.time)];
+    nomes.forEach(function (n) { linhasDados.push(linhaDe(n, n, ind.porCS[n])); });
     var max = Math.max.apply(null, valores.filter(function (v) { return v !== null && v !== undefined; }).concat([1]));
     var tem = (ind.time && ind.time.sugerido !== null) || nomes.some(function (n) { return ind.porCS[n] && ind.porCS[n].sugerido !== null; });
     if (tem) algum = true;
-    var linhas = '<div class="sg-linha"><span class="sg-nome">Time</span><div>' +
-      sgBarra_('Meta', ind.vigente.time, max) + sgBarra_('Média', ind.mediaRealizada.time, max) + sgBarra_('Sugestão', ind.time && ind.time.sugerido, max, 'gold') + '</div></div>';
-    nomes.forEach(function (n) {
-      var s = ind.porCS[n];
-      linhas += '<div class="sg-linha"><span class="sg-nome">' + escCS_(n) + '</span><div>' +
-        sgBarra_('Meta', ind.vigente.porCS[n], max) + sgBarra_('Média', ind.mediaRealizada.porCS[n], max) + sgBarra_('Sugestão', s && s.sugerido, max, 'gold') + '</div></div>';
-    });
+    var linhas = linhasDados.map(function (l) {
+      var naoBateu = l.c.bateu === false;
+      return '<div class="sg-linha"><span class="sg-nome">' + escCS_(l.nome) + (naoBateu ? '<small class="sg-nb">não bateu ' + rotAnt + '</small>' : '') + '</span><div>' +
+        sgBarra_('Meta ' + rotAnt, l.c.meta, max, '', reais) + sgBarra_('Fez ' + rotAnt, l.c.realizado, max, naoBateu ? 'red' : '', reais) + sgBarra_('Sugestão', l.sug && l.sug.sugerido, max, 'gold', reais) + '</div></div>';
+    }).join('');
     var det = '<details class="sg-det"><summary>Como cada número foi calculado</summary>' +
       (ind.time ? '<p><b>Time.</b> ' + escCS_(ind.time.explicacao) + '</p>' : '') +
       nomes.map(function (n) { return ind.porCS[n] ? '<p><b>' + escCS_(n) + '.</b> ' + escCS_(ind.porCS[n].explicacao) + '</p>' : ''; }).join('') + '</details>';
@@ -3107,7 +3210,7 @@ function aplicarSugestao_(chaveInd) {
     if (valor === null || valor === undefined) return;
     var input = document.querySelector('.matriz-input[data-chave="' + matrizChave_(indicador, escopo, cs) + '"]');
     if (!input) { fora++; return; }
-    input.value = valor;
+    input.value = matrizEhReais_(indicador) ? Math.round(valor).toLocaleString('pt-BR') : valor;
     input.classList.add('sugerido');
     onMatrizInputMudou_(input);
     aplicados++;

@@ -9,7 +9,7 @@ import {
 } from './home-regras';
 
 const ROTULOS_CRESCIMENTO: Record<string, string> = {
-  casesSucesso: 'Cases de sucesso', matchmakings: 'Matchmakings', rounds: 'Rounds', indicacoes: 'Indicações',
+  casesSucesso: 'Cases de sucesso', matchmakings: 'Matchmakings', matchmakingsResultado: 'Matchmakings com resultado', rounds: 'Rounds', indicacoes: 'Indicações',
 };
 
 type IndicadorEquipe = { meta?: number | null; alcancado?: number | null; tipoMeta?: string; percentualBase?: number | null; membrosTotal?: number | null };

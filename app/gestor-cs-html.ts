@@ -505,6 +505,11 @@ function renderPontosCS(d) {
   var ordenados = op.itens.filter(function (x) { return !x.foraDaConta; }).concat(op.itens.filter(function (x) { return x.foraDaConta; }));
   var linhas = ordenados.map(function (x) {
     if (x.foraDaConta) {
+      if (x.motivoFora === 'redutor') {
+        var estoura = x.desconto > 0;
+        return '<div class="pontos-linha fora"><div><b>' + esc(x.label) + '</b><small>' + numFmt(x.valorAlcancado) + ' de limite ' + numFmt(x.meta) + ', só desconta se passar</small></div>'
+          + '<div class="pontos-barra" style="width:30%;background:#fff"></div><div class="num">' + (estoura ? '<span class="pontos-falta">−' + dec1_(x.desconto) + '</span> desconto' : 'dentro do limite') + '</div></div>';
+      }
       return '<div class="pontos-linha fora"><div><b>' + esc(x.label) + '</b><small>' + (x.motivoFora === 'informativo' ? 'informativo, não pontua' : 'sem meta') + '</small></div>'
         + '<div class="pontos-barra" style="width:30%;background:#fff"></div><div class="num">fora da conta</div></div>';
     }
@@ -514,7 +519,7 @@ function renderPontosCS(d) {
       + '<div class="pontos-barra" style="width:' + larg.toFixed(1) + '%"><i style="width:' + (larg ? cheio / larg * 100 : 0).toFixed(1) + '%"></i></div>'
       + '<div class="num"><b>' + dec1_(x.conquistado) + '</b> de ' + dec1_(x.pesoNormalizado) + (x.emAberto > 0 ? ' <span class="pontos-falta">−' + dec1_(x.emAberto) + '</span>' : '') + '</div></div>';
   }).join('');
-  el.innerHTML = cab + ins + linhas + '<div class="pontos-leg"><span>Preto: pontos conquistados</span><span>Hachurado: pontos em aberto</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>';
+  el.innerHTML = cab + ins + linhas + '<div class="pontos-leg"><span>Preto: pontos conquistados</span><span>Hachurado: pontos em aberto</span><span>Churn e Downsell não somam, só descontam quando passam do limite</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>';
 }
 
 // ---------- pauta do 1:1 (somente leitura) e GTD que pede atenção ----------
