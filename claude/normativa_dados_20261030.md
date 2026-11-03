@@ -130,9 +130,9 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Os dois comandos foram marcados como `cancelado`, com motivo "teste de ponta a ponta" no campo `erro`, para não aparecerem na fila de ação do gestor.
 - Chave `fila_escrita_ativa`: desligada. Será ligada como último passo da etapa 4b, depois do merge, pela função auditada `public.sincronia_definir_fila_ativa`.
 
-## Etapa 4b: parte 1 (backend, revisão ajustada pela terceira vez, 03/11/2026)
+## Etapa 4b: parte 1 (backend, concluída e em produção, 03/11/2026)
 
-- Migração `20261030g_sincronia_leitura` (ainda não aplicada; entra pelo workflow `aplicar-migracao` depois do merge):
+- Migração `20261030g_sincronia_leitura` (aplicada na produção em 03/11/2026 pelo workflow `aplicar-migracao`, execução 41683715160: dump com snapshot, teste na cópia restaurada e aplicação em transação única passaram; registrada em `supabase_migrations.schema_migrations` como versão `20261103172549`, nome `20261030g_sincronia_leitura`):
   - `sincronia.validar_edicao`: checagens da edição (fila ativa, colunas, papel e carteira) em uma função interna. Quem a usa são `public.enfileirar_edicao_monday` e `public.sincronia_resolver_conflito`, sem código duplicado.
   - `public.enfileirar_edicao_monday`: mesma assinatura da 20261030f; passa a chamar `sincronia.validar_edicao`.
   - `public.sincronia_comando_status(id)`: estado de um comando, para o cartão.
@@ -143,5 +143,6 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
   - `GET /api/monday/comando/[id]`: estado do comando e estado visual.
   - `POST /api/monday/comando/[id]/resolver`: corpo `{ acao, chave }`. A chave é obrigatória só para `reaplicar`. Chave já usada ou igual à do comando devolve 409 com a mensagem do banco.
 - Lógica pura em `lib/sincronia.ts`: validação da edição (com chave), validação da resolução, estado visual (enviando, salvo, conflito, resolvido, erro; `estadoVisual(estado, erro)` devolve `resolvido` para cancelado com erro iniciando em "resolvido:", e a rota GET passa o erro) e filtro da fila (erro ou conflito há mais de 24 horas). Testes em `tests/sincronia-edicao.test.ts`.
-- Verificação desta revisão: `tsc` sem erros; `tests/sincronia-edicao.test.ts` e `tests/fila-escrita.test.ts` passam; `npm run build` conclui. A migração 20261030g ainda não foi executada em banco. A execução real acontece na cópia de teste do workflow `aplicar-migracao`, antes de qualquer aplicação em produção.
+- Verificação desta revisão: `tsc` sem erros; `tests/sincronia-edicao.test.ts` e `tests/fila-escrita.test.ts` passam; `npm run build` conclui. PR #22 mesclado na main (`c936be7`); deploy do Vercel concluído.
+- Chave `fila_escrita_ativa` continua desligada em produção (conferido após a aplicação). Só será ligada depois da parte 2.
 - Pendente (parte 2): edição no cartão de visita com os estados e os botões "Usar o valor do Monday" e "Reaplicar a minha alteração"; bloco "Escritas no Monday pendentes" na Fila de ação; capturas em 1440 e 390 px. A parte 2 começa só depois da revisão desta parte.
