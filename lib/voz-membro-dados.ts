@@ -19,6 +19,8 @@ import {
   distribuicaoContinuidade, DIMENSOES_NOTA, PERGUNTAS_SAIDA, resumoRetorno, frasesRetorno,
   type TextoVoz, type RespostaNps, type ExtrasConselho, type FonteVoz, type ResumoTemas, TEMAS_MEMBRO,
 } from './voz-membro.ts';
+import { mesAtaCasa } from './mes-ata.ts';
+import { selectPaginado } from './supabase/paginar.ts';
 import { VOZ_MEMBRO_JANELA_MESES, AMOSTRA_MINIMA, STATUS_AUSENTE_SET } from './constants.ts';
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -105,20 +107,32 @@ function mediaDe(respostas: number, conselhos: number): number | null {
 }
 // Liga cada conselheiro da agenda aos group_id: pela view v_agenda_conselho_grupo quando existe; senão, pela regra
 // de casamento, com os aliases confirmados da tabela agenda_conselho_aliases (ou o alias fixo, se a tabela não existe).
+// Relação inexistente (42P01 no Postgres; o PostgREST devolve PGRST205 para tabela ou view fora do schema cache)
+// é o estado esperado enquanto as migrações 20261009b e 20261009c não forem aplicadas: avisa no log e segue com o
+// alias fixo. Qualquer outro erro é falha real e sobe.
+export function avisarSeFalta(relacao: string, error: { code?: string; message?: string }) {
+  if (error.code === '42P01' || error.code === 'PGRST205') {
+    console.warn(`[voz-membro] ${relacao} não existe no banco (migração pendente); usando só o casamento automático e o alias fixo`);
+    return;
+  }
+  throw new Error(`Erro ao buscar ${relacao}: ${error.message}`);
+}
 async function gruposDasAgenda(supabase: any, grupos: any[]): Promise<(nome: string) => string[]> {
   const aliasesDb: Record<string, string[]> = {};
-  try {
+  {
     const { data, error } = await supabase.from('agenda_conselho_aliases').select('conselheiro_nome, group_id').eq('confirmado', true);
-    if (!error && data) data.forEach((r: any) => { const k = chaveNome(r.conselheiro_nome); aliasesDb[k] = [...(aliasesDb[k] || []), r.group_id]; });
-  } catch { /* tabela ainda não aplicada */ }
+    if (error) avisarSeFalta('agenda_conselho_aliases', error);
+    else if (data) data.forEach((r: any) => { const k = chaveNome(r.conselheiro_nome); aliasesDb[k] = [...(aliasesDb[k] || []), r.group_id]; });
+  }
   let viaView: Map<string, string[]> | null = null;
-  try {
+  {
     const { data, error } = await supabase.from('v_agenda_conselho_grupo').select('conselheiro_nome, group_id');
-    if (!error && data) {
+    if (error) avisarSeFalta('v_agenda_conselho_grupo', error);
+    else if (data) {
       viaView = new Map();
       data.forEach((r: any) => { const k = chaveNome(r.conselheiro_nome); viaView!.set(k, [...(viaView!.get(k) || []), r.group_id]); });
     }
-  } catch { /* view ainda não aplicada */ }
+  }
   const aliases = { ...ALIASES_CONFIRMADOS_FALLBACK, ...aliasesDb };
   return (nome: string) => {
     const k = chaveNome(nome);
@@ -208,7 +222,9 @@ export async function carregarNpsConselhos(supabase: any, ref: string, cs: strin
     todas((de, ate) => supabase.from('conselhos_grupos').select('group_id, titulo, is_repo').order('group_id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_membros').select('id, group_id').order('id').range(de, ate)),
     todas((de, ate) => supabase.from('conselhos_status_mensal').select('membro_id, status').eq('mes', nomeMes(ref)).order('membro_id').range(de, ate)),
-    todas((de, ate) => supabase.from('atas_conselho_extraido').select('id, group_id, membro_nome_ata, ganhos').eq('mes_ata', `${nomeMes(ref)}/${ref.slice(0, 4)}`).order('id').range(de, ate)),
+    // Filtra em memória com normalizarMesAta: o igual exato perdia variantes como "Julho/2026 (Guia 12)".
+    selectPaginado(() => supabase.from('atas_conselho_extraido').select('id, group_id, mes_ata, membro_nome_ata, ganhos').order('id'), { nome: 'atas_conselho_extraido' })
+      .then((rows: any[]) => rows.filter((a) => mesAtaCasa(a.mes_ata, Number(ref.slice(5, 7)) - 1, Number(ref.slice(0, 4))))),
     buscarTermosIdentificaveis(supabase),
     todas((de, ate) => supabase.from('agenda_conselhos_items').select('conselheiro_nome, data_iso, status').order('id').range(de, ate)),
   ]);
