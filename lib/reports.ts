@@ -9,6 +9,7 @@
 import { filtrarCardsPorCS, fraseSituacaoConselhos } from './conselhos-aba';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unstable_noStore as noStore } from 'next/cache';
+import { normalizarMesAta } from './mes-ata';
 import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
@@ -2328,9 +2329,7 @@ const MESES_SEM_ACENTO = MESES_ORDEM.map(normalizarMesSemAcento);
 // nunca apareciam na tela. Aqui separa as duas partes; o ano explícito, quando existe, vence
 // qualquer inferência por agenda.
 function partesMesAta(mesAta: string): { mesIdx: number; ano: number | null } {
-  const m = String(mesAta || '').trim().match(/^([^\/\s\d]+)\s*(?:[\/\s-]\s*(\d{4}))?/);
-  if (!m) return { mesIdx: -1, ano: null };
-  return { mesIdx: MESES_SEM_ACENTO.indexOf(normalizarMesSemAcento(m[1])), ano: m[2] ? Number(m[2]) : null };
+  return normalizarMesAta(mesAta);
 }
 function indiceMesAta(mesAta: string): number {
   return partesMesAta(mesAta).mesIdx;
