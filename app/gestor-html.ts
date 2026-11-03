@@ -254,6 +254,18 @@ export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_C
 
 .gestor-empty{padding:24px;color:var(--cinza-apoio);font-size:13px;}
 .gestor-erro{padding:24px;color:var(--vermelho);font-size:13px;}
+.ved{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
+.ved[hidden]{display:none;}
+.ved-caixa{background:var(--branco);color:var(--ink);width:100%;max-width:520px;margin-top:6vh;padding:20px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.ved-caixa h3{margin:0 0 14px;font-size:16px;}
+.ved-campo{display:block;font-size:12px;color:var(--cinza-texto);margin-bottom:12px;}
+.ved-campo input,.ved-campo textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;font:inherit;font-size:14px;color:var(--ink);border:1px solid var(--cinza-borda);border-radius:8px;}
+.ved-estado{font-size:13px;margin:0 0 12px;}
+.ved-ok{color:var(--verde);font-weight:600;}
+.ved-erro{color:var(--vermelho);}
+.ved-conflito{display:grid;gap:10px;font-size:13px;margin-bottom:12px;padding:10px;background:var(--cinza-superficie);border-radius:8px;}
+.ved-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.ved-acoes .btn[disabled]{opacity:.55;cursor:not-allowed;}
 
 /* consulta rápida (pergunta em linguagem natural sobre metas, sem IA — lib/consulta.ts) */
 .consulta-painel{background:var(--branco);border:1px solid var(--cinza-borda);border-radius:20px;padding:24px;margin:28px 0 0;}
@@ -1797,6 +1809,23 @@ function itensFila_() {
         quem: a.texto.quem, quando: a.mes, acao: { rotulo: 'Ver conselho', href: '/conselho/' + encodeURIComponent(a.groupId) }, tratar: a.id });
     });
   }
+  // Escritas no Monday pendentes (03/11/2026): edição de visita em erro ou em conflito há mais de 24 horas.
+  var es = ACOES_.escritas;
+  if (es && es.erro) erros.push('Escritas no Monday pendentes indisponíveis: ' + es.erro);
+  if (es && es.dado) {
+    es.dado.forEach(function (e) {
+      var conflito = e.estado === 'conflito';
+      var horas = Math.max(0, Math.floor((Date.now() - new Date(e.executado_em || e.criado_em).getTime()) / 3600000));
+      var ha = horas < 48 ? horas + (horas === 1 ? ' hora' : ' horas') : Math.floor(horas / 24) + ' dias';
+      var partes = Object.keys(e.valores || {}).map(function (c) {
+        var v = visitaFmtValor_(c, e.valores[c]);
+        return (VISITA_ROTULOS_[c] || c) + ': ' + (v.length > 80 ? v.slice(0, 80) + '…' : v);
+      });
+      itens.push({ tipo: 'semana', cor: conflito ? 'gold' : 'red', titulo: 'Escrita no Monday ' + (conflito ? 'em conflito' : 'com erro') + (e.membro ? ': ' + e.membro : ''),
+        texto: 'Tentou gravar ' + (partes.length ? partes.join('; ') : 'uma alteração') + '. Parada há ' + ha + '.' + (!conflito && e.erro ? ' Erro: ' + e.erro : ''),
+        quem: e.criado_por || 'Autor não informado', quando: 'há ' + ha, acao: null, escrita: e.id });
+    });
+  }
   var ins = ACOES_.insights;
   if (ins && ins.erro) erros.push('Insights indisponíveis: ' + ins.erro);
   if (ins && ins.dado) {
@@ -1816,6 +1845,7 @@ function itemFilaHtml_(i) {
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
     '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
     + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '')
+    + (i.escrita ? '<button type="button" class="btn sm pri" data-escrita="' + escCS_(i.escrita) + '">Resolver</button>' : '')
     + (i.duvida ? '<button type="button" class="btn sm" data-duvida="' + escCS_(i.duvida) + '">Cadastrar como pergunta</button>' : '')
     + (i.orfa ? '<button type="button" class="btn sm" data-orfa="' + escCS_(i.orfa) + '">Reatribuir</button><button type="button" class="btn sm" data-orfa-descartar="' + escCS_(i.orfa) + '">Descartar</button>' : '') + '</div></div>';
 }
@@ -4220,10 +4250,272 @@ function churnRenderVisitas_(v) {
     v.c3.linhas.map(function (l) {
       return [churnEsc_(l.membro || '-'), churnEsc_(l.cs || '-'), churnEsc_(l.etapa), churnEsc_(churnDataBR_(l.dataPedido)), churnEsc_(churnDataBR_(l.dataVisita)), churnEsc_(l.diasAteVisita === null ? '-' : l.diasAteVisita), churnEsc_(churnMoeda_(l.mrr)),
         churnEsc_(l.acaoPrincipal || '-'), churnEsc_(l.causaRaiz || '-'), churnEsc_(l.termometro || '-'), churnEsc_(l.retido90), churnEsc_(l.iev === null ? 'em maturação' : l.iev),
-        '<a href="' + churnEsc_(l.link) + '" target="_blank" rel="noopener">Abrir</a>'];
+        '<a href="' + churnEsc_(l.link) + '" target="_blank" rel="noopener">Abrir</a> ' +
+          (l.mondayUpdatedAt ? '<button type="button" class="btn sm" data-visita-editar="' + churnEsc_(l.id) + '">Editar</button>'
+            : '<button type="button" class="btn sm" disabled>Aguardando a próxima sincronização</button>')];
     })) + '<p class="churn-nota">' + v.c3.total + ' visitas no período. Uso interno da gestão, com nome do membro.</p>';
   document.getElementById('visitasCsv').href = ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(v.ref) + '&formato=csv';
 }
+
+// ---- edição de visitas no Monday (etapa 4b, parte 2, 03/11/2026) ----
+// Piloto na tabela de visitas: botão Editar abre um painel com próximo acompanhamento e observação. A tela só
+// enfileira (POST /api/monday/editar) e acompanha o comando (GET /api/monday/comando/[id]); quem escreve no
+// Monday é a fila. A chave de idempotência é gerada uma vez por tentativa e reutilizada no reenvio.
+var VISITA_COL_DATA_ = 'date_mm7eccg9';
+var VISITA_COL_OBS_ = 'text_mm7eya7z';
+var VISITA_ROTULOS_ = { date_mm7eccg9: 'Próximo acompanhamento', text_mm7eya7z: 'Observações' };
+var VISITA_POLL_MS_ = 2000;
+var VISITA_POLL_LIMITE_MS_ = 120000;
+// Depois de uma gravação, a próxima edição do mesmo item usa o executado_em do comando como leitura,
+// porque a linha só ganha o monday_updated_at novo no próximo sync.
+var visitaLidoEm_ = {};
+var ED_ = null;
+
+function visitaUuid_() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'k' + Date.now() + Math.random().toString(36).slice(2, 12);
+}
+function visitaLinha_(id) {
+  var ls = churnVisitasDados_ && churnVisitasDados_.c3 ? churnVisitasDados_.c3.linhas : [];
+  for (var i = 0; i < ls.length; i++) { if (String(ls[i].id) === String(id)) return ls[i]; }
+  return null;
+}
+function visitaFmtValor_(col, v) {
+  if (v === null || v === undefined || v === '') return '(vazio)';
+  return col === VISITA_COL_DATA_ ? churnDataBR_(String(v)) : String(v);
+}
+function visitaParse_(r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, d: d || {} }; }); }
+function visitaPost_(url, corpo) {
+  return fetch(url, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(visitaParse_);
+}
+
+function visitaPainel_() {
+  var el = document.getElementById('visitaEditor');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'visitaEditor';
+    el.className = 'ved';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    el.setAttribute('aria-labelledby', 'vedTitulo');
+    el.hidden = true;
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function visitaFechar_() {
+  if (ED_) clearTimeout(ED_.timer);
+  ED_ = null;
+  visitaPainel_().hidden = true;
+}
+function visitaAbrirEditor_(itemId, opc) {
+  opc = opc || {};
+  if (ED_) clearTimeout(ED_.timer);
+  var l = visitaLinha_(itemId);
+  ED_ = { itemId: String(itemId), membro: opc.membro || (l && l.membro) || '', linha: l, chave: visitaUuid_(), assinatura: '', comandoId: null,
+    estado: 'editando', msg: '', tentados: opc.tentados || null, enviados: null, atuais: null, digitado: null, resolucao: '', chaveReap: null, timer: null, t0: 0 };
+  if (opc.comandoId) {
+    ED_.comandoId = opc.comandoId;
+    ED_.estado = 'enviando';
+    visitaRender_();
+    visitaAcompanhar_();
+    return;
+  }
+  visitaRender_();
+}
+function visitaLerCampos_() {
+  var d = document.getElementById('vedData'), o = document.getElementById('vedObs');
+  if (ED_ && d && o) ED_.digitado = { data: d.value, obs: o.value };
+}
+// Só o que mudou. Limpar a data não é aceito pela fila (a data tem de vir no formato AAAA-MM-DD).
+function visitaDiff_() {
+  var l = ED_.linha, dg = ED_.digitado;
+  if (!l || !dg) return null;
+  var v = {}, antigaData = l.proximoAcompanhamento || '', antigaObs = l.observacoes || '';
+  if (dg.data !== antigaData && dg.data) v[VISITA_COL_DATA_] = dg.data;
+  if (dg.obs !== antigaObs) v[VISITA_COL_OBS_] = dg.obs;
+  return Object.keys(v).length ? v : null;
+}
+
+function visitaRender_() {
+  var ed = ED_, el = visitaPainel_();
+  if (!ed) { el.hidden = true; return; }
+  var l = ed.linha, travado = ed.estado === 'enviando';
+  var dg = ed.digitado || { data: l ? (l.proximoAcompanhamento || '') : '', obs: l ? (l.observacoes || '') : '' };
+  var h = '<div class="ved-caixa"><h3 id="vedTitulo">Editar visita' + (ed.membro ? ': ' + churnEsc_(ed.membro) : '') + '</h3>';
+  if (l) {
+    h += '<label class="ved-campo">Próximo acompanhamento<input type="date" id="vedData" value="' + churnEsc_(dg.data) + '"' + (travado ? ' disabled' : '') + '></label>' +
+      '<label class="ved-campo">Observações<textarea id="vedObs" rows="5" maxlength="5000"' + (travado ? ' disabled' : '') + '>' + churnEsc_(dg.obs) + '</textarea></label>';
+  }
+  if (ed.estado === 'enviando') h += '<p class="ved-estado">' + churnEsc_(ed.msg || 'Enviando ao Monday…') + '</p>';
+  if (ed.estado === 'salvo') h += '<p class="ved-estado ved-ok">Gravado no Monday</p>';
+  if (ed.estado === 'resolvido') h += '<p class="ved-estado ved-ok">' + churnEsc_(ed.msg) + '</p>';
+  if (ed.estado === 'desligada' || ed.estado === 'erro') h += '<p class="ved-estado ved-erro">' + churnEsc_(ed.msg) + '</p>';
+  if (ed.estado === 'editando' && ed.msg) h += '<p class="ved-estado ved-erro">' + churnEsc_(ed.msg) + '</p>';
+  if (ed.estado === 'conflito') {
+    var chaves = Object.keys(ed.tentados || ed.enviados || {});
+    h += '<p class="ved-estado ved-erro">Alguém alterou este item no Monday depois da sua leitura.</p><div class="ved-conflito">';
+    chaves.forEach(function (c) {
+      var atual = ed.atuais ? ed.atuais[c] : null, minha = (ed.tentados || ed.enviados)[c];
+      h += '<div><b>' + churnEsc_(VISITA_ROTULOS_[c] || c) + '</b><div>Valor atual no Monday: ' + churnEsc_(visitaFmtValor_(c, atual)) +
+        '</div><div>A sua alteração: ' + churnEsc_(visitaFmtValor_(c, minha)) + '</div></div>';
+    });
+    h += '</div><div class="ved-acoes"><button type="button" class="btn sm" data-ved="usar_monday">Usar o valor do Monday</button>' +
+      '<button type="button" class="btn sm pri" data-ved="reaplicar">Reaplicar a minha alteração</button></div>';
+  }
+  h += '<div class="ved-acoes">';
+  if (l && (ed.estado === 'editando' || ed.estado === 'desligada' || ed.estado === 'erro')) {
+    var semLeitura = !(visitaLidoEm_[ed.itemId] || l.mondayUpdatedAt);
+    h += '<button type="button" class="btn sm pri" data-ved="salvar"' + (semLeitura ? ' disabled' : '') + '>Salvar</button>';
+  }
+  h += '<button type="button" class="btn sm" data-ved="fechar">' + (ed.estado === 'salvo' || ed.estado === 'resolvido' ? 'Fechar' : 'Cancelar') + '</button></div></div>';
+  el.innerHTML = h;
+  el.hidden = false;
+}
+
+function visitaAcompanhar_() {
+  var ed = ED_, cid = ed.comandoId;
+  clearTimeout(ed.timer);
+  if (!ed.t0) ed.t0 = Date.now();
+  function passo() {
+    if (ED_ !== ed || ed.comandoId !== cid) return;
+    if (Date.now() - ed.t0 > VISITA_POLL_LIMITE_MS_) {
+      ed.msg = 'Ainda enviando. Pode fechar; o resultado aparece na fila de ação se der problema.';
+      visitaRender_();
+      return;
+    }
+    fetch('/api/monday/comando/' + encodeURIComponent(cid), { cache: 'no-store' }).then(visitaParse_).then(function (x) {
+      if (ED_ !== ed || ed.comandoId !== cid) return;
+      var v = x.ok ? x.d.visual : 'enviando';
+      if (v === 'enviando') { ed.timer = setTimeout(passo, VISITA_POLL_MS_); return; }
+      if (v === 'salvo') {
+        ed.estado = 'salvo';
+        var gravados = ed.enviados || ed.tentados || {};
+        if (x.d.executado_em) visitaLidoEm_[ed.itemId] = x.d.executado_em;
+        if (ed.linha) {
+          if (gravados[VISITA_COL_DATA_] !== undefined) ed.linha.proximoAcompanhamento = gravados[VISITA_COL_DATA_];
+          if (gravados[VISITA_COL_OBS_] !== undefined) ed.linha.observacoes = gravados[VISITA_COL_OBS_];
+          ed.digitado = { data: ed.linha.proximoAcompanhamento || '', obs: ed.linha.observacoes || '' };
+        }
+      } else if (v === 'conflito') {
+        ed.estado = 'conflito';
+        ed.atuais = x.d.resultado && x.d.resultado.valores_atuais ? x.d.resultado.valores_atuais : null;
+      } else if (v === 'resolvido') {
+        ed.estado = 'resolvido';
+        ed.msg = 'Conflito resolvido.';
+      } else {
+        ed.estado = 'erro';
+        ed.msg = x.d.erro || x.d.error || 'A gravação no Monday falhou.';
+      }
+      visitaRender_();
+    }).catch(function () { ed.timer = setTimeout(passo, VISITA_POLL_MS_); });
+  }
+  passo();
+}
+
+function visitaSalvar_() {
+  var ed = ED_;
+  visitaLerCampos_();
+  var v = visitaDiff_();
+  var l = ed.linha;
+  if (!v) {
+    ed.msg = l && ed.digitado && !ed.digitado.data && l.proximoAcompanhamento ? 'Para limpar a data, altere direto no Monday.' : 'Nenhuma alteração para gravar.';
+    visitaRender_();
+    return;
+  }
+  var lidoEm = visitaLidoEm_[ed.itemId] || l.mondayUpdatedAt;
+  // Mesma tentativa reenviada mantém a chave; valores diferentes são outra tentativa.
+  var assinatura = JSON.stringify(v);
+  if (assinatura !== ed.assinatura) { ed.chave = visitaUuid_(); ed.assinatura = assinatura; }
+  ed.enviados = v;
+  ed.estado = 'enviando';
+  ed.msg = '';
+  ed.t0 = 0;
+  visitaRender_();
+  visitaPost_('/api/monday/editar', { itemId: ed.itemId, valores: v, lidoEm: lidoEm, chave: ed.chave }).then(function (x) {
+    if (ED_ !== ed) return;
+    if (x.ok) { ed.comandoId = x.d.comandoId; visitaAcompanhar_(); return; }
+    if (x.status === 503 && x.d.codigo === 'fila_desligada') {
+      ed.estado = 'desligada';
+      ed.msg = 'A escrita no Monday está desligada no momento. Nada foi enviado.';
+    } else {
+      ed.estado = 'erro';
+      ed.msg = x.d.error || 'Não foi possível enviar a edição.';
+    }
+    visitaRender_();
+  }).catch(function () {
+    if (ED_ !== ed) return;
+    ed.estado = 'erro';
+    ed.msg = 'Sem conexão com o servidor. Nada foi confirmado; tente salvar de novo.';
+    visitaRender_();
+  });
+}
+
+function visitaResolver_(acao) {
+  var ed = ED_;
+  ed.estado = 'enviando';
+  ed.msg = '';
+  ed.t0 = 0;
+  ed.resolucao = acao;
+  var corpo = { acao: acao };
+  if (acao === 'reaplicar') { ed.chaveReap = ed.chaveReap || visitaUuid_(); corpo.chave = ed.chaveReap; }
+  visitaRender_();
+  visitaPost_('/api/monday/comando/' + encodeURIComponent(ed.comandoId) + '/resolver', corpo).then(function (x) {
+    if (ED_ !== ed) return;
+    if (!x.ok) {
+      ed.estado = x.status === 503 ? 'desligada' : 'erro';
+      ed.msg = x.status === 503 ? 'A escrita no Monday está desligada no momento. Nada foi enviado.' : (x.d.error || 'Não foi possível resolver o conflito.');
+      visitaRender_();
+      return;
+    }
+    if (acao === 'usar_monday') {
+      ed.estado = 'resolvido';
+      ed.msg = 'Conflito resolvido: o valor do Monday foi mantido.';
+      if (ed.linha && ed.atuais) {
+        if (ed.atuais[VISITA_COL_DATA_] !== undefined) ed.linha.proximoAcompanhamento = ed.atuais[VISITA_COL_DATA_] || null;
+        if (ed.atuais[VISITA_COL_OBS_] !== undefined) ed.linha.observacoes = ed.atuais[VISITA_COL_OBS_] || null;
+        ed.digitado = null;
+      }
+      visitaRender_();
+      return;
+    }
+    // reaplicar: o comando novo segue o mesmo caminho de uma edição normal
+    ed.chaveReap = null;
+    ed.comandoId = x.d.comandoId;
+    ed.enviados = ed.tentados || ed.enviados;
+    visitaAcompanhar_();
+  }).catch(function () {
+    if (ED_ !== ed) return;
+    ed.estado = 'erro';
+    ed.msg = 'Sem conexão com o servidor. Nada foi confirmado; tente de novo.';
+    visitaRender_();
+  });
+}
+
+document.addEventListener('click', function (ev) {
+  var t = ev.target.closest ? ev.target : null;
+  if (!t) return;
+  var b = t.closest('button[data-ved]');
+  if (b && ED_) {
+    var a = b.getAttribute('data-ved');
+    if (a === 'fechar') visitaFechar_();
+    else if (a === 'salvar') visitaSalvar_();
+    else visitaResolver_(a);
+    return;
+  }
+  var e = t.closest('button[data-visita-editar]');
+  if (e) { visitaAbrirEditor_(e.getAttribute('data-visita-editar')); return; }
+  // Fila de ação: abre a aba de churn com o painel da visita aberto, já no conflito ou erro do comando.
+  var r = t.closest('button[data-escrita]');
+  if (r && ACOES_ && ACOES_.escritas && ACOES_.escritas.dado) {
+    var id = Number(r.getAttribute('data-escrita'));
+    var item = ACOES_.escritas.dado.filter(function (x) { return x.id === id; })[0];
+    if (!item) return;
+    abrirAba('churn');
+    visitaAbrirEditor_(item.item_id, { membro: item.membro, comandoId: item.id, tentados: item.valores });
+  }
+});
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && ED_) visitaFechar_(); });
 
 // ---- b3: melhorias ----
 function churnRenderFatosMelhoria_(b3) {

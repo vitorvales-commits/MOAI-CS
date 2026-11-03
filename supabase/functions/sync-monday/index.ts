@@ -801,7 +801,7 @@ function mrrOrNull(cv: any[], colId: string): number | null {
 async function syncVisitasChurn() {
   const colIds = Object.values(VISITA_COLS);
   assertColunasPermitidas(colIds, VISITA_COLS_PROIBIDAS);
-  const itens = await fetchAllItemsFlat(BOARDS.VISITA_CHURNS, colIds, 'name created_at group{id}', VISITA_FRAGMENTOS);
+  const itens = await fetchAllItemsFlat(BOARDS.VISITA_CHURNS, colIds, 'name created_at updated_at group{id}', VISITA_FRAGMENTOS);
   // item de teste criado durante a configuração do board não entra
   const items = itens.filter((it) => normalizarTexto(it.name || '') !== 'teste');
   // group_id é buscado pelo membro ligado, no momento do sync (regra do trigger visitas_churn_manter_grupo)
@@ -844,6 +844,8 @@ async function syncVisitasChurn() {
       observacoes: textoOrNull(colText(cv, VISITA_COLS.observacoes)),
       board_group_id: it.group?.id || null,
       created_at_monday: it.created_at || null,
+      // Data de alteração do item no Monday: é o lido_em da edição pelo dash (a fila de escrita compara com ela)
+      monday_updated_at: it.updated_at ?? null,
       synced_at: agora,
     };
   });

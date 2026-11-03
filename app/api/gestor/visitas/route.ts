@@ -10,6 +10,32 @@ import { carregarVisitas, csvVisitas } from '@/lib/visitas-dados';
 
 export const dynamic = 'force-dynamic';
 
+// Campos que a edição precisa e que a lista não traz: data de alteração no Monday (lido_em), próximo
+// acompanhamento e observações. Ficam fora de carregarVisitas para não entrarem no relatório imprimível.
+// Se a leitura falhar (ou a coluna ainda não existir), vão nulos e a tela mantém o botão Editar desabilitado.
+async function acrescentarCamposDeEdicao(supabase: any, linhas: any[]) {
+  const extras = new Map<number, any>();
+  try {
+    const ids = linhas.map((l) => l.id);
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data, error } = await supabase
+        .from('visitas_churn')
+        .select('id, monday_updated_at, proximo_acompanhamento, observacoes')
+        .in('id', ids.slice(i, i + 200));
+      if (error) throw new Error(error.message);
+      (data || []).forEach((r: any) => extras.set(Number(r.id), r));
+    }
+  } catch (e) {
+    console.error('visitas gestor: campos de edição indisponíveis', e);
+  }
+  linhas.forEach((l) => {
+    const x = extras.get(Number(l.id));
+    l.mondayUpdatedAt = x?.monday_updated_at ?? null;
+    l.proximoAcompanhamento = x?.proximo_acompanhamento ?? null;
+    l.observacoes = x?.observacoes ?? null;
+  });
+}
+
 export async function GET(req: NextRequest) {
   noStore();
   try {
@@ -23,6 +49,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Mês de referência inválido.' }, { status: 400 });
     }
     const { janela, payload } = await carregarVisitas(supabase, ref);
+    await acrescentarCamposDeEdicao(supabase, payload.c3.linhas);
 
     if (sp.get('formato') === 'csv') {
       await supabase.rpc('log_access', {
