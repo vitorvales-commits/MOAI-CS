@@ -68,12 +68,13 @@ export function validarResolucao(corpo: unknown): ValidacaoResolucao {
   return { ok: true, acao: c.acao, chave: c.chave };
 }
 
-// Estados que a tela mostra no cartão: enviando (pendente ou executando), salvo, conflito e erro.
-export type EstadoVisual = 'enviando' | 'salvo' | 'conflito' | 'erro';
-export function estadoVisual(estado: string): EstadoVisual {
+// Estados que a tela mostra no cartão: enviando (pendente ou executando), salvo, conflito, resolvido e erro.
+export type EstadoVisual = 'enviando' | 'salvo' | 'conflito' | 'resolvido' | 'erro';
+export function estadoVisual(estado: string, erro?: string | null): EstadoVisual {
   if (estado === 'pendente' || estado === 'executando') return 'enviando';
   if (estado === 'concluido') return 'salvo';
   if (estado === 'conflito') return 'conflito';
+  if (estado === 'cancelado' && erro?.startsWith('resolvido:')) return 'resolvido';
   return 'erro';
 }
 

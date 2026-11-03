@@ -35,6 +35,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           { status: 503 },
         );
       }
+      if (/já pertence a outro comando|precisa ser nova/.test(msg)) {
+        return NextResponse.json({ error: msg.replace(/^.*?ERROR:s*/, '') }, { status: 409 });
+      }
       if (/Comando não encontrado/.test(msg)) return NextResponse.json({ error: 'Comando não encontrado.' }, { status: 404 });
       if (/Só o autor|fora da sua carteira|restrita a gestor|Item inexistente/.test(msg)) {
         return NextResponse.json({ error: msg.replace(/^.*?ERROR:\s*/, '') }, { status: 403 });

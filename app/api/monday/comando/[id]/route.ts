@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     if (error) return NextResponse.json({ error: 'Não foi possível ler o comando.' }, { status: 500 });
     const linha = Array.isArray(data) ? data[0] : null;
     if (!linha) return NextResponse.json({ error: 'Comando não encontrado.' }, { status: 404 });
-    return NextResponse.json({ ...linha, visual: estadoVisual(linha.estado) });
+    return NextResponse.json({ ...linha, visual: estadoVisual(linha.estado, linha.erro) });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: 'Erro ao ler o comando.' }, { status: 500 });

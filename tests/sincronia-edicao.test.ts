@@ -76,6 +76,9 @@ assert.equal(estadoVisual('concluido'), 'salvo');
 assert.equal(estadoVisual('conflito'), 'conflito');
 assert.equal(estadoVisual('erro'), 'erro');
 assert.equal(estadoVisual('cancelado'), 'erro');
+assert.equal(estadoVisual('cancelado', 'falha qualquer'), 'erro');
+assert.equal(estadoVisual('cancelado', 'resolvido: valor do Monday mantido'), 'resolvido');
+assert.equal(estadoVisual('conflito', 'resolvido: x'), 'conflito');
 
 // Fila de ação: só erro ou conflito com mais de 24 horas, mais antigo primeiro.
 {

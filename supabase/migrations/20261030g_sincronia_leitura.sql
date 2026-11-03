@@ -162,6 +162,7 @@ language plpgsql security definer set search_path = '' as $fn$
 declare
   v_autor text := seguranca.autor_atual();
   v_cmd sincronia.comandos%rowtype;
+  v_ex sincronia.comandos%rowtype;
   v_novo bigint;
 begin
   if not (sincronia.chamador_privilegiado() or public.is_moai_user()) then
@@ -173,6 +174,34 @@ begin
   if not (sincronia.chamador_privilegiado() or public.is_gestor() or v_cmd.criado_por = v_autor) then
     raise exception 'Só o autor da edição ou um gestor resolve o conflito.';
   end if;
+  -- Idempotência: reenvio de uma resolução já feita devolve o resultado anterior, sem alterar nada.
+  if p_acao = 'usar_monday' and v_cmd.estado = 'cancelado' and v_cmd.erro = 'resolvido: valor do Monday mantido' then
+    insert into public.access_audit_log (user_email, action, resource, result, metadata)
+    values (v_autor, 'sincronia_resolver', 'sincronia.comandos', 'ok',
+            jsonb_build_object('id', p_id, 'acao', p_acao, 'novo', p_id, 'reenvio', true));
+    return p_id;
+  end if;
+  if p_acao = 'reaplicar' then
+    if coalesce(p_chave, '') = '' or length(p_chave) < 8 or length(p_chave) > 100 then
+      raise exception 'Chave inválida (de 8 a 100 caracteres).';
+    end if;
+    if p_chave = v_cmd.chave_idempotencia then
+      raise exception 'A chave da reaplicação precisa ser nova.';
+    end if;
+    select * into v_ex from sincronia.comandos c where c.chave_idempotencia = p_chave;
+    if found then
+      if v_ex.board_id = v_cmd.board_id and v_ex.item_id is not distinct from v_cmd.item_id
+         and v_ex.valores = v_cmd.valores and v_cmd.estado = 'cancelado'
+         and v_cmd.erro = 'resolvido: reaplicado no comando ' || v_ex.id then
+        insert into public.access_audit_log (user_email, action, resource, result, metadata)
+        values (v_autor, 'sincronia_resolver', 'sincronia.comandos', 'ok',
+                jsonb_build_object('id', p_id, 'acao', p_acao, 'novo', v_ex.id, 'reenvio', true));
+        return v_ex.id;
+      end if;
+      raise exception 'A chave da reaplicação já pertence a outro comando.';
+    end if;
+  end if;
+
   if v_cmd.estado <> 'conflito' then
     raise exception 'Só é possível resolver comando em conflito (estado atual: %).', v_cmd.estado;
   end if;
@@ -182,12 +211,6 @@ begin
     where id = p_id;
     v_novo := p_id;
   elsif p_acao = 'reaplicar' then
-    if coalesce(p_chave, '') = '' or length(p_chave) < 8 or length(p_chave) > 100 then
-      raise exception 'Chave inválida (de 8 a 100 caracteres).';
-    end if;
-    if p_chave = v_cmd.chave_idempotencia then
-      raise exception 'A chave da reaplicação precisa ser nova.';
-    end if;
     perform sincronia.validar_edicao(v_cmd.board_id, v_cmd.item_id, v_cmd.valores);
 
     insert into sincronia.comandos
@@ -195,11 +218,7 @@ begin
     values
       (p_chave, 'atualizar_colunas', v_cmd.board_id, v_cmd.item_id, v_cmd.valores, now(),
        v_cmd.origem_tabela, v_cmd.origem_chave, v_autor, now())
-    on conflict (chave_idempotencia) do nothing
     returning id into v_novo;
-    if v_novo is null then
-      select c.id into v_novo from sincronia.comandos c where c.chave_idempotencia = p_chave;
-    end if;
 
     update sincronia.comandos set estado = 'cancelado', erro = 'resolvido: reaplicado no comando ' || v_novo
     where id = p_id;
