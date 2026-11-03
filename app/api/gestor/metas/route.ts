@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     const [{ data: catalogo, error: e1 }, { data: csRoster, error: e2 }, { data: resolvidas, error: e3 }, { data: configHome, error: e4 }] = await Promise.all([
       supabase.from('indicadores_catalogo').select('chave, rotulo, unidade, direcao, fonte, agregacao_time').order('chave'),
       supabase.from('cs_config').select('nome, nome_completo').eq('ativo', true).order('nome'),
+      // Mês único: 98 linhas, bem abaixo do teto de 1000 do PostgREST, então não precisa de rpcPaginado.
       supabase.rpc('metas_resolvidas_periodo', { p_mes_inicio: mes, p_mes_fim: mes }),
       supabase.from('config_home_indicadores').select('indicador, visivel'),
     ]);

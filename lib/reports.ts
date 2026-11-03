@@ -9,6 +9,7 @@
 import { filtrarCardsPorCS, fraseSituacaoConselhos } from './conselhos-aba';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unstable_noStore as noStore } from 'next/cache';
+import { rpcPaginado } from './supabase/paginar';
 import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
   STATUS_PRESENTE, STATUS_AUSENTE_SET, STATUS_NAO_ERA, STATUS_CONFIRMADO,
@@ -652,9 +653,8 @@ const MAX_CONCORRENCIA_DADOS_BRUTOS = 5;
 // buscar um intervalo sem limite — poucas centenas de linhas mesmo assim.
 export type MetaResolvidaRow = { mes: string; escopo: 'time' | 'cs'; cs_nome: string | null; indicador: string; valor: number | null; mes_origem: string | null };
 async function fetchMetasResolvidas(sb: SupabaseClient): Promise<MetaResolvidaRow[]> {
-  const { data, error } = await sb.rpc('metas_resolvidas_periodo', { p_mes_inicio: '2026-01-01', p_mes_fim: '2027-12-31' });
-  if (error) throw new Error('Erro ao buscar metas_resolvidas_periodo: ' + error.message);
-  return (data || []) as MetaResolvidaRow[];
+  // 24 meses x 98 linhas = 2352, acima do teto de 1000 do PostgREST: pagina (ordem estável na migração 20261103).
+  return (await rpcPaginado(sb, 'metas_resolvidas_periodo', { p_mes_inicio: '2026-01-01', p_mes_fim: '2027-12-31' })) as MetaResolvidaRow[];
 }
 
 export type ConfigHomeIndicadorRow = { indicador: string; visivel: boolean; ordem: number; exibir_recorde: boolean };
