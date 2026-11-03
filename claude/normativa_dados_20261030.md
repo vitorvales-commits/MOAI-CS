@@ -121,3 +121,27 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Tarefa `fila_escrita` na sync-monday: consome a fila em lotes de 25, com reserva atômica. Regra de conflito em `fila-escrita.ts` (`decidirEscrita`), esperas de 1, 5, 30 e 120 minutos, 5 tentativas no total.
 - Isolamento: `executarCiclo` roda cada tarefa com try/catch. Erro de `fila_escrita` vai para `sync_log` com esse rótulo e não interrompe os boards.
 - Testes: `tests/fila-escrita.test.ts`.
+
+## Etapa 4a: teste de ponta a ponta (02/11/2026)
+
+- Item de teste fixo da fila: "teste" (ID `13441800409`) no board Visita Churns, grupo Churn. Fica no board como ambiente de teste da fila de escrita. Não usar em nenhum outro fim.
+- Edição com sucesso: comando `e2e-sucesso-1`, concluído. O Monday mostrou o texto gravado.
+- Conflito: comando `e2e-conflito-1`, com leitura anterior à edição feita no Monday. Ficou em `conflito`, sem escrita.
+- Os dois comandos foram marcados como `cancelado`, com motivo "teste de ponta a ponta" no campo `erro`, para não aparecerem na fila de ação do gestor.
+- Chave `fila_escrita_ativa`: desligada. Será ligada como último passo da etapa 4b, depois do merge, pela função auditada `public.sincronia_definir_fila_ativa`.
+
+## Etapa 4b: parte 1 (backend, revisão ajustada pela terceira vez, 03/11/2026)
+
+- Migração `20261030g_sincronia_leitura` (ainda não aplicada; entra pelo workflow `aplicar-migracao` depois do merge):
+  - `sincronia.validar_edicao`: checagens da edição (fila ativa, colunas, papel e carteira) em uma função interna. Quem a usa são `public.enfileirar_edicao_monday` e `public.sincronia_resolver_conflito`, sem código duplicado.
+  - `public.enfileirar_edicao_monday`: mesma assinatura da 20261030f; passa a chamar `sincronia.validar_edicao`.
+  - `public.sincronia_comando_status(id)`: estado de um comando, para o cartão.
+  - `public.sincronia_escritas_pendentes()`: erro ou conflito, agora com `criado_por` e `valores`.
+  - `public.sincronia_resolver_conflito(id, acao, chave)`: só aceita comando em `conflito`; é permitida ao autor, a gestor ou ao chamador privilegiado. A ação `usar_monday` cancela o comando com o erro "resolvido: valor do Monday mantido" e retorna o próprio id. A ação `reaplicar` cancela o comando com "resolvido: reaplicado no comando N" e enfileira um `atualizar_colunas` com os mesmos board, item e valores, `lido_em` igual a agora e a chave informada, passando pelas mesmas checagens da edição normal. Cada resolução gera registro em `access_audit_log`. A resolução é idempotente, checada logo após a autoria e antes do estado: `usar_monday` sobre comando já cancelado com "resolvido: valor do Monday mantido" audita e retorna o id sem alterar nada; `reaplicar` com chave já existente retorna o comando já criado se ele tiver o mesmo board, item e valores e o comando em conflito estiver cancelado com "resolvido: reaplicado no comando <id>" (reenvio). Qualquer outro uso de chave existente levanta "A chave da reaplicação já pertence a outro comando." (a própria chave do comando levanta "precisa ser nova"). Com a colisão tratada antes, o insert é simples, sem `on conflict` nem select de fallback. Revogada de public e anon; concedida a authenticated.
+- Rotas:
+  - `POST /api/monday/editar`: valida o corpo e aceita `chave` (de 8 a 100 caracteres). Só gera uma chave nova quando ela não vem. Com a chave desligada, devolve 503 com mensagem clara.
+  - `GET /api/monday/comando/[id]`: estado do comando e estado visual.
+  - `POST /api/monday/comando/[id]/resolver`: corpo `{ acao, chave }`. A chave é obrigatória só para `reaplicar`. Chave já usada ou igual à do comando devolve 409 com a mensagem do banco.
+- Lógica pura em `lib/sincronia.ts`: validação da edição (com chave), validação da resolução, estado visual (enviando, salvo, conflito, resolvido, erro; `estadoVisual(estado, erro)` devolve `resolvido` para cancelado com erro iniciando em "resolvido:", e a rota GET passa o erro) e filtro da fila (erro ou conflito há mais de 24 horas). Testes em `tests/sincronia-edicao.test.ts`.
+- Verificação desta revisão: `tsc` sem erros; `tests/sincronia-edicao.test.ts` e `tests/fila-escrita.test.ts` passam; `npm run build` conclui. A migração 20261030g ainda não foi executada em banco. A execução real acontece na cópia de teste do workflow `aplicar-migracao`, antes de qualquer aplicação em produção.
+- Pendente (parte 2): edição no cartão de visita com os estados e os botões "Usar o valor do Monday" e "Reaplicar a minha alteração"; bloco "Escritas no Monday pendentes" na Fila de ação; capturas em 1440 e 390 px. A parte 2 começa só depois da revisão desta parte.
