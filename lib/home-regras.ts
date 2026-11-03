@@ -8,8 +8,9 @@ import {
 } from './constants';
 import { calcularScoreCS, type IndicadorEntrada } from './pontuacao';
 
-// Indicadores de crescimento (quanto mais, melhor) que entram na frase do mês e no contador "N de 4".
-export const INDICADORES_CRESCIMENTO_HOME = ['casesSucesso', 'matchmakings', 'rounds', 'indicacoes'] as const;
+// Indicadores de crescimento (quanto mais, melhor) que entram na frase do mês e no contador de metas. Só entram
+// os que têm meta no mês: Matchmakings com resultado (02/11/2026) aparece aqui quando o gestor define a meta.
+export const INDICADORES_CRESCIMENTO_HOME = ['casesSucesso', 'matchmakings', 'matchmakingsResultado', 'rounds', 'indicacoes'] as const;
 
 // Quanto falta por semana para fechar a meta: falta dividido pelas semanas que restam no mês (mínimo de uma).
 export function faltaPorSemana(falta: number, diasRestantes: number): number {

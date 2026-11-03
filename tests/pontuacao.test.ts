@@ -15,15 +15,15 @@ const cart = calcularScoreCS(metas(5), { numConselhos: 6, metaPropria: 6 });
 const item = cart.itens.find((i) => i.chave === 'carteira')!;
 assert.equal(item.peso, 0); assert.equal(item.semPontos, true); assert.equal(item.pontos, null);
 assert.equal(item.achievementPct, 100, 'a Carteira segue visível contra a meta');
-assert.equal(cart.elegiveis, 7, 'a Carteira não conta como indicador que pontua');
+assert.equal(cart.elegiveis, 5, 'Carteira e redutores (churn, downsell) não contam como indicadores que pontuam');
 assert.equal(calcularScoreCS(metas(5), { numConselhos: 1, metaPropria: 6 }).score, cart.score, 'tamanho da carteira não muda a nota');
 assert.equal(calcularScoreCS(metas(5), { numConselhos: 20, metaPropria: null }).score, cart.score);
 
 // bater exatamente todas as metas vale 100
 assert.equal(cart.score, 100);
-// extrapola: dobro de cases = (18*2 + 67) / 85 = 121,18
+// extrapola: dobro de cases = (18*2 + 54) / 72 = 125
 const dobro = calcularScoreCS(metas(10), { numConselhos: 6, metaPropria: 6 });
-assert.equal(dobro.score, 121);
+assert.equal(dobro.score, 125);
 const cases = dobro.itens.find((i) => i.chave === 'casesSucesso')!;
 assert.equal(cases.achievementPct, 200); assert.equal(cases.alemDaMetaPct, 100); assert.equal(cases.pontos, 36);
 assert.equal(cart.itens.find((i) => i.chave === 'casesSucesso')!.alemDaMetaPct, 0);
@@ -43,12 +43,36 @@ assert.equal(aproveitamentoIndicador({ meta: 10, alcancado: null, tipoMeta: 'min
 const luana = calcularScoreCS({}, { numConselhos: 1, metaPropria: 1 });
 assert.equal(luana.estado, 'sem_dados_suficientes'); assert.equal(luana.score, null); assert.equal(luana.elegiveis, 0);
 
-// quatro indicadores pontuam e os pesos renormalizam: (0,5*18 + 0*18 + 1*10) / 46
+// três indicadores de crescimento pontuam e renormalizam: (0,5*18 + 0*18 + 1*12) / 48; churn dentro do limite não soma
 const poucos = calcularScoreCS({
   casesSucesso: { meta: 10, alcancado: 5, tipoMeta: 'min' }, churn: { meta: 4, alcancado: 0, tipoMeta: 'max' },
-  matchmakings: { meta: 8, alcancado: 0, tipoMeta: 'min' },
+  matchmakings: { meta: 8, alcancado: 0, tipoMeta: 'min' }, rounds: { meta: 1, alcancado: 1, tipoMeta: 'min' },
 }, { numConselhos: 4, metaPropria: 4 });
-assert.equal(poucos.estado, 'com_pontuacao'); assert.equal(poucos.elegiveis, 3); assert.equal(poucos.score, 41);
+assert.equal(poucos.estado, 'com_pontuacao'); assert.equal(poucos.elegiveis, 3); assert.equal(poucos.score, 44);
+
+// Caso George, novembro de 2026: nenhuma entrega, churn zero com limite 2 e carteira 6 de 6. Antes dava 12.
+const george = calcularScoreCS({
+  casesSucesso: { meta: 12, alcancado: 0, tipoMeta: 'min' }, matchmakings: { meta: 37, alcancado: 0, tipoMeta: 'min' },
+  indicacoes: { meta: 5, alcancado: 0, tipoMeta: 'min' }, upsell: { meta: 1, alcancado: 0, tipoMeta: 'min' },
+  rounds: { meta: 1, alcancado: 0, tipoMeta: 'min' }, churn: { meta: 2, alcancado: 0, tipoMeta: 'max' },
+  downsell: { meta: 0, alcancado: 0, tipoMeta: 'max' },
+}, { numConselhos: 6, metaPropria: 6 });
+assert.equal(george.score, 0, 'sem entrega a nota é zero: nem carteira nem churn zero dão ponto');
+assert.equal(george.itens.find((i) => i.chave === 'churn')!.pontos, 0);
+
+// Redutor estourado desconta: metas(5) é 100; churn 4 com limite 2 desconta 0,5 * 10/72 * 100 = 6,9
+const estouro = calcularScoreCS({ ...metas(5), churn: { meta: 2, alcancado: 4, tipoMeta: 'max' } }, { numConselhos: 6, metaPropria: 6 });
+assert.equal(estouro.score, 93);
+const ch = estouro.itens.find((i) => i.chave === 'churn')!;
+assert.equal(ch.estourou, true); assert.equal(ch.pontos, -6.9);
+// limite zero estourado desconta o peso inteiro: downsell 1 com limite 0 tira 3/72*100 = 4,2
+const ds = calcularScoreCS({ ...metas(5), downsell: { meta: 0, alcancado: 1, tipoMeta: 'max' } }, { numConselhos: 6, metaPropria: 6 });
+assert.equal(ds.score, 96);
+// a nota nunca fica negativa
+const negativo = calcularScoreCS({ ...george.itens.reduce((o, i) => o, {}), casesSucesso: { meta: 10, alcancado: 0, tipoMeta: 'min' },
+  matchmakings: { meta: 10, alcancado: 0, tipoMeta: 'min' }, rounds: { meta: 1, alcancado: 0, tipoMeta: 'min' },
+  churn: { meta: 1, alcancado: 5, tipoMeta: 'max' } }, { numConselhos: 1, metaPropria: 1 });
+assert.equal(negativo.score, 0);
 
 // ranking só com ativos e elegíveis, sem Ex CS
 const bom = (score: number, el = 4) => ({ score, elegiveis: el, estado: 'com_pontuacao' as const, itens: [] });
@@ -72,8 +96,10 @@ import { detalharScoreCS } from '../lib/pontuacao.ts';
   const s = calcularScoreCS(metas(2), { numConselhos: 6, metaPropria: 6 });
   const d = detalharScoreCS(s);
   const cs = d.itens.find((i) => i.chave === 'casesSucesso')!;
-  // peso 18 de 85 elegíveis = 21,2; aproveitamento 40% conquista 8,5 e deixa 12,7 em aberto
-  assert.equal(cs.pesoNormalizado, 21.2); assert.equal(cs.conquistado, 8.5); assert.equal(cs.emAberto, 12.7);
+  // peso 18 de 72 elegíveis = 25; aproveitamento 40% conquista 10 e deixa 15 em aberto
+  assert.equal(cs.pesoNormalizado, 25); assert.equal(cs.conquistado, 10); assert.equal(cs.emAberto, 15);
+  const churnD = d.itens.find((i) => i.chave === 'churn')!;
+  assert.equal(churnD.foraDaConta, true); assert.equal(churnD.motivoFora, 'redutor'); assert.equal(churnD.desconto, 0);
   assert.equal(d.itens.find((i) => i.chave === 'carteira')!.foraDaConta, true);
   assert.equal(d.itens.find((i) => i.chave === 'carteira')!.motivoFora, 'informativo');
   const soma = d.itens.reduce((t, i) => t + (i.pesoNormalizado || 0), 0);
