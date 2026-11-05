@@ -1,7 +1,7 @@
 // Roda com: npx tsx tests/metas-semanais.test.ts
 // Montagem das metas semanais de um CS a partir de dados já carregados (lib/metas-semanais.ts, parte pura).
 import assert from 'node:assert/strict';
-import { montarMetasSemanaisCS, type DadosMetas } from '../lib/metas-semanais.ts';
+import { montarMetasSemanaisCS, elencoDoMesPuro, type DadosMetas } from '../lib/metas-semanais.ts';
 import type { CSConfig } from '../lib/reports.ts';
 
 const FERIADOS_2026 = [
@@ -179,6 +179,32 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
   const ind = anaRes.indicadores.find((x) => x.indicador === 'cases')!;
   assert.equal(ind.parcelas.reduce((t, p) => t + (p.realizado ?? 0), 0), 0);
   assert.equal(ind.semDataTotal, 1, 'soma + sem data = Geral (0 + 1)');
+}
+
+// 12. Elenco do mês (mesma regra de nomesDoRoster): Outubro tem Marcos (saiu em outubro) e não tem Iasmin (entrou em novembro).
+{
+  const listaElenco = [
+    cs({ nome: 'Rodrigo', nomeCompleto: 'Rodrigo Gianesini', ativo: true, ex: false }),
+    cs({ nome: 'Iasmin', nomeCompleto: 'Iasmin Teste', ativo: true, ex: false, userId: 777 }),
+    cs({ nome: 'Marcos', nomeCompleto: 'Marcos Teste', ativo: false, ex: true, userId: null }),
+  ];
+  const periodos = [
+    { nome_curto: 'Rodrigo', nome_completo: 'Rodrigo Gianesini', primeiro_mes: '2026-01-01', ultimo_mes: null, aliases: [] },
+    { nome_curto: 'Iasmin', nome_completo: 'Iasmin Teste', primeiro_mes: '2026-11-01', ultimo_mes: null, aliases: [] },
+    { nome_curto: 'Marcos', nome_completo: 'Marcos Teste', primeiro_mes: '2026-01-01', ultimo_mes: '2026-10-01', aliases: [] },
+  ];
+  const out = elencoDoMesPuro(listaElenco, periodos, '2026-10-01', '2026-11-05');
+  assert.equal(out.modo, 'quem_era_cs');
+  assert.deepEqual(out.cs.map((c) => c.nome).sort(), ['Marcos', 'Rodrigo']);
+  assert.deepEqual(out.faltando, []);
+
+  const nov = elencoDoMesPuro(listaElenco, periodos, '2026-11-01', '2026-11-05');
+  assert.equal(nov.modo, 'ativos_hoje', 'mês corrente usa ativos de hoje');
+  assert.deepEqual(nov.cs.map((c) => c.nome).sort(), ['Iasmin', 'Rodrigo']);
+
+  // Período sem cadastro em cs_config não some em silêncio: aparece em faltando.
+  const comFantasma = [...periodos, { nome_curto: 'Fantasma', nome_completo: 'Fantasma', primeiro_mes: '2026-01-01', ultimo_mes: null, aliases: [] }];
+  assert.deepEqual(elencoDoMesPuro(listaElenco, comFantasma, '2026-10-01', '2026-11-05').faltando, ['Fantasma']);
 }
 
 console.log('metas-semanais: todos os casos passaram');
