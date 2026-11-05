@@ -102,12 +102,17 @@ alter table public.matchmakings_items add column if not exists created_at_monday
 alter table public.matchmakings_items add column if not exists resultado_alterado_em_monday timestamptz;
 alter table public.matchmakings_items add column if not exists resultado_registrado_em timestamptz;
 
+-- Só grava com o changed_at real do Monday. Sem fallback para now(): um item com resultado e sem changed_at
+-- fica com data nula, aparece como pendente no log do sync e não conta no indicador. Assim o sync antigo
+-- (que não envia resultado_alterado_em_monday) não carimba a data da migração.
 create or replace function public.matchmakings_marcar_resultado_registrado()
 returns trigger
 language plpgsql set search_path = public as $function$
 begin
-  if new.resultado_registrado_em is null and nullif(trim(coalesce(new.resultado, '')), '') is not null then
-    new.resultado_registrado_em := coalesce(new.resultado_alterado_em_monday, now());
+  if new.resultado_registrado_em is null
+     and nullif(trim(coalesce(new.resultado, '')), '') is not null
+     and new.resultado_alterado_em_monday is not null then
+    new.resultado_registrado_em := new.resultado_alterado_em_monday;
   end if;
   return new;
 end $function$;

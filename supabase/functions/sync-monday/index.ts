@@ -1221,6 +1221,11 @@ async function syncMatchmakings() {
     `${SUPABASE_URL}/rest/v1/matchmakings_items?select=id&resultado_registrado_em=not.is.null&or=(resultado.is.null,resultado.eq.)`,
     { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }, true);
   if (apagados.length) console.warn(`[sync-monday] matchmakings com resultado apagado no Monday, data de registro mantida: ${apagados.length} (ids: ${apagados.map((r: any) => r.id).join(',')})`);
+  // Resultado preenchido sem changed_at do Monday: sem data de registro, fora do indicador até o próximo ciclo.
+  const pendentes = await requisitar('Supabase leitura falhou (matchmakings com resultado pendente de data)',
+    `${SUPABASE_URL}/rest/v1/matchmakings_items?select=id&resultado_registrado_em=is.null&resultado=not.is.null&resultado=neq.`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }, true);
+  if (pendentes.length) console.warn(`[sync-monday] matchmakings com resultado sem data de registro (pendentes, fora do indicador): ${pendentes.length} (ids: ${pendentes.map((r: any) => r.id).join(',')})`);
   return rows.length;
 }
 
