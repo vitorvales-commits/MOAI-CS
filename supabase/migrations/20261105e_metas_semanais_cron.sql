@@ -14,7 +14,8 @@ select cron.schedule(
   select net.http_post(
     url := 'https://moai-cs-dashboard.vercel.app/api/interno/metas-semanais/fechar',
     headers := jsonb_build_object('Content-Type', 'application/json', 'X-Metas-Secret', '<METAS_FECHAMENTO_SECRET>'),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    timeout_milliseconds := 120000
   );
   $$
 );
