@@ -39,12 +39,24 @@ export interface DadosMetas {
 }
 
 // Uma parcela de mês de um indicador. realizado null quando não há como medir (sem vínculo do CS).
+export type EstadoSemana = 'fechada' | 'corrente' | 'futura' | 'aguardando_fechamento';
+
 export interface ParcelaMetaSemanal extends SemanaMeta {
+  estado: EstadoSemana; // em relação a hoje (Brasília): ver estadoDaParcela
   diasUteis: number;
   parcelaInicio: string;
   parcelaFim: string;
   fechada: boolean; // realizado vem do fechamento congelado
   semData: number; // itens do mês do grupo sem data utilizável (P8)
+}
+
+// Estado da parcela em relação a hoje. Fechada: já tem fechamento. Corrente: hoje cai na parcela.
+// Futura: ainda não começou. Aguardando fechamento: a parcela já acabou e o fechamento de segunda ainda não a gravou.
+export function estadoDaParcela(p: { parcelaInicio: string; parcelaFim: string; fechada: boolean }, hoje: string): EstadoSemana {
+  if (p.fechada) return 'fechada';
+  if (hoje < p.parcelaInicio) return 'futura';
+  if (hoje <= p.parcelaFim) return 'corrente';
+  return 'aguardando_fechamento';
 }
 
 export interface MetasIndicadorCS {
@@ -58,6 +70,7 @@ export interface MetasIndicadorCS {
 
 export interface MetasSemanaisCS {
   cs: string;
+  fotoUrl: string | null;
   mes: string; // 'AAAA-MM-01'
   indicadores: MetasIndicadorCS[];
 }
@@ -129,7 +142,7 @@ function metaMensalDoCS(dados: DadosMetas, cs: string, mes: string, ind: Indicad
 }
 
 // Função pura. Monta as metas semanais de um CS no mês, indicador a indicador.
-export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMetas): MetasSemanaisCS {
+export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMetas, hoje: string = hojeSP()): MetasSemanaisCS {
   const semanas: SemanaDoMes[] = semanasDoMes(mes, dados.feriados);
   const indicadores: MetasIndicadorCS[] = INDICADORES_SEMANAIS.map((ind) => {
     const metaMensal = metaMensalDoCS(dados, cs.nome, mes, ind);
@@ -161,6 +174,7 @@ export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMet
         parcelaInicio: s.parcelaInicio,
         parcelaFim: s.parcelaFim,
         fechada: fechadas.has(c.inicio),
+        estado: estadoDaParcela({ parcelaInicio: s.parcelaInicio, parcelaFim: s.parcelaFim, fechada: fechadas.has(c.inicio) }, hoje),
         semData,
       };
     });
@@ -175,7 +189,7 @@ export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMet
       semDataTotal: semData,
     };
   });
-  return { cs: cs.nome, mes, indicadores };
+  return { cs: cs.nome, fotoUrl: cs.fotoUrl ?? null, mes, indicadores };
 }
 
 // Leitura do banco. Paginada, com ordem estável por id.
@@ -238,10 +252,10 @@ export async function elencoDoMes(sb: SupabaseClient, mes: string, hoje: string 
 
 // Metas semanais de todo o elenco do mês: a tela de metas do gestor usa esta. Lê o banco uma vez e monta cada CS
 // com montarMetasSemanaisCS, a mesma função do fechamento.
-export async function metasSemanaisDoElenco(sb: SupabaseClient, mes: string, hoje: string = hojeSP()): Promise<{ modo: ModoRoster; cs: MetasSemanaisCS[] }> {
+export async function metasSemanaisDoElenco(sb: SupabaseClient, mes: string, hoje: string = hojeSP()): Promise<{ modo: ModoRoster; hoje: string; cs: MetasSemanaisCS[] }> {
   const elenco = await elencoDoMes(sb, mes, hoje);
   const dados = await carregarDadosMetas(sb, mes);
-  return { modo: elenco.modo, cs: elenco.cs.map((c) => montarMetasSemanaisCS(c, mes, dados)) };
+  return { modo: elenco.modo, hoje, cs: elenco.cs.map((c) => montarMetasSemanaisCS(c, mes, dados, hoje)) };
 }
 
 // Função única usada por telas e rotas. null quando o CS não estava no elenco do mês (não aparece naquele mês).

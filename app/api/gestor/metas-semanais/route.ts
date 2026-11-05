@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const mes = new URL(req.url).searchParams.get('mes');
     if (!mes || !RE_MES.test(mes)) return NextResponse.json({ error: 'Parâmetro mes inválido (esperado AAAA-MM-01).' }, { status: 400 });
     const r = await metasSemanaisDoElenco(supabase, mes);
-    return NextResponse.json({ mes, modo: r.modo, cs: r.cs });
+    return NextResponse.json({ mes, hoje: r.hoje, modo: r.modo, cs: r.cs });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     console.error('GET /api/gestor/metas-semanais falhou', e);
