@@ -1062,7 +1062,7 @@ async function syncRounds() {
     ROUNDS_COLS.status, ROUNDS_COLS.csResponsavel, ROUNDS_COLS.inicio, ROUNDS_COLS.termino,
     ROUNDS_COLS.local, ROUNDS_COLS.tema, ROUNDS_COLS.especialista, ROUNDS_COLS.publicoAlvo, ROUNDS_COLS.numeroPessoas,
   ];
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name created_at column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.ROUNDS], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
@@ -1072,6 +1072,7 @@ async function syncRounds() {
         board_group_id: g.id,
         mes_grupo_titulo: g.title,
         nome: item.name,
+        created_at_monday: item.created_at || null,
         status: colText(item.column_values, ROUNDS_COLS.status),
         cs_responsavel_raw: colText(item.column_values, ROUNDS_COLS.csResponsavel),
         inicio: dataHoraBRParaISO(colText(item.column_values, ROUNDS_COLS.inicio)),
@@ -1149,7 +1150,7 @@ async function syncFeedback() {
 async function syncCases() {
   const groups = await fetchGroups(BOARDS.CASES);
   const colsIds = [...Object.values(CASES_COLS_LEVE), ...Object.values(CASES_COLS_DETALHE)];
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:150){items{id name created_at column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.CASES], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
@@ -1159,6 +1160,7 @@ async function syncCases() {
         board_group_id: g.id,
         mes_grupo_titulo: g.title,
         nome: item.name,
+        created_at_monday: item.created_at || null,
         cs_raw: colText(item.column_values, CASES_COLS_LEVE.cs),
         empresa: colText(item.column_values, CASES_COLS_LEVE.empresa),
         produto: colText(item.column_values, CASES_COLS_LEVE.produto),
@@ -1188,28 +1190,54 @@ async function syncMatchmakings() {
   // mostrava 100% sem resultado pra TODO matchmaking sincronizado. Agora pede as 5 colunas de
   // conteúdo junto (ver MATCHMAKINGS_COLS).
   const colsIds = Object.values(MATCHMAKINGS_COLS);
-  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text}}}}}}`;
+  // value traz o changed_at da coluna Resultado (instante da última alteração no Monday). Só leitura.
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id created_at column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text value}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
   const rows: any[] = [];
   (data.boards[0].groups || []).forEach((g: any) => {
     (g.items_page?.items || []).forEach((item: any) => {
+      const resultado = colText(item.column_values, MATCHMAKINGS_COLS.resultado);
       rows.push({
         id: Number(item.id),
         board_group_id: g.id,
         mes_grupo_titulo: g.title,
         nome: item.name,
         creator_id: item.creator_id ? Number(item.creator_id) : null,
+        created_at_monday: item.created_at || null,
         motivo: colText(item.column_values, MATCHMAKINGS_COLS.motivo),
         categoria: colText(item.column_values, MATCHMAKINGS_COLS.categoria),
         origem: colText(item.column_values, MATCHMAKINGS_COLS.origem),
-        resultado: colText(item.column_values, MATCHMAKINGS_COLS.resultado),
+        resultado,
+        resultado_alterado_em_monday: resultado ? changedAtDe(item.column_values, MATCHMAKINGS_COLS.resultado) : null,
         data: dateOrNull(colText(item.column_values, MATCHMAKINGS_COLS.data)),
       });
     });
   });
   await upsert('matchmakings_items', rows);
   await pruneOrfaos('matchmakings_items', new Set(rows.map((r) => r.id)));
+  // P5: quando o resultado é apagado no Monday, a data de registro fica no banco e o item sai da contagem
+  // (matchmakings_resultado só conta resultado preenchido). Aqui se registra o caso no log do sync.
+  const apagados = await requisitar('Supabase leitura falhou (matchmakings sem resultado)',
+    `${SUPABASE_URL}/rest/v1/matchmakings_items?select=id&resultado_registrado_em=not.is.null&or=(resultado.is.null,resultado.eq.)`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }, true);
+  if (apagados.length) console.warn(`[sync-monday] matchmakings com resultado apagado no Monday, data de registro mantida: ${apagados.length} (ids: ${apagados.map((r: any) => r.id).join(',')})`);
+  // Resultado preenchido sem changed_at do Monday: sem data de registro, fora do indicador até o próximo ciclo.
+  const pendentes = await requisitar('Supabase leitura falhou (matchmakings com resultado pendente de data)',
+    `${SUPABASE_URL}/rest/v1/matchmakings_items?select=id&resultado_registrado_em=is.null&resultado=not.is.null&resultado=neq.`,
+    { headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } }, true);
+  if (pendentes.length) console.warn(`[sync-monday] matchmakings com resultado sem data de registro (pendentes, fora do indicador): ${pendentes.length} (ids: ${pendentes.map((r: any) => r.id).join(',')})`);
   return rows.length;
+}
+
+// changed_at do valor JSON de uma coluna do Monday. Null quando a coluna não tem valor ou o JSON não traz a data.
+function changedAtDe(columnValues: { id: string; value?: string | null }[], colId: string): string | null {
+  const c = columnValues.find((cv) => cv.id === colId);
+  if (!c || !c.value) return null;
+  try {
+    return JSON.parse(c.value).changed_at || null;
+  } catch {
+    return null;
+  }
 }
 
 // board de Conselhos: grupos ativos + seus grupos de reposição (ACTIVE_TO_REPO_MAP, reforçada por
