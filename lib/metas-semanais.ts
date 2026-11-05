@@ -236,6 +236,14 @@ export async function elencoDoMes(sb: SupabaseClient, mes: string, hoje: string 
   return { modo: r.modo, cs: r.cs };
 }
 
+// Metas semanais de todo o elenco do mês: a tela de metas do gestor usa esta. Lê o banco uma vez e monta cada CS
+// com montarMetasSemanaisCS, a mesma função do fechamento.
+export async function metasSemanaisDoElenco(sb: SupabaseClient, mes: string, hoje: string = hojeSP()): Promise<{ modo: ModoRoster; cs: MetasSemanaisCS[] }> {
+  const elenco = await elencoDoMes(sb, mes, hoje);
+  const dados = await carregarDadosMetas(sb, mes);
+  return { modo: elenco.modo, cs: elenco.cs.map((c) => montarMetasSemanaisCS(c, mes, dados)) };
+}
+
 // Função única usada por telas e rotas. null quando o CS não estava no elenco do mês (não aparece naquele mês).
 export async function metasSemanaisDoCS(sb: SupabaseClient, cs: CSConfig, mes: string): Promise<MetasSemanaisCS | null> {
   const elenco = await elencoDoMes(sb, mes);
