@@ -36,4 +36,20 @@ do $t$ begin
   raise notice 'OK apagado mantém a data';
 end $t$;
 
+-- 5. Criado já com resultado, sem changed_at do Monday: usa created_at_monday (migração 20261105b).
+insert into public.matchmakings_items (id, board_group_id, mes_grupo_titulo, nome, resultado, created_at_monday)
+values (-2, 'teste', 'teste', 'teste reserva criação', 'Vivian recebeu o preço', '2026-10-30T20:44:15Z');
+do $t$ begin
+  assert (select resultado_registrado_em from public.matchmakings_items where id = -2) = '2026-10-30T20:44:15Z'::timestamptz, 'deveria usar created_at_monday na falta de changed_at';
+  raise notice 'OK reserva usa created_at_monday';
+end $t$;
+
+-- 6. Sem changed_at e sem created_at: continua nulo (nunca now()).
+insert into public.matchmakings_items (id, board_group_id, mes_grupo_titulo, nome, resultado)
+values (-3, 'teste', 'teste', 'teste sem nenhuma data', 'Algo');
+do $t$ begin
+  assert (select resultado_registrado_em from public.matchmakings_items where id = -3) is null, 'sem nenhuma data deveria ficar nulo';
+  raise notice 'OK sem nenhuma data fica nulo';
+end $t$;
+
 rollback;

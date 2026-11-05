@@ -84,6 +84,26 @@ export function diasUteisDecorridos(semana: Intervalo, hoje: string, feriados: I
   return diasUteis({ inicio: semana.inicio, fim: fimConsiderado }, feriados);
 }
 
+// Primeiro e último dia útil do mês. Têm parcela de semana com dia útil, então um item levado para essas bordas
+// sempre cai numa semana do mês (ver subordinação ao grupo em lib/atribuicao.ts).
+export function primeiroDiaUtilDoMes(mes: string, feriados: Iterable<string>): string {
+  const set = new Set(feriados);
+  const ano = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7));
+  for (let t = Date.UTC(ano, m - 1, 1); ; t += MS_DIA) {
+    const iso = deUTC(t), dow = new Date(t).getUTCDay();
+    if (dow !== 0 && dow !== 6 && !set.has(iso)) return iso;
+  }
+}
+
+export function ultimoDiaUtilDoMes(mes: string, feriados: Iterable<string>): string {
+  const set = new Set(feriados);
+  const ano = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7));
+  for (let t = Date.UTC(ano, m, 0); ; t -= MS_DIA) {
+    const iso = deUTC(t), dow = new Date(t).getUTCDay();
+    if (dow !== 0 && dow !== 6 && !set.has(iso)) return iso;
+  }
+}
+
 // Total de dias úteis de uma semana inteira (não a parcela de um mês).
 export function diasUteisDaSemana(semana: Intervalo, feriados: Iterable<string>): number {
   return diasUteis(semana, feriados);
