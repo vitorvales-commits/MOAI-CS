@@ -30,6 +30,7 @@ import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato }
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, detalharScoreCS, type ScoreCS } from './pontuacao';
 import { mediana } from './evolucao';
+import { dataDeAtribuicao } from './atribuicao.ts';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
@@ -1473,7 +1474,13 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const casesCalc = casesRegistrados.length;
   const mmDoCS = matchmakingsDoCS(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
   const mmCalc = mmDoCS.length;
-  const mmResultadoCalc = mmDoCS.filter(matchmakingTemResultado).length;
+  // D7 (05/11/2026): matchmakings com resultado contam pelo mês do registro do resultado, e não pelo mês do matchmaking.
+  // Mesma data de atribuição do realizado semanal (lib/atribuicao.ts).
+  const mmResultadoCalc = dados.matchmakings.filter((r: any) => {
+    if (!temUserId || Number(r.creator_id) !== cfg.userId || !matchmakingTemResultado(r)) return false;
+    const data = dataDeAtribuicao('matchmakings_resultado', r);
+    return data !== null && data >= mesInicio && data <= mesFim;
+  }).length;
   const roundsCalc = parseRounds(dados.rounds, grafias, seletorMes, geral);
   const upDown = parseUpsellDownsell(dados.upsellDownsell, grafias, mesInicio, mesFim);
   const semanal = parseReportsSemanais(resumo, cfg.nome, mesInicio, mesFim);
