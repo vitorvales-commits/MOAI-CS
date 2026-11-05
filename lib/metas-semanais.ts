@@ -13,7 +13,9 @@
 // de metas_semanais_fechamento (P3). Parcela aberta usa o realizado ao vivo.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { selectPaginado } from './supabase/paginar.ts';
-import { grafiasCS, nomeBateColunaPessoa, normalizeNome, type CSConfig, type ResumoReport } from './reports.ts';
+import { grafiasCS, nomeBateColunaPessoa, normalizeNome, getCSListParaAgregados, periodosCsSeguro, type CSConfig, type ResumoReport } from './reports.ts';
+import { nomesDoRoster, type LinhaPeriodo, type ModoRoster } from './cs-periodos.ts';
+import { hojeSP } from './gtd-prazos.ts';
 import { dataDeAtribuicao, type IndicadorAtribuicao } from './atribuicao.ts';
 import { semanasDoMes, type SemanaDoMes } from './semanas.ts';
 import { metasSemanaisDoMes, type SemanaMeta } from './metas-semanais-calculo.ts';
@@ -206,8 +208,38 @@ export async function carregarDadosMetas(sb: SupabaseClient, mes: string): Promi
   };
 }
 
-// Função única usada por telas e rotas.
-export async function metasSemanaisDoCS(sb: SupabaseClient, cs: CSConfig, mes: string): Promise<MetasSemanaisCS> {
+// Elenco do mês: a mesma regra que os indicadores de mês passado já usam (nomesDoRoster em lib/cs-periodos.ts).
+// Mês fechado: quem era CS no mês segundo cs_periodos, inclusive quem já saiu. Mês corrente ou futuro: ativos hoje.
+// Pura: recebe a lista de CS e os períodos já lidos.
+export function elencoDoMesPuro(
+  lista: CSConfig[],
+  periodos: LinhaPeriodo[],
+  mes: string,
+  hoje: string,
+): { modo: ModoRoster; cs: CSConfig[]; faltando: string[] } {
+  const ativosHoje = lista.filter((c) => c.ativo && !c.ex).map((c) => c.nome);
+  const { modo, nomes } = nomesDoRoster(periodos, mes, hoje, ativosHoje);
+  const cs: CSConfig[] = [];
+  const faltando: string[] = [];
+  nomes.forEach((n) => {
+    const achado = lista.find((c) => normalizeNome(c.nome) === normalizeNome(n));
+    if (achado) cs.push(achado); else faltando.push(n);
+  });
+  return { modo, cs, faltando };
+}
+
+export async function elencoDoMes(sb: SupabaseClient, mes: string, hoje: string = hojeSP()): Promise<{ modo: ModoRoster; cs: CSConfig[] }> {
+  const [lista, periodos] = await Promise.all([getCSListParaAgregados(sb), periodosCsSeguro(sb)]);
+  if (!periodos || !periodos.length) throw new Error('cs_periodos indisponível: não há como saber o elenco do mês.');
+  const r = elencoDoMesPuro(lista, periodos, mes, hoje);
+  if (r.faltando.length) throw new Error(`CS do elenco de ${mes} sem cadastro em cs_config: ${r.faltando.join(', ')}`);
+  return { modo: r.modo, cs: r.cs };
+}
+
+// Função única usada por telas e rotas. null quando o CS não estava no elenco do mês (não aparece naquele mês).
+export async function metasSemanaisDoCS(sb: SupabaseClient, cs: CSConfig, mes: string): Promise<MetasSemanaisCS | null> {
+  const elenco = await elencoDoMes(sb, mes);
+  if (!elenco.cs.some((c) => normalizeNome(c.nome) === normalizeNome(cs.nome))) return null;
   const dados = await carregarDadosMetas(sb, mes);
   return montarMetasSemanaisCS(cs, mes, dados);
 }

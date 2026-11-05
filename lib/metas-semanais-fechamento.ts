@@ -8,9 +8,10 @@
 //   - retroativo marca parcela fechada depois de mais de DIAS_PARA_RETROATIVO dias do seu fim.
 //   - Dado ausente fica nulo (realizado, base, déficit, meta efetiva), nunca zero.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { carregarDadosMetas, montarMetasSemanaisCS, type MetasSemanaisCS, type ParcelaMetaSemanal } from './metas-semanais.ts';
-import { getCSListParaAgregados } from './reports.ts';
+import { carregarDadosMetas, elencoDoMes, montarMetasSemanaisCS, type MetasSemanaisCS, type ParcelaMetaSemanal } from './metas-semanais.ts';
+import { normalizeNome } from './reports.ts';
 import { hojeSP } from './gtd-prazos.ts';
+import type { ModoRoster } from './cs-periodos.ts';
 
 export const DIAS_PARA_RETROATIVO = 7;
 
@@ -66,7 +67,7 @@ export function mesesDoFechamento(hoje: string): string[] {
 export interface ResultadoFechamento {
   hoje: string;
   reprocessar: boolean;
-  porMes: Record<string, { cs: number; linhasCandidatas: number; gravadas: number }>;
+  porMes: Record<string, { cs: number; modo: ModoRoster; linhasCandidatas: number; gravadas: number; removidasForaDoElenco: number }>;
 }
 
 // Grava em lotes. Sem reprocessar, a unique key faz a linha existente ser ignorada (ignoreDuplicates).
@@ -77,12 +78,13 @@ export async function fecharMetasSemanais(
   const hoje = opcoes.hoje ?? hojeSP();
   const reprocessar = !!opcoes.reprocessar;
   const meses = opcoes.meses && opcoes.meses.length ? opcoes.meses : mesesDoFechamento(hoje);
-  const roster = (await getCSListParaAgregados(sb)).filter((c) => c.ativo && !c.ex);
   const porMes: ResultadoFechamento['porMes'] = {};
 
   for (const mes of meses) {
+    // Elenco do mês, pela mesma regra de metasSemanaisDoCS (elencoDoMes), e não pelo cs_config de hoje.
+    const { modo, cs: elenco } = await elencoDoMes(sb, mes, hoje);
     const dados = await carregarDadosMetas(sb, mes);
-    const linhas = roster.flatMap((cs) => linhasDeFechamento(montarMetasSemanaisCS(cs, mes, dados), hoje, reprocessar));
+    const linhas = elenco.flatMap((cs) => linhasDeFechamento(montarMetasSemanaisCS(cs, mes, dados), hoje, reprocessar));
     let gravadas = 0;
     for (let i = 0; i < linhas.length; i += 500) {
       const lote = linhas.slice(i, i + 500);
@@ -93,7 +95,23 @@ export async function fecharMetasSemanais(
       if (error) throw new Error(`Erro ao gravar fechamento de ${mes}: ${error.message}`);
       gravadas += lote.length;
     }
-    porMes[mes] = { cs: roster.length, linhasCandidatas: linhas.length, gravadas };
+
+    // Reprocessar: quem não estava no elenco do mês sai do fechamento daquele mês (linhas de CS fora do elenco).
+    let removidas = 0;
+    if (reprocessar) {
+      const noElenco = new Set(elenco.map((c) => normalizeNome(c.nome)));
+      const { data, error: erroLeitura } = await sb.from('metas_semanais_fechamento').select('cs_nome').eq('mes', mes);
+      if (erroLeitura) throw new Error(`Erro ao ler fechamento de ${mes}: ${erroLeitura.message}`);
+      const foraDoElenco = [...new Set((data || []).map((r: { cs_nome: string }) => r.cs_nome))]
+        .filter((nome) => !noElenco.has(normalizeNome(nome)));
+      if (foraDoElenco.length) {
+        const { error: erroRemover, count } = await sb.from('metas_semanais_fechamento')
+          .delete({ count: 'exact' }).eq('mes', mes).in('cs_nome', foraDoElenco);
+        if (erroRemover) throw new Error(`Erro ao remover fechamento fora do elenco de ${mes}: ${erroRemover.message}`);
+        removidas = count ?? 0;
+      }
+    }
+    porMes[mes] = { cs: elenco.length, modo, linhasCandidatas: linhas.length, gravadas, removidasForaDoElenco: removidas };
   }
   return { hoje, reprocessar, porMes };
 }
