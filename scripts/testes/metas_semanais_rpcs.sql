@@ -45,6 +45,15 @@ do $t$ declare v_gestor text; v_cs text; v_valor numeric; v_existe boolean; begi
     raise exception 'FALHA: valor negativo aceito';
   exception when sqlstate '22023' then raise notice 'OK valor negativo recusado'; end;
 
+  -- Semana de janeiro com mês de novembro: não tem parcela em novembro, precisa ser recusada.
+  begin
+    perform public.salvar_meta_semanal(v_cs, 'cases', date '2026-11-01', date '2026-01-05', 1);
+    raise exception 'FALHA: semana de janeiro aceita como parcela de novembro';
+  exception when sqlstate '22023' then raise notice 'OK semana sem parcela no mês recusada'; end;
+
+  -- Nome em minúsculas: grava o nome canônico de cs_config (semana 09/11, usada só nesta checagem).
+  perform public.salvar_meta_semanal(lower(v_cs), 'cases', date '2026-11-01', date '2026-11-09', 4);
+
   perform public.salvar_meta_semanal(v_cs, 'cases', date '2026-11-01', date '2026-11-02', 6);
   perform public.salvar_meta_semanal(v_cs, 'cases', date '2026-11-01', date '2026-11-02', 7);
   reset role;
@@ -62,6 +71,18 @@ do $t$ declare v_gestor text; v_cs text; v_valor numeric; v_existe boolean; begi
      where cs_nome = v_cs and indicador = 'cases' and semana_inicio = date '2026-11-02') into v_existe;
   assert not v_existe, 'remover deveria apagar a linha';
   raise notice 'OK remover';
+end $t$;
+
+-- 3. Nome canônico: a linha da semana 09/11 foi gravada com o nome de cs_config, e só uma.
+do $t$ declare v_nome text; v_qtd integer; begin
+  select nome into v_nome from public.cs_config order by nome limit 1;
+  select count(*) into v_qtd from public.metas_semanais_override
+   where lower(cs_nome) = lower(v_nome) and semana_inicio = date '2026-11-09';
+  assert v_qtd = 1, 'deveria haver uma linha só (obtido ' || v_qtd || ')';
+  assert (select cs_nome from public.metas_semanais_override
+           where lower(cs_nome) = lower(v_nome) and semana_inicio = date '2026-11-09') = v_nome,
+    'cs_nome deveria ser o canônico de cs_config';
+  raise notice 'OK nome canônico gravado, uma linha só';
 end $t$;
 
 rollback;
