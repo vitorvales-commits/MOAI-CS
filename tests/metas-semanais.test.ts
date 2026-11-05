@@ -137,4 +137,48 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
   assert.equal(ind.parcelas[0].realizado, 1);
 }
 
+// 11. Soma das semanas igual ao Geral de outubro de 2026, por CS e por indicador (decisão de 05/11/2026).
+// Geral = itens do grupo do mês e do CS. Soma das semanas + sem data = Geral, sempre.
+{
+  const MES_OUT = '2026-10-01';
+  const d = vazio();
+  const ana = cs({ nome: 'Ana', nomeCompleto: 'Ana Souza', userId: 456 });
+  d.feriados = FERIADOS_2026;
+  // Cases do Rodrigo no grupo Outubro 2026: dentro, antes (vai para 01/10) e depois (vai para 30/10). Mais um do grupo Setembro.
+  d.cases.push(
+    { id: 101, cs_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro 2026', created_at_monday: '2026-10-05T15:00:00Z' },
+    { id: 102, cs_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro 2026', created_at_monday: '2026-09-28T15:00:00Z' },
+    { id: 103, cs_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro 2026', created_at_monday: '2026-11-02T15:00:00Z' },
+    { id: 104, cs_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Setembro 2026', created_at_monday: '2026-10-07T15:00:00Z' },
+    { id: 105, cs_raw: 'Ana Souza', mes_grupo_titulo: 'Outubro 2026', created_at_monday: null },
+  );
+  // Matchmakings do Rodrigo no grupo Outubro: um com data própria, um só com a criação (sem data própria).
+  d.matchmakings.push(
+    { id: 201, creator_id: 123, mes_grupo_titulo: 'Outubro', data: '2026-10-20', created_at_monday: '2026-10-16T16:18:56Z', resultado: 'Negocio fechado', resultado_registrado_em: '2026-10-22T14:00:00Z' },
+    { id: 202, creator_id: 123, mes_grupo_titulo: 'Outubro', data: null, created_at_monday: '2026-10-13T12:00:00Z', resultado: null, resultado_registrado_em: null },
+  );
+  // Rounds do Rodrigo no grupo Outubro: um com início, um só com a criação depois do mês. Um cancelado não conta.
+  d.rounds.push(
+    { id: 301, cs_responsavel_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro', status: 'Realizado', inicio: '2026-10-15T12:00:00Z', created_at_monday: null },
+    { id: 302, cs_responsavel_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro', status: 'Realizado', inicio: null, created_at_monday: '2026-10-31T10:00:00Z' },
+    { id: 303, cs_responsavel_raw: 'Rodrigo Gianesini', mes_grupo_titulo: 'Outubro', status: 'Cancelado', inicio: '2026-10-16T12:00:00Z', created_at_monday: null },
+  );
+  d.upsell.push({ id: 401, cs_raw: 'Rodrigo Gianesini', status: 'Finalizado', tipo_troca: 'Upsell', data: '2026-10-14' });
+
+  const rod = montarMetasSemanaisCS(cs(), MES_OUT, d);
+  const soma = (ind: string) => rod.indicadores.find((x) => x.indicador === ind)!.parcelas.reduce((t, p) => t + (p.realizado ?? 0), 0);
+  assert.equal(soma('cases'), 3, 'cases do Rodrigo em outubro: 3 (o de setembro fica de fora)');
+  assert.equal(soma('matchmakings'), 2);
+  assert.equal(soma('matchmakings_resultado'), 1, 'resultado registrado em 22/10 conta em outubro');
+  assert.equal(soma('rounds'), 2, 'cancelado não conta');
+  assert.equal(soma('upsell'), 1);
+  assert.equal(rod.indicadores.find((x) => x.indicador === 'cases')!.semDataTotal, 0);
+
+  // Ana: um case do grupo sem data. Soma das semanas é zero, e o item aparece como sem data (Geral = 1).
+  const anaRes = montarMetasSemanaisCS(ana, MES_OUT, d);
+  const ind = anaRes.indicadores.find((x) => x.indicador === 'cases')!;
+  assert.equal(ind.parcelas.reduce((t, p) => t + (p.realizado ?? 0), 0), 0);
+  assert.equal(ind.semDataTotal, 1, 'soma + sem data = Geral (0 + 1)');
+}
+
 console.log('metas-semanais: todos os casos passaram');

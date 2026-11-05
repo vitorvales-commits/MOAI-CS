@@ -79,16 +79,19 @@ export function itensDoIndicador(ind: IndicadorSemanal, cs: CSConfig, dados: Dad
   const grafias = grafiasCS(cs);
   const bateNome = (texto: string | null) => nomeBateColunaPessoa(texto, grafias);
   const minhaMM = (userId: number | null | undefined) => userId !== null && userId !== undefined;
+  const grupo = { mes, feriados: dados.feriados };
 
+  // Geral segue o grupo do mês: cases, matchmakings e rounds só contam os itens do grupo deste mês, e a data de
+  // criação é subordinada ao grupo (lib/atribuicao.ts). Matchmakings com resultado é a exceção (D7).
   switch (ind) {
     case 'cases':
-      return dados.cases.filter((r) => bateNome(r.cs_raw)).map((r) => ({
-        data: dataDeAtribuicao('cases', r), valor: 1, grupoDoMes: grupoDoMes(r.mes_grupo_titulo, mes),
+      return dados.cases.filter((r) => bateNome(r.cs_raw) && grupoDoMes(r.mes_grupo_titulo, mes)).map((r) => ({
+        data: dataDeAtribuicao('cases', r, grupo), valor: 1, grupoDoMes: true,
       }));
     case 'matchmakings': {
       if (!minhaMM(cs.userId)) return null;
-      return dados.matchmakings.filter((r) => Number(r.creator_id) === cs.userId).map((r) => ({
-        data: dataDeAtribuicao('matchmakings', r), valor: 1, grupoDoMes: grupoDoMes(r.mes_grupo_titulo, mes),
+      return dados.matchmakings.filter((r) => Number(r.creator_id) === cs.userId && grupoDoMes(r.mes_grupo_titulo, mes)).map((r) => ({
+        data: dataDeAtribuicao('matchmakings', r, grupo), valor: 1, grupoDoMes: true,
       }));
     }
     case 'matchmakings_resultado': {
@@ -98,8 +101,8 @@ export function itensDoIndicador(ind: IndicadorSemanal, cs: CSConfig, dados: Dad
         .map((r) => ({ data: dataDeAtribuicao('matchmakings_resultado', r), valor: 1, grupoDoMes: grupoDoMes(r.mes_grupo_titulo, mes) }));
     }
     case 'rounds':
-      return dados.rounds.filter((r) => r.status === ROUNDS_STATUS_VALIDO && bateNome(r.cs_responsavel_raw)).map((r) => ({
-        data: dataDeAtribuicao('rounds', r), valor: 1, grupoDoMes: grupoDoMes(r.mes_grupo_titulo, mes),
+      return dados.rounds.filter((r) => r.status === ROUNDS_STATUS_VALIDO && bateNome(r.cs_responsavel_raw) && grupoDoMes(r.mes_grupo_titulo, mes)).map((r) => ({
+        data: dataDeAtribuicao('rounds', r, grupo), valor: 1, grupoDoMes: true,
       }));
     case 'upsell':
       // upsell_downsell_items não tem grupo do mês: item sem data não é atribuído a mês nenhum (grupoDoMes falso).
