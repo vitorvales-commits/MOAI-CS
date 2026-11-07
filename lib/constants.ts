@@ -37,6 +37,11 @@ export const PRODUCT_PRICES: Record<string, number> = {
 export const NIVEL_ORDEM = ['Fast Track', 'Executivo', 'C-Level', 'C-Level+', 'High End'];
 
 export const CHURN_EXCLUIR = ['Comunidade', 'N/D'];
+
+// Item fixo de teste da fila de escrita no board Visita Churns. É o único item que a tela de visitas
+// mostra para o gestor (linha de teste, com o botão Editar). Itens antigos de teste com outro ID, como o
+// "TESTE" 13104116386, continuam fora dos indicadores pela regra do nome, mas não aparecem na tela.
+export const VISITA_ITEM_TESTE_FILA_ID = 13441800409;
 export const ROUNDS_STATUS_VALIDO = 'Realizado';
 export const UD_STATUS_VALIDO = 'Finalizado';
 

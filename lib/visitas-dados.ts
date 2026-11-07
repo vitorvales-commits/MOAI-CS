@@ -2,6 +2,7 @@
 // /api/gestor/visitas e pelo relatório imprimível, para que os dois mostrem os mesmos números.
 // Tudo sai da função visitas_resultado (SQL), que já calcula retenção, IEV e situação do membro.
 import { hojeSP } from './gtd-prazos.ts';
+import { VISITA_ITEM_TESTE_FILA_ID } from './constants.ts';
 import { infoMotivo } from './churn.ts';
 import { csvVisitas, dentroDaJanelaVisitas, eficacia, calibracao, filaAcoes, filaAcoesDetalhe, funil, ievPorSafra, perfil, type VisitaLinha } from './visitas.ts';
 
@@ -99,11 +100,12 @@ export type ItemTeste = { id: number; mondayUpdatedAt: string | null; proximoAco
 
 export async function carregarItemTeste(supabase: any, isGestor: boolean): Promise<ItemTeste | null> {
   if (!isGestor) return null;
+  // Só o item fixo da fila. Outros itens de teste (como o "TESTE" antigo) ficam fora da tela.
   const { data, error } = await supabase
     .from('visitas_churn')
     .select('id, monday_updated_at, proximo_acompanhamento, observacoes')
-    .eq('item_teste', true)
-    .limit(1);
+    .eq('id', VISITA_ITEM_TESTE_FILA_ID)
+    .eq('item_teste', true);
   if (error) throw new Error(error.message);
   const r = (data || [])[0];
   if (!r) return null;
