@@ -4,12 +4,24 @@
 // pro /login em vez de uma lista vazia.
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { CABECALHO_SEGREDO, decidirRotaInterna } from './interno.ts';
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const ALLOWED_EMAIL_DOMAIN = '@moaiclubedelideres.com';
 
 export async function updateSession(request: NextRequest) {
+  // Rota interna (fechamento de metas semanais, chamada pelo pg_cron): decide pelo segredo, sem sessão.
+  // Qualquer outro caminho segue o gate normal abaixo. Ver lib/supabase/interno.ts.
+  const decisaoInterna = decidirRotaInterna(
+    request.method,
+    request.nextUrl.pathname,
+    request.headers.get(CABECALHO_SEGREDO),
+    process.env.METAS_FECHAMENTO_SECRET,
+  );
+  if (decisaoInterna === 'liberar') return NextResponse.next({ request });
+  if (decisaoInterna === 'negar') return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(url, anonKey, {
