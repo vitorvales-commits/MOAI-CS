@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { mesAtualBrasilia } from '@/lib/churn';
-import { carregarVisitas, csvVisitas } from '@/lib/visitas-dados';
+import { carregarVisitas, carregarItemTeste, csvVisitas } from '@/lib/visitas-dados';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +62,14 @@ export async function GET(req: NextRequest) {
         },
       });
     }
-    return NextResponse.json(payload);
+    // Item de teste da escrita: só para o gestor, fora de c3, totais e CSV. Se a leitura falhar, vai nulo e a linha não aparece.
+    let itemTeste = null;
+    try {
+      itemTeste = await carregarItemTeste(supabase, isGestor);
+    } catch (e) {
+      console.error('visitas gestor: item de teste indisponível', e);
+    }
+    return NextResponse.json({ ...payload, itemTeste });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     console.error('visitas gestor falhou', e);

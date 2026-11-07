@@ -46,6 +46,8 @@ export async function carregarVisitas(supabase: any, ref: string) {
     payload: {
       ref,
       hoje,
+      // visitas reais no banco, em qualquer mês: zero libera o estado vazio da tela (o item de teste não conta)
+      visitasReais: todas.length,
       a2: filaAcoes(todas, hoje),
       a2Detalhe: filaAcoesDetalhe(todas, hoje),
       cartoes: {
@@ -87,6 +89,29 @@ export async function carregarVisitas(supabase: any, ref: string) {
         })),
       },
     },
+  };
+}
+
+// Item fixo de teste da escrita no Monday (visitas_churn.item_teste = true). Não é uma visita real: não entra
+// em visitas_resultado, em totais, filtros, CSV nem relatório. Só o gestor recebe, para editar pelo botão da
+// tabela. Para quem não é gestor, devolve null sem consultar o banco.
+export type ItemTeste = { id: number; mondayUpdatedAt: string | null; proximoAcompanhamento: string | null; observacoes: string | null };
+
+export async function carregarItemTeste(supabase: any, isGestor: boolean): Promise<ItemTeste | null> {
+  if (!isGestor) return null;
+  const { data, error } = await supabase
+    .from('visitas_churn')
+    .select('id, monday_updated_at, proximo_acompanhamento, observacoes')
+    .eq('item_teste', true)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const r = (data || [])[0];
+  if (!r) return null;
+  return {
+    id: Number(r.id),
+    mondayUpdatedAt: r.monday_updated_at ?? null,
+    proximoAcompanhamento: r.proximo_acompanhamento ?? null,
+    observacoes: r.observacoes ?? null,
   };
 }
 

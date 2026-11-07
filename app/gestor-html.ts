@@ -539,6 +539,7 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .rec-etapa span{font-size:12px;color:var(--cinza-texto);}
 .recorde{color:var(--cinza-apoio);font-size:12px;display:block;margin-top:4px;}
 .churn-tabela tr.massa{cursor:pointer;background:var(--cinza-superficie);}
+.churn-tabela tr.linha-teste td{background:var(--cinza-superficie);border-top:1px dashed var(--cinza-apoio);}
 @media (max-width:900px){ #churnA1{grid-template-columns:repeat(2,minmax(0,1fr));} }
 .churn-numero b small.de{font-size:18px;color:var(--cinza-apoio);font-family:Inter,sans-serif;font-weight:600;}
 .churn-numero b.alerta{color:var(--vermelho);} .churn-numero .def.alerta{color:var(--vermelho);font-weight:600;}
@@ -4246,15 +4247,35 @@ function churnRenderVisitas_(v) {
       return [churnEsc_(l.faixa), churnEsc_(l.maturadas), churnPct_(l.retencao90), churnPct_(l.dentroFidelidade), churnPct_(l.foraFidelidade)];
     }));
   }).join('');
-  document.getElementById('visitasLista').innerHTML = churnTabela_(['Membro', 'CS', 'Etapa', 'Pedido', 'Visita', 'Dias até a visita', 'MRR', 'Ação principal', 'Causa raiz', 'Termômetro', 'Retenção em 90 dias', 'IEV', 'Monday'],
-    v.c3.linhas.map(function (l) {
-      return [churnEsc_(l.membro || '-'), churnEsc_(l.cs || '-'), churnEsc_(l.etapa), churnEsc_(churnDataBR_(l.dataPedido)), churnEsc_(churnDataBR_(l.dataVisita)), churnEsc_(l.diasAteVisita === null ? '-' : l.diasAteVisita), churnEsc_(churnMoeda_(l.mrr)),
-        churnEsc_(l.acaoPrincipal || '-'), churnEsc_(l.causaRaiz || '-'), churnEsc_(l.termometro || '-'), churnEsc_(l.retido90), churnEsc_(l.iev === null ? 'em maturação' : l.iev),
-        '<a href="' + churnEsc_(l.link) + '" target="_blank" rel="noopener">Abrir</a> ' +
-          (l.mondayUpdatedAt ? '<button type="button" class="btn sm" data-visita-editar="' + churnEsc_(l.id) + '">Editar</button>'
-            : '<button type="button" class="btn sm" disabled>Aguardando a próxima sincronização</button>')];
-    })) + '<p class="churn-nota">' + v.c3.total + ' visitas no período. Uso interno da gestão, com nome do membro.</p>';
+  document.getElementById('visitasLista').innerHTML = visitasListaHtml_(v);
   document.getElementById('visitasCsv').href = ENDPOINT_VISITAS + '?ref=' + encodeURIComponent(v.ref) + '&formato=csv';
+}
+
+// Lista de visitas (c3) em HTML. Função pura: só monta a string, sem tocar no DOM. Com nenhuma visita real no
+// banco, a tabela vira uma orientação. O item de teste da escrita (v.itemTeste, só o gestor recebe) entra no fim,
+// com o mesmo botão Editar. Ele não soma em totais, filtros, CSV nem relatório (esses saem de c3 e do SQL).
+var VISITAS_CABECALHO_ = ['Membro', 'CS', 'Etapa', 'Pedido', 'Visita', 'Dias até a visita', 'MRR', 'Ação principal', 'Causa raiz', 'Termômetro', 'Retenção em 90 dias', 'IEV', 'Monday'];
+var VISITAS_SEM_VISITAS_ = 'Nenhuma visita registrada no Monday ainda. Quando a primeira for criada no board Visita Churns, ela aparece aqui em até 5 minutos e pode ser editada pelo botão Editar.';
+function visitasBotaoEditar_(id, mondayUpdatedAt) {
+  return mondayUpdatedAt ? '<button type="button" class="btn sm" data-visita-editar="' + churnEsc_(id) + '">Editar</button>'
+    : '<button type="button" class="btn sm" disabled>Aguardando a próxima sincronização</button>';
+}
+function visitasListaHtml_(v) {
+  var linhas = v.c3.linhas || [], teste = v.itemTeste || null;
+  var nota = '<p class="churn-nota">' + v.c3.total + ' visitas no período. Uso interno da gestão, com nome do membro.</p>';
+  var semVisitas = !linhas.length && !v.visitasReais;
+  var msg = semVisitas ? '<p class="gestor-empty">' + churnEsc_(VISITAS_SEM_VISITAS_) + '</p>' : '';
+  if (!linhas.length && !teste) return (msg || churnTabela_(VISITAS_CABECALHO_, [])) + nota;
+  var corpo = linhas.map(function (l) {
+    return '<tr>' + [churnEsc_(l.membro || '-'), churnEsc_(l.cs || '-'), churnEsc_(l.etapa), churnEsc_(churnDataBR_(l.dataPedido)), churnEsc_(churnDataBR_(l.dataVisita)), churnEsc_(l.diasAteVisita === null ? '-' : l.diasAteVisita), churnEsc_(churnMoeda_(l.mrr)),
+      churnEsc_(l.acaoPrincipal || '-'), churnEsc_(l.causaRaiz || '-'), churnEsc_(l.termometro || '-'), churnEsc_(l.retido90), churnEsc_(l.iev === null ? 'em maturação' : l.iev),
+      '<a href="' + churnEsc_(l.link) + '" target="_blank" rel="noopener">Abrir</a> ' + visitasBotaoEditar_(l.id, l.mondayUpdatedAt)]
+      .map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+  });
+  if (teste) corpo.push('<tr class="linha-teste"><td colspan="12"><b>Item de teste da escrita no Monday</b></td><td>' + visitasBotaoEditar_(teste.id, teste.mondayUpdatedAt) + '</td></tr>');
+  var tabela = '<div class="table-wrap"><div class="table-scroll"><table class="churn-tabela"><thead><tr>' +
+    VISITAS_CABECALHO_.map(function (c) { return '<th>' + churnEsc_(c) + '</th>'; }).join('') + '</tr></thead><tbody>' + corpo.join('') + '</tbody></table></div></div>';
+  return msg + tabela + nota;
 }
 
 // ---- edição de visitas no Monday (etapa 4b, parte 2, 03/11/2026) ----
@@ -4276,6 +4297,8 @@ function visitaUuid_() {
   return 'k' + Date.now() + Math.random().toString(36).slice(2, 12);
 }
 function visitaLinha_(id) {
+  var t = churnVisitasDados_ && churnVisitasDados_.itemTeste;
+  if (t && String(t.id) === String(id)) { if (!t.membro) t.membro = 'Item de teste da escrita no Monday'; return t; }
   var ls = churnVisitasDados_ && churnVisitasDados_.c3 ? churnVisitasDados_.c3.linhas : [];
   for (var i = 0; i < ls.length; i++) { if (String(ls[i].id) === String(id)) return ls[i]; }
   return null;

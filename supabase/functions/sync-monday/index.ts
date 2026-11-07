@@ -802,8 +802,8 @@ async function syncVisitasChurn() {
   const colIds = Object.values(VISITA_COLS);
   assertColunasPermitidas(colIds, VISITA_COLS_PROIBIDAS);
   const itens = await fetchAllItemsFlat(BOARDS.VISITA_CHURNS, colIds, 'name created_at updated_at group{id}', VISITA_FRAGMENTOS);
-  // item de teste criado durante a configuração do board não entra
-  const items = itens.filter((it) => normalizarTexto(it.name || '') !== 'teste');
+  // Todos os itens entram. O item "teste" é marcado (item_teste) e fica fora de indicadores, relatórios e CSV.
+  const items = itens;
   // group_id é buscado pelo membro ligado, no momento do sync (regra do trigger visitas_churn_manter_grupo)
   const membros = await fetchAllFromSupabase('conselhos_membros', 'id,group_id');
   const groupDoMembro = new Map<number, string>(membros.map((m: any) => [Number(m.id), m.group_id]));
@@ -846,6 +846,8 @@ async function syncVisitasChurn() {
       created_at_monday: it.created_at || null,
       // Data de alteração do item no Monday: é o lido_em da edição pelo dash (a fila de escrita compara com ela)
       monday_updated_at: it.updated_at ?? null,
+      // item fixo de teste da escrita no Monday (nome "teste"); fica fora de todo indicador, relatório e CSV
+      item_teste: normalizarTexto(it.name || '') === 'teste',
       synced_at: agora,
     };
   });
