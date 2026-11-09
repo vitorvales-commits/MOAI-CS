@@ -33,9 +33,34 @@ export function valorParaMonday(colunaId: string, valor: unknown): unknown {
   return String(valor ?? '');
 }
 
+// Formato tipado (espelho nativo, etapa 5): { coluna_id: { tipo, valor } }. Nulo limpa a coluna.
+export type TipoColunaEspelho = 'text' | 'long_text' | 'numbers' | 'date' | 'status';
+export type ValorTipado = { tipo: TipoColunaEspelho; valor: unknown };
+
+function ehValorTipado(v: unknown): v is ValorTipado {
+  return typeof v === 'object' && v !== null && !Array.isArray(v) && 'tipo' in v && 'valor' in v;
+}
+
+export function valorTipadoParaMonday(tipo: TipoColunaEspelho, valor: unknown): unknown {
+  if (valor === null || valor === undefined) return null;
+  switch (tipo) {
+    case 'text': return String(valor);
+    case 'long_text': return { text: String(valor) };
+    case 'numbers': return String(valor);
+    case 'date': return { date: String(valor).slice(0, 10) };
+    case 'status': return { label: String(valor) };
+    default: throw new Error(`tipo de coluna desconhecido: ${String(tipo)}`);
+  }
+}
+
+// Aceita os dois formatos: o do piloto (valor cru, colunas de TIPO_COLUNA) e o tipado do espelho.
 export function montarColumnValues(valores: Record<string, unknown>): string {
   const saida: Record<string, unknown> = {};
-  for (const [coluna, valor] of Object.entries(valores)) saida[coluna] = valorParaMonday(coluna, valor);
+  for (const [coluna, valor] of Object.entries(valores)) {
+    saida[coluna] = ehValorTipado(valor)
+      ? valorTipadoParaMonday(valor.tipo, valor.valor)
+      : valorParaMonday(coluna, valor);
+  }
   return JSON.stringify(saida);
 }
 

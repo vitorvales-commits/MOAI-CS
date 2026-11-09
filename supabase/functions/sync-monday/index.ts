@@ -185,6 +185,7 @@ const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 import { decidirPrune } from './prune-trava.ts';
 import { parseGrupoAtivo } from './parse-grupo.ts';
 import { decidirEscrita, executarCiclo, montarColumnValues, proximaTentativa } from './fila-escrita.ts';
+import { decidirDestinoEspelho, precisaRenomear, vinculoFoiRecriado } from './espelho.ts';
 
 const BOARDS = {
   METAS: '18408969048',
@@ -1702,8 +1703,83 @@ async function lerItemMonday(itemId: string, colIds: string[]): Promise<any | nu
   return data.items[0] ?? null;
 }
 
+// ============ espelho nativo (etapa 5, PR B) ============
+// Escrita de espelho: o dash é a origem, então não há regra de conflito. Destino resolvido nesta ordem:
+// vínculo em sincronia.vinculo_nativo; senão, item achado pela coluna "Chave do dash"; senão, criar.
+// Idempotente: se uma tentativa anterior criou o item e perdeu a resposta, a busca pela chave o acha.
+const CONSULTA_ITEM_ESPELHO = `query($ids: [ID!]) { items(ids: $ids) { id name board { id } } }`;
+
+async function vincularEspelho(tabela: string, chave: string, itemId: string) {
+  await rpcSupabase('sincronia_vincular_espelho', { p_tabela: tabela, p_chave: chave, p_monday_item_id: itemId }, false);
+}
+
+async function buscarItensPorChave(boardId: string, colunaChave: string, chave: string): Promise<{ id: string; name: string }[]> {
+  const data = await mondayFetch(
+    `query($board: ID!, $col: String!, $val: String!) { items_page_by_column_values(board_id: $board, columns: [{column_id: $col, column_values: [$val]}], limit: 10) { items { id name } } }`,
+    { board: boardId, col: colunaChave, val: chave },
+  );
+  return (data.items_page_by_column_values?.items ?? []).map((i: any) => ({ id: String(i.id), name: String(i.name) }));
+}
+
+async function executarEspelho(c: any): Promise<'concluido'> {
+  const tabela = String(c.origem_tabela);
+  const chave = String(c.origem_chave);
+  const boardId = String(c.board_id);
+  const espelho = await rpcSupabase('sincronia_ler_espelho', { p_tabela: tabela, p_chave: chave });
+  if (!espelho) throw new Error(`espelho sem cadastro: ${tabela}`);
+  const vinculoLido: string | null = espelho.monday_item_id ?? null;
+
+  // O vínculo só vale se o item ainda existe e está no board do espelho.
+  let vinculoValido: string | null = null;
+  let nomeNoMonday: string | null = null;
+  if (vinculoLido) {
+    const data = await mondayFetch(CONSULTA_ITEM_ESPELHO, { ids: [vinculoLido] });
+    const existente = data.items?.[0] ?? null;
+    if (existente && String(existente.board?.id) === boardId) {
+      vinculoValido = String(existente.id);
+      nomeNoMonday = existente.name ?? null;
+    }
+  }
+  const recriado = vinculoFoiRecriado(vinculoLido, vinculoValido);
+
+  const achados = vinculoValido ? [] : await buscarItensPorChave(boardId, String(espelho.coluna_chave), chave);
+  const decisao = decidirDestinoEspelho(vinculoValido, achados.map((a) => a.id));
+
+  if (decisao.tipo === 'criar') {
+    const data = await mondayFetch(
+      `mutation($board: ID!, $group: String!, $name: String!, $cv: JSON) { create_item(board_id: $board, group_id: $group, item_name: $name, column_values: $cv) { id } }`,
+      { board: boardId, group: String(c.grupo_id), name: c.nome_item, cv: montarColumnValues(c.valores) },
+    );
+    const itemId = String(data.create_item.id);
+    await vincularEspelho(tabela, chave, itemId);
+    await finalizarComando(c.id, 'concluido', { item_id: itemId, destino: 'criado', vinculo_recriado: recriado, duplicatas: 0 }, null, null, null, c.tentativas ?? 0);
+    return 'concluido';
+  }
+
+  const itemId = decisao.itemId as string;
+  if (decisao.tipo === 'achado') nomeNoMonday = achados.find((a) => a.id === itemId)?.name ?? null;
+  await vincularEspelho(tabela, chave, itemId);
+  await mondayFetch(
+    `mutation($item: ID!, $board: ID!, $cv: JSON!) { change_multiple_column_values(item_id: $item, board_id: $board, column_values: $cv) { id } }`,
+    { item: itemId, board: boardId, cv: montarColumnValues(c.valores) },
+  );
+  if (precisaRenomear(nomeNoMonday, c.nome_item)) {
+    await mondayFetch(
+      `mutation($board: ID!, $item: ID!, $nome: String!) { change_simple_column_value(board_id: $board, item_id: $item, column_id: "name", value: $nome) { id } }`,
+      { board: boardId, item: itemId, nome: c.nome_item },
+    );
+  }
+  await finalizarComando(
+    c.id, 'concluido',
+    { item_id: itemId, destino: decisao.tipo, vinculo_recriado: recriado, duplicatas: decisao.duplicatas },
+    null, null, null, c.tentativas ?? 0,
+  );
+  return 'concluido';
+}
+
 // Executa um comando reservado. Retorna o estado final: concluido ou conflito. Erro de execução lança exceção.
 async function executarComando(c: any): Promise<'concluido' | 'conflito'> {
+  if (c.operacao === 'espelhar') return executarEspelho(c);
   if (c.operacao === 'criar_atualizacao') {
     const data = await mondayFetch(
       `mutation($item: ID!, $body: String!) { create_update(item_id: $item, body: $body) { id } }`,
