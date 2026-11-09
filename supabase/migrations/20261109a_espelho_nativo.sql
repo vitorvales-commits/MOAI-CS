@@ -191,7 +191,8 @@ begin
       from public.relatorio_conselho_faltas f
       where f.relatorio_id = (p_linha->>'id')::uuid;
     select m.nome into v_membro from public.conselhos_membros m where m.id = (p_linha->>'membro_atencao_id')::bigint;
-    v_nome := left(coalesce(v_titulo, p_linha->>'group_id') || ' | ' || to_char(v_data, 'DD/MM/YYYY'), 255);
+    v_nome := coalesce((coalesce(v_titulo, p_linha->>'group_id', 'sem conselho')), 'sem conselho')
+              || ' | ' || coalesce(to_char(v_data, 'DD/MM/YYYY'), 'sem data');
     v_campos := jsonb_build_object(
       'chave', v_chave,
       'conselho', coalesce(v_titulo, p_linha->>'group_id'),
@@ -209,7 +210,9 @@ begin
 
   elsif p_tabela = 'advertencias_aplicadas' then
     v_data := ((p_linha->>'aplicado_em')::timestamptz at time zone 'America/Sao_Paulo')::date;
-    v_nome := left(p_linha->>'cs_nome' || ' | ' || p_linha->>'tipo_nome' || ' | ' || to_char(v_data, 'DD/MM/YYYY'), 255);
+    v_nome := coalesce((p_linha->>'cs_nome'), 'sem CS')
+              || ' | ' || coalesce((p_linha->>'tipo_nome'), 'sem tipo')
+              || ' | ' || coalesce(to_char(v_data, 'DD/MM/YYYY'), 'sem data');
     if p_linha->>'anulada_em' is not null then v_situacao := 'Anulada'; end if;
     v_campos := jsonb_build_object(
       'chave', v_chave,
@@ -227,8 +230,9 @@ begin
       'motivo_anulacao', p_linha->>'motivo_anulacao');
 
   elsif p_tabela = 'metas_definidas' then
-    v_nome := left(p_linha->>'indicador' || ' | ' || coalesce(p_linha->>'cs_nome', p_linha->>'escopo')
-                   || ' | ' || to_char((p_linha->>'mes')::date, 'YYYY-MM'), 255);
+    v_nome := coalesce((p_linha->>'indicador'), 'sem indicador')
+              || ' | ' || coalesce((p_linha->>'cs_nome'), (p_linha->>'escopo'), 'sem CS')
+              || ' | ' || coalesce(to_char((p_linha->>'mes')::date, 'YYYY-MM'), 'sem mês');
     v_campos := jsonb_build_object(
       'chave', v_chave,
       'indicador', p_linha->>'indicador',
@@ -240,7 +244,7 @@ begin
       'atualizado_em', sincronia.data_local((p_linha->>'atualizado_em')::timestamptz));
 
   elsif p_tabela = 'cs_periodos' then
-    v_nome := left(p_linha->>'nome_curto', 255);
+    v_nome := (p_linha->>'nome_curto');
     v_campos := jsonb_build_object(
       'chave', v_chave,
       'nome_completo', p_linha->>'nome_completo',
@@ -254,6 +258,9 @@ begin
   else
     raise exception 'Tabela sem montagem de espelho: %', p_tabela;
   end if;
+
+  -- O nome nunca fica nulo nem vazio: sem nome útil, o item usa a chave da linha.
+  v_nome := left(coalesce(nullif(btrim(v_nome), ''), v_chave), 255);
 
   if p_excluido then v_situacao := 'Excluído no dash'; end if;
   v_campos := v_campos || jsonb_build_object('situacao', v_situacao);
@@ -295,16 +302,14 @@ begin
 
   -- Sem pendente: insere. Se a mesma chave já existe (mesmos valores, comando anterior), reabre o comando, a
   -- não ser que ele esteja executando agora; nesse caso o valor atual já é o que está sendo escrito.
-  insert into sincronia.comandos as c
+  -- Sem pendente, cada envio é um comando novo. A chave inclui o instante: o histórico de comandos concluídos
+  -- fica completo, mesmo quando a linha volta a um valor anterior (A, B, A).
+  insert into sincronia.comandos
     (chave_idempotencia, operacao, board_id, grupo_id, nome_item, valores, origem_tabela, origem_chave, criado_por, proxima_tentativa_em)
   values
-    ('espelhar:' || p_tabela || ':' || p_chave || ':' || md5(v_m::text), 'espelhar', v_esp.board_id, v_esp.grupo_id,
-     v_m->>'nome_item', v_m->'valores', p_tabela, p_chave, v_autor, now())
-  on conflict (chave_idempotencia) do update set
-    estado = 'pendente', tentativas = 0, erro = null, proxima_tentativa_em = now(),
-    nome_item = excluded.nome_item, valores = excluded.valores, criado_por = excluded.criado_por
-  where c.estado <> 'executando'
-  returning c.id into v_id;
+    ('espelhar:' || p_tabela || ':' || p_chave || ':' || md5(v_m::text || clock_timestamp()::text), 'espelhar',
+     v_esp.board_id, v_esp.grupo_id, v_m->>'nome_item', v_m->'valores', p_tabela, p_chave, v_autor, now())
+  returning id into v_id;
   return v_id;
 end;
 $fn$;
@@ -488,6 +493,24 @@ begin
 end;
 $fn$;
 
+-- Falhas do espelho nos últimos 7 dias, lidas de access_audit_log. O gatilho não bloqueia a escrita no dash,
+-- então é aqui que o gestor vê que um espelho falhou (fila de ação, PR B).
+create or replace function public.sincronia_falhas_espelho()
+returns table (tabela_origem text, erro_mensagem text, ocorrido_em timestamptz)
+language plpgsql stable security definer set search_path = '' as $fn$
+begin
+  if not (sincronia.chamador_privilegiado() or public.is_gestor()) then
+    raise exception 'Apenas gestor lê as falhas do espelho.';
+  end if;
+  return query
+    select a.metadata->>'tabela', a.metadata->>'erro', a.created_at
+    from public.access_audit_log a
+    where a.action = 'sincronia_espelho_falhou'
+      and a.created_at >= now() - interval '7 days'
+    order by a.created_at desc;
+end;
+$fn$;
+
 -- 8. Permissões ---------------------------------------------------------------
 
 revoke all on function sincronia.data_local(timestamptz) from public, anon, authenticated;
@@ -499,5 +522,7 @@ revoke all on function public.sincronia_definir_espelho_ativo(text, boolean) fro
 revoke all on function public.sincronia_carga_inicial_espelho(text) from public, anon;
 grant execute on function public.sincronia_definir_espelho_ativo(text, boolean) to authenticated;
 grant execute on function public.sincronia_carga_inicial_espelho(text) to authenticated;
+revoke all on function public.sincronia_falhas_espelho() from public, anon;
+grant execute on function public.sincronia_falhas_espelho() to authenticated;
 
 select seguranca.aplicar_protecoes();
