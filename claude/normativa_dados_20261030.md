@@ -194,3 +194,23 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
 - Teste reversível: rodado na produção pelo conector, dentro da mesma chamada, sem `begin`/`commit`. A chamada expirou por pergunta do servidor sem resposta. Verificado depois com `list_tables`: `sincronia.espelhos` não existe, então nada foi aplicado. O teste ainda não passou. O gatilho `comandos_disparar` e os segredos do Vault são desligados ou renomeados só dentro da transação, para o teste não chamar a sync-monday.
 - Restauração de teste: commit `a43624d` instala `btree_gist` (schema `extensions`) antes do `pg_restore` em `scripts/backup/verificar-restauracao.sh`.
 - Pendente: resultado do teste reversível, PR A aberto, depois do merge a aplicação pelo workflow `aplicar-migracao` (backup verde antes, fora de 05h45 a 06h45 UTC) e registro da versão.
+
+### Passo 2 concluído: PR A mergeado e migração aplicada na produção (09/11/2026)
+
+- PR #36 mergeado na main (commit `5916c75`).
+- Backup da main, execução `42659236985` (disparo manual, fora da janela 05h45 a 06h45 UTC): "Dump criptografado" e "Teste de restauração" verdes.
+- Aplicação, execução `42659571255` (`aplicar-migracao`, arquivo `20261109a_espelho_nativo.sql`): dump com snapshot, teste na cópia restaurada e aplicação na produção, todos verdes.
+- Versão registrada em `supabase_migrations.schema_migrations`: `20261109165741`, nome `20261109a_espelho_nativo`. Registro conferido com `list_migrations`.
+- Comparação de contagens na cópia restaurada: 75 tabelas comparadas, 0 divergências.
+- Espelhos na produção, conferido por leitura: `advertencias_aplicadas`, `cs_periodos`, `metas_definidas` e `relatorios_conselho` com `ativo = false`.
+
+### Passo 3: PR B, Edge Function (em revisão, 09/11/2026)
+
+- Branch `feat/espelho-pr-b`, a partir da main.
+- Edge Function: operação `espelhar` em `executarComando` (`index.ts`), resolvendo o destino nesta ordem: vínculo em `sincronia.vinculo_nativo`; senão, item achado pela coluna "Chave do dash"; senão, criar. Vínculo registrado antes da finalização. Vínculo para item inexistente é recriado e o resultado diz `vinculo_recriado`.
+- Funções puras em `supabase/functions/sync-monday/espelho.ts` (decisão de destino, renomear, vínculo recriado).
+- `montarColumnValues` aceita o formato tipado (`text`, `long_text`, `numbers`, `date`, `status`, nulo limpa) e mantém o formato do piloto.
+- Migração `20261109b_sincronia_ler_espelho.sql`: RPC `sincronia_ler_espelho`, só para o serviço. Foi necessária para a Edge Function ler o vínculo e a coluna da chave; não estava no texto do passo 3.
+- Testes: `tests/espelho-destino.test.ts` e `tests/espelho-montagem.test.ts`. `npm test` com 70 de 70, `tsc` e `npm run build` verdes.
+- Não coberto por teste TypeScript: situações "Anulada" e "Excluído no dash" e a coalescência, que são SQL e estão no teste reversível da 20261109a.
+- Pendente: PR B aberto, depois merge e deploy da `sync-monday`; passo 4 (ligar os espelhos, um por vez) só depois disso.
