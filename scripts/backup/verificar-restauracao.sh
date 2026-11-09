@@ -36,6 +36,8 @@ psql_docker -c "
   create or replace function auth.role() returns text language sql stable as \$f\$ select null::text \$f\$;
   create extension if not exists pgcrypto;
   create extension if not exists \"uuid-ossp\";
+  create schema if not exists extensions;
+  create extension if not exists btree_gist with schema extensions;
 "
 
 # Um erro isolado de extensão ausente (pg_net, pg_cron, vault) não impede o restauro das tabelas de dados.
