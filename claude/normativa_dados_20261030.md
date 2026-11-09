@@ -164,3 +164,33 @@ Toda migração que criar tabela em `public` inclui a tabela em `seguranca.catal
 - Verificação: `tsc` sem erros; suíte inteira (68 de 68 arquivos, incluindo `visitas-item-teste.test.ts`, que cobre a leitura por papel, a exclusão do item de teste, o estado vazio e as regras de sincronização); `npm run build` conclui; JS da página validado com `node --check`. Capturas em 1440 e 390 px do estado vazio com a linha de teste e do painel aberto nela, feitas numa página de teste com a tela real, o payload gerado por `carregarVisitas` e `carregarItemTeste` e respostas simuladas das rotas, não no app autenticado.
 - PR B: #28 (https://github.com/vitorvales-commits/MOAI-CS/pull/28), branch `feat/visita-edicao-4b-parte2`, commit `3df9795`. O PR já existia para essa branch e teve título e descrição atualizados. Depois do merge: conferir o deploy da `sync-monday`, e no ciclo seguinte uma linha em `visitas_churn` com `item_teste = true` e `monday_updated_at` preenchido, sem erro em `sync_log`.
 - A chave `fila_escrita_ativa` continua desligada e só será ligada pelo gestor depois do merge, da migração 20261103a e da conferência.
+
+## Etapa 5: espelho nativo do dash no Monday (09/11/2026)
+
+### Passo 1: boards no Monday (concluído)
+
+Pasta "Registro do dash de CS" (21878501), workspace "Conselhos Estratégicos" (13796047). Os quatro boards são privados. Grupo único "Registros" (id `topics`, o grupo padrão renomeado). Coluna Name é o nome do item.
+
+| Board | ID | Coluna "Chave do dash" | Situação no dash (status) | Rótulos |
+|---|---|---|---|---|
+| Registro: relatórios pós conselho | 18439110272 | `text_mm8ygmtw` | `color_mm8yg9nh` | Ativo, Excluído no dash |
+| Registro: advertências | 18439110274 | `text_mm8yznzq` | `color_mm8yy8eb` | Ativo, Anulada, Excluído no dash |
+| Registro: metas definidas | 18439110276 | `text_mm8yprdd` | `color_mm8yk4a2` | Ativo, Excluído no dash |
+| Registro: períodos de CS | 18439110277 | `text_mm8y17wb` | `color_mm8y9g4c` | Ativo, Excluído no dash |
+
+Demais colunas (IDs conferidos com a API):
+
+- Relatórios: Conselho `text_mm8yhnzw`, Data do encontro `date_mm8ybvp5`, CS `text_mm8ywgkv`, Avaliação `long_text_mm8yzwe9`, Avanço `long_text_mm8ydwk7`, Membro de atenção `text_mm8yessv`, Motivo da atenção `long_text_mm8yhqxx`, Combinado `long_text_mm8yew4m`, Faltas `long_text_mm8ygz0s`, Quantidade de faltas `numeric_mm8yscn3`, Enviado em `date_mm8ycg05`, Enviado por `text_mm8y36y9`.
+- Advertências: CS `text_mm8yk92n`, Tipo `text_mm8yykcg`, Pontos `numeric_mm8yx86p`, Validade em meses `numeric_mm8yg14j`, Aplicada em `date_mm8y4f4t`, Válida até `date_mm8yk1nq`, Aplicada por `text_mm8ymx8p`, Observação `long_text_mm8ytv9y`, Origem `text_mm8yb89s`, Anulada em `date_mm8yf620`, Anulada por `text_mm8ye258`, Motivo da anulação `long_text_mm8yg69s`.
+- Metas: Indicador `text_mm8yjqc1`, Mês `date_mm8yqd6w`, Escopo `text_mm8yy0st`, CS `text_mm8yq2h3`, Valor `numeric_mm8yz7et`, Atualizado por `text_mm8ygtj7`, Atualizado em `date_mm8ypswk`.
+- Períodos: Nome completo `text_mm8yhrbx`, Primeiro mês `date_mm8yapkq`, Último mês `date_mm8ysjp1`, Origem `text_mm8y3166`, Confirmado `text_mm8y8neq`, Apelidos `text_mm8y1j6`, Atualizado em `date_mm8y38nr`.
+
+Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodos.confirmado` é booleano (vira "Sim"/"Não"); `advertencias_aplicadas` guarda datas como timestamptz (vira data no fuso de São Paulo); `cs_periodos.aliases` é `text[]` (vira texto separado por vírgula); `relatorios_conselho.membro_atencao_id` é bigint e o nome vem de `conselhos_membros.nome`.
+
+### Passo 2: PR A, migração `20261109a_espelho_nativo` (escrita, teste pendente)
+
+- Arquivos: `supabase/migrations/20261109a_espelho_nativo.sql` e `scripts/normativa/teste_espelho_reversivel.sql` (teste concatenado após a migração, termina com erro proposital `TESTE_ESPELHO_OK` quando tudo passa).
+- Conteúdo: `sincronia.espelhos` (mapas reais, todos `ativo = false`), `sincronia.vinculo_nativo`, operação `espelhar` no check, índice único parcial de coalescência, `sincronia.data_local`, `sincronia.chave_linha`, `sincronia.montar_espelho`, `sincronia.enfileirar_espelho`, gatilhos nas quatro tabelas e em `relatorio_conselho_faltas`, `sincronia.gatilho_comandos` com flag de carga (a carga dispara a fila uma vez, no fim), `public.sincronia_carga_inicial_espelho`, `public.sincronia_definir_espelho_ativo`, `public.sincronia_vincular_espelho` (só serviço), catálogo e `seguranca.aplicar_protecoes()`.
+- Teste reversível: rodado na produção pelo conector, dentro da mesma chamada, sem `begin`/`commit`. A chamada expirou por pergunta do servidor sem resposta. Verificado depois com `list_tables`: `sincronia.espelhos` não existe, então nada foi aplicado. O teste ainda não passou. O gatilho `comandos_disparar` e os segredos do Vault são desligados ou renomeados só dentro da transação, para o teste não chamar a sync-monday.
+- Restauração de teste: commit `a43624d` instala `btree_gist` (schema `extensions`) antes do `pg_restore` em `scripts/backup/verificar-restauracao.sh`.
+- Pendente: resultado do teste reversível, PR A aberto, depois do merge a aplicação pelo workflow `aplicar-migracao` (backup verde antes, fora de 05h45 a 06h45 UTC) e registro da versão.
