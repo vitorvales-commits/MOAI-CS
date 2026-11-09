@@ -90,10 +90,40 @@ export type EscritaPendente = {
   valores: Record<string, string> | null;
 };
 
-// Fila de ação: erro, ou conflito parado há mais de HORAS_PENDENTE. Mais antigo primeiro.
+// Espelho nativo (etapa 5): boards "Registro" e a tabela de origem de cada um. Fixo, porque os boards são criados pela normativa.
+export const ESPELHO_BOARDS: Record<string, string> = {
+  '18439110272': 'relatorios_conselho',
+  '18439110274': 'advertencias_aplicadas',
+  '18439110276': 'metas_definidas',
+  '18439110277': 'cs_periodos',
+};
+export const ROTULO_ESPELHO: Record<string, string> = {
+  relatorios_conselho: 'Relatórios pós conselho',
+  advertencias_aplicadas: 'Advertências',
+  metas_definidas: 'Metas definidas',
+  cs_periodos: 'Períodos de CS',
+};
+export function ehBoardEspelho(boardId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(ESPELHO_BOARDS, boardId);
+}
+
+export type FalhaEspelho = { tabela_origem: string; erro_mensagem: string; ocorrido_em: string };
+export type EspelhoEmErro = { tabela: string; erro: string | null; criado_em: string; executado_em: string | null };
+
+// Comandos de espelho que pararam em erro (depois das tentativas). Sem limite de horas: falha é falha.
+export function espelhosEmErroDaFila(linhas: EscritaPendente[]): EspelhoEmErro[] {
+  return linhas
+    .filter((l) => l.estado === 'erro' && ehBoardEspelho(l.board_id))
+    .map((l) => ({ tabela: ESPELHO_BOARDS[l.board_id], erro: l.erro, criado_em: l.criado_em, executado_em: l.executado_em }))
+    .sort((a, b) => new Date(a.executado_em ?? a.criado_em).getTime() - new Date(b.executado_em ?? b.criado_em).getTime());
+}
+
+// Fila de ação de visitas: erro, ou conflito parado há mais de HORAS_PENDENTE. Mais antigo primeiro.
+// Comandos de espelho ficam de fora: têm bloco próprio ("Espelho no Monday com falha").
 export function escritasPendentesDaFila(linhas: EscritaPendente[], agora: Date = new Date()): EscritaPendente[] {
   const limite = agora.getTime() - HORAS_PENDENTE * 3_600_000;
   return linhas
+    .filter((l) => !ehBoardEspelho(l.board_id))
     .filter((l) => (l.estado === 'erro' || l.estado === 'conflito') && new Date(l.executado_em ?? l.criado_em).getTime() <= limite)
     .sort((a, b) => new Date(a.executado_em ?? a.criado_em).getTime() - new Date(b.executado_em ?? b.criado_em).getTime());
 }

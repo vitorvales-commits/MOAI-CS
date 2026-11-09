@@ -1827,6 +1827,25 @@ function itensFila_() {
         quem: e.criado_por || 'Autor não informado', quando: 'há ' + ha, acao: null, escrita: e.id });
     });
   }
+  // Espelho no Monday com falha (etapa 5): falhas do gatilho (7 dias) e comandos de espelho em erro. Sem falha, nada aparece.
+  var esp = ACOES_.espelhos;
+  if (esp && esp.erro) erros.push('Espelho no Monday indisponível: ' + esp.erro);
+  if (esp && esp.dado) {
+    var haEspelho_ = function (ts) {
+      var h = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 3600000));
+      return h < 48 ? h + (h === 1 ? ' hora' : ' horas') : Math.floor(h / 24) + ' dias';
+    };
+    esp.dado.falhas.forEach(function (f) {
+      itens.push({ tipo: 'semana', cor: 'red', titulo: 'Espelho no Monday com falha: ' + f.rotulo,
+        texto: 'Erro: ' + f.erro_mensagem + '. A escrita no dash não foi afetada; o registro no Monday pode estar desatualizado.',
+        quem: 'Espelho', quando: 'há ' + haEspelho_(f.ocorrido_em), acao: null });
+    });
+    esp.dado.emErro.forEach(function (e) {
+      itens.push({ tipo: 'semana', cor: 'red', titulo: 'Espelho no Monday com falha: ' + e.rotulo,
+        texto: 'Erro: ' + (e.erro || 'sem mensagem') + '. As tentativas se esgotaram; o registro no Monday não foi atualizado.',
+        quem: 'Espelho', quando: 'há ' + haEspelho_(e.executado_em || e.criado_em), acao: null });
+    });
+  }
   var ins = ACOES_.insights;
   if (ins && ins.erro) erros.push('Insights indisponíveis: ' + ins.erro);
   if (ins && ins.dado) {
