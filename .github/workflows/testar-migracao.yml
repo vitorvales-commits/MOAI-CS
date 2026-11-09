@@ -1,0 +1,171 @@
+name: Testar migração (cópia descartável)
+
+# Testa, num PR para a main, as migrações e os testes reversíveis do PR. Tudo roda numa cópia descartável
+# restaurada a partir de um dump de produção com snapshot. NENHUM PASSO ESCREVE NA PRODUÇÃO.
+#
+# Regra de uso do segredo SUPABASE_DB_URL: ele aparece exatamente uma vez neste arquivo, no passo
+# "Dump de produção (somente leitura)", e o script chamado ali só lê (transação read only com snapshot).
+# O job confere isso sozinho, no passo "Conferir que o segredo de produção só lê".
+#
+# Passos:
+#   1. Dump de produção com snapshot (somente leitura) e criptografia, como o backup diário.
+#   2. Restauração numa cópia descartável (Postgres 17 de serviço), com btree_gist antes do pg_restore,
+#      e comparação de contagens com a produção. Falha se qualquer tabela divergir.
+#   3. Aplica na cópia cada migração do PR que ainda não consta em supabase_migrations.schema_migrations,
+#      em ordem, numa única transação por arquivo (aplicar-migracao.sh testar).
+#   4. Para cada scripts/normativa/teste_*_reversivel.sql alterado no PR, roda o arquivo na cópia. O teste
+#      só passa se o ÚNICO erro da execução for a mensagem de sucesso do próprio teste (marcador TESTE_..._OK
+#      declarado no arquivo). Qualquer outra mensagem reprova o PR e aparece no log.
+#
+# Os testes reversíveis terminam com erro proposital para desfazer tudo; a mensagem de erro é o resultado.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/normativa/**'
+
+permissions:
+  contents: read
+
+jobs:
+  testar:
+    name: Restaurar, aplicar e testar na cópia
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restauracao-${{ github.run_id }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      ALVO: postgresql://postgres:restauracao-${{ github.run_id }}@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Listar migrações e testes alterados no PR
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$BASE"
+          git diff --name-only --diff-filter=AM "origin/$BASE...HEAD" -- supabase/migrations scripts/normativa \
+            | sort > "$RUNNER_TEMP/alterados.txt"
+          grep -E '^supabase/migrations/[^/]+\.sql$' "$RUNNER_TEMP/alterados.txt" > "$RUNNER_TEMP/migracoes.txt" || true
+          grep -E '^scripts/normativa/teste_.+_reversivel\.sql$' "$RUNNER_TEMP/alterados.txt" > "$RUNNER_TEMP/testes.txt" || true
+          echo "Migrações do PR:"; cat "$RUNNER_TEMP/migracoes.txt" || true
+          echo "Testes do PR:"; cat "$RUNNER_TEMP/testes.txt" || true
+
+      - name: Conferir que o segredo de produção só lê
+        run: |
+          set -euo pipefail
+          # Este arquivo referencia o segredo de produção exatamente uma vez (o dump, abaixo).
+          n=$(grep -c 'secrets[.]SUPABASE_DB_URL' .github/workflows/testar-migracao.yml || true)
+          if [ "$n" != "1" ]; then
+            echo "o segredo de produção aparece $n vez(es); precisa ser exatamente 1 (o dump)" >&2
+            exit 1
+          fi
+          # O único modo de aplicar-migracao.sh permitido aqui é testar (cópia). Os modos checar e aplicar
+          # falam com a produção por DB_URL e não podem ser chamados deste workflow.
+          if grep -qE 'aplicar-migracao\.sh (aplicar|checar)' .github/workflows/testar-migracao.yml; then
+            echo "este workflow só pode chamar aplicar-migracao.sh no modo testar" >&2
+            exit 1
+          fi
+          echo "ok: segredo de produção usado uma vez, só no dump; nenhuma chamada de escrita"
+
+      - name: Dump de produção (somente leitura)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$DB_URL" || { echo 'Segredo SUPABASE_DB_URL não cadastrado'; exit 1; }
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/plano" "$RUNNER_TEMP/cifrado"
+          docker run --rm --user "$(id -u):$(id -g)" -e DB_URL \
+            -v "$RUNNER_TEMP/plano:/saida" \
+            -v "$PWD/scripts/backup:/scripts:ro" \
+            postgres:17 bash /scripts/gerar-backup.sh
+          python3 -I scripts/backup/tsv_para_json.py "$RUNNER_TEMP/plano/contagens.tsv" "$RUNNER_TEMP/plano/contagens.json"
+          for arquivo in banco.dump contagens.json; do
+            gpg --symmetric --cipher-algo AES256 --batch --yes --pinentry-mode loopback \
+              --passphrase "$BACKUP_PASSPHRASE" \
+              --output "$RUNNER_TEMP/cifrado/$arquivo.gpg" "$RUNNER_TEMP/plano/$arquivo"
+          done
+          rm -rf "$RUNNER_TEMP/plano"
+          ls -l "$RUNNER_TEMP/cifrado"
+
+      - name: Restaurar na cópia e comparar contagens
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$BACKUP_PASSPHRASE" || { echo 'Segredo BACKUP_PASSPHRASE não cadastrado'; exit 1; }
+          bash scripts/backup/verificar-restauracao.sh "$RUNNER_TEMP/cifrado" "$ALVO"
+
+      - name: Aplicar na cópia as migrações do PR ainda não registradas
+        run: |
+          set -euo pipefail
+          registrada() {
+            printf '%s\n' "select count(*) from supabase_migrations.schema_migrations where name = :'nome';" \
+              | docker run --rm -i --network host -e URL_BANCO="$ALVO" postgres:17 \
+                  sh -c 'psql "$URL_BANCO" -X -At -v nome="$1"' sh "$1"
+          }
+          if [ ! -s "$RUNNER_TEMP/migracoes.txt" ]; then
+            echo 'nenhuma migração alterada neste PR'
+            exit 0
+          fi
+          while IFS= read -r arquivo; do
+            nome="$(basename "$arquivo" .sql)"
+            if [ "$(registrada "$nome")" != "0" ]; then
+              echo "já registrada na cópia, pulando: $nome"
+              continue
+            fi
+            echo "aplicando na cópia: $nome"
+            bash scripts/backup/aplicar-migracao.sh testar "$(basename "$arquivo")"
+          done < <(sort "$RUNNER_TEMP/migracoes.txt")
+
+      - name: Rodar os testes reversíveis na cópia
+        run: |
+          set -euo pipefail
+          if [ ! -s "$RUNNER_TEMP/testes.txt" ]; then
+            echo 'nenhum teste reversível alterado neste PR'
+            exit 0
+          fi
+          reprovado=0
+          while IFS= read -r caminho; do
+            arquivo="$(basename "$caminho")"
+            marcador="$(grep -oE 'TESTE_[A-Z0-9_]+_OK' "$caminho" | head -n1 || true)"
+            if [ -z "$marcador" ]; then
+              echo "REPROVADO $arquivo: o arquivo não declara marcador de sucesso (TESTE_..._OK)"
+              reprovado=1
+              continue
+            fi
+            saida="$RUNNER_TEMP/saida_$arquivo.txt"
+            docker run --rm --network host -e URL_BANCO="$ALVO" \
+              -v "$PWD/scripts/normativa:/testes:ro" \
+              postgres:17 sh -c 'psql "$URL_BANCO" -X -v ON_ERROR_STOP=0 -f "/testes/$1"' sh "$arquivo" > "$saida" 2>&1 || true
+            erros="$(grep -cE '(^|: )ERROR:' "$saida" || true)"
+            final="$(grep -E '(^|: )ERROR:' "$saida" | tail -n1 || true)"
+            echo "--- $arquivo: último erro ---"
+            echo "${final:-(nenhum erro)}"
+            if [ "$erros" = "1" ] && grep -qF "ERROR:  $marcador" <<<"$final"; then
+              echo "OK $arquivo: $marcador"
+            else
+              echo "REPROVADO $arquivo: a mensagem final precisa ser $marcador e ser o único erro"
+              echo "--- saída completa ---"
+              cat "$saida"
+              reprovado=1
+            fi
+          done < <(sort "$RUNNER_TEMP/testes.txt")
+          exit "$reprovado"
