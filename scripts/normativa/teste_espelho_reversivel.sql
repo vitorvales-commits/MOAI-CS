@@ -11,6 +11,7 @@ declare
   v_adv uuid := gen_random_uuid();
   v_rel uuid := gen_random_uuid();
   v_grupo text;
+  v_ind text;
   v_membro bigint;
   v_n integer;
   v_nome text;
@@ -20,8 +21,6 @@ declare
   v_cnt integer;
 begin
   alter table sincronia.comandos disable trigger comandos_disparar;
-  update vault.secrets set name = name || '_teste'
-    where name in ('sync_function_secret', 'sync_function_authorization');
   update sincronia.configuracao set valor = true where chave = 'fila_escrita_ativa';
 
   select g.group_id into v_grupo from public.conselhos_grupos g limit 1;
@@ -31,8 +30,10 @@ begin
   end if;
 
   -- 1. Espelho inativo: a escrita no dash acontece, nada é enfileirado.
+  select i.chave into v_ind from public.indicadores_catalogo i limit 1;
+  if v_ind is null then raise exception 'FALHA preparo: catálogo de indicadores vazio'; end if;
   insert into public.metas_definidas (id, indicador, mes, escopo, cs_nome, valor, atualizado_por)
-    values (v_meta, 'Indicador teste', '2026-10-01', 'cs', 'CS Teste', 10, 'teste');
+    values (v_meta, v_ind, '2026-10-01', 'cs', 'CS Teste', 10, 'teste');
   select count(*) into v_n from sincronia.comandos
     where origem_tabela = 'metas_definidas' and origem_chave = v_meta::text;
   if v_n <> 0 then raise exception 'FALHA 1: espelho inativo enfileirou (%)', v_n; end if;
@@ -52,7 +53,7 @@ begin
   if (v_val->'numeric_mm8yz7et'->>'valor')::numeric <> 30 then
     raise exception 'FALHA 2b: valor não é o mais recente: %', v_val;
   end if;
-  if v_nome <> 'Indicador teste | CS Teste | 2026-10' then raise exception 'FALHA 2c: nome %', v_nome; end if;
+  if v_nome <> v_ind || ' | CS Teste | 2026-10' then raise exception 'FALHA 2c: nome %', v_nome; end if;
   if v_val->'color_mm8yk4a2'->>'valor' <> 'Ativo' then raise exception 'FALHA 2d: situação %', v_val; end if;
   if v_val->'date_mm8yqd6w'->>'valor' <> '2026-10-01' then raise exception 'FALHA 2e: mês %', v_val; end if;
   v_res := v_res || jsonb_build_object('2_coalescencia_e_valores', true);
@@ -103,7 +104,7 @@ begin
   update sincronia.espelhos set ativo = true where tabela = 'relatorios_conselho';
   insert into public.relatorios_conselho
     (id, group_id, data_encontro, cs_nome, avaliacao, avanco, membro_atencao_id, membro_atencao_motivo, combinado, enviado_por)
-    values (v_rel, v_grupo, '2026-11-05 10:00:00-03', 'CS Teste', 'Boa', 'Bom', v_membro, 'Motivo', 'Combinado X', 'gestor');
+    values (v_rel, v_grupo, '2026-11-05 10:00:00-03', 'CS Teste', 'Bom', 'Bom', v_membro, 'Motivo', 'Combinado X', 'gestor');
   insert into public.relatorio_conselho_faltas (relatorio_id, membro_id, membro_nome, tipo, categoria, justificativa)
     values (v_rel, v_membro, 'Fulano', 'Falta', 'Justificada', 'Viagem');
   select c.valores, c.nome_item into v_val, v_nome from sincronia.comandos c
@@ -160,15 +161,8 @@ begin
   if v_val->'text_mm8y1j6'->>'valor' <> 'Ap, Teste Ap' then raise exception 'FALHA 9c: apelidos %', v_val; end if;
   v_res := v_res || jsonb_build_object('9_periodos', true);
 
-  -- 10. Carga inicial: uma linha pendente por registro da tabela, e a quantidade devolvida bate.
-  v_n := public.sincronia_carga_inicial_espelho('metas_definidas');
-  select count(*) into v_cnt from public.metas_definidas;
-  if v_n <> v_cnt then raise exception 'FALHA 10: carga devolveu % e a tabela tem %', v_n, v_cnt; end if;
-  select count(*) into v_n from sincronia.comandos c
-    where c.operacao = 'espelhar' and c.estado = 'pendente' and c.origem_tabela = 'metas_definidas'
-      and c.origem_chave in (select m.id::text from public.metas_definidas m);
-  if v_n <> v_cnt then raise exception 'FALHA 10b: pendentes da carga % de %', v_n, v_cnt; end if;
-  v_res := v_res || jsonb_build_object('10_carga_inicial', v_cnt);
+  -- 10. A carga inicial sucesso não é testada aqui: ela termina chamando disparar_fila, que faz HTTP para a
+  -- produção. Será verificada no passo 4, com o critério de aceite por tabela.
 
   -- 11. Vínculo: uma linha por origem; registrar de novo substitui o item.
   perform public.sincronia_vincular_espelho('metas_definidas', 'k-teste', '111');
