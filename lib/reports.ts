@@ -10,6 +10,7 @@ import { filtrarCardsPorCS, fraseSituacaoConselhos } from './conselhos-aba';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unstable_noStore as noStore } from 'next/cache';
 import { normalizarMesAta } from './mes-ata';
+import { ausenteOuLanca } from './bonus-tolerancia';
 import { rpcPaginado } from './supabase/paginar';
 import {
   MESES_ORDEM, PRODUCT_PRICES, CHURN_EXCLUIR, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
@@ -345,7 +346,8 @@ function mapBonusCS(r: any): BonusCS {
 export async function listarBonusCS(sb: SupabaseClient, csNome: string): Promise<BonusCS[]> {
   const { data, error } = await sb.from('bonus_aplicados').select('*')
     .eq('cs_nome', csNome).order('mes_referencia', { ascending: false }).order('aplicado_em', { ascending: false });
-  if (error) throw new Error('Erro ao buscar bonus_aplicados: ' + error.message);
+  // Migração ainda não aplicada (tabela ausente): a página mostra a lista vazia, sem erro.
+  if (ausenteOuLanca(error, 'bonus_aplicados')) return [];
   return (data || []).map(mapBonusCS);
 }
 // Uma transação só: se um item for recusado (CS desconhecido, pontos inválidos, mês fora do dia 1 ou futuro), nada é gravado.
@@ -1487,8 +1489,9 @@ function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: 
 // usuários e a RLS de bonus_aplicados mostra ao CS só as próprias linhas. Sem esse total o ranking estaria errado.
 export async function bonusTotaisNoPeriodo(sb: SupabaseClient, mesInicio: string, mesFim: string): Promise<Map<string, number>> {
   const { data, error } = await sb.rpc('bonus_total_por_cs', { p_mes_inicio: mesInicio, p_mes_fim: mesFim });
-  if (error) throw new Error('Erro ao buscar bonus_total_por_cs: ' + error.message);
   const mapa = new Map<string, number>();
+  // Função ainda não aplicada: sem bônus no período (mapa vazio), com aviso no log. Outros erros são lançados.
+  if (ausenteOuLanca(error, 'bonus_total_por_cs')) return mapa;
   ((data || []) as { cs_nome: string; pontos: number | string }[]).forEach((r) => mapa.set(normalizeNome(r.cs_nome || ''), Number(r.pontos) || 0));
   return mapa;
 }
