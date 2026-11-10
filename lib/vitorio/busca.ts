@@ -9,7 +9,7 @@ const motor: any = motorJs; // módulo UMD em JS: os tipos públicos estão decl
 
 export type DocVitorio = {
   chave: string; // colecao:id, estável
-  colecao: 'faq' | 'processos' | 'pops' | 'fluxos' | 'modelos' | 'navegacao' | 'glossario';
+  colecao: 'faq' | 'processos' | 'pops' | 'fluxos' | 'modelos' | 'navegacao' | 'glossario' | 'manual';
   titulo: string;
   corpo: string; // texto original sem HTML
   perguntas: string[];
@@ -19,6 +19,7 @@ export type DocVitorio = {
   verbo: string; // "Abrir o POP"
   data: string | null; // data da publicação vigente (só processos)
   alvo?: string; // rota interna do documento de processos
+  passos?: string[]; // etapas do item, quando ele é um fluxo ou POP
 };
 export type ClasseBusca = 'resposta' | 'ambigua' | 'nada';
 export type ResultadoBusca = { tipo: ClasseBusca; itens: { doc: DocVitorio; score: number }[]; realce: string[]; ranking?: { doc: DocVitorio; score: number }[] };
@@ -33,7 +34,7 @@ export const PESOS_CAMPOS: Record<'titulo' | 'perguntas' | 'sinonimos' | 'corpo'
 
 export const normalizar: (texto: string) => string = motor.normalizar;
 export const radical: (palavra: string) => string = motor.radical;
-export const indexar: (docs: DocVitorio[], sinonimos: string[][]) => Indice = motor.indexar;
+export const indexar: (docs: Pick<DocVitorio, 'titulo' | 'corpo' | 'perguntas' | 'palavras'>[], sinonimos: string[][], opcoes?: { manter?: string[] }) => Indice = motor.indexar;
 export const trecho: (texto: string, realce: string[], max?: number) => Trecho = motor.trecho;
 export function buscar(indice: Indice, consulta: string, cfg: ConfigBusca = CONFIG_BUSCA): ResultadoBusca {
   return motor.buscar(indice, consulta, cfg);

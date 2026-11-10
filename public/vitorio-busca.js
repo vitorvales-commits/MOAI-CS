@@ -55,9 +55,9 @@
     return p;
   }
 
-  function radicais(textoNormalizado) {
-    var out = [];
-    textoNormalizado.split(' ').forEach(function (w) { if (w && !VAZIAS[w]) out.push(radical(w)); });
+  function radicais(textoNormalizado, vz) {
+    var out = [], vazias = vz || VAZIAS;
+    textoNormalizado.split(' ').forEach(function (w) { if (w && !vazias[w]) out.push(radical(w)); });
     return out;
   }
   function contar(lista) {
@@ -77,15 +77,18 @@
   }
 
   // docs: [{ chave, titulo, corpo, perguntas: [], palavras: [] }]; sinonimos: [[frase, frase...], ...]
-  function indexar(docs, sinonimos) {
+  // opcoes.manter: palavras que normalmente são vazias mas importam (quem, quando, onde, quanto) ao classificar a intenção de uma pergunta.
+  function indexar(docs, sinonimos, opcoes) {
+    var vz = VAZIAS;
+    if (opcoes && opcoes.manter) { vz = {}; for (var kv in VAZIAS) vz[kv] = true; opcoes.manter.forEach(function (w) { delete vz[w]; }); }
     var campos = ['titulo', 'perguntas', 'sinonimos', 'corpo'];
     var lista = [], postings = {}, somaTam = { titulo: 0, perguntas: 0, sinonimos: 0, corpo: 0 };
     docs.forEach(function (d, i) {
       var f = {
-        titulo: radicais(normalizar(d.titulo)),
-        perguntas: radicais(normalizar((d.perguntas || []).join(' '))),
-        sinonimos: radicais(normalizar((d.palavras || []).join(' '))),
-        corpo: radicais(normalizar(d.corpo))
+        titulo: radicais(normalizar(d.titulo), vz),
+        perguntas: radicais(normalizar((d.perguntas || []).join(' ')), vz),
+        sinonimos: radicais(normalizar((d.palavras || []).join(' ')), vz),
+        corpo: radicais(normalizar(d.corpo), vz)
       };
       var reg = { doc: d, tam: {}, i: i };
       campos.forEach(function (c) { reg.tam[c] = f[c].length; somaTam[c] += f[c].length; });
@@ -102,9 +105,9 @@
     campos.forEach(function (c) { media[c] = Math.max(1, somaTam[c] / Math.max(1, docs.length)); });
     var vocabulario = Object.keys(postings);
     var grupos = (sinonimos || []).map(function (g) {
-      return g.map(function (frase) { return radicais(normalizar(frase)); }).filter(function (s) { return s.length; });
+      return g.map(function (frase) { return radicais(normalizar(frase), vz); }).filter(function (s) { return s.length; });
     }).filter(function (g) { return g.length > 1; });
-    return { docs: lista, postings: postings, media: media, vocabulario: vocabulario, trig: {}, grupos: grupos, n: docs.length };
+    return { docs: lista, postings: postings, media: media, vocabulario: vocabulario, trig: {}, grupos: grupos, n: docs.length, vz: vz };
   }
 
   function idf(indice, termo) {
@@ -136,19 +139,19 @@
     var c = {}; for (var k in PADRAO) c[k] = PADRAO[k];
     if (cfg) for (var k2 in cfg) if (cfg[k2] != null) c[k2] = cfg[k2];
     var qn = normalizar(consulta), ondeNav = /^(onde|aonde)( |$)/.test(qn);
-    var qs = radicais(qn);
+    var qs = radicais(qn, indice.vz);
     var vistos = {}, termos = []; // { t, peso }
     function somar(t, peso) { if (!vistos[t]) termos.push({ t: t, peso: peso }); vistos[t] = Math.max(vistos[t] || 0, peso); }
     var maxIdf = Math.log(1 + (indice.n + 0.5) / 0.5);
-    var denominador = 0, realce = {};
+    var denominador = 0, realce = {}, achados = 0;
     qs.forEach(function (t) {
       var alvo = t, peso = 1;
       if (!indice.postings[t]) {
         alvo = maisProximo(indice, t);
         peso = PESO_TERMO_CORRIGIDO;
-        if (!alvo) { denominador += maxIdf; return; } // termo desconhecido pesa contra a confiança
+        if (!alvo) { denominador += maxIdf * (c.penalidadeDesconhecido == null ? 1 : c.penalidadeDesconhecido); return; } // termo desconhecido pesa contra a confiança
       }
-      somar(alvo, peso); realce[alvo] = true;
+      somar(alvo, peso); realce[alvo] = true; achados++;
       denominador += idf(indice, alvo) * peso;
     });
     indice.grupos.forEach(function (g) {
@@ -184,12 +187,12 @@
       var paginas = ranking.filter(function (r) { return r.doc.colecao === 'navegacao'; });
       if (paginas.length && paginas[0].score >= c.limiarMinimo) ranking = paginas;
     }
-    var rel = Object.keys(realce), melhores = ranking.slice(0, 5);
-    if (!ranking.length || ranking[0].score < c.limiarMinimo) return { tipo: 'nada', itens: [], realce: rel, ranking: melhores };
+    var rel = Object.keys(realce), melhores = ranking.slice(0, 5), cobertura = qs.length ? achados / qs.length : 0;
+    if (!ranking.length || ranking[0].score < c.limiarMinimo) return { tipo: 'nada', itens: [], realce: rel, ranking: melhores, cobertura: cobertura };
     var s1 = ranking[0].score, s2 = ranking[1] ? ranking[1].score : 0;
-    if (s1 >= c.limiarResposta && s1 - s2 >= c.margemAmbiguidade) return { tipo: 'resposta', itens: [ranking[0]], realce: rel, ranking: melhores };
+    if (s1 >= c.limiarResposta && s1 - s2 >= c.margemAmbiguidade) return { tipo: 'resposta', itens: [ranking[0]], realce: rel, ranking: melhores, cobertura: cobertura };
     var opcoes = ranking.filter(function (r) { return r.score >= c.limiarMinimo; }).slice(0, MAX_OPCOES);
-    return { tipo: 'ambigua', itens: opcoes, realce: rel, ranking: melhores };
+    return { tipo: 'ambigua', itens: opcoes, realce: rel, ranking: melhores, cobertura: cobertura };
   }
 
   // Trecho do texto original em torno do primeiro termo encontrado, com as posições a destacar.

@@ -1,0 +1,33 @@
+// Intenções de rotina: report semanal, pontos de advertência, relatório pós conselho e GTD.
+import type { Intencao } from '../tipos.ts';
+
+export const ROTINAS: Intencao[] = [
+  { id: 'report.status', familia: 'report', obrigatorias: [], opcionais: ['cs'], padrao: { periodo: 'semana_atual', cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'report.status',
+    exemplos: ['ja mandei o report', 'mandei o report da semana', 'o report da semana foi enviado', 'meu report esta pendente', 'o {cs} mandou o report {periodo}', 'report {periodo} enviado', 'falta enviar o report', 'preciso mandar o report',
+      'report semanal enviado ou pendente', 'meu report {periodo}', 'o {cs} ja enviou o report', 'status do report'],
+    modelos: ['{quem}: o report de {periodo} {estado}.', 'Sobre o report de {periodo}, {quem}: {estado}.'], continuacoes: ['Qual o prazo do report?', 'Quem não enviou o report?'] },
+  { id: 'report.pendentes', familia: 'report', obrigatorias: [], padrao: { periodo: 'semana_atual' }, perfis: ['gestor'], manipulador: 'report.pendentes',
+    exemplos: ['quem nao mandou o report', 'quem nao enviou o report {periodo}', 'quem esta devendo report', 'report pendente do time', 'quais cs nao enviaram o report', 'quem falta enviar o report', 'quem ainda nao mandou o report da semana',
+      'lista de reports pendentes', 'quem atrasou o report', 'quem esta sem report {periodo}', 'pendencias de report'],
+    modelos: ['Em {periodo}: {itens}.', 'Report de {periodo}: {itens}.'], continuacoes: ['Quem já enviou?', 'Quais relatórios do conselho estão pendentes?'] },
+  { id: 'pontos.meus', familia: 'pontos', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'pontos.meus',
+    exemplos: ['quantos pontos eu tenho', 'quantos pontos de advertencia eu tenho', 'meus pontos', 'quantos pontos o {cs} tem', 'tenho algum ponto', 'quantos pontos tomei', 'pontos de advertencia do {cs}', 'estou com ponto de advertencia',
+      'quantos pontos ativos', 'historico de pontos do {cs}', 'tenho advertencia ativa', 'quantas advertencias eu tenho'],
+    modelos: ['{quem} tem {ativos} ativos; no histórico foram {total}.', 'Pontos de {quem}: {ativos} ativos e {total} no histórico.'], continuacoes: ['Por que tomei esses pontos?', 'Quando os pontos zeram?'] },
+  { id: 'pontos.motivo', familia: 'pontos', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'pontos.motivo',
+    exemplos: ['por que tomei ponto', 'por que levei advertencia', 'motivo dos meus pontos', 'por que o {cs} tem ponto', 'o que gerou meus pontos', 'quais advertencias eu levei', 'me explica meus pontos', 'de onde vieram meus pontos', 'por que estou com ponto de advertencia',
+      'quando e por que levei ponto', 'detalhe dos pontos do {cs}', 'lista das minhas advertencias'],
+    modelos: ['Os registros de {quem}: {itens}.', 'Advertências de {quem}: {itens}.'], continuacoes: ['Quando os pontos zeram?', 'Como evito levar ponto?'] },
+  { id: 'pontos.validade', familia: 'pontos', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'pontos.validade',
+    exemplos: ['quando meus pontos zeram', 'ate quando valem meus pontos', 'quando o ponto vence', 'quando os pontos do {cs} vencem', 'quando acabam as minhas advertencias', 'prazo de validade dos pontos', 'em quanto tempo o ponto some',
+      'quando posso ficar sem ponto', 'validade das advertencias', 'quando expira meu ponto'],
+    modelos: ['Os pontos de {quem} valem até {data}.', 'O próximo vencimento de {quem} é {data}.'], continuacoes: ['Por que tomei esses pontos?', 'Quantos pontos eu tenho?'] },
+  { id: 'relatorio.pendentes', familia: 'relatorio', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'relatorio.pendentes',
+    exemplos: ['quais relatorios do conselho estao pendentes', 'tenho relatorio pos conselho pendente', 'quais relatorios eu preciso fazer', 'relatorios do conselho do {cs}', 'qual o prazo do relatorio do conselho', 'quanto tempo tenho para o relatorio do conselho',
+      'relatorio pos conselho atrasado', 'preciso preencher relatorio de conselho', 'tem relatorio atrasado', 'quais relatorios faltam', 'meus relatorios pos conselho', 'relatorios pendentes do {cs}'],
+    modelos: ['{quem}: {itens}.', 'Relatórios pós conselho de {quem}: {itens}.'], continuacoes: ['Qual o prazo do relatório?', 'Onde preencho o relatório?'] },
+  { id: 'gtd.atrasadas', familia: 'gtd', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'gtd.atrasadas',
+    exemplos: ['tenho etapa do gtd atrasada', 'o que esta atrasado no gtd', 'etapas do gtd que vencem essa semana', 'gtd atrasado do {cs}', 'o que vence no gtd', 'quantas etapas atrasadas eu tenho', 'minhas tarefas do gtd', 'pendencias do gtd',
+      'gtd da semana', 'o que falta no checklist do conselho', 'etapas atrasadas do {cs}', 'como esta meu gtd'],
+    modelos: ['{quem}: {atrasadas} e {avencer}.', 'No GTD de {quem}: {atrasadas} e {avencer}.'], continuacoes: ['Quais são os prazos do GTD?', 'Onde vejo o GTD?'] },
+];

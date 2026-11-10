@@ -379,3 +379,7 @@ export const VITORIO_MARGEM_AMBIGUIDADE = 0.12; // o primeiro precisa superar o 
 // pelo menos esta quantidade de vezes dentro da janela.
 export const VITORIO_FILA_MIN_OCORRENCIAS = 2;
 export const VITORIO_FILA_JANELA_DIAS = 14;
+// Pipeline do Vitorio 2: confiança mínima da intenção (BM25 normalizado sobre as frases exemplo), margem sobre a segunda e mínimo da conversa social.
+export const VITORIO_INTENCAO_MINIMA = 0.5;
+export const VITORIO_INTENCAO_MARGEM = 0.08;
+export const VITORIO_SOCIAL_MINIMA = 0.5;

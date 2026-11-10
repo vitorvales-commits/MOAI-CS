@@ -1,0 +1,31 @@
+// Intenções de NPS, churn, 1:1, saúde dos dados e causa de mudanças.
+import type { Intencao } from '../tipos.ts';
+
+export const SAUDE_BASE: Intencao[] = [
+  { id: 'nps.valor', familia: 'nps', obrigatorias: [], opcionais: ['cs'], padrao: { periodo: 'mes_atual' }, perfis: ['cs', 'gestor'], manipulador: 'nps.valor',
+    exemplos: ['qual o nps {periodo}', 'nps do {cs} {periodo}', 'como esta o nps', 'qual a nota do {cs}', 'nps dos conselhos {periodo}', 'qual meu nps', 'nota de nps do time', 'como foi o nps {periodo}', 'nps geral {periodo}', 'qual a nota dos conselhos',
+      'nota que os conselheiros deram {periodo}', 'nps do cs {periodo}'],
+    modelos: ['NPS de {escopo} em {periodo}: {itens}.', 'Em {periodo}, {escopo}: {itens}.'], continuacoes: ['E no mês passado?', 'Quais alertas de NPS existem?'] },
+  { id: 'nps.alertas', familia: 'nps', obrigatorias: [], perfis: ['gestor'], manipulador: 'nps.alertas',
+    exemplos: ['quais alertas de nps estao abertos', 'tem alerta de nps', 'alertas de nps', 'quem deu nota baixa', 'notas baixas recentes', 'respostas de nps ruins', 'detratores recentes', 'quais conselhos tiveram nota baixa', 'alerta de nps baixo', 'tem detrator aberto'],
+    modelos: ['Alertas de NPS abertos: {itens}.', 'Há {n} abertos: {itens}.'], continuacoes: ['Qual o NPS do mês?', 'Como é calculado o alerta?'] },
+  { id: 'churn.mes', familia: 'churn', obrigatorias: [], opcionais: ['cs'], padrao: { periodo: 'mes_atual' }, perfis: ['cs', 'gestor'], manipulador: 'churn.mes',
+    exemplos: ['quantos churns tivemos {periodo}', 'churn {periodo}', 'quantos membros saíram {periodo}', 'quantos cancelamentos {periodo}', 'churn do {cs} {periodo}', 'quantos churns eu tive', 'quem cancelou {periodo}', 'como esta o churn',
+      'qual o churn do time', 'quantas saidas teve {periodo}', 'houve cancelamento {periodo}', 'churn do mes'],
+    modelos: ['Churn de {quem} em {periodo}: {valor}.', 'Em {periodo}, {quem} teve churn de {valor}.'], continuacoes: ['E no mês passado?', 'Qual a receita perdida?'] },
+  { id: 'churn.risco', familia: 'churn', obrigatorias: [], perfis: ['gestor'], manipulador: 'churn.risco',
+    exemplos: ['quem esta em risco de churn', 'membros em risco', 'quais membros podem cancelar', 'risco de churn do time', 'quem corre risco de sair', 'lista de risco', 'membros criticos em risco', 'quem esta na zona de risco', 'qual o risco de churn', 'quem pode sair'],
+    modelos: ['O risco de churn é calculado na página de churn.'], continuacoes: ['Quantos churns tivemos?'] },
+  { id: 'um_a_um.ultima', familia: 'um_a_um', obrigatorias: [], opcionais: ['cs'], padrao: { cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'um_a_um.ultima',
+    exemplos: ['quando foi minha ultima 1:1', 'ultima 1a1 do {cs}', 'quais combinados em aberto da 1a1', 'o que combinamos na ultima 1a1', 'tenho passo em aberto da 1a1', 'meus combinados com a lideranca', 'data da ultima uma a uma', 'combinados da 1a1',
+      'resumo da ultima 1a1 do {cs}', 'o que ficou pendente da 1a1', 'ultimo 1:1 do {cs}'],
+    modelos: ['A última 1:1 de {quem} foi em {data}. {abertos}.', 'Última 1:1 de {quem}: {data}. {abertos}.'], continuacoes: ['Onde registro a 1:1?'] },
+  { id: 'saude.sync', familia: 'saude', obrigatorias: [], perfis: ['cs', 'gestor'], manipulador: 'saude.sync',
+    exemplos: ['quando foi a ultima sincronizacao', 'os dados estao atualizados', 'o monday sincronizou', 'algum board esta com falha', 'os dados estao desatualizados', 'quando os dados atualizaram', 'a sincronizacao esta funcionando', 'ha erro na sincronizacao', 'ultima atualizacao dos dados',
+      'por que meu numero esta diferente do monday', 'por que o numero nao bate com o monday', 'o dash esta atrasado em relacao ao monday'],
+    modelos: ['{estado}'], continuacoes: ['Como funciona a sincronização?'] },
+  { id: 'causa.mudanca', familia: 'causa', obrigatorias: ['indicador'], opcionais: ['cs'], padrao: { periodo: 'mes_atual', cs: 'eu' }, perfis: ['cs', 'gestor'], manipulador: 'causa.mudanca',
+    exemplos: ['por que meu {indicador} caiu', 'por que o {indicador} subiu', 'por que o {indicador} do {cs} mudou', 'o que fez o {indicador} cair {periodo}', 'por que o {indicador} piorou', 'por que o {indicador} esta diferente do mes passado', 'motivo da queda do {indicador}',
+      'por que o {indicador} aumentou', 'o que mudou no {indicador} {periodo}', 'por que o {indicador} do time caiu', 'explica a variacao do {indicador}'],
+    modelos: ['{texto}'], continuacoes: ['Qual o valor de cada mês?', 'Onde vejo o diagnóstico?'] },
+];

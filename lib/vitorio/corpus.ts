@@ -6,6 +6,8 @@ import type { DocVitorio } from './busca.ts';
 import { normalizar } from './busca.ts';
 import { NAVEGACAO_FIXA, navegacaoDoDock } from './navegacao.ts';
 import { GLOSSARIO } from './glossario.ts';
+import { docsDicionario } from './dicionario.ts';
+import { docsManual } from './manual.ts';
 
 export type Perfil = 'cs' | 'gestor';
 type Mapa = Record<string, any>;
@@ -68,6 +70,7 @@ export function corpusProcessos(m: Mapa, publicadoEm: string | null): DocVitorio
       titulo: tira(String(p.nome || p.id)),
       corpo: textoDe([p.objetivo, (p.matriz || []).map((x: Mapa) => x.at), (p.regras || []).map((x: Mapa) => x.t), termos, p.observacoes]),
       palavras: [textoDe(p.cod), textoDe(p.setor)], alvo: f0 ? 'gestor/fluxos/' + f0 + '/pop' : 'gestor/arquitetura',
+      passos: (p.matriz || []).filter((x: Mapa) => x && x.at).map((x: Mapa) => tira(String(x.at)) + (x.resp ? ' (' + tira(String(x.resp)) + ')' : '')),
     }, 'Processos, POP', 'Abrir o POP'));
   });
   (m.FLUXOS || []).forEach((f: Mapa) => {
@@ -81,7 +84,7 @@ export function corpusProcessos(m: Mapa, publicadoEm: string | null): DocVitorio
       // início e fim do fluxo (tipos s e e) repetem o título e só poluiriam a busca
       if (n.tipo === 's' || n.tipo === 'e') return;
       docs.push(base('fluxos', unico('fluxos', f.id + '.' + n.id), {
-        titulo: tira(String(n.txt)), corpo: textoDe([n.txt, n.tarefas]), palavras: [textoDe(f.nome)], alvo: 'gestor/fluxos/' + f.id + '/' + n.id,
+        titulo: tira(String(n.txt)), corpo: textoDe([n.txt, n.tarefas]), palavras: [textoDe(f.nome)], passos: (n.tarefas || []).map((t: unknown) => tira(String(t))), alvo: 'gestor/fluxos/' + f.id + '/' + n.id,
       }, 'Processos, Atividade do fluxo ' + tira(String(f.nome || f.id)), 'Abrir a atividade'));
     });
   });
@@ -111,6 +114,8 @@ export function montarCorpus(args: { dados: { nome: string; tipo: string; valor?
     ...navegacaoDoDock().filter((d) => d.perfis.includes(args.perfil)),
     ...NAVEGACAO_FIXA.filter((d) => d.perfis.includes(args.perfil)),
     ...GLOSSARIO.filter((g) => g.perfis.includes(args.perfil)),
+    ...docsDicionario().filter((g) => g.perfis.includes(args.perfil)),
+    ...docsManual().filter((g) => g.perfis.includes(args.perfil)),
   ].map((d) => {
     const { perfis, destinos, ...doc } = d as any;
     const destino = destinos ? (destinos[args.perfil] ?? null) : doc.destino;

@@ -5,7 +5,7 @@ import {
   PESO_PONTO_ADVERTENCIA_DECIMOS, REPORT_VALIDADE_DIAS, PONTOS_REPORT_ATRASADO, PONTOS_RELATORIO_ATRASADO, PESOS_SCORE_CS,
   PONTUACAO_MIN_INDICADORES_COM_META, SCORE_FAIXA_SAUDAVEL, SCORE_FAIXA_ATENCAO, HOME_RITMO_LIMIAR_ACELERAR, HOME_RITMO_LIMIAR_NO_RITMO,
   ALERTA_NPS_LIMIAR_DETRATOR, ALERTA_NPS_LIMIAR_NOTA_CS, ALERTA_NPS_MINIMO, ALERTA_NPS_MEDIA_MINIMA, ALERTA_NPS_AMOSTRA_MINIMA,
-  FIDELIDADE_MESES, GTD_PRAZOS_ETAPA, GTD_DIAS_CICLO_ABERTO, LIMIAR_PRESENCA_ATENCAO, ROUNDS_STATUS_VALIDO, UD_STATUS_VALIDO,
+  FIDELIDADE_MESES, GTD_PRAZOS_ETAPA, GTD_DIAS_CICLO_ABERTO, LIMIAR_PRESENCA_ATENCAO, 
   DIAS_MIN_PROJECAO, FECHAMENTO_DIA_CORTE,
 } from '../constants.ts';
 import { RELATORIO_PRAZO_DIAS, REPORT_PRAZO_HORA } from '../pontos.ts';
@@ -69,11 +69,6 @@ export const GLOSSARIO: DocNav[] = [
     'A fidelidade da MOAI é de ' + FIDELIDADE_MESES + ' meses: saída dentro dela tem multa proporcional. O dash usa esse prazo na análise de churn e de reconquista.',
     ['o que é a fidelidade', 'quanto tempo dura a fidelidade', 'tem multa se o membro sair', 'fidelidade de 12 meses'], ['multa', 'rescisao', 'permanencia'],
     { gestor: '/gestor?aba=churn' }),
-  g('indicadores-gerais', 'Indicadores gerais',
-    'Grade de indicadores do mês: cases de sucesso, matchmakings, rounds (contam os com status ' + ROUNDS_STATUS_VALIDO + '), upsell e downsell (contam os com status ' + UD_STATUS_VALIDO + '), indicações, churn, revenue churn, ' +
-    'membros críticos (Health da Base) e carteira, que é só informação e não pontua. Cada um mostra o realizado contra a meta do mês.',
-    ['o que são os indicadores gerais', 'como é contado o round', 'o que conta como upsell', 'o que é revenue churn', 'o que é carteira'], ['indicadores', 'realizado', 'matchmakings', 'rounds', 'upsell', 'downsell', 'cases'],
-    { cs: '/?aba=indicadores', gestor: '/gestor?aba=visaoGeral' }),
   g('presenca-conselho', 'Presença do conselho',
     'Taxa de presença dos membros nos encontros do mês. Abaixo de ' + pct(LIMIAR_PRESENCA_ATENCAO) + ' o conselho entra em atenção e pede reforço de engajamento. A presença não entra no Health da Base.',
     ['o que é a taxa de presença', 'quando um conselho entra em atenção', 'qual a presença mínima', 'por que o conselho está em atenção'], ['presenca', 'frequencia', 'abaixo do limite'],
