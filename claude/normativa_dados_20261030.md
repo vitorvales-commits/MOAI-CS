@@ -244,3 +244,42 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
   - Tabelas de origem `monday` e linhas derivadas: a restauração não teria efeito (a sync remove de novo, ou o cálculo refaz).
 - Teste reversível `scripts/normativa/teste_saude_reversivel.sql`, marcador `TESTE_SAUDE_OK`.
 - Etapa 6, no workflow de cópia: passo que reprova o PR se `seguranca.v_tabelas_sem_classificacao` devolver qualquer tabela. Roda em todo PR que altera migração.
+
+## Encerramento da normativa (registrado em 10/11/2026)
+
+### O que está em produção
+
+- Etapas 1 a 3: backup diário com teste de restauração, rede de segurança (migração `20261030b`) e identidade canônica de CS (migrações `20261030c` a `20261030e`).
+- Etapa 4: fila de escrita do dash para o Monday (`20261030f`, `20261030g`, `20261103a`), com a edição de visitas em uso.
+- Etapa 5: espelho nativo de `relatorios_conselho`, `advertencias_aplicadas`, `metas_definidas` e `cs_periodos` nos boards "Registro do dash de CS", com os quatro ligados. Versões: `20261109165741` (espelho), `20261109171039` (leitura para a Edge Function) e `20261110021217` (saúde). Cargas aceitas: 18 de `cs_periodos`, 2 de `relatorios_conselho`, 0 de `advertencias_aplicadas` (tabela vazia) e 265 de `metas_definidas`.
+- Etapa 6: catálogo automático. O workflow de cópia reprova todo PR com migração que deixe tabela sem origem em `seguranca.catalogo_tabelas`.
+- Etapa 7: exclusões de dado nativo do dash ficam na lixeira, com restauração auditada (só gestor, só origem nativa). A faixa de saúde mostra nomes de CS não reconhecidos e exclusões recentes, em âmbar, com ação para tratar cada um.
+
+### Cobertura da identidade canônica
+
+`canonico.v_cobertura` em 10/11/2026, por fonte (total, resolvidos, pendentes, percentual):
+
+| Fonte | Total | Pendentes | Resolvido |
+|---|---|---|---|
+| cases_items | 438 | 0 | 100,00% |
+| churn_items | 244 | 4 | 98,36% |
+| historico_conselhos_items | 89 | 0 | 100,00% |
+| matchmakings_items | 895 | 0 | 100,00% |
+| metas_subitens | 382 | 0 | 100,00% |
+| reports_individuais | 219 | 0 | 100,00% |
+| reports_semanais_items | 219 | 0 | 100,00% |
+| rounds_items | 57 | 0 | 100,00% |
+| upsell_downsell_items | 79 | 0 | 100,00% |
+
+A cobertura não está em 100% em todas as fontes. Os 4 pendentes são "Não sei informar" em `churn_items.quem_e_seu_cs`. O texto não tem registro em `canonico.cs_apelidos` e continua em `canonico.vinculos_pendentes`. Até a conferência de 10/11/2026, não há no banco nenhuma execução de `canonico_confirmar_apelido` com esse texto. Isso precisa ser verificado antes de considerar a etapa fechada.
+
+### Pendências que ficam fora da normativa
+
+1. "Não sei informar" (4 registros em `churn_items`): a resolução pela faixa não aparece no banco. Confirmar a ação e refazer a conferência da cobertura.
+2. Escolha livre de CS na faixa: a ação "Este é o CS" só usa a sugestão do banco. Escolher qualquer CS ativo depende de `public.cs_ativos_lista()`, que deve ser criada no PR de banco do bônus e reaproveitada aqui.
+3. Sessão expirada em vários blocos da tela de gestor.
+4. Conflito por item inteiro (a escrita no Monday trata o item inteiro, não o campo).
+5. Fila de escrita sem limpar data (a tela não consegue apagar uma data já preenchida).
+6. Item "TESTE" antigo no board Visita Churns, fora da visão de indicadores.
+7. Integração com o usuário pessoal do Vitor nas credenciais do Monday.
+8. Falha de espelho já resolvida continua visível por até 24 horas na fila de ação, porque o banco não expõe a chave de origem para descontar falhas resolvidas.
