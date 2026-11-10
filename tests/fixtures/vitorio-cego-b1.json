@@ -1,0 +1,22 @@
+[
+  { "id": 1, "pergunta": "quem cuida do conselho do JP", "intencao": "carteira", "status": "resposta", "conselho": "C-Level | JP (Rodrigo)", "data": "2026-11-10" },
+  { "id": 2, "pergunta": "quem era o cs do zago em setembro", "intencao": "carteira", "status": "resposta", "conselho": "C-Level | Zago (Vilker)", "temRegistro": false },
+  { "id": 3, "pergunta": "conselho da adriana soares é de quem", "intencao": "carteira", "status": "resposta", "conselho": "Executivo | Adriana Soares (Mateus)", "data": "2026-11-10" },
+  { "id": 4, "pergunta": "quem cuida do conselho do soares", "intencao": "carteira", "status": "esclarecimento", "opcoesContem": ["Adriana Soares", "André Soares"] },
+  { "id": 5, "pergunta": "qual cs ta com o gallo", "intencao": "carteira", "status": "resposta", "conselho": "C-Level | Gallo (Vitor)", "data": "2026-11-10" },
+  { "id": 6, "pergunta": "quem cuida do herik", "intencao": "carteira", "status": "resposta", "conselho": "C-Level | Herick (Vilker)", "data": "2026-11-10" },
+  { "id": 7, "pergunta": "quem cuida do conselho", "intencao": "carteira", "status": "esclarecimento", "conselho": null, "maxOpcoes": 5 },
+  { "id": 8, "pergunta": "quem e o cs do luis gustavo hj", "intencao": "carteira", "status": "resposta", "conselho": "C-Level+ | Luis Gustavo (Luana)", "data": "2026-11-10" },
+  { "id": 9, "pergunta": "quais cs tinha em agosto", "intencao": "elenco", "status": "resposta", "mes": "2026-08-01", "fonte": "cs_periodos" },
+  { "id": 10, "pergunta": "quem eram os cs mes passado", "intencao": "elenco", "status": "resposta", "mes": "2026-10-01" },
+  { "id": 11, "pergunta": "time de cs atual", "intencao": "elenco", "status": "resposta", "mes": "2026-11-01" },
+  { "id": 12, "pergunta": "quem faz parte do cs hoje", "intencao": "elenco", "status": "resposta", "mes": "2026-11-01" },
+  { "id": 13, "pergunta": "lista dos cs de julho de 2026", "intencao": "elenco", "status": "resposta", "mes": "2026-07-01" },
+  { "id": 14, "pergunta": "quantos cs tem", "intencao": "elenco", "status": "resposta", "mes": "2026-11-01" },
+  { "id": 15, "pergunta": "quem cuidava do alan em 05/11", "intencao": "carteira", "status": "resposta", "conselho": "C-Level | Alan (George)", "data": "2026-11-05" },
+  { "id": 16, "pergunta": "como preencho o relatorio pos conselho", "intencao": null, "status": "sem_intencao" },
+  { "id": 17, "pergunta": "qual o nps do conselho do jp", "intencao": null, "status": "sem_intencao" },
+  { "id": 18, "pergunta": "quem e o cs mais bonito", "intencao": null, "status": "sem_intencao" },
+  { "id": 19, "pergunta": "o que o rodrigo pode fazer para ficar em primeiro lugar", "intencao": null, "status": "sem_intencao" },
+  { "id": 20, "pergunta": "quem cuida do renato santos em outubro", "intencao": "carteira", "status": "resposta", "conselho": "C-Level+ | Renato Santos (Vilker)", "data": "2026-10-31" }
+]

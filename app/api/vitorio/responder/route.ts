@@ -70,18 +70,21 @@ export async function POST(req: NextRequest) {
       const texto = b.texto.trim().slice(0, 200);
       if (!texto || !normalizarTexto(texto)) return NextResponse.json({ error: 'Pergunta vazia.' }, { status: 400 });
       const saida = responderTexto(texto, dados);
-      const perfil = perfilPermitido(String(b.perfil || ''), isGestor, csNome);
-      // Registro: falha nunca atrapalha quem perguntou; o limite de 30 por hora também não aparece.
-      const { error } = await supabase.rpc('vitorio_registrar_consulta_v2', {
-        p_perfil: perfil,
-        p_consulta: texto,
-        p_resultado: resultadoDoRegistro(saida),
-        p_chave: null,
-        p_gravar_email: VITORIO_REGISTRAR_PESSOA,
-        p_intencao: saida.intencao,
-        p_entidades: saida.entidades,
-      });
-      if (error && error.code !== '54000') console.error('[api/vitorio/responder] registro', error.message);
+      // Sem intenção não registra: a busca de processos, que a tela chama em seguida, já registra essa pergunta.
+      if (saida.status !== 'sem_intencao') {
+        const perfil = perfilPermitido(String(b.perfil || ''), isGestor, csNome);
+        // Registro: falha nunca atrapalha quem perguntou; o limite de 30 por hora também não aparece.
+        const { error } = await supabase.rpc('vitorio_registrar_consulta_v2', {
+          p_perfil: perfil,
+          p_consulta: texto,
+          p_resultado: resultadoDoRegistro(saida),
+          p_chave: null,
+          p_gravar_email: VITORIO_REGISTRAR_PESSOA,
+          p_intencao: saida.intencao,
+          p_entidades: saida.entidades,
+        });
+        if (error && error.code !== '54000') console.error('[api/vitorio/responder] registro', error.message);
+      }
       return NextResponse.json(saida);
     }
 

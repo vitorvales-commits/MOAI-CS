@@ -9,6 +9,9 @@ const MESES: Record<string, number> = {
 
 export interface DataEntidade { tipo: 'dia' | 'mes'; iso: string }
 
+// Nomes de mês: nunca identificam conselho ("julho" não é "Julio Faccioli").
+export const NOMES_DE_MES: string[] = Object.keys(MESES);
+
 // Número do mês cujo nome está a uma letra de distância (ex.: "setmbro"). Nome exato tem prioridade no chamador.
 function nomeDeMesProximo(palavra: string): number | undefined {
   const cand = Object.keys(MESES).filter((m) => levenshtein(palavra, m) <= 1);
@@ -44,7 +47,7 @@ export function extrairData(texto: string, hojeIso: string): DataEntidade | null
     const y = dm[3] ? Number(dm[3]) : anoHoje;
     if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return { tipo: 'dia', iso: ymd(y, m, d) };
   }
-  if (/\bhoje\b/.test(n)) return { tipo: 'dia', iso: hoje };
+  if (/\b(hoje|hj)\b/.test(n)) return { tipo: 'dia', iso: hoje };
   if (/\bontem\b/.test(n)) return { tipo: 'dia', iso: deslocarDia(hoje, -1) };
   if (/\bmes passado\b/.test(n)) return { tipo: 'mes', iso: deslocarMes(hoje, -1) };
   if (/\b(esse|este|deste|desse) mes\b/.test(n)) return { tipo: 'mes', iso: deslocarMes(hoje, 0) };
@@ -63,10 +66,19 @@ export function extrairData(texto: string, hojeIso: string): DataEntidade | null
 
 export interface ConselhoRef { group_id: string; titulo: string }
 
-// Fração das palavras do título que aparecem na pergunta, com um erro de digitação em palavras de cinco letras ou mais.
-// Cobre "conselo" para "conselho", que a contenção de trigramas deixa abaixo do limiar.
-function fracaoDeTokens(titulo: string, qtokens: string[]): number {
-  const ts = normalizarTexto(titulo).split(' ').filter(Boolean);
+// Palavras que não identificam um conselho: tipo de grupo, número de título e ligações.
+const GENERICAS = new Set(['c', 'level', 'executivo', 'setorial', 'fast', 'track', 'reposicoes', 'reposicao', 'no', 'da', 'do', 'de', 'em', 'e', 'congelado', 'externo', 'grupo', 'novo', 'group', 'conselho']);
+
+// Palavras distintivas do título: sem o que está entre parênteses (é o CS responsável), sem genéricas e sem nomes de CS.
+function distintivas(titulo: string, excluir: Set<string>): string[] {
+  return normalizarTexto(titulo.replace(/\([^)]*\)/g, ' '))
+    .split(' ')
+    .filter((t) => t && !GENERICAS.has(t) && !excluir.has(t) && t.length >= 2);
+}
+
+// Quantas palavras distintivas do título aparecem na pergunta (exata, ou com um erro quando tem cinco letras ou mais).
+function fracaoDeTokens(titulo: string, qtokens: string[], excluir: Set<string>): number {
+  const ts = distintivas(titulo, excluir);
   if (!ts.length) return 0;
   const achou = ts.filter((t) => qtokens.some((q) => q === t || (t.length >= 5 && q.length >= 5 && levenshtein(q, t) <= 1))).length;
   return achou / ts.length;
@@ -74,15 +86,21 @@ function fracaoDeTokens(titulo: string, qtokens: string[]): number {
 
 // Conselhos que a pergunta cita. Mais de um candidato quando o empate é de fato (ambiguidade).
 // Devolve os candidatos ordenados pela semelhança; o limiar é a contenção dos trigramas do título no texto.
-export function extrairConselho(texto: string, conselhos: ConselhoRef[], limiar = 0.7): { candidatos: string[]; ordenados: { group_id: string; score: number }[] } {
-  const qtokens = normalizarTexto(texto).split(' ');
+// Títulos de reposição ("Reposições no ...") só entram quando nenhum conselho principal casa com a pergunta.
+// Empate entre candidatos (ex.: "soares" para Adriana Soares e André Soares) devolve todos, para o esclarecimento.
+export function extrairConselho(texto: string, conselhos: ConselhoRef[], excluir: Set<string> = new Set(), limiar = 0.5): { candidatos: string[]; ordenados: { group_id: string; score: number }[] } {
+  // Palavras excluídas (nomes de CS e de mês) também não casam com título pela pergunta.
+  const qtokens = normalizarTexto(texto).split(' ').filter((q) => !excluir.has(q));
   const pontos = conselhos
     .filter((c) => c.titulo)
-    .map((c) => ({ group_id: c.group_id, score: Math.max(contencao(c.titulo, texto), fracaoDeTokens(c.titulo, qtokens)) }))
+    .map((c) => ({ group_id: c.group_id, titulo: c.titulo, score: fracaoDeTokens(c.titulo, qtokens, excluir) }))
     .sort((a, b) => b.score - a.score);
-  const topo = pontos[0]?.score ?? 0;
-  const candidatos = topo >= limiar ? pontos.filter((p) => p.score >= limiar && p.score >= topo - 0.02).map((p) => p.group_id) : [];
-  return { candidatos, ordenados: pontos };
+  const acima = pontos.filter((p) => p.score >= limiar);
+  const principais = acima.filter((p) => !/^reposi/.test(normalizarTexto(p.titulo)));
+  const escolhidos = principais.length ? principais : acima;
+  const topo = escolhidos[0]?.score ?? 0;
+  const candidatos = escolhidos.filter((p) => p.score >= topo - 1e-9).map((p) => p.group_id);
+  return { candidatos, ordenados: pontos.map((p) => ({ group_id: p.group_id, score: p.score })) };
 }
 
 export interface CsRef { id: number; nome_curto: string; apelidos: string[] }
