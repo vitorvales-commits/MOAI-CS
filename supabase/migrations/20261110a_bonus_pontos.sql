@@ -13,6 +13,7 @@
 --   public.conceder_bonus          gestor; recebe lista de {cs_nome, pontos} e grava tudo numa transação
 --   public.editar_bonus            gestor; não edita bônus anulado
 --   public.anular_bonus            gestor; motivo obrigatório; não apaga
+--   public.bonus_total_por_cs      total vigente por CS no intervalo de meses, para a pontuação do ranking
 --   catálogo de segurança          bonus_aplicados como origem nativa, versionada
 --   espelho nativo                 board "Registro: bônus" (18439229782, pasta "Registro do dash de CS"), linha em
 --                                  sincronia.espelhos com ativo = false e gatilho de espelho na tabela
@@ -385,10 +386,26 @@ begin
 end;
 $fn$;
 
+-- Total de bônus vigentes (não anulados) por CS, num intervalo de meses. Usada pela pontuação do ranking, que é
+-- global: quem vê o ranking já vê a pontuação de cada CS, então só o total sai, nunca quem concedeu nem o motivo.
+-- Lida com a sessão de quem pergunta (authenticated); anon não tem acesso. A RLS de bonus_aplicados continua
+-- valendo para a lista detalhada.
+create or replace function public.bonus_total_por_cs(p_mes_inicio date, p_mes_fim date)
+returns table (cs_nome text, pontos bigint)
+language sql stable security definer set search_path = '' as $fn$
+  select b.cs_nome, sum(b.pontos)::bigint
+  from public.bonus_aplicados b
+  where b.anulado_em is null
+    and b.mes_referencia between p_mes_inicio and p_mes_fim
+  group by b.cs_nome;
+$fn$;
+
 -- 5. Permissões ----------------------------------------------------------------
 
 revoke all on function public.bonus_cs_canonico(text) from public, anon, authenticated;
 revoke all on function public.bonus_validar_mes(date) from public, anon, authenticated;
+revoke all on function public.bonus_total_por_cs(date, date) from public, anon;
+grant execute on function public.bonus_total_por_cs(date, date) to authenticated;
 revoke all on function public.conceder_bonus(jsonb, text, date, text) from public, anon;
 revoke all on function public.editar_bonus(uuid, text, integer, date, text) from public, anon;
 revoke all on function public.anular_bonus(uuid, text) from public, anon;

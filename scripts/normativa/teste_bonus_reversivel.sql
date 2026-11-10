@@ -162,6 +162,11 @@ begin
   if v_soma1 is distinct from v_soma0 - 10 then
     raise exception 'FALHA 5d: anulado ainda soma (antes %, depois %)', v_soma0, v_soma1;
   end if;
+  -- O total usado pela pontuação do ranking bate com a soma vigente, como sessão de CS e como serviço.
+  set local role authenticated;
+  select total into v_n from (select coalesce(sum(r.pontos), 0) as total from public.bonus_total_por_cs(v_mes, v_mes) r where r.cs_nome = v_cs) q;
+  reset role;
+  if v_n is distinct from v_soma1 then raise exception 'FALHA 5e: total do ranking % diferente da soma vigente %', v_n, v_soma1; end if;
   perform pg_temp.checar('5');
   v_res := v_res || jsonb_build_object('5_anulado_nao_soma_e_nao_apaga', true);
 
