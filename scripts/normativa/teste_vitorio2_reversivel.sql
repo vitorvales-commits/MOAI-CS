@@ -18,6 +18,10 @@ begin
   create or replace function auth.jwt() returns jsonb language sql stable as $f$
     select nullif(current_setting('request.jwt.claims', true), '')::jsonb
   $f$;
+  -- verificar-restauracao.sh define auth.role() como nulo; is_moai_user() exige 'authenticated', então lê a claim.
+  create or replace function auth.role() returns text language sql stable as $f$
+    select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')
+  $f$;
 
   select g.email into v_gestor from public.gestores g order by g.email limit 1;
   if not found or v_gestor is null then raise exception 'FALHA preparo: sem gestor cadastrado'; end if;
