@@ -102,6 +102,7 @@ export const ROTULO_ESPELHO: Record<string, string> = {
   advertencias_aplicadas: 'Advertências',
   metas_definidas: 'Metas definidas',
   cs_periodos: 'Períodos de CS',
+  relatorio_conselho_faltas: 'Relatórios pós conselho',
 };
 export function ehBoardEspelho(boardId: string): boolean {
   return Object.prototype.hasOwnProperty.call(ESPELHO_BOARDS, boardId);
