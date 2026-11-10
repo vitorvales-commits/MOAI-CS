@@ -65,15 +65,29 @@
     return lista.filter(function (it) { return doEscopo(st, it); });
   }
 
-  function descricaoCobranca(c) {
-    var prazo = c.prazoCobranca && c.prazoCobranca.tipo === 'ate' ? 'cobrar até ' + ddmm(c.prazoCobranca.diaIso) : 'cobrar hoje';
-    return nivelTexto(c.nivel) + ' de ' + c.conselheiroNome + ', ' + DIAS_CURTOS[dePartesIso(c.diaIso).getDay()] + ' ' + ddmm(c.diaIso) + ' ' + c.hhmm + ', ' + prazo;
+  // Uma entrada por encontro e por grupo que precisa de cobrança: o conselho conjunto aparece uma vez por grupo, com o nome do grupo.
+  function entradasCobranca(conselhos) {
+    var out = [];
+    conselhos.forEach(function (c) {
+      if (c.grupos && c.grupos.length > 1) {
+        c.grupos.filter(function (g) { return g.precisaCobranca; }).forEach(function (g) { out.push({ c: c, grupo: g, prazoCobranca: g.prazoCobranca }); });
+      } else if (c.precisaCobranca) {
+        out.push({ c: c, grupo: null, prazoCobranca: c.prazoCobranca });
+      }
+    });
+    return out;
+  }
+  function descricaoCobranca(e) {
+    var c = e.c;
+    var prazo = e.prazoCobranca && e.prazoCobranca.tipo === 'ate' ? 'cobrar até ' + ddmm(e.prazoCobranca.diaIso) : 'cobrar hoje';
+    var quem = e.grupo ? nivelTexto(e.grupo.nivel) + ' de ' + c.conselheiroNome + ', grupo ' + e.grupo.nomeGrupo : nivelTexto(c.nivel) + ' de ' + c.conselheiroNome;
+    return quem + ', ' + DIAS_CURTOS[dePartesIso(c.diaIso).getDay()] + ' ' + ddmm(c.diaIso) + ' ' + c.hhmm + ', ' + prazo;
   }
 
   function resumoTexto(st, itens) {
     var conselhos = itens.filter(function (i) { return i.tipo === 'conselho'; });
     var rounds = itens.length - conselhos.length;
-    var cobra = conselhos.filter(function (c) { return c.precisaCobranca; });
+    var cobra = entradasCobranca(conselhos);
     var sufixoRounds = rounds ? ', e ' + rounds + (rounds === 1 ? ' round' : ' rounds') : '';
     var quem = st.escopo === 'meus' ? 'seus' : 'da equipe';
     if (!conselhos.length) {
@@ -105,7 +119,10 @@
   function cardConselho(st, c, idx) {
     var e = estiloConselho(st, c);
     var contagem = '';
-    var sub = nivelTexto(c.nivel) + (st.escopo === 'equipe' ? ' · CS ' + esc(c.cs || 'não informado') : '');
+    // Conselho conjunto mostra os CS dos dois grupos (o cartão só tem um semáforo, o do pior grupo).
+    var conjunto = c.grupos && c.grupos.length > 1;
+    var csTexto = conjunto ? c.grupos.map(function (g) { return esc(g.cs || 'sem CS'); }).join(' e ') : esc(c.cs || 'não informado');
+    var sub = nivelTexto(c.nivel) + (st.escopo === 'equipe' || conjunto ? ' · CS ' + csTexto : '');
     var linhaCobranca = '';
     if (c.passado) {
       var presenca = c.presenca ? 'Presença ' + c.presenca.presentes + ' de ' + c.presenca.total : 'Presença não apurada';
@@ -129,6 +146,20 @@
       + '<div class="ag-topo"><span>' + esc(c.hhmm) + '</span>' + contagem + '</div>'
       + '<div class="ag-corpo-card">' + foto + '<div class="ag-texto"><div class="ag-nome">' + esc(c.conselheiroNome) + '</div>'
       + '<div class="ag-sub">' + sub + '</div>' + linhaCobranca + '</div></div></button>';
+  }
+
+  // Lista por grupo do conselho conjunto: confirmados e faixa de cada grupo (ou presença, se o encontro já passou).
+  function blocoPorGrupo(item) {
+    if (!item.grupos || item.grupos.length < 2) return '';
+    var linhas = item.grupos.map(function (g) {
+      var f = g.faixa ? faixaDe(g.faixa) : null;
+      var parte = item.passado
+        ? 'presença ' + (g.presenca ? g.presenca.presentes + ' de ' + g.presenca.total : 'não apurada')
+        : 'confirmados ' + (g.confirmadosQtd == null ? 'não informados' : g.confirmadosQtd) + (g.membrosEsperados == null ? '' : ' de ' + g.membrosEsperados + ' esperados')
+          + ', faixa ' + (f ? f.rotulo : 'sem faixa') + (g.precisaCobranca ? ', cobrar ' + (g.prazoCobranca && g.prazoCobranca.tipo === 'ate' ? 'até ' + ddmm(g.prazoCobranca.diaIso) : 'hoje') : '');
+      return '<li>' + esc(g.nomeGrupo) + ': ' + esc(parte) + '</li>';
+    }).join('');
+    return '<div class="ag-sub">Por grupo</div><ul>' + linhas + '</ul>';
   }
 
   function cardRound(st, r, idx) {
@@ -311,7 +342,7 @@
       }
     }
     fundo.innerHTML = '<div class="ag-modal" role="dialog" aria-modal="true" aria-labelledby="agendaModalTitulo">'
-      + '<h3 id="agendaModalTitulo">' + esc(titulo) + '</h3>' + corpo
+      + '<h3 id="agendaModalTitulo">' + esc(titulo) + '</h3>' + corpo + (item.tipo === 'round' ? '' : blocoPorGrupo(item))
       + '<button type="button" class="ag-modal-fechar" data-ag="fechar">Fechar</button></div>';
     fundo.addEventListener('click', function (ev) {
       if (ev.target === fundo || (ev.target.getAttribute && ev.target.getAttribute('data-ag') === 'fechar')) fecharModal();
