@@ -314,6 +314,7 @@ ${ICONES_SVG}
       <div class="aba" id="aba-indicadores" data-aba="indicadores" role="tabpanel">
         <section class="block">
           <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
+          <div id="secSemanalCS" class="card" style="display:none"></div>
           <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
         </section>
       </div>
@@ -1370,9 +1371,30 @@ function evoAoClicar_(ev) {
 }
 document.addEventListener('click', evoAoClicar_);
 
+// Metas semanais do CS no mês (PR 2a). Semana atual por padrão; Geral mostra o radar do mês. A escolha vai para visao na URL.
+var DADOS_SEMANAL_CS_ = null;
+function renderSemanalCS(d) { DADOS_SEMANAL_CS_ = d.semanal || null; desenhaSemanalCS_(); }
+function desenhaSemanalCS_() {
+  var el = document.getElementById('secSemanalCS'), radar = document.getElementById('secRadar');
+  if (!el || !radar) return;
+  var s = DADOS_SEMANAL_CS_;
+  var opcoes = !s || s.erro ? [['geral', 'Geral']] : (s.mesAtual ? [['semana', 'Semana atual'], ['geral', 'Geral']] : [['semanas', 'Semanas do mês'], ['geral', 'Geral']]);
+  var pedido = new URLSearchParams(location.search).get('visao');
+  var atual = opcoes.some(function (o) { return o[0] === pedido; }) ? pedido : opcoes[0][0];
+  if (atual === 'geral') { el.style.display = 'none'; el.innerHTML = ''; radar.style.display = ''; return; }
+  radar.style.display = 'none'; el.style.display = '';
+  var corpo = s.erro ? '<div class="vazio">Não foi possível carregar as metas semanais: ' + msEsc_(s.erro) + '</div>' : (atual === 'semana' ? msCorpoSemana_(s) : msCorpoSemanasMes_(s));
+  el.innerHTML = '<div class="ms-cab" style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b>Metas semanais de ' + msEsc_(CS_NOME) + '</b>' + msAlternancia_(opcoes, atual) + '</div>' + corpo;
+  msLigarAlternancia_(el, function (v) {
+    var u = new URL(location.href); u.searchParams.set('visao', v);
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    desenhaSemanalCS_();
+  });
+}
+
 function renderTudoCS(d) {
   DADOS_CS = d;
-  var passos = [renderHeroCS, renderPontosCS, renderRadarCS, renderGtdCS, renderGtdAtencaoCS_, renderCriticosCS, renderAdvertenciasCS];
+  var passos = [renderHeroCS, renderPontosCS, renderRadarCS, renderSemanalCS, renderGtdCS, renderGtdAtencaoCS_, renderCriticosCS, renderAdvertenciasCS];
   // cada seção é desenhada à parte: se uma quebrar, as outras seguem
   passos.forEach(function (fn) { try { fn(d); } catch (e) { console.error(e); } });
   try { renderPautaCS_(); } catch (e2) { console.error(e2); }

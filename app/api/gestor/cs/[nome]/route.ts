@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unstable_noStore as noStore } from 'next/cache';
 import { paginaCSGestor } from '@/lib/reports';
+import { semanalDoCS } from '@/lib/inicio-cs';
+import { hojeSP } from '@/lib/gtd-prazos';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +26,10 @@ export async function GET(req: NextRequest, { params }: { params: { nome: string
       return NextResponse.json({ error: 'Parâmetros obrigatórios: mes, ano' }, { status: 400 });
     }
     const data = await paginaCSGestor(supabase, nome, mes, ano);
-    return NextResponse.json(data);
+    // Metas semanais do CS no mês (PR 2a): isoladas, um erro aqui não derruba a página. Mesma função da home do CS.
+    const semanal = await semanalDoCS(supabase, nome, mes, ano, hojeSP())
+      .catch((e: any) => { console.error('gestor cs semanal', e); return { erro: (e && e.message) || String(e) }; });
+    return NextResponse.json({ ...data, semanal });
   } catch (e: any) {
     if (e?.status === 404) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e?.status) return authErrorResponse(e);

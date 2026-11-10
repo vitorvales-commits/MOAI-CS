@@ -66,7 +66,7 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
 
   const idxMes = MESES_ORDEM.indexOf(seletorMes);
   // Metas semanais (PR 2a): isoladas, um erro aqui não derruba a home. O erro vai para a tela da seção.
-  const semanal = await semanalDoCS(sb, csNome, idxMes === -1 ? null : `${ano}-${String(idxMes + 1).padStart(2, '0')}-01`, hoje)
+  const semanal = await semanalDoCS(sb, csNome, seletorMes, ano, hoje)
     .catch((e: any) => { console.error('inicio semanal', e); return { erro: (e && e.message) || String(e) }; });
   const diasNoMes = idxMes === -1 ? null : diasDoMesReal(ano, idxMes + 1);
   const mesAtual = idxMes !== -1 && hoje.slice(0, 7) === ano + '-' + String(idxMes + 1).padStart(2, '0');
@@ -179,8 +179,11 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
 
 // Metas semanais do próprio CS no mês: a semana corrente e os fechamentos. null quando o CS não está no elenco do mês.
 // Tudo vem de metasSemanaisDoCS (ponto único de cálculo); esta função só escolhe a parcela de hoje.
-async function semanalDoCS(sb: SupabaseClient, csNome: string, mesIso: string | null, hoje: string) {
-  if (!mesIso) return null;
+export async function semanalDoCS(sb: SupabaseClient, csNome: string, mesNome: string, ano: number, hoje: string) {
+  // A home manda o mês em maiúsculas e a página do gestor capitalizado: a comparação ignora a caixa.
+  const idxMes = MESES_ORDEM.findIndex((m) => m.toUpperCase() === String(mesNome).toUpperCase());
+  if (idxMes === -1) return null;
+  const mesIso = `${ano}-${String(idxMes + 1).padStart(2, '0')}-01`;
   const cs = (await getCSListParaAgregados(sb)).find((c) => normalizeNome(c.nome) === normalizeNome(csNome));
   if (!cs) return null;
   const m = await metasSemanaisDoCS(sb, cs, mesIso);
