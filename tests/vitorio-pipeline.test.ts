@@ -31,11 +31,13 @@ const dados: DadosPipeline = {
     { group_id: 'g3', cs_id: 1, inicio: '-infinity', fim: null },
   ],
   csPorId: { 1: 'Ana', 2: 'Bia', 3: 'Caio' },
-  conselhos: { g1: 'Conselho Um', g2: 'Conselho Dois', g3: 'Conselho Tres' },
+  conselhos: { g1: 'Conselho Um', g2: 'Conselho Dois', g3: 'Conselho Tres', g4: 'Executivo | Maria Lima (Bia)', g5: 'Setorial | Joao Lima (Ana)' },
   conselhosLista: [
     { group_id: 'g1', titulo: 'Conselho Um' },
     { group_id: 'g2', titulo: 'Conselho Dois' },
     { group_id: 'g3', titulo: 'Conselho Tres' },
+    { group_id: 'g4', titulo: 'Executivo | Maria Lima (Bia)' },
+    { group_id: 'g5', titulo: 'Setorial | Joao Lima (Ana)' },
   ],
   csLista: [
     { id: 1, nome_curto: 'Ana', apelidos: [] },

@@ -43,7 +43,11 @@ export function responderTexto(texto: string, d: DadosPipeline): Saida {
   const dataEnt = extrairData(texto, hoje);
   const conselho = extrairConselho(texto, d.conselhosLista, palavrasDeCs(d.csLista));
   const cs = extrairCs(texto, d.csLista);
-  const { intencao, confianca } = classificar(texto, { temData: !!dataEnt, temConselho: conselho.candidatos.length > 0 });
+  const { intencao, confianca } = classificar(texto, {
+    temConselho: conselho.candidatos.length > 0,
+    temData: !!dataEnt,
+    temCs: cs.length > 0,
+  });
   const entidades: Entidades = {
     conselho: conselho.candidatos.length === 1 ? conselho.candidatos[0] : null,
     data: dataEnt?.tipo === 'dia' ? dataEnt.iso : null,

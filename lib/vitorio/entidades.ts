@@ -98,8 +98,10 @@ export function extrairConselho(texto: string, conselhos: ConselhoRef[], excluir
   const acima = pontos.filter((p) => p.score >= limiar);
   const principais = acima.filter((p) => !/^reposi/.test(normalizarTexto(p.titulo)));
   const escolhidos = principais.length ? principais : acima;
-  const topo = escolhidos[0]?.score ?? 0;
-  const candidatos = escolhidos.filter((p) => p.score >= topo - 1e-9).map((p) => p.group_id);
+  // Só uma correspondência completa (score 1) resolve sozinha. Termo parcial que casa com mais de um conselho
+  // (sobrenome compartilhado) devolve todos, para o esclarecimento: nunca escolha automática.
+  const completos = escolhidos.filter((p) => p.score >= 1 - 1e-9);
+  const candidatos = (completos.length ? completos : escolhidos).map((p) => p.group_id);
   return { candidatos, ordenados: pontos.map((p) => ({ group_id: p.group_id, score: p.score })) };
 }
 
