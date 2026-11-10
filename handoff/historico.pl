@@ -18,3 +18,7 @@ evidencia(sync_monday_v30_pos_deploy, "Sync completo pelo cron das 14:40 UTC, 08
 evidencia(correcao_nps_faixa, "Correção única dos dados: 15 notas fora de faixa em nps_conselhos_items viraram nulo (nota_conselheiro, nota_conselho, nota_cs_hoje, nota_cs_mes, nota_estrutura_local, nota_comida_local, e avaliações de trocas e evolução fora de 1 a 5). Feita na migração churn_onda2 (versão 20261008134435).").
 
 evidencia(testes_onda2, "tsc --noEmit e next build sem erro. Testes novos passam: tests/voz-membro.test.ts, tests/visitas.test.ts, tests/voz.test.ts. Dois testes já falhavam antes desta onda, por resolução de módulo, e não foram alterados: tests/churn.test.ts e tests/pulso.test.ts.").
+
+% ---- 10/11/2026: conselho conjunto Rafael e Rodrigo Gianesini (branch feat/gianesini_conjunto, ainda não mesclada) ----
+evidencia(conselho_conjunto_migracao, "Migração conselho_conjunto_vinculo_encontros aplicada pelo Supabase em 10/11/2026 (arquivo: supabase/migrations/20261110a_conselho_conjunto.sql). Vínculos 43 para 45. Encontros 351 sem alteração na migração; depois da sincronização do 12/11 com os dois grupos, 353. Agenda 353 sem alteração.").
+evidencia(conselho_conjunto_sync_synced_at, "Causa do synced_at de 17/09 na agenda: syncAgenda não enviava synced_at, e o upsert mantém o valor antigo das linhas existentes. Corrigido no código (supabase/functions/sync-monday). Pendente: publicar a Edge Function pelo deploy-functions depois do merge na main.").
