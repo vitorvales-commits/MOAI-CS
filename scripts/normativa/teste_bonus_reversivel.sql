@@ -28,6 +28,13 @@ begin
   alter table sincronia.comandos disable trigger comandos_disparar;
   update sincronia.configuracao set valor = true where chave = 'fila_escrita_ativa';
 
+  -- A cópia de teste não traz o Auth: verificar-restauracao.sh define auth.jwt() como '{}', e então is_gestor()
+  -- é sempre falso. Aqui a função passa a ler as claims da sessão, como no Supabase, para simular gestor e CS.
+  -- A redefinição é desfeita no fim da transação, junto com todo o resto.
+  create or replace function auth.jwt() returns jsonb language sql stable as $f$
+    select nullif(current_setting('request.jwt.claims', true), '')::jsonb
+  $f$;
+
   perform set_config('teste.falhas0',
     (select count(*) from public.access_audit_log where action = 'sincronia_espelho_falhou')::text, true);
 
