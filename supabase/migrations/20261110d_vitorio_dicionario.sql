@@ -3,7 +3,8 @@
 --
 -- O que muda (aditivo):
 --   public.vitorio_dicionario()   devolve um jsonb com três listas:
---     cs          CS ativos: id, nome_curto, nome_completo (canonico.cs, ativo).
+--     cs          todos os CS de canonico.cs (ativos e ex CS): id, nome_curto, nome_completo, ativo. Ex CS entram
+--                 para que apelidos e vigências históricas sempre apontem para um cs_id existente na lista.
 --     apelidos    apelidos confirmados (canonico.cs_apelidos). Classe 'cs' traz o cs_id; classes 'area' e 'ignorar'
 --                 vêm só como lista de termos a não tratar como CS, com cs_id nulo.
 --     conselhos   vigências de canonico.conselho_cs_vigencia com group_id, titulo do conselho (conselhos_grupos),
@@ -25,9 +26,10 @@ begin
   end if;
   return jsonb_build_object(
     'cs', coalesce((
-      select jsonb_agg(jsonb_build_object('id', c.id, 'nome_curto', c.nome_curto, 'nome_completo', c.nome_completo)
+      select jsonb_agg(jsonb_build_object('id', c.id, 'nome_curto', c.nome_curto, 'nome_completo', c.nome_completo,
+                                          'ativo', c.ativo)
                        order by c.nome_curto)
-        from canonico.cs c where c.ativo
+        from canonico.cs c
     ), '[]'::jsonb),
     'apelidos', coalesce((
       select jsonb_agg(jsonb_build_object(

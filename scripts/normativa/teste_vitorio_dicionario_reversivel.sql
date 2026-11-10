@@ -28,12 +28,28 @@ begin
     raise exception 'FALHA 1: chaves do dicionário inesperadas: %', v::text;
   end if;
 
-  -- 2. CS ativos: mesma contagem de canonico.cs ativo, e nenhum e-mail no objeto.
-  select count(*) into v_esp from canonico.cs c where c.ativo;
+  -- 2. Lista cs: todos os CS de canonico.cs (ativos e inativos), com o campo ativo; nenhum e-mail nem id de Monday.
+  select count(*) into v_esp from canonico.cs c;
   select count(*) into v_n from jsonb_array_elements(v->'cs');
   if v_n <> v_esp then raise exception 'FALHA 2: CS esperados %, devolvidos %', v_esp, v_n; end if;
   select count(*) into v_n from jsonb_array_elements(v->'cs') e where e ? 'email' or e ? 'monday_user_id';
   if v_n <> 0 then raise exception 'FALHA 2: CS com campo fora da lista pública'; end if;
+  select count(*) into v_n from jsonb_array_elements(v->'cs') e where not (e ? 'ativo') or jsonb_typeof(e->'ativo') <> 'boolean';
+  if v_n <> 0 then raise exception 'FALHA 2: CS sem campo ativo booleano'; end if;
+
+  -- 2b. Um CS inativo aparece com ativo false (a cópia tem ex CS; sem nenhum, o teste não prova nada).
+  select count(*) into v_n from jsonb_array_elements(v->'cs') e where (e->>'ativo')::boolean is false;
+  if v_n = 0 then raise exception 'FALHA 2b: a cópia não tem CS inativo para verificar'; end if;
+
+  -- 2c. Toda cs_id de conselhos e de apelidos de classe cs existe na lista cs.
+  select count(*) into v_n from jsonb_array_elements(v->'conselhos') e
+   where (e->>'cs_id') is not null
+     and not exists (select 1 from jsonb_array_elements(v->'cs') c where (c->>'id')::bigint = (e->>'cs_id')::bigint);
+  if v_n <> 0 then raise exception 'FALHA 2c: % vigência(s) com cs_id ausente da lista cs', v_n; end if;
+  select count(*) into v_n from jsonb_array_elements(v->'apelidos') e
+   where (e->>'classe') = 'cs'
+     and not exists (select 1 from jsonb_array_elements(v->'cs') c where (c->>'id')::bigint = (e->>'cs_id')::bigint);
+  if v_n <> 0 then raise exception 'FALHA 2c: % apelido(s) de classe cs com cs_id ausente da lista cs', v_n; end if;
 
   -- 3. Apelidos: só os confirmados; classe diferente de 'cs' nunca vem com cs_id.
   select count(*) into v_esp from canonico.cs_apelidos a where a.confirmado;
