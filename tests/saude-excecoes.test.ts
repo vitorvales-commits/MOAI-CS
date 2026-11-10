@@ -18,12 +18,12 @@ const excl = (over: Partial<ExclusaoDado>): ExclusaoDado => ({
 });
 const rotinasSaudaveis: ResumoSaude = { estado: 'saudavel', texto: 'Dados atualizados há 2 minutos', itens: [] };
 
-// Pendência sem sugestão: só "Não é um CS". Texto em plural conforme os registros.
+// Pendência sem sugestão: "Este é o CS..." (escolha na lista de CS ativos) e "Não é um CS". Texto em plural conforme os registros.
 const [v] = classificarExcecoesDados([pend({})], [], AGORA);
 assert.equal(v.tipo, 'vinculo');
 assert.equal(v.titulo, 'Nome de CS não reconhecido: Não sei informar');
 assert.equal(v.texto, '4 registros em Churn (Quem é seu CS) usam esse nome. Ele precisa apontar para um CS ou ser ignorado para entrar nos indicadores.');
-assert.deepEqual(v.acoes, [{ tipo: 'ignorar', rotulo: 'Não é um CS' }]);
+assert.deepEqual(v.acoes, [{ tipo: 'escolher_cs', rotulo: 'Este é o CS...' }, { tipo: 'ignorar', rotulo: 'Não é um CS' }]);
 
 // Pendência com sugestão: "Este é o CS" com o id sugerido aparece antes de "Não é um CS".
 const [com] = classificarExcecoesDados([pend({ sugestao_cs_id: 7, sugestao_nome: 'Vitor', ocorrencias: 1 })], [], AGORA);

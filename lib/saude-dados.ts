@@ -94,8 +94,11 @@ export type ExclusaoDado = {
   removido_por: string | null;
   restaurado_em: string | null;
 };
+// CS ativo, como vem de cs_ativos_lista() (banco): id para canonico_confirmar_apelido, nome curto para a lista.
+export type CsAtivo = { id: number; nome_curto: string; nome_completo: string | null };
 export type AcaoExcecao =
   | { tipo: 'confirmar_cs'; rotulo: string; cs_id: number }
+  | { tipo: 'escolher_cs'; rotulo: string }
   | { tipo: 'ignorar'; rotulo: string }
   | { tipo: 'restaurar'; rotulo: string };
 export type ItemExcecao = {
@@ -137,6 +140,9 @@ export function classificarExcecoesDados(
       const acoes: AcaoExcecao[] = [];
       if (p.sugestao_cs_id !== null && p.sugestao_nome) {
         acoes.push({ tipo: 'confirmar_cs', rotulo: `Este é o CS: ${p.sugestao_nome}`, cs_id: p.sugestao_cs_id });
+      } else {
+        // Sem sugestão do banco: o gestor escolhe o CS na lista de CS ativos (cs_ativos_lista).
+        acoes.push({ tipo: 'escolher_cs', rotulo: 'Este é o CS...' });
       }
       acoes.push({ tipo: 'ignorar', rotulo: 'Não é um CS' });
       const fontes = [...new Set(p.fontes.map(fonteLegivel))].join(', ');

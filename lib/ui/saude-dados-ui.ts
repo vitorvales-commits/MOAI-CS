@@ -43,6 +43,7 @@ export const SAUDE_DADOS_HTML = `
 
 export const SAUDE_DADOS_SCRIPT = `
 var saudeUltima_ = null;
+var saudeCsAtivos_ = [];
 function saudeEsc_(t) { return String(t === null || t === undefined ? '' : t).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
 function saudeData_(iso) {
   if (!iso) return 'nunca houve';
@@ -53,15 +54,23 @@ function saudeDefinirFaixa_(estado, texto, comDetalhe) {
   document.getElementById('saudeTexto').textContent = texto;
   document.getElementById('saudeMais').hidden = !comDetalhe;
 }
+function saudeEscolhaHtml_(idx) {
+  var opcoes = saudeCsAtivos_.map(function (c) {
+    return '<option value="' + Number(c.id) + '">' + saudeEsc_(c.nome_curto) + (c.nome_completo ? ' (' + saudeEsc_(c.nome_completo) + ')' : '') + '</option>';
+  }).join('');
+  return '<div class="rd-saude-escolha" hidden><label>CS da lista <select>' + (opcoes || '<option value="">Nenhum CS ativo</option>') + '</select></label> ' +
+    '<button type="button" class="btn sm pri" data-confirmar-cs="' + idx + '">Confirmar este CS</button></div>';
+}
 function saudeExcecaoHtml_(x, idx) {
   var botoes = x.acoes.map(function (a, j) {
     var cls = a.tipo === 'restaurar' ? 'btn sm pri' : 'btn sm';
     return '<button type="button" class="' + cls + '" data-excecao="' + idx + '" data-acao="' + j + '">' + saudeEsc_(a.rotulo) + '</button>';
   }).join(' ');
+  var escolha = x.acoes.some(function (a) { return a.tipo === 'escolher_cs'; }) ? saudeEscolhaHtml_(idx) : '';
   return '<div class="rd-saude-item" data-item="' + saudeEsc_(x.id) + '"><div class="rd-saude-cab"><b>' + saudeEsc_(x.titulo) + '</b>' +
     '<span class="rd-pill gold">' + (x.tipo === 'vinculo' ? 'Nome de CS' : 'Exclusão') + '</span></div>' +
     '<p class="rd-saude-dl"><span>' + saudeEsc_(x.texto) + '</span></p>' +
-    '<div class="rd-saude-acoes">' + botoes + '</div><p class="rd-saude-erro" hidden></p></div>';
+    '<div class="rd-saude-acoes">' + botoes + '</div>' + escolha + '<p class="rd-saude-erro" hidden></p></div>';
 }
 function saudePainelHtml_(r) {
   var excecoes = r.excecoes || [];
@@ -84,6 +93,7 @@ function saudePainelHtml_(r) {
 }
 function renderSaude_(r) {
   saudeUltima_ = r;
+  saudeCsAtivos_ = r.csAtivos || [];
   if (r.estado === 'vazio') {
     saudeDefinirFaixa_('vazio', r.texto || 'Ainda não há registro de sincronização. Se a plataforma acabou de ser instalada, aguarde o primeiro ciclo de 5 minutos.', false);
     document.getElementById('saudePainel').innerHTML = '<h2>Sem registros</h2><p class="rd-sub">Nenhuma rotina de atualização registrou execução. Se isso continuar depois de alguns minutos, acione o responsável técnico.</p>';
@@ -107,13 +117,38 @@ document.getElementById('saudeFaixa').addEventListener('click', function () {
   painel.hidden = !painel.hidden;
   this.setAttribute('aria-expanded', painel.hidden ? 'false' : 'true');
 });
+function saudeConfirmarEscolha_(conf) {
+  var item = conf.closest('.rd-saude-item');
+  var x = saudeUltima_.excecoes[Number(conf.getAttribute('data-confirmar-cs'))];
+  var erroEl = item.querySelector('.rd-saude-erro');
+  var csId = Number(item.querySelector('.rd-saude-escolha select').value);
+  if (!x || !csId) { erroEl.textContent = 'Escolha um CS da lista.'; erroEl.hidden = false; return; }
+  erroEl.hidden = true;
+  saudeBotoesItem_(item, true);
+  conf.disabled = true;
+  fetchJSON_('/api/gestor/saude-dados/pendencia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: x.ref.texto, acao: 'confirmar_cs', cs_id: csId }) })
+    .then(function () { carregarSaude_(); })
+    .catch(function (err) {
+      saudeBotoesItem_(item, false);
+      conf.disabled = false;
+      erroEl.textContent = (err && err.message) || 'Não foi possível concluir. Tente de novo.';
+      erroEl.hidden = false;
+    });
+}
 document.getElementById('saudePainel').addEventListener('click', function (ev) {
+  var conf = ev.target.closest ? ev.target.closest('button[data-confirmar-cs]') : null;
+  if (conf && saudeUltima_ && !conf.disabled) { saudeConfirmarEscolha_(conf); return; }
   var b = ev.target.closest ? ev.target.closest('button[data-acao]') : null;
   if (!b || !saudeUltima_ || b.disabled) return;
   var x = saudeUltima_.excecoes[Number(b.getAttribute('data-excecao'))];
   var a = x && x.acoes[Number(b.getAttribute('data-acao'))];
   if (!x || !a) return;
   var item = b.closest('.rd-saude-item');
+  if (a.tipo === 'escolher_cs') {
+    var picker = item.querySelector('.rd-saude-escolha');
+    if (picker) picker.hidden = !picker.hidden;
+    return;
+  }
   var erroEl = item.querySelector('.rd-saude-erro');
   var url;
   var corpo;
