@@ -334,7 +334,7 @@ ${ICONES_SVG}
           <div class="card" id="secCriticos"><div class="vazio">Carregando…</div></div>
         </section>
         <section class="block" id="secAdvertenciasBloco">
-          <h2>Advertências <span class="sub">Pontos ativos entram no Health da Base do CS. O CS vê o que foi aplicado na aba Pontos tomados.</span></h2>
+          <h2>Pontos <span class="sub">Penalidades entram no Health da Base do CS. Bônus soma à pontuação do mês que ele conta. O CS vê o que foi aplicado na aba Pontos tomados.</span></h2>
           <div class="card" id="secAdvertencias"><div class="vazio">Carregando…</div></div>
         </section>
       </div>
@@ -368,6 +368,8 @@ var DADOS_CS = null;
 var advEditandoId = null;
 var advExcluindoId = null;
 var advAnulandoId = null;
+var pontosModo = null;
+var bonusAnulandoId = null;
 
 function fetchJSON_(url, opts) {
   opts = opts || {};
@@ -519,7 +521,8 @@ function renderPontosCS(d) {
       + '<div class="pontos-barra" style="width:' + larg.toFixed(1) + '%"><i style="width:' + (larg ? cheio / larg * 100 : 0).toFixed(1) + '%"></i></div>'
       + '<div class="num"><b>' + dec1_(x.conquistado) + '</b> de ' + dec1_(x.pesoNormalizado) + (x.emAberto > 0 ? ' <span class="pontos-falta">−' + dec1_(x.emAberto) + '</span>' : '') + '</div></div>';
   }).join('');
-  el.innerHTML = cab + ins + linhas + '<div class="pontos-leg"><span>Preto: pontos conquistados</span><span>Hachurado: pontos em aberto</span><span>Churn e Downsell não somam, só descontam quando passam do limite</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>';
+  var linhaBonus = op.bonus > 0 ? '<div class="pontos-linha"><div><b>Bônus</b><small>concedido pelo gestor, no mês que conta</small></div><div class="pontos-barra" style="width:100%"><i style="width:100%;background:var(--gold)"></i></div><div class="num"><b>+' + op.bonus + '</b></div></div>' : '';
+  el.innerHTML = cab + ins + linhas + linhaBonus + '<div class="pontos-leg"><span>Preto: pontos conquistados</span><span>Hachurado: pontos em aberto</span><span>Churn e Downsell não somam, só descontam quando passam do limite</span><span style="margin-left:auto">Pesos renormalizados sobre os indicadores com meta</span></div>';
 }
 
 // ---------- pauta do 1:1 (somente leitura) e GTD que pede atenção ----------
@@ -849,11 +852,16 @@ function renderAdvertenciasCS(d) {
     + '<div class="pontos-caixa"><div class="num">' + a.totalHistorico + '</div><div class="rot">Total histórico'
     + (a.desde ? ', desde ' + esc(dataBR(a.desde)) : ', nenhuma advertência registrada') + '</div></div></div>';
   var opcoes = a.tipos.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.nome) + ' (' + t.pontos + (t.pontos === 1 ? ' ponto' : ' pontos') + ', ' + (t.validadeRegra === 'fim_do_mes' ? 'até o fim do mês' : t.validadeMeses + (t.validadeMeses === 1 ? ' mês' : ' meses')) + ')</option>'; }).join('');
-  var form = a.tipos.length
+  var acoesPontos = '<div class="pontos-acoes" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">'
+    + '<button class="btn' + (pontosModo === 'penalidade' ? '' : ' sec') + '" type="button" data-pontos-modo="penalidade">Aplicar penalidade</button>'
+    + '<button class="btn' + (pontosModo === 'bonus' ? '' : ' sec') + '" type="button" data-pontos-modo="bonus">Conceder bônus</button></div>';
+  var form = pontosModo !== 'penalidade' ? '' : a.tipos.length
     ? '<div class="form-adv"><label>Tipo<select id="advTipo">' + opcoes + '</select></label>'
       + '<label style="flex:1 1 240px;">Observação (opcional)<textarea id="advObs" placeholder="Contexto da advertência"></textarea></label>'
       + '<div><button class="btn" id="advAplicar" type="button">Aplicar</button><span class="msg" id="advMsg"></span></div></div>'
     : '<div class="vazio" style="margin-bottom:14px;">Nenhum tipo de advertência ativo. Cadastre em Controle de perfis.</div>';
+  var formBonus = pontosModo === 'bonus' ? formularioBonus_() : '';
+  var bonusSec = d.bonus && d.bonus.erro ? erroSecao(d.bonus.erro) : (d.bonus && d.bonus.dado ? listaBonus_(d.bonus.dado) : '');
   var lista = a.registros.length ? a.registros.map(function (r) {
     var editando = advEditandoId === r.id, excluindo = advExcluindoId === r.id, anulando = advAnulandoId === r.id;
     var automatica = r.origem === 'sistema', anulada = !!r.anuladaEm;
@@ -876,7 +884,49 @@ function renderAdvertenciasCS(d) {
       + (anulada ? '<div class="adv-meta">Anulada por ' + esc(r.anuladaPor || 'gestor') + ' em ' + esc(dataBR(r.anuladaEm)) + '. Motivo: ' + esc(r.motivoAnulacao || '') + '</div>' : '')
       + corpo + painelAnular + '</div>';
   }).join('') : '<div class="vazio">Nenhuma advertência aplicada a este CS.</div>';
-  el.innerHTML = duplo + efeito + form + lista;
+  el.innerHTML = duplo + efeito + acoesPontos + form + formBonus + '<h3 class="sub-secao" style="margin:18px 0 6px;">Bônus de pontuação</h3>' + bonusSec + '<h3 class="sub-secao" style="margin:18px 0 6px;">Penalidades</h3>' + lista;
+}
+
+// Formulário de bônus: dinâmica, mês que conta (mês corrente e até 11 meses passados; futuro não), pontos e observação.
+function formularioBonus_() {
+  var agora = new Date(), opcoes = '';
+  for (var i = 0; i < 12; i++) {
+    var m = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    var valor = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0') + '-01';
+    opcoes += '<option value="' + valor + '">' + esc(MESES_CS[m.getMonth()]) + ' de ' + m.getFullYear() + (i === 0 ? ' (mês corrente)' : '') + '</option>';
+  }
+  return '<div class="form-adv" id="bonusForm">'
+    + '<label style="flex:1 1 220px;">Dinâmica<input type="text" id="bonusDinamica" maxlength="120" placeholder="Ex.: vencedora da dinâmica de cases"></label>'
+    + '<label>Mês que conta<select id="bonusMes">' + opcoes + '</select></label>'
+    + '<label>Pontos<input type="number" id="bonusPontos" min="1" step="1" value="5"></label>'
+    + '<label style="flex:1 1 240px;">Observação (opcional)<textarea id="bonusObs"></textarea></label>'
+    + '<div><button class="btn" id="bonusConceder" type="button">Conceder bônus</button><span class="msg" id="bonusMsg"></span></div></div>';
+}
+
+// Lista de bônus do CS: com anuladas riscadas. Anular exige motivo e não apaga a linha.
+function listaBonus_(lista) {
+  var registros = lista.registros || [];
+  var total = lista.total || 0;
+  var cabecalho = '<div class="efeito">Bônus que entram na pontuação do período: <b>' + total + (total === 1 ? ' ponto' : ' pontos') + '</b>.</div>';
+  if (!registros.length) return cabecalho + '<div class="vazio" style="margin-bottom:14px;">Nenhum bônus concedido a este CS.</div>';
+  var linhas = registros.map(function (b) {
+    var anulando = bonusAnulandoId === b.id;
+    var mesTxt = String(b.mesReferencia).slice(0, 7).split('-').reverse().join('/');
+    var acao = b.ativo
+      ? (anulando
+        ? '<div style="margin-top:8px;"><textarea class="edit-obs" id="bonusMotivo" placeholder="Motivo da anulação (obrigatório)"></textarea><div style="margin-top:8px;display:flex;gap:6px;"><button class="btn perigo" type="button" data-bonus-acao="anular-confirmar" data-id="' + esc(b.id) + '">Confirmar anulação</button><button class="btn sec" type="button" data-bonus-acao="cancelar">Cancelar</button></div></div>'
+        : '<div class="adv-acoes"><button class="btn sec" type="button" data-bonus-acao="anular" data-id="' + esc(b.id) + '">Anular</button></div>')
+      : '';
+    var situacao = b.ativo ? 'Ativo' : 'Anulado';
+    return '<div class="adv-linha' + (b.ativo ? '' : ' adv-anulada') + '"><div class="adv-topo"><span class="adv-tipo">' + esc(b.dinamica) + '</span>'
+      + '<span class="adv-meta-pontos">+' + b.pontos + (b.pontos === 1 ? ' ponto' : ' pontos') + '</span>'
+      + '<span class="status-adv ' + (b.ativo ? 'ativa' : 'anulada') + '">' + situacao + '</span></div>'
+      + '<div class="adv-meta">Mês que conta: ' + esc(mesTxt) + '. Concedido por ' + esc(b.aplicadoPor) + ' em ' + esc(dataBR(b.aplicadoEm)) + '</div>'
+      + (b.observacao ? '<div class="adv-meta">' + esc(b.observacao) + '</div>' : '')
+      + (b.ativo ? '' : '<div class="adv-meta">Anulado por ' + esc(b.anuladoPor || 'gestor') + ' em ' + esc(dataBR(b.anuladoEm)) + '. Motivo: ' + esc(b.motivoAnulacao || '') + '</div>')
+      + acao + '</div>';
+  }).join('');
+  return cabecalho + linhas;
 }
 
 // ---------- 1:1 (08/10/2026): conduzida e editada só nesta página ----------
@@ -1398,6 +1448,32 @@ document.addEventListener('click', function (ev) {
   var alvo = ev.target;
   if (!alvo || !alvo.closest) return;
   var base = '/api/cs/' + encodeURIComponent(CS_NOME) + '/advertencias';
+  var botaoModo = alvo.closest('[data-pontos-modo]');
+  if (botaoModo) { var modo = botaoModo.getAttribute('data-pontos-modo'); pontosModo = pontosModo === modo ? null : modo; renderAdvertenciasCS(DADOS_CS); return; }
+  if (alvo.id === 'bonusConceder') {
+    var msgB = document.getElementById('bonusMsg');
+    var dinamica = document.getElementById('bonusDinamica').value.trim();
+    var pontos = Number(document.getElementById('bonusPontos').value);
+    if (!dinamica) { msgB.style.color = '#C0433D'; msgB.textContent = 'Informe a dinâmica.'; return; }
+    if (!Number.isInteger(pontos) || pontos <= 0) { msgB.style.color = '#C0433D'; msgB.textContent = 'Pontos devem ser um inteiro maior que zero.'; return; }
+    alvo.disabled = true; msgB.style.color = '#5D5D5D'; msgB.textContent = 'Concedendo';
+    postAdv('/api/gestor/bonus', 'POST', { itens: [{ csNome: CS_NOME, pontos: pontos }], dinamica: dinamica, mesReferencia: document.getElementById('bonusMes').value, observacao: document.getElementById('bonusObs').value.trim() || null })
+      .then(function () { pontosModo = null; return carregarCS(); }).catch(function (err) { alvo.disabled = false; msgB.style.color = '#C0433D'; msgB.textContent = 'Erro: ' + err.message; });
+    return;
+  }
+  var botaoBonus = alvo.closest('[data-bonus-acao]');
+  if (botaoBonus) {
+    var acaoB = botaoBonus.getAttribute('data-bonus-acao'), idB = botaoBonus.getAttribute('data-id');
+    if (acaoB === 'anular') { bonusAnulandoId = idB; renderAdvertenciasCS(DADOS_CS); return; }
+    if (acaoB === 'cancelar') { bonusAnulandoId = null; renderAdvertenciasCS(DADOS_CS); return; }
+    if (acaoB === 'anular-confirmar') {
+      var motivoB = document.getElementById('bonusMotivo').value.trim();
+      if (!motivoB) { botaoBonus.textContent = 'Informe o motivo'; return; }
+      postAdv('/api/cs/' + encodeURIComponent(CS_NOME) + '/bonus/' + encodeURIComponent(idB) + '/anular', 'POST', { motivo: motivoB })
+        .then(function () { bonusAnulandoId = null; return carregarCS(); }).catch(function (err) { botaoBonus.textContent = 'Erro: ' + err.message; });
+    }
+    return;
+  }
   if (alvo.id === 'advAplicar') {
     var msg = document.getElementById('advMsg');
     alvo.disabled = true; msg.style.color = '#5D5D5D'; msg.textContent = 'Aplicando';
