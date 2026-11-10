@@ -21,8 +21,9 @@ export async function GET() {
     const { data, error } = await supabase.from('fila_acao_itens')
       .select('id, cs_nome, semana_inicio, semana_fim, indicadores, deficit_total')
       .eq('fonte', 'ritmo_semanal').eq('status', 'aberto')
-      .order('semana_inicio', { ascending: false }).order('cs_nome');
-    const ritmoSemanal = error ? { dado: null, erro: 'Não foi possível ler o ritmo semanal agora.' } : { dado: data || [], erro: null };
+      .order('deficit_total', { ascending: false }).order('cs_nome');
+    const { data: cfg } = await supabase.from('ritmo_semanal_config').select('valor').eq('chave', 'limiar').maybeSingle();
+    const ritmoSemanal = error ? { dado: null, erro: 'Não foi possível ler o ritmo semanal agora.', limiar: null } : { dado: data || [], erro: null, limiar: cfg ? Number(cfg.valor) : null };
     if (error) console.error('acoes ritmo_semanal', error);
     return NextResponse.json({ ...base, ritmoSemanal });
   } catch (e: any) {

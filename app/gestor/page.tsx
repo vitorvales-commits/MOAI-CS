@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { montarDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
 import { GESTOR_STYLE, GESTOR_HTML, GESTOR_SCRIPT } from '../gestor-html';
+import { METAS_SEMANAIS_CSS, METAS_SEMANAIS_UI_SCRIPT } from '../../lib/ui/metas-semanais-ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,8 @@ export default async function GestorPage({ searchParams }: { searchParams?: { ab
       <style dangerouslySetInnerHTML={{ __html: GESTOR_STYLE }} />
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <script dangerouslySetInnerHTML={{ __html: DOCK_SCRIPT }} />
+      <style dangerouslySetInnerHTML={{ __html: METAS_SEMANAIS_CSS }} />
+      <script dangerouslySetInnerHTML={{ __html: METAS_SEMANAIS_UI_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: GESTOR_SCRIPT }} />
     </>
   );

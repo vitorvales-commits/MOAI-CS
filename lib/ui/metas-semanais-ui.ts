@@ -22,6 +22,9 @@ export const METAS_SEMANAIS_CSS = `
 .ms-bloco{margin-bottom:12px}
 .ms-bloco>b{font-size:13px}
 .ms-linha{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;padding:4px 0;border-bottom:0.5pt solid #E5E2E2}
+.ms-acesso{margin-top:14px}
+.ms-limiar{margin-top:14px;font-size:12.5px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ms-limiar input{width:70px}
 `;
 
 export const METAS_SEMANAIS_UI_SCRIPT = `
