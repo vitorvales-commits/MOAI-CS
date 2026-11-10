@@ -72,3 +72,118 @@ export function classificarSaude(linhas: LinhaSaude[], agora: Date = new Date())
     ? { estado: 'critico', texto: `${rotinas(criticos)} de dados parada${criticos === 1 ? '' : 's'}${e}. Abra para ver o que tratar.`, itens }
     : { estado: 'atrasado', texto: `${rotinas(itens.length)} de dados atrasada${itens.length === 1 ? '' : 's'}. Abra para ver.`, itens };
 }
+
+// ---- Exceções de dados (etapas 6 e 7): nomes de CS não reconhecidos e exclusões de dado nativo no dash ----
+// Mesma faixa e mesmo painel da saúde das rotinas. Sem exceção, nada aparece. Ambas são âmbar: pedem um
+// tratamento, mas não param nenhuma rotina.
+export type PendenciaVinculo = {
+  texto_original: string;
+  texto_normalizado: string;
+  fontes: string[];
+  ocorrencias: number;
+  sugestao_cs_id: number | null;
+  sugestao_nome: string | null;
+};
+export type ExclusaoDado = {
+  id: number;
+  tabela: string;
+  rotulo: string;
+  chave: string;
+  resumo: string | null;
+  removido_em: string;
+  removido_por: string | null;
+  restaurado_em: string | null;
+};
+export type AcaoExcecao =
+  | { tipo: 'confirmar_cs'; rotulo: string; cs_id: number }
+  | { tipo: 'ignorar'; rotulo: string }
+  | { tipo: 'restaurar'; rotulo: string };
+export type ItemExcecao = {
+  id: string;
+  tipo: 'vinculo' | 'exclusao';
+  gravidade: 'atrasado';
+  titulo: string;
+  texto: string;
+  acoes: AcaoExcecao[];
+  ref: { texto?: string; lixeiraId?: number };
+};
+export type ResumoExcecoes = { quantidade: number; texto: string | null };
+
+const FONTES_LEGIVEIS: Record<string, string> = {
+  'churn_items.quem_e_seu_cs': 'Churn (Quem é seu CS)',
+};
+export function fonteLegivel(fonte: string): string {
+  return FONTES_LEGIVEIS[fonte] ?? fonte.replace(/[._]/g, ' ');
+}
+
+function plural(n: number, um: string, varios: string): string {
+  return n === 1 ? um : varios;
+}
+
+// "há 3 horas", "há 1 dia": reaproveita o formato de minutosTexto, com o prefixo que a frase pede.
+export function haTexto(removidoEm: string, agora: Date = new Date()): string {
+  const min = Math.max(0, Math.floor((agora.getTime() - new Date(removidoEm).getTime()) / 60000));
+  return `há ${minutosTexto(min)}`;
+}
+
+export function classificarExcecoesDados(
+  pendencias: PendenciaVinculo[],
+  exclusoes: ExclusaoDado[],
+  agora: Date = new Date(),
+): ItemExcecao[] {
+  const vinculos: ItemExcecao[] = [...pendencias]
+    .sort((a, b) => b.ocorrencias - a.ocorrencias || a.texto_normalizado.localeCompare(b.texto_normalizado))
+    .map((p) => {
+      const acoes: AcaoExcecao[] = [];
+      if (p.sugestao_cs_id !== null && p.sugestao_nome) {
+        acoes.push({ tipo: 'confirmar_cs', rotulo: `Este é o CS: ${p.sugestao_nome}`, cs_id: p.sugestao_cs_id });
+      }
+      acoes.push({ tipo: 'ignorar', rotulo: 'Não é um CS' });
+      const fontes = [...new Set(p.fontes.map(fonteLegivel))].join(', ');
+      return {
+        id: `vinculo:${p.texto_normalizado}`,
+        tipo: 'vinculo',
+        gravidade: 'atrasado',
+        titulo: `Nome de CS não reconhecido: ${p.texto_original}`,
+        texto: `${p.ocorrencias} ${plural(p.ocorrencias, 'registro', 'registros')} em ${fontes || 'fonte não informada'} ${plural(p.ocorrencias, 'usa', 'usam')} esse nome. Ele precisa apontar para um CS ou ser ignorado para entrar nos indicadores.`,
+        acoes,
+        ref: { texto: p.texto_original },
+      };
+    });
+  const exclusoesItens: ItemExcecao[] = [...exclusoes]
+    .sort((a, b) => new Date(b.removido_em).getTime() - new Date(a.removido_em).getTime())
+    .map((e) => ({
+      id: `exclusao:${e.id}`,
+      tipo: 'exclusao',
+      gravidade: 'atrasado',
+      titulo: `${e.rotulo} excluído no dash`,
+      texto: `${e.resumo || e.rotulo}. Excluído por ${e.removido_por || 'autor não informado'} ${haTexto(e.removido_em, agora)}.`,
+      acoes: [{ tipo: 'restaurar', rotulo: 'Restaurar' }],
+      ref: { lixeiraId: e.id },
+    }));
+  return [...vinculos, ...exclusoesItens];
+}
+
+// Frase da faixa para as exceções, ou nula quando não há nenhuma.
+export function resumoExcecoes(itens: ItemExcecao[]): ResumoExcecoes {
+  const nomes = itens.filter((i) => i.tipo === 'vinculo').length;
+  const exclusoes = itens.length - nomes;
+  if (!itens.length) return { quantidade: 0, texto: null };
+  const partes: string[] = [];
+  if (nomes) partes.push(`${nomes} ${plural(nomes, 'nome de CS não reconhecido', 'nomes de CS não reconhecidos')}`);
+  if (exclusoes) partes.push(`${exclusoes} ${plural(exclusoes, 'exclusão de dado no dash', 'exclusões de dado no dash')}`);
+  return { quantidade: itens.length, texto: `${partes.join(' e ')}. Ver o que tratar.` };
+}
+
+// Estado da faixa combinado: a exceção mais grave manda. Rotina parada (crítico) continua na frente; exceção
+// de dados só torna a faixa âmbar quando as rotinas estão saudáveis.
+export function combinarEstadoFaixa(
+  rotinas: ResumoSaude,
+  excecoes: ResumoExcecoes,
+): { estado: ResumoSaude['estado']; texto: string } {
+  if (rotinas.estado === 'vazio') return { estado: 'vazio', texto: rotinas.texto };
+  if (!excecoes.quantidade) return { estado: rotinas.estado, texto: rotinas.texto };
+  if (rotinas.estado === 'critico') return { estado: 'critico', texto: `${rotinas.texto} ${excecoes.texto}` };
+  if (rotinas.estado === 'atrasado') return { estado: 'atrasado', texto: `${rotinas.texto} ${excecoes.texto}` };
+  return { estado: 'atrasado', texto: excecoes.texto as string };
+}

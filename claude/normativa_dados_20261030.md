@@ -240,3 +240,15 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
 - Teste reversível `scripts/normativa/teste_bonus_reversivel.sql` (marcador `TESTE_BONUS_OK`). Passou num Postgres 16 local com stubs do esquema (as duas migrações aplicam sem erro e o teste conclui com o marcador como único erro). Mutação de controle (validação do dia 1 desligada) reprova o teste. A verificação oficial é o workflow `testar-migracao` no PR.
 - Pendente: PR A mergeado pelo Vitor, backup verde, `aplicar-migracao` fora de 05h45 a 06h45 UTC, versão registrada. Depois, PR B (app) e a ligação do espelho.
 - Correção do teste (10/11/2026, antes do merge): o run `42740101931` da cópia reprovou porque `auth.jwt()` da cópia devolve `'{}'`, então `is_gestor()` era sempre falso. O teste agora redefine `auth.jwt()` dentro da transação para ler as claims da sessão, como o Supabase faz. A redefinição some no rollback. Reproduzido localmente com o stub da cópia e aprovado depois da correção.
+
+## Etapas 6 e 7: saúde dos dados (PR A, em revisão, 10/11/2026)
+
+- Migração `20261109c_saude_normativa.sql` (só SQL, aditiva):
+  - `public.lixeira_nativa_recente(p_dias)`: exclusões de dado nativo do dash, só gestor. Devolve tabela, rótulo, chave, resumo (até três campos), quando foi removido, por quem e se foi restaurado. Janela de 30 dias por padrão.
+  - `public.restaurar_da_lixeira(p_id)`: recusa linha cuja tabela não é de origem `nativa` ("Esta linha vem do Monday ou é calculada; restaurar aqui não teria efeito.") e grava cada restauração em `access_audit_log` (ação `restaurar_lixeira`, com id, tabela, chave e resultado).
+- Tabelas que a lista de saúde não expõe, por decisão desta etapa:
+  - `um_a_um_*` (inclui `um_a_um_privado`, `um_a_um_itens` e `um_a_um_registros`): sigilosas.
+  - Tabelas fora de `public` (`canonico.*`, `sincronia.*`): a restauração de `seguranca.restaurar` só atinge `public`.
+  - Tabelas de origem `monday` e linhas derivadas: a restauração não teria efeito (a sync remove de novo, ou o cálculo refaz).
+- Teste reversível `scripts/normativa/teste_saude_reversivel.sql`, marcador `TESTE_SAUDE_OK`.
+- Etapa 6, no workflow de cópia: passo que reprova o PR se `seguranca.v_tabelas_sem_classificacao` devolver qualquer tabela. Roda em todo PR que altera migração.
