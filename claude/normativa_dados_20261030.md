@@ -214,3 +214,21 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
 - Testes: `tests/espelho-destino.test.ts` e `tests/espelho-montagem.test.ts`. `npm test` com 70 de 70, `tsc` e `npm run build` verdes.
 - Não coberto por teste TypeScript: situações "Anulada" e "Excluído no dash" e a coalescência, que são SQL e estão no teste reversível da 20261109a.
 - Pendente: PR B aberto, depois merge e deploy da `sync-monday`; passo 4 (ligar os espelhos, um por vez) só depois disso.
+
+### Passos 2 a 4 da etapa 5: espelhos ligados e cargas aceitas (registrado em 10/11/2026, cargas de 09/11/2026)
+
+- Versões registradas na produção: `20261109165741` (`20261109a_espelho_nativo`, PR A) e `20261109171039` (`20261109b_sincronia_ler_espelho`, PR B).
+- Ordem: `cs_periodos`, depois `relatorios_conselho`, `advertencias_aplicadas` e `metas_definidas`. Uma tabela por vez, com o aceite de cada uma antes da seguinte.
+- Cargas aceitas (conferidas no banco e no Monday):
+  - `cs_periodos`: 18 linhas, 18 comandos concluídos, 18 de 18 vínculos, 18 itens "Ativo" no board 18439110277, zero falhas.
+  - `relatorios_conselho`: 2 linhas, 2 comandos concluídos, 2 de 2 vínculos, 2 itens "Ativo" no board 18439110272, zero falhas.
+  - `advertencias_aplicadas`: tabela vazia; a carga devolveu 0, sem erro.
+  - `metas_definidas`: 265 linhas, 265 comandos concluídos, 265 de 265 vínculos para 265 itens distintos, 265 itens "Ativo" no board 18439110276 e nenhum "Excluído no dash", zero falhas.
+- Espelhos ligados: os quatro (`ativo = true`). `fila_escrita_ativa` já estava ligada.
+
+### Fila de ação: bloco "Espelho no Monday com falha" (PR #38, em revisão)
+
+- Um item por tabela de origem, somando falhas do gatilho e comandos de espelho em erro. Texto: "<N> registro(s) não chegaram ao Monday. A última falha foi há <tempo>: <mensagem>. A escrita no dash não foi afetada. Avise o responsável pelo dash para reprocessar." Ordenado pela falha mais recente.
+- Falhas do gatilho: considera só as últimas 24 horas (o corte é feito no app; a RPC `sincronia_falhas_espelho` ainda devolve 7 dias).
+- Pendente, para evolução futura: descontar falhas já resolvidas (linha de origem com comando concluído depois da falha). Exige que a RPC exponha a chave de origem; hoje as duas leituras não trazem essa informação.
+- Pendente: "Ver no Monday" por item. Exige uma RPC de leitura do vínculo `sincronia.vinculo_nativo`; fica para um PR de banco separado.
