@@ -106,6 +106,8 @@ export function calcularRitmo(e: EntradaRitmo): ResultadoRitmo {
   else if (realizado >= previsto) status = 'no_ritmo';
   else if (previsto > 0 && realizado / previsto >= RITMO_LIMIAR_ATENCAO) status = 'atencao';
   else status = 'atras';
+  // Semana (com uteis): "atras" só quando o que falta não cabe nos dias úteis restantes. Antes disso, "atencao".
+  if (status === 'atras' && e.uteis && realizado !== null && meta - realizado <= uteis.total - uteis.decorridos) status = 'atencao';
 
   return { previsto, fracao, status, projecao, baseTexto };
 }

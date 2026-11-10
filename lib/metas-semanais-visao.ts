@@ -5,7 +5,9 @@
 // Regra do ritmo da semana (decisão PR 2a):
 //   previsto = meta efetiva x dias úteis decorridos na semana / dias úteis da semana (hoje incluso).
 //   Meta 1: o previsto só passa de 1 no último dia útil da semana, então antes disso o status é "cedo", nunca
-//   "atras". Meta 2: "atras" só a partir de 60% dos dias úteis com zero feito (previsto 1,2 sem item).
+//   "atras". Atrasado só quando o que falta (meta efetiva menos realizado) for maior que os dias úteis restantes
+//   da semana. Caso contrário, com ritmo abaixo do previsto, o status é "atencao" (âmbar). Meta 2 com zero feito a
+//   partir de 60% dos dias úteis: "atencao" enquanto restarem dois dias úteis ou mais; "atras" a partir daí.
 //   Realizado ausente (sem vínculo do CS) não vira zero: status fica nulo e a tela mostra "sem apuração".
 import { calcularRitmo, diasUteisEntre, type StatusRitmo } from './ritmo';
 import type { MetasSemanaisCS, ParcelaMetaSemanal, IndicadorSemanal } from './metas-semanais';

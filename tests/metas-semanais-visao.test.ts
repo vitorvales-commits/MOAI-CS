@@ -42,10 +42,12 @@ assert.equal(diasUteisEntre('2026-11-11', '2026-11-09'), 0);
   assert.equal(linhasSemanaAtual(m, '2026-11-13')[0].status, 'atras');
 }
 
-// 4. Meta 2, quarta com zero feito: "atras" (previsto 1,2). Regra documentada no cabeçalho do módulo.
+// 4. Meta 2 com zero feito (decisão da #50): quarta (2 dias úteis restantes) é "atencao", porque o que falta cabe nos
+// dias restantes. Quinta (1 dia restante) é "atras", porque faltam 2 e não cabem. Regra no cabeçalho do módulo.
 {
   const m = cs([{ indicador: 'matchmakings', metaMensal: 8, parcelas: [parcela({ metaEfetiva: 2, base: 2 })] }]);
-  assert.equal(linhasSemanaAtual(m, '2026-11-11')[0].status, 'atras');
+  assert.equal(linhasSemanaAtual(m, '2026-11-11')[0].status, 'atencao');
+  assert.equal(linhasSemanaAtual(m, '2026-11-12')[0].status, 'atras');
 }
 
 // 5. Realizado ausente (sem vínculo do CS): nulo em tudo, sem status e sem falta. Não vira zero.

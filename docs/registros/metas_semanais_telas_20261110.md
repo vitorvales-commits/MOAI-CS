@@ -30,7 +30,9 @@ Branch `feat/metas-semanais-visao`, a partir da PR 1.
 - `previsto = meta efetiva x dias úteis decorridos na semana / dias úteis da semana`, com hoje incluso.
 - O status vem de `calcularRitmo`, sem fórmula nova.
 - **Meta 1**: o previsto só passa de 1 no último dia útil da semana. Antes disso o status é "Começando", nunca "Atrás". Coberto por teste (`tests/metas-semanais-visao.test.ts`).
-- **Meta 2**: "Atrás" a partir de 60% dos dias úteis com zero feito, porque o previsto chega a 1,2. Este é o caso que ainda pode gerar alarme no meio da semana. Decisão registrada aqui: se você preferir outro limiar, a mudança é uma linha em `calcularRitmo`.
+- **Atrasado só quando o que falta é maior que os dias úteis restantes da semana** (decisão do Vitor, 10/11/2026). Falta = meta efetiva menos realizado. Com ritmo abaixo do previsto e falta que ainda cabe nos dias restantes, o status é "Atenção" (âmbar), não "Atrás". A regra vale só para a semana (`calcularRitmo` com `uteis`); o cálculo pelo mês não mudou.
+- **Meta 2 com zero feito**: "Atenção" enquanto restarem dois dias úteis ou mais (quarta, em semana de cinco dias); "Atrás" a partir de quinta. Teste em `tests/metas-semanais-visao.test.ts`, caso 4.
+- **Meta 1**: "Começando" até o último dia útil; "Atrás" só na sexta, se ainda estiver com zero. Teste caso 2 e 3.
 - **Realizado ausente** não vira zero. O status fica nulo e o cartão mostra "Sem apuração".
 - **Superávit** (P2) não reduz a semana seguinte. Coberto por teste.
 
@@ -83,8 +85,8 @@ Ressalvas das capturas:
 ### Pendências desta PR
 
 - Conferência visual com login real no preview do Vercel, com a semana de 09/11 a 15/11 e dados reais. Responsabilidade do Vitor.
-- **Limites como consumo do mês (P4)**: não implementado. Nenhum dos seis indicadores de `INDICADORES_SEMANAIS` é limite, e não existe fonte de limite mensal nos dados de metas semanais. Precisa de decisão antes de implementar.
-- **Duas grades de status**: a visão Geral do gestor ainda calcula o ritmo em JavaScript (`indRitmo_` em `app/gestor-cs-html.ts`), com outros rótulos ("No prazo", "Abaixo", "Longe"). A visão Semana atual usa `calcularRitmo` no servidor, com os rótulos "Começando", "Atenção", "Atrás", "No ritmo". Unificar exige mudar a grade atual: fica para decisão.
+- **Limites como consumo do mês (P4): fora da Semana atual, decisão do Vitor (10/11/2026).** Não implementado nesta PR nem na PR 2b. Motivo: nenhum dos seis indicadores de `INDICADORES_SEMANAIS` é limite, e não há fonte de limite mensal nos dados de metas semanais. Se o Vitor quiser o consumo do limite, é um item novo, com fonte definida.
+- **Unificar a grade de status do Geral do gestor com `calcularRitmo`: entra na PR 2b** (decisão do Vitor, 10/11/2026). A grade atual calcula o ritmo em JavaScript (`indRitmo_` em `app/gestor-cs-html.ts`) com rótulos "No prazo", "Abaixo", "Longe". A Semana atual usa `calcularRitmo` no servidor, com "Começando", "Atenção", "Atrás", "No ritmo". Até a PR 2b, as duas visões podem divergir no rótulo do mesmo indicador.
 - A página do gestor tem estado de erro próprio na seção de metas semanais (`s.erro`), mas ainda não há teste automatizado para ele.
 
 ## PR 2b e PR 3
