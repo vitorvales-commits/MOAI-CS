@@ -6,7 +6,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import {
   classificarSaude, classificarExcecoesDados, combinarEstadoFaixa, minutosTexto, resumoExcecoes,
-  type LinhaSaude, type PendenciaVinculo, type ExclusaoDado,
+  type LinhaSaude, type PendenciaVinculo, type ExclusaoDado, type CsAtivo,
 } from '@/lib/saude-dados';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +47,18 @@ export async function GET() {
       }
     })();
 
+    // Lista de CS ativos para "Este é o CS...": só quando há um nome sem sugestão. Falha isolada vira aviso.
+    const csAtivos = await (async () => {
+      try {
+        const { data, error } = await supabase.rpc('cs_ativos_lista');
+        if (error) throw new Error(error.message);
+        return (data || []) as CsAtivo[];
+      } catch (e: any) {
+        avisos.push('Lista de CS indisponível: ' + (e?.message || e));
+        return [] as CsAtivo[];
+      }
+    })();
+
     const excecoes = classificarExcecoesDados(pendencias, exclusoes, agora);
     const faixa = combinarEstadoFaixa(rotinas, resumoExcecoes(excecoes));
     return NextResponse.json({
@@ -54,6 +66,7 @@ export async function GET() {
       texto: faixa.texto,
       itens: rotinas.itens.map((i) => ({ ...i, paradoTexto: i.minutosParado === null ? null : minutosTexto(i.minutosParado) })),
       excecoes,
+      csAtivos,
       avisos,
     });
   } catch (e: any) {
