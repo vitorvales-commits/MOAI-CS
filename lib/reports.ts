@@ -27,7 +27,7 @@ import {
   calcularHealthBase, statusReport, type HealthBase, type DistribuicaoPresenca,
 } from './indicadores-base';
 import type { FaixaPresencaChave, SemaforoChave, AgendaTurnoChave } from './constants';
-import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato } from './agenda-nomes';
+import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato, chavesDaAgenda, conjuntosDaAgenda } from './agenda-nomes';
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, detalharScoreCS, type ScoreCS } from './pontuacao';
 import { mediana } from './evolucao';
@@ -711,7 +711,7 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
     conselhosGrupos, conselhosMembros, conselhosStatusMensal, agenda, historico, atas,
     statusHistorico, conselheirosFotos, bigDeals, conselheiros, npsConselhos, npsAliases,
-    npsDestaqueAliases, metasResolvidas, configHomeIndicadores, advertenciasAplicadas, membrosElegiveis,
+    npsDestaqueAliases, metasResolvidas, configHomeIndicadores, advertenciasAplicadas, membrosElegiveis, vinculoAgenda,
   ] = await comConcorrenciaLimitada<any[]>([
     () => fetchAll(sb, 'churn_items'), () => fetchAll(sb, 'upsell_downsell_items'), () => fetchAll(sb, 'reports_semanais_items'),
     () => fetchAll(sb, 'metas_subitens'), () => fetchAll(sb, 'rounds_items'), () => fetchAll(sb, 'feedback_items'), () => fetchAll(sb, 'cases_items'),
@@ -737,6 +737,8 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     // Report individual (07/10/2026): membros elegíveis da rede, fonte única no banco. O mesmo
     // resultado para qualquer usuário MOAI, por isso pode ficar no cache global.
     () => fetchMembrosElegiveis(sb) as Promise<any[]>,
+    // Conselho conjunto (10/11/2026): um nome da agenda pode ter mais de um conselheiro vinculado.
+    () => fetchAll(sb, 'agenda_conselheiro_vinculo'),
   ], MAX_CONCORRENCIA_DADOS_BRUTOS);
   return {
     churn, upsellDownsell, reportsSemanais, metas, rounds, feedback, cases, matchmakings,
@@ -746,6 +748,8 @@ async function buscarDadosBrutosSemCache(sb: SupabaseClient) {
     configHomeIndicadores: configHomeIndicadores as unknown as ConfigHomeIndicadorRow[],
     advertenciasAplicadas: advertenciasAplicadas as { cs_nome: string; pontos: number; valido_ate: string; aplicado_em: string; anulada_em: string | null }[],
     membrosElegiveis: membrosElegiveis as unknown as MembroElegivel[],
+    vinculoAgenda: vinculoAgenda as { nome_agenda: string; conselheiro_monday_item_id: number | null }[],
+    conjuntosAgenda: conjuntosDaAgenda(vinculoAgenda, conselheiros),
   };
 }
 let dadosBrutosCache: { valor: Awaited<ReturnType<typeof buscarDadosBrutosSemCache>>; expiraEm: number } | null = null;
@@ -794,15 +798,17 @@ function buildMembrosEStatusMaps(dados: { conselhosMembros: any[]; conselhosStat
   return { membrosPorGrupo, statusPorMembro };
 }
 
-// Chave do mapa é chaveAgenda (lib/agenda-nomes.ts): sem anotações entre parênteses ou colchetes.
-function buildAgendaMap(agendaRows: any[]) {
+// Chave do mapa é chaveAgenda (lib/agenda-nomes.ts): sem anotações entre parênteses ou colchetes. Um conselho conjunto
+// entra sob o nome de cada conselheiro vinculado, para a próxima data de cada grupo enxergar o encontro (10/11/2026).
+function buildAgendaMap(agendaRows: any[], conjuntos: Map<string, string[]>) {
   const map = new Map<string, { dataIso: string; status: string | null }[]>();
   agendaRows.forEach((r) => {
     if (!r.data_iso) return;
-    const chave = chaveAgenda(r.conselheiro_nome);
-    if (!chave) return;
-    if (!map.has(chave)) map.set(chave, []);
-    map.get(chave)!.push({ dataIso: r.data_iso, status: r.status || null });
+    chavesDaAgenda(String(r.conselheiro_nome || ''), conjuntos).forEach((chave) => {
+      if (!chave) return;
+      if (!map.has(chave)) map.set(chave, []);
+      map.get(chave)!.push({ dataIso: r.data_iso, status: r.status || null });
+    });
   });
   return map;
 }
@@ -856,23 +862,38 @@ function buildGrupoPorChaveAgenda(gruposAtivos: any[]) {
   return map;
 }
 
+// Grupos de Executivo de um nome da agenda. Nome comum casa com no máximo um grupo; um conselho conjunto (vários
+// conselheiros vinculados, 10/11/2026) casa com um grupo por conselheiro, sem casar o texto do nome conjunto.
+type GrupoAgendaInfo = { groupId: string; nomeGrupo: string; cs: string; nivel: string; congelado: boolean; repoGroupId: string | null };
+function gruposDaAgenda(nomeAgenda: string, grupoPorChave: Map<string, GrupoAgendaInfo>, conjuntos: Map<string, string[]>): GrupoAgendaInfo[] {
+  const achados: GrupoAgendaInfo[] = [];
+  chavesDaAgenda(nomeAgenda, conjuntos).forEach((k) => {
+    const chave = acharChaveTolerante(k, grupoPorChave.keys());
+    const grupo = chave ? grupoPorChave.get(chave) : undefined;
+    if (grupo && !achados.some((a) => a.groupId === grupo.groupId)) achados.push(grupo);
+  });
+  return achados;
+}
+
 // Encontros da agenda resolvidos para group_id (22/10/2026). É o MESMO casamento da agenda visual (contato do título do
 // grupo, apelidos e nome tolerante). A tabela encontros_conselho guarda o resultado para o SQL (estado do relatório e cron
-// de pontos), que nunca refaz o casamento por nome. Sem grupo ativo correspondente, o encontro vai para semGrupo.
+// de pontos), que nunca refaz o casamento por nome. Um encontro conjunto gera uma linha por grupo (10/11/2026). Sem grupo
+// ativo correspondente, o encontro vai para semGrupo.
 export function resolverEncontrosAgenda(dados: DadosBrutos) {
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && !g.titulo.startsWith('Reposições'));
   const grupoPorChave = buildGrupoPorChaveAgenda(gruposAtivos);
+  const conjuntos = dados.conjuntosAgenda ?? new Map<string, string[]>();
   const resolvidos: { agenda_item_id: number; group_id: string }[] = [];
   const semGrupo: { id: number; conselheiro: string; dataIso: string; status: string | null }[] = [];
   (dados.agenda as any[]).forEach((row) => {
     if (!row.data_iso || !row.conselheiro_nome) return;
-    const chave = acharChaveTolerante(chaveAgenda(row.conselheiro_nome), grupoPorChave.keys());
-    const grupo = chave ? grupoPorChave.get(chave) : undefined;
-    if (grupo) resolvidos.push({ agenda_item_id: Number(row.id), group_id: grupo.groupId });
+    const grupos = gruposDaAgenda(String(row.conselheiro_nome), grupoPorChave, conjuntos);
+    if (grupos.length) grupos.forEach((g) => resolvidos.push({ agenda_item_id: Number(row.id), group_id: g.groupId }));
     else semGrupo.push({ id: Number(row.id), conselheiro: String(row.conselheiro_nome), dataIso: String(row.data_iso), status: row.status ?? null });
   });
   return { resolvidos, semGrupo };
 }
+
 // A fila do gestor e as telas de relatório chamam isto; o casamento só roda de novo depois de 10 minutos.
 let ultimaSincEncontros = 0;
 export async function sincronizarEncontrosSePreciso(sb: SupabaseClient, dados: DadosBrutos) {
@@ -950,6 +971,8 @@ export type AgendaConselhoItem = {
   prazoCobranca: PrazoCobranca | null;
   // farol da semana (08/10/2026): só para conselho ainda não encerrado; null quando já passou
   membrosEsperados: number | null; naoVao: number | null; aguardando: number | null;
+  // um item por encontro; `grupos` traz cada grupo (conselho conjunto tem dois, com os próprios números e cobrança)
+  grupos: AgendaGrupoEncontro[];
 };
 export type AgendaRoundItem = {
   tipo: 'round';
@@ -969,6 +992,51 @@ function parseLimiteBRT(dataYYYYMMDD: string): Date {
 }
 const STATUS_FORA_DO_FAROL = ['Não era do conselho', 'Retirado', 'Churn', 'Congelado'];
 const STATUS_NAO_VAI = 'Não vai';
+// Um encontro por linha da agenda, qualquer que seja o número de grupos (10/11/2026): conselho conjunto aparece uma vez,
+// com os dois nomes. O cartão mostra o pior grupo (semáforo) e cada grupo fica em `grupos`, com os seus próprios números
+// e cobrança. A presença dos dois conselheiros vale para ambos os grupos; confirmados e esperados saem dos membros de cada.
+export type AgendaGrupoEncontro = {
+  groupId: string; nomeGrupo: string; cs: string; nivel: string; congelado: boolean;
+  confirmadosQtd: number | null; faixa: SemaforoChave | null; precisaCobranca: boolean; prazoCobranca: PrazoCobranca | null;
+  membrosEsperados: number | null; naoVao: number | null; aguardando: number | null;
+  presencaPorMembro: { nome: string; status: string | null; reposicao: boolean }[] | null;
+  presenca: { presentes: number; total: number } | null;
+  confirmados: { nome: string; mes: string; reposicao: boolean }[] | null;
+};
+type ContextoEncontro = { diaIso: string; hojeIso: string; mes: string; passado: boolean; membrosPorGrupo: Map<string, any[]>; statusPorMembro: Map<number, Map<string, string>> };
+function detalheDoEncontro(grupo: GrupoAgendaInfo, ctx: ContextoEncontro): AgendaGrupoEncontro {
+  const { diaIso, hojeIso, mes, passado, membrosPorGrupo, statusPorMembro } = ctx;
+  const itemsPrincipais = membrosPorGrupo.get(grupo.groupId) || [];
+  const itemsRepo = grupo.repoGroupId ? (membrosPorGrupo.get(grupo.repoGroupId) || []) : [];
+  // farol: titulares com status no mês (exceto os que saíram, estão congelados ou não eram do conselho),
+  // os que marcaram Não vai e os que ainda não responderam (esperados menos confirmados menos não vão)
+  const statusDoTitular = (m: any) => statusPorMembro.get(m.id)?.get(mes) ?? null;
+  const esperados = itemsPrincipais.filter((m: any) => { const st = statusDoTitular(m); return st !== null && !STATUS_FORA_DO_FAROL.includes(st); }).length;
+  const naoVao = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_NAO_VAI).length;
+  const titularesConfirmados = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_CONFIRMADO).length;
+  const presencaLinhas = passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null;
+  const confirmadosLista = passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro);
+  const confirmadosQtd = confirmadosLista ? confirmadosLista.length : null;
+  const cobra = confirmadosQtd !== null && precisaCobranca({ confirmados: confirmadosQtd, passado, congelado: grupo.congelado });
+  return {
+    groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
+    confirmadosQtd,
+    faixa: confirmadosQtd !== null ? faixaDoSemaforo(confirmadosQtd) : null,
+    precisaCobranca: cobra,
+    prazoCobranca: cobra ? prazoCobranca(diaIso, hojeIso) : null,
+    membrosEsperados: passado ? null : esperados,
+    naoVao: passado ? null : naoVao,
+    aguardando: passado ? null : Math.max(0, esperados - titularesConfirmados - naoVao),
+    presencaPorMembro: presencaLinhas,
+    presenca: presencaLinhas ? { presentes: presencaLinhas.filter((l) => l.status === STATUS_PRESENTE).length, total: presencaLinhas.length } : null,
+    confirmados: confirmadosLista,
+  };
+}
+// Pior grupo do encontro = o de menos confirmados (a faixa cresce com a contagem). Encerrado não tem contagem: vale o primeiro.
+function grupoPiorEncontro(detalhes: AgendaGrupoEncontro[]): AgendaGrupoEncontro {
+  return detalhes.reduce((pior, d) => (d.confirmadosQtd !== null && (pior.confirmadosQtd === null || d.confirmadosQtd < pior.confirmadosQtd) ? d : pior));
+}
+
 export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: string, dataFimISO: string, dadosParam?: DadosBrutos) {
   const dados = dadosParam || (await getDadosBrutos(sb));
   const limiteInicio = parseLimiteBRT(dataInicioISO);
@@ -978,17 +1046,11 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
   const gruposAtivos = dados.conselhosGrupos.filter((g: any) => !g.is_repo && !g.titulo.startsWith('Reposições'));
   const grupoPorChave = buildGrupoPorChaveAgenda(gruposAtivos);
   const { membrosPorGrupo, statusPorMembro } = buildMembrosEStatusMaps(dados);
-  // Vínculo agenda -> cadastro (agenda_conselheiro_vinculo + conselheiros). Só leitura: o
-  // preenchimento automático roda no backfill ou por gestor (vincular_conselheiros_agenda), nunca aqui.
-  const [{ data: vinculoRows, error: errVinc }, { data: cadastroRows, error: errCad }] = await Promise.all([
-    sb.from('agenda_conselheiro_vinculo').select('nome_agenda, conselheiro_monday_item_id'),
-    sb.from('conselheiros').select('monday_item_id, nome'),
-  ]);
-  if (errVinc) throw new Error('Erro ao buscar vínculo da agenda: ' + errVinc.message);
-  if (errCad) throw new Error('Erro ao buscar conselheiros: ' + errCad.message);
-  const cadastroPorId = new Map<number, string>((cadastroRows || []).map((c: any) => [Number(c.monday_item_id), c.nome as string]));
+  // Vínculo agenda -> cadastro: vem junto com os dados brutos (agenda_conselheiro_vinculo + conselheiros). Só leitura.
+  const conjuntos = dados.conjuntosAgenda ?? new Map<string, string[]>();
+  const cadastroPorId = new Map<number, string>((dados.conselheiros || []).map((c: any) => [Number(c.monday_item_id), c.nome as string]));
   const vinculoPorNome = new Map<string, number>(
-    (vinculoRows || []).filter((v: any) => v.conselheiro_monday_item_id != null)
+    (dados.vinculoAgenda || []).filter((v: any) => v.conselheiro_monday_item_id != null)
       .map((v: any) => [v.nome_agenda as string, Number(v.conselheiro_monday_item_id)]),
   );
   const hojeIso = instanteBRT(agora.toISOString()).diaIso;
@@ -998,46 +1060,31 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     if (!row.data_iso) return;
     const d = new Date(row.data_iso);
     if (d < limiteInicio || d >= limiteFim) return;
-    const chaveGrupo = acharChaveTolerante(chaveAgenda(row.conselheiro_nome), grupoPorChave.keys());
-    const grupo = chaveGrupo ? grupoPorChave.get(chaveGrupo) : undefined;
-    if (!grupo) return; // sem grupo ativo correspondente (nome não bate/conselho arquivado) — fica de fora, não quebra a agenda
-    const itemsPrincipais = membrosPorGrupo.get(grupo.groupId) || [];
-    const itemsRepo = grupo.repoGroupId ? (membrosPorGrupo.get(grupo.repoGroupId) || []) : [];
+    const grupos = gruposDaAgenda(String(row.conselheiro_nome || ''), grupoPorChave, conjuntos);
+    if (grupos.length === 0) return; // sem grupo ativo correspondente (nome não bate/conselho arquivado) — fica de fora, não quebra a agenda
     const { mesIdx } = calendarioBRT(row.data_iso);
-    const mes = MESES_ORDEM[mesIdx];
+    const { diaIso, minutos } = instanteBRT(row.data_iso);
     // Encerrado = término já passou (início + AGENDA_DURACAO_CONSELHO_MIN), não o início. Antes
     // (até 07/10/2026) bastava o início ter passado, e um conselho em andamento ou do dia anterior
     // aparecia como "passado" pintado de preto (#1A1A1A) na agenda, o bloco preto de terça.
     const passado = d.getTime() + AGENDA_DURACAO_CONSELHO_MIN * 60_000 <= agora.getTime();
-    // farol: titulares com status no mês (exceto os que saíram, estão congelados ou não eram do conselho),
-    // os que marcaram Não vai e os que ainda não responderam (esperados menos confirmados menos não vão)
-    const statusDoTitular = (m: any) => statusPorMembro.get(m.id)?.get(mes) ?? null;
-    const esperados = itemsPrincipais.filter((m: any) => { const st = statusDoTitular(m); return st !== null && !STATUS_FORA_DO_FAROL.includes(st); }).length;
-    const naoVao = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_NAO_VAI).length;
-    const titularesConfirmados = itemsPrincipais.filter((m: any) => statusDoTitular(m) === STATUS_CONFIRMADO).length;
-    const { diaIso, minutos } = instanteBRT(row.data_iso);
-    const presencaLinhas = passado ? presencaPorMembroDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro) : null;
-    const confirmadosLista = passado ? null : confirmadosDoMes(itemsPrincipais, itemsRepo, mes, statusPorMembro);
-    const confirmadosQtd = confirmadosLista ? confirmadosLista.length : null;
-    const cobra = confirmadosQtd !== null && precisaCobranca({ confirmados: confirmadosQtd, passado, congelado: grupo.congelado });
-    const conselheiroId = vinculoPorNome.get(row.conselheiro_nome) ?? null;
+    const ctx: ContextoEncontro = { diaIso, hojeIso, mes: MESES_ORDEM[mesIdx], passado, membrosPorGrupo, statusPorMembro };
+    const detalhes = grupos.map((g) => detalheDoEncontro(g, ctx));
+    const principal = grupoPiorEncontro(detalhes);
+    const cobrador = detalhes.find((x) => x.precisaCobranca) || null;
+    const conselheiroId = conjuntos.has(String(row.conselheiro_nome)) ? null : (vinculoPorNome.get(row.conselheiro_nome) ?? null);
     const cadastroNome = conselheiroId !== null ? cadastroPorId.get(conselheiroId) ?? null : null;
     conselhos.push({
       tipo: 'conselho',
-      groupId: grupo.groupId, nomeGrupo: grupo.nomeGrupo, cs: grupo.cs, nivel: grupo.nivel, congelado: grupo.congelado,
+      groupId: principal.groupId, nomeGrupo: principal.nomeGrupo, cs: principal.cs, nivel: principal.nivel, congelado: principal.congelado,
       dataIso: row.data_iso, statusAgenda: row.status || null, passado,
       conselheiroId, conselheiroNome: nomeExibido(row.conselheiro_nome, cadastroNome),
       diaIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos),
-      presencaPorMembro: presencaLinhas,
-      presenca: presencaLinhas ? { presentes: presencaLinhas.filter((l) => l.status === STATUS_PRESENTE).length, total: presencaLinhas.length } : null,
-      confirmados: confirmadosLista,
-      confirmadosQtd,
-      faixa: confirmadosQtd !== null ? faixaDoSemaforo(confirmadosQtd) : null,
-      precisaCobranca: cobra,
-      prazoCobranca: cobra ? prazoCobranca(diaIso, hojeIso) : null,
-      membrosEsperados: passado ? null : esperados,
-      naoVao: passado ? null : naoVao,
-      aguardando: passado ? null : Math.max(0, esperados - titularesConfirmados - naoVao),
+      presencaPorMembro: principal.presencaPorMembro, presenca: principal.presenca,
+      confirmados: principal.confirmados, confirmadosQtd: principal.confirmadosQtd, faixa: principal.faixa,
+      precisaCobranca: !!cobrador, prazoCobranca: cobrador ? cobrador.prazoCobranca : null,
+      membrosEsperados: principal.membrosEsperados, naoVao: principal.naoVao, aguardando: principal.aguardando,
+      grupos: detalhes,
     });
   });
   conselhos.sort((a, b) => new Date(a.dataIso).getTime() - new Date(b.dataIso).getTime());
@@ -1520,7 +1567,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   if (!cfg) throw new Error(`CS "${nomeCS}" não encontrado`);
   const grafias = grafiasCS(cfg);
 
-  const agendaMap = buildAgendaMap(dados.agenda);
+  const agendaMap = buildAgendaMap(dados.agenda, dados.conjuntosAgenda ?? new Map());
   const temUserId = cfg.userId !== null && cfg.userId !== undefined;
 
   const metas = parseMetas(dados.metas, dados.metasResolvidas, cfg.nome, seletorMes, ano, geral);
@@ -2570,7 +2617,7 @@ function montarContextoConselhos(dados: DadosBrutos) {
   });
   return {
     dados, membrosPorGrupo, statusPorMembro,
-    agendaMap: buildAgendaMap(dados.agenda),
+    agendaMap: buildAgendaMap(dados.agenda, dados.conjuntosAgenda ?? new Map()),
     cicloAtual: cicloAtualPorConselho(dados.historico),
   };
 }

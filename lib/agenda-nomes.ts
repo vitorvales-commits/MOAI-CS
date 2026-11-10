@@ -73,3 +73,32 @@ export function chavesDoContato(contato: string, apelidos: Map<string, string[]>
   const base = chaveAgenda(contato);
   return Array.from(new Set([base, ...(apelidos.get(base) || [])])).filter(Boolean);
 }
+
+// Conselho conjunto (10/11/2026): um nome da agenda com mais de um conselheiro vinculado (ex.: "Rafael e Rodrigo
+// Gianesini"). Devolve nome da agenda -> nomes do cadastro dos vinculados, só para quem tem 2 ou mais. O casamento
+// com o grupo passa por cada conselheiro, nunca pelo texto do nome conjunto.
+export function conjuntosDaAgenda(
+  vinculos: { nome_agenda: string; conselheiro_monday_item_id: number | null }[],
+  cadastros: { monday_item_id: number; nome: string }[],
+): Map<string, string[]> {
+  const nomePorId = new Map(cadastros.map((c) => [Number(c.monday_item_id), String(c.nome)]));
+  const porNome = new Map<string, string[]>();
+  vinculos.forEach((v) => {
+    if (v.conselheiro_monday_item_id == null) return;
+    const nome = nomePorId.get(Number(v.conselheiro_monday_item_id));
+    if (!nome) return;
+    porNome.set(v.nome_agenda, [...(porNome.get(v.nome_agenda) || []), nome]);
+  });
+  const conjuntos = new Map<string, string[]>();
+  porNome.forEach((nomes, nomeAgenda) => {
+    const unicos = Array.from(new Set(nomes));
+    if (unicos.length > 1) conjuntos.set(nomeAgenda, unicos);
+  });
+  return conjuntos;
+}
+
+// Chaves de casamento de um nome da agenda: o próprio nome, ou, se for conjunto, o nome de cada conselheiro vinculado.
+export function chavesDaAgenda(nomeAgenda: string, conjuntos: Map<string, string[]>): string[] {
+  const nomes = conjuntos.get(nomeAgenda);
+  return nomes ? nomes.map(chaveAgenda).filter(Boolean) : [chaveAgenda(nomeAgenda)];
+}
