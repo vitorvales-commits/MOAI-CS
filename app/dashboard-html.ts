@@ -300,6 +300,15 @@ select.pickmes:hover { border-color:#1A1A1A; }
 .diag-line strong { color:#1A1A1A; }
 
 /* ===== semanal ===== */
+.av-alt{display:inline-flex;gap:4px;margin-left:auto;background:#EEEDED;border-radius:999px;padding:3px}
+.av-btn{border:0;background:transparent;border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:700;color:#1A1A1A;cursor:pointer}
+.av-btn.on{background:#1A1A1A;color:#fff}
+.ch-sem{font-size:12px;color:#5A5A5A;margin:6px 0 10px}
+.ch-st{font-style:normal;font-size:11px;font-weight:800}
+.ch-meta .ch-sub{grid-column:1 / -1;font-size:11.5px;color:#5A5A5A}
+.ch-det summary{cursor:pointer;font-size:11px;color:#5A5A5A;margin-top:6px}
+.ch-sem-bloco{margin-bottom:12px}
+.ch-sem-linha{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;padding:4px 0;border-bottom:0.5pt solid #E5E2E2}
 .chart-card { background:#1A1A1A; border-radius: 24px; padding:22px 24px; margin-bottom:16px; color:#fff; }
 .chart-title { font-size: 10.5px; font-weight: 800; color: #9F9F9F; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px; }
 .week-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; }
@@ -1390,10 +1399,71 @@ function renderInPontuacao_(ini) {
   el.innerHTML = cab + delta + '</div><div class="ch-score">' + svg + txt + '</div>' + pts;
 }
 
-// Ritmo do mês: metas com barra e traço do esperado até hoje, e a dica do atraso. Sem meta não aparece como zero.
-function renderInMetas_(ini) {
+// Metas da home (PR 2a). Alternância Semana atual ou Semanas do mês (mês fechado) com Geral; a escolha vai para
+// o parâmetro visao da URL. Nada é calculado aqui: o ritmo da semana vem de calcularRitmo no servidor (ini.dado.semanal).
+var inMetasIni_ = null;
+function renderInMetas_(ini) { inMetasIni_ = ini; desenhaInMetas_(); }
+function desenhaInMetas_() {
   var el = document.getElementById('inMetas');
-  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Ritmo de ' + escHtml_(String(currentMes).toLowerCase()) + '</span><a class="gh-link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div>';
+  var ini = inMetasIni_ || {};
+  var s = ini.dado && ini.dado.semanal;
+  var opcoes = !s || s.erro ? [['geral', 'Geral']] : (s.mesAtual ? [['semana', 'Semana atual'], ['geral', 'Geral']] : [['semanas', 'Semanas do mês'], ['geral', 'Geral']]);
+  var pedido = new URLSearchParams(location.search).get('visao');
+  var atual = opcoes.some(function (o) { return o[0] === pedido; }) ? pedido : opcoes[0][0];
+  var alt = alternanciaVisao_(opcoes, atual);
+  if (atual === 'geral') renderInMetasGeral_(ini, el, alt);
+  else if (atual === 'semana') el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Semana atual</span>' + alt + '</div>' + corpoSemana_(s);
+  else el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Semanas do mês</span>' + alt + '</div>' + corpoSemanasMes_(s);
+  el.querySelectorAll('.av-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var u = new URL(location.href); u.searchParams.set('visao', b.getAttribute('data-visao'));
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+      desenhaInMetas_();
+    });
+  });
+}
+function alternanciaVisao_(opcoes, atual) {
+  return '<div class="av-alt" role="group" aria-label="Visão das metas">' + opcoes.map(function (o) {
+    return '<button type="button" class="av-btn' + (o[0] === atual ? ' on' : '') + '" data-visao="' + o[0] + '" aria-pressed="' + (o[0] === atual) + '">' + escHtml_(o[1]) + '</button>';
+  }).join('') + '</div>';
+}
+var ST_SEMANA_ = { no_ritmo: 'No ritmo', atencao: 'Atenção', atras: 'Atrás', cedo: 'Começando' };
+function corpoSemana_(s) {
+  if (!s.linhas || !s.linhas.length) return '<div class="gh-vazio">Nenhuma meta mensal para derivar a semana. Peça ao gestor para cadastrar a meta do mês.</div>';
+  var l0 = s.linhas[0];
+  return '<p class="ch-sem">Semana de ' + inDM_(l0.inicio) + ' a ' + inDM_(l0.fim) + ', ' + l0.diasUteisDecorridos + ' de ' + l0.diasUteisTotal + ' dias úteis.</p>' + s.linhas.map(cardSemanaMeta_).join('');
+}
+function cardSemanaMeta_(x) {
+  var sem = x.efetiva === null || x.efetiva === undefined;
+  var pct = !sem && x.efetiva > 0 && x.realizado !== null ? Math.min(x.realizado / x.efetiva * 100, 100) : 0;
+  var pace = !sem && x.previsto !== null && x.previsto !== undefined && x.efetiva > 0 ? Math.min(x.previsto / x.efetiva * 100, 100) : null;
+  var st = sem ? 'Sem meta efetiva' : (x.status === null ? 'Sem apuração' : ST_SEMANA_[x.status]);
+  var atrasado = x.status === 'atras' || x.status === 'atencao';
+  var real = x.realizado === null ? 'sem apuração' : inNum_(x.realizado);
+  var falta = '<div class="ch-sub"><b class="ch-st">' + st + '</b>' + (x.falta === null ? '' : ' · Faltam ' + inNum_(x.falta) + ' · ' + x.diasUteisRestantes + (x.diasUteisRestantes === 1 ? ' dia útil restante' : ' dias úteis restantes')) + '</div>';
+  var det = '<details class="ch-det"><summary>Detalhe</summary><p>Base da semana: ' + (x.base === null ? 'sem base' : inNum_(x.base)) + '. Déficit herdado: ' + (x.deficitRecebido === null ? 'sem dado' : inNum_(x.deficitRecebido)) + '.</p>' +
+    (x.semData ? '<p>' + x.semData + (x.semData === 1 ? ' item sem data no mês, fora desta conta.' : ' itens sem data no mês, fora desta conta.') + '</p>' : '') + '</details>';
+  return '<div class="ch-meta' + (atrasado ? ' atras' : '') + '"><b>' + escHtml_(x.label) + '</b>' +
+    '<div class="gh-bar"><span class="' + (atrasado ? 'gold' : 'green') + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i class="pace" style="left:' + pace.toFixed(0) + '%"></i>' : '') + '</div>' +
+    '<span>' + real + '<small>/' + (sem ? 'sem meta' : inNum_(x.efetiva)) + '</small></span>' +
+    falta + det + '</div>';
+}
+function corpoSemanasMes_(s) {
+  if (!s.fechadas || !s.fechadas.length) return '<div class="gh-vazio">Nenhuma semana fechada neste mês. O saldo de cada semana é calculado no fechamento de segunda.</div>';
+  var grupos = {};
+  s.fechadas.forEach(function (f) { (grupos[f.indicador] = grupos[f.indicador] || []).push(f); });
+  return Object.keys(grupos).map(function (k) {
+    var lista = grupos[k].slice().sort(function (a, b) { return a.inicio < b.inicio ? -1 : 1; });
+    return '<div class="ch-sem-bloco"><b>' + escHtml_(lista[0].label) + '</b>' + lista.map(function (f) {
+      var txt = f.estado === 'aguardando_fechamento' ? 'Aguardando fechamento' : (f.atingiu === null ? 'Sem apuração' : (f.atingiu ? 'Atingiu' : 'Não atingiu'));
+      var def = f.deficitTransferido ? ' Déficit levado: ' + inNum_(f.deficitTransferido) + '.' : '';
+      return '<div class="ch-sem-linha"><span>' + inDM_(f.inicio) + ' a ' + inDM_(f.fim) + '</span><span>' + (f.realizado === null ? 'sem apuração' : inNum_(f.realizado)) + ' de ' + (f.efetiva === null ? 'sem meta' : inNum_(f.efetiva)) + '</span><em>' + txt + '.' + def + '</em></div>';
+    }).join('') + '</div>';
+  }).join('');
+}
+// Ritmo do mês: metas com barra e traço do esperado até hoje, e a dica do atraso. Sem meta não aparece como zero.
+function renderInMetasGeral_(ini, el, alt) {
+  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Ritmo de ' + escHtml_(String(currentMes).toLowerCase()) + '</span>' + alt + '<a class="gh-link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div>';
   if (ini.erro || !ini.dado) { el.innerHTML = cab + inErro_('Não foi possível carregar as metas', ini.erro || 'sem dados'); return; }
   var d = ini.dado;
   var linhas = d.metas.filter(function (m) { return m.status !== 'sem_meta'; }).map(function (m) {

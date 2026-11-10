@@ -3,7 +3,9 @@
 // mediana do time (um número), nunca a lista nominal de colegas. Ranking e pontuação vêm de generateVisaoGestor
 // (calcularScoreCS), o ritmo de calcularRitmo e as regras de foco, simulação e dica de lib/home-regras.ts.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { generateCSReport, generateVisaoGestor, listarAdvertenciasCS, parseTituloConselho } from './reports';
+import { generateCSReport, generateVisaoGestor, listarAdvertenciasCS, parseTituloConselho, getCSListParaAgregados, normalizeNome } from './reports';
+import { metasSemanaisDoCS } from './metas-semanais';
+import { linhasSemanaAtual, semanasFechadasDoMes } from './metas-semanais-visao';
 import { variacaoDoRanking } from './evolucao-dados';
 import { mediana } from './evolucao';
 import { hojeSP } from './gtd-prazos';
@@ -63,6 +65,9 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
   const variacao = variacoes ? variacoes.get(csNome) ?? null : null;
 
   const idxMes = MESES_ORDEM.indexOf(seletorMes);
+  // Metas semanais (PR 2a): isoladas, um erro aqui não derruba a home. O erro vai para a tela da seção.
+  const semanal = await semanalDoCS(sb, csNome, idxMes === -1 ? null : `${ano}-${String(idxMes + 1).padStart(2, '0')}-01`, hoje)
+    .catch((e: any) => { console.error('inicio semanal', e); return { erro: (e && e.message) || String(e) }; });
   const diasNoMes = idxMes === -1 ? null : diasDoMesReal(ano, idxMes + 1);
   const mesAtual = idxMes !== -1 && hoje.slice(0, 7) === ano + '-' + String(idxMes + 1).padStart(2, '0');
   const dia = Number(hoje.slice(8, 10));
@@ -166,9 +171,21 @@ export async function dadosInicioCS(sb: SupabaseClient, seletorMes: string, ano:
     fraseSituacao,
     semana,
     metas,
+    semanal,
     carteira: { numConselhos: cart ? cart.calculado : null, meta: cart ? cart.meta : null, semMetaPropria: !!(cart && cart.semMetaPropria), churn: churn ? churn.calculado : null, metaChurn: churn ? churn.meta : null },
     pontosTomados: pontos,
   };
+}
+
+// Metas semanais do próprio CS no mês: a semana corrente e os fechamentos. null quando o CS não está no elenco do mês.
+// Tudo vem de metasSemanaisDoCS (ponto único de cálculo); esta função só escolhe a parcela de hoje.
+async function semanalDoCS(sb: SupabaseClient, csNome: string, mesIso: string | null, hoje: string) {
+  if (!mesIso) return null;
+  const cs = (await getCSListParaAgregados(sb)).find((c) => normalizeNome(c.nome) === normalizeNome(csNome));
+  if (!cs) return null;
+  const m = await metasSemanaisDoCS(sb, cs, mesIso);
+  if (!m) return null;
+  return { mes: mesIso, hoje, mesAtual: mesIso.slice(0, 7) === hoje.slice(0, 7), linhas: linhasSemanaAtual(m, hoje), fechadas: semanasFechadasDoMes(m) };
 }
 
 // O report do CS está pendente ou atrasado nesta semana, pela mesma função de status usada na aba Report.
