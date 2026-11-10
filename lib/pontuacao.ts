@@ -51,7 +51,20 @@ export type ScoreCS = {
   elegiveis: number;
   estado: 'com_pontuacao' | 'sem_dados_suficientes';
   itens: ScoreItem[];
+  // Bônus de pontuação concedido pelo gestor no período (somado ao total). Zero quando a pontuação não existe.
+  bonus: number;
 };
+
+// Registro de bônus como vem de bonus_aplicados. mes_referencia é AAAA-MM-DD (dia 1).
+export type BonusRegistro = { pontos: number; mes_referencia: string; anulado_em?: string | null };
+
+// Soma dos bônus não anulados cujo mês de referência cai no intervalo [mesInicio, mesFim] (datas AAAA-MM-DD,
+// inclusivas). Mês: um bônus soma só no mês escolhido. Período geral: soma o ano inteiro.
+export function bonusDoPeriodo(bonus: BonusRegistro[], mesInicio: string, mesFim: string): number {
+  return bonus
+    .filter((b) => !b.anulado_em && b.mes_referencia >= mesInicio && b.mes_referencia <= mesFim)
+    .reduce((s, b) => s + (Number(b.pontos) || 0), 0);
+}
 
 const temMeta = (m: number | null | undefined, redutor: boolean) =>
   m !== null && m !== undefined && !Number.isNaN(m) && (redutor ? m >= 0 : m > 0);
@@ -86,6 +99,8 @@ export function calcularScoreCS(
   indicadores: Record<string, IndicadorEntrada | null | undefined>,
   carteira: { numConselhos: number; metaPropria: number | null | undefined },
   minElegiveis: number = PONTUACAO_MIN_INDICADORES_COM_META,
+  // Bônus do período (bonusDoPeriodo). Soma ao total só quando há pontuação; nunca cria pontuação.
+  bonus: number = 0,
 ): ScoreCS {
   const chaves = Object.keys(PESOS_SCORE_CS);
   const entradaDe = (chave: string): IndicadorEntrada | null | undefined => (chave === 'carteira'
@@ -142,9 +157,11 @@ export function calcularScoreCS(
   });
   const estado = elegiveis >= minElegiveis ? 'com_pontuacao' : 'sem_dados_suficientes';
   const bruto = somaPeso > 0 ? (somaPonderada / somaPeso) * 100 - desconto : null;
+  const comPontuacao = estado === 'com_pontuacao' && bruto !== null;
+  const bonusEfetivo = comPontuacao ? Math.max(0, Math.round(Number(bonus) || 0)) : 0;
   return {
-    score: estado === 'com_pontuacao' && bruto !== null ? Math.max(0, Math.round(bruto)) : null,
-    elegiveis, estado, itens,
+    score: comPontuacao ? Math.max(0, Math.round(bruto as number)) + bonusEfetivo : null,
+    elegiveis, estado, itens, bonus: bonusEfetivo,
   };
 }
 
@@ -174,7 +191,8 @@ export type DetalheScoreItem = {
   // Pontos descontados pelo redutor (positivo), 0 dentro do limite, null para os demais.
   desconto: number | null;
 };
-export type DetalheScore = { itens: DetalheScoreItem[]; totalEmAberto: number | null; totalDesconto: number };
+// bonus: pontos de bônus do período que compõem o total (zero quando não há). Vai como linha "Bônus" na composição.
+export type DetalheScore = { itens: DetalheScoreItem[]; totalEmAberto: number | null; totalDesconto: number; bonus: number };
 
 export function detalharScoreCS(s: ScoreCS): DetalheScore {
   const entram = s.itens.filter((i) => i.pontos !== null && !i.semPontos && !i.redutor);
@@ -202,5 +220,6 @@ export function detalharScoreCS(s: ScoreCS): DetalheScore {
     itens,
     totalEmAberto: abertos.length ? um(abertos.reduce((t, i) => t + (i.emAberto as number), 0)) : null,
     totalDesconto: um(totalDesconto),
+    bonus: s.bonus,
   };
 }
