@@ -1,7 +1,7 @@
 // Roda com: npx tsx tests/vitorio-time-carteira.test.ts
-// Respostas de time e carteira dos dois lados da data de carga (30/10/2026).
+// Respostas de time e carteira: fonte certa dos dois lados da data de carga, texto em português e tempo verbal pela data.
 import assert from 'node:assert/strict';
-import { responderElenco, responderCarteira, type DadosTime } from '../lib/vitorio/time-carteira.ts';
+import { responderElenco, responderCarteira, dataBR, mesPorExtenso, type DadosTime, type RespostaTime } from '../lib/vitorio/time-carteira.ts';
 
 const dados: DadosTime = {
   hojeIso: '2026-11-10',
@@ -19,34 +19,64 @@ const dados: DadosTime = {
   conselhos: { g1: 'Conselho Um', g2: 'Conselho Dois' },
 };
 
+const respostas: RespostaTime[] = [];
+function guardar(r: RespostaTime): RespostaTime { respostas.push(r); return r; }
+
+// Formatação para o leitor.
+assert.equal(dataBR('2026-11-05'), '05/11/2026');
+assert.equal(mesPorExtenso('2026-09-01'), 'setembro de 2026');
+
 // Elenco de setembro: cs_periodos, com quem já saiu e sem quem entrou depois.
-const set = responderElenco('2026-09-01', dados);
+const set = guardar(responderElenco('2026-09-01', dados));
 assert.match(set.texto, /Ana, Bia/);
+assert.match(set.texto, /setembro de 2026/);
 assert.doesNotMatch(set.texto, /Caio/);
+assert.equal(set.temRegistro, true);
 assert.match(set.comoCheguei, /cs_periodos/);
 
-// Elenco de novembro: mês corrente, CS ativos hoje.
-const nov = responderElenco('2026-11-01', dados);
+// Elenco de novembro: mês corrente, CS ativos hoje, com a fonte real (canonico.cs via vitorio_dicionario).
+const nov = guardar(responderElenco('2026-11-01', dados));
 assert.match(nov.texto, /Bia, Caio/);
-assert.match(nov.comoCheguei, /cs_config/);
+assert.match(nov.comoCheguei, /canonico\.cs/);
+assert.doesNotMatch(nov.comoCheguei, /cs_config/);
+
+// Elenco vazio: temRegistro false, nos dois ramos.
+const vazioHoje = guardar(responderElenco('2026-11-01', { ...dados, ativosHoje: [] }));
+assert.equal(vazioHoje.temRegistro, false);
+assert.match(vazioHoje.texto, /Não encontrei CS registrado em novembro de 2026/);
+const vazioSet = guardar(responderElenco('2026-09-01', { ...dados, periodos: [] }));
+assert.equal(vazioSet.temRegistro, false);
 
 // Carteira de setembro: não tem registro, mesmo com carga '-infinity' cobrindo o conselho g1.
-const carteiraSet = responderCarteira('g1', '2026-09-15', dados);
+const carteiraSet = guardar(responderCarteira('g1', '2026-09-15', dados));
 assert.equal(carteiraSet.temRegistro, false);
 assert.match(carteiraSet.texto, /Não tenho esse registro/);
+assert.match(carteiraSet.texto, /15\/09\/2026/);
 assert.doesNotMatch(carteiraSet.texto, /Bia/);
 assert.match(carteiraSet.comoCheguei, /sem registro/);
 
-// Carteira de novembro: a carga responde para o conselho g1.
-const carteiraNov = responderCarteira('g1', '2026-11-05', dados);
+// Carteira antes de hoje: "era cuidado por", com data em português.
+const carteiraNov = guardar(responderCarteira('g1', '2026-11-05', dados));
 assert.equal(carteiraNov.temRegistro, true);
-assert.match(carteiraNov.texto, /Conselho Um era cuidado por Bia em 2026-11-05/);
+assert.equal(carteiraNov.texto, 'Conselho Um era cuidado por Bia em 05/11/2026.');
 assert.match(carteiraNov.comoCheguei, /conselho_cs_vigencia/);
 
+// Carteira de hoje e de data futura: "é cuidado por".
+const hoje = guardar(responderCarteira('g1', '2026-11-10', dados));
+assert.equal(hoje.texto, 'Conselho Um é cuidado por Bia em 10/11/2026.');
+const futuro = guardar(responderCarteira('g1', '2026-12-01', dados));
+assert.equal(futuro.texto, 'Conselho Um é cuidado por Bia em 01/12/2026.');
+
 // Conselho com vigência só a partir de 01/11: 31/10 não tem registro (guarda da carga), 01/11 responde.
-const antes = responderCarteira('g2', '2026-10-31', dados);
+const antes = guardar(responderCarteira('g2', '2026-10-31', dados));
 assert.equal(antes.temRegistro, false);
-const depois = responderCarteira('g2', '2026-11-01', dados);
-assert.match(depois.texto, /Conselho Dois era cuidado por Caio/);
+const depois = guardar(responderCarteira('g2', '2026-11-01', dados));
+assert.equal(depois.texto, 'Conselho Dois era cuidado por Caio em 01/11/2026.');
+
+// Nenhuma resposta visível traz data AAAA-MM-DD.
+for (const r of respostas) {
+  assert.doesNotMatch(r.texto, /\d{4}-\d{2}-\d{2}/, `data ISO no texto: ${r.texto}`);
+  assert.doesNotMatch(r.comoCheguei, /\d{4}-\d{2}-\d{2}/, `data ISO em Como cheguei: ${r.comoCheguei}`);
+}
 
 console.log('ok vitorio-time-carteira');
