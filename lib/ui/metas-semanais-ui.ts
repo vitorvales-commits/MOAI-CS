@@ -23,6 +23,22 @@ export const METAS_SEMANAIS_CSS = `
 .ms-bloco>b{font-size:13px}
 .ms-linha{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;padding:4px 0;border-bottom:0.5pt solid #E5E2E2}
 .ms-acesso{margin-top:14px}
+#semanaTimeCorpo{padding:0 18px 18px}
+.rs-contexto{font-size:12.5px;color:#5A5A5A;margin:0 0 6px}
+.rs-frase{font-size:16px;line-height:1.45;margin:0 0 16px}
+.rs-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.rs-cards .kpi-f{font-size:11.5px}
+.rs-barra{position:relative;height:6px;background:#E5E2E2;border-radius:99px;margin:10px 0 8px}
+.rs-barra>i{display:block;height:100%;border-radius:99px;background:#7A7A7A}
+.rs-barra>u{position:absolute;top:-3px;bottom:-3px;width:2px;background:#1A1A1A}
+.rs-st{font-weight:700}
+.rs-conversas-cartao{border-top:1px solid #E5E2E2;padding-top:16px}
+.rs-conversas-cartao h3{margin:0 0 10px;font-size:14px}
+.rs-conversas{list-style:none;padding:0;margin:0 0 12px}
+.rs-conversas li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid #E5E2E2}
+.rs-conversas li span{grid-column:1;font-size:12px;color:#5A5A5A}
+.rs-conversas li em{grid-column:2;grid-row:1 / span 2;font-style:normal;font-weight:700;align-self:center}
+@media (max-width:760px){.rs-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .ms-limiar{margin-top:14px;font-size:12.5px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .ms-limiar input{width:70px}
 `;
