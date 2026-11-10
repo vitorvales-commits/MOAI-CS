@@ -15,12 +15,13 @@ const base = (over: Partial<EscritaPendente>): EscritaPendente => ({
 const falha = (tabela_origem: string, ocorrido_em: string, erro_mensagem: string): FalhaEspelho =>
   ({ tabela_origem, ocorrido_em, erro_mensagem });
 
-// Os quatro boards Registro reconhecidos, e só eles.
+// Os cinco boards Registro reconhecidos, e só eles.
 assert.deepEqual(ESPELHO_BOARDS, {
   '18439110272': 'relatorios_conselho',
   '18439110274': 'advertencias_aplicadas',
   '18439110276': 'metas_definidas',
   '18439110277': 'cs_periodos',
+  '18439229782': 'bonus_aplicados',
 });
 assert.equal(ehBoardEspelho('18439110276'), true);
 assert.equal(ehBoardEspelho('18432210313'), false);

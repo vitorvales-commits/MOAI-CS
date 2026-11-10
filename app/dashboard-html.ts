@@ -912,6 +912,7 @@ ${ICONES_SVG}
       <section class="gh-w gh-podio-w gh-c7" aria-labelledby="ghPodioTit">
         <div class="gh-w-h"><span class="gh-w-t" id="ghPodioTit">Top 3 do mês</span><a class="gh-link gh-link-periodo" href="/gestor?aba=visaoGeral#mapa-time">Ranking completo</a></div>
         <div id="ghPodio"><div class="gh-sk"></div></div>
+        <div id="ghConcederBonus"></div>
         <div id="ghPodioRodape"></div>
       </section>
       <section class="gh-w gh-c5" id="ghCasos" aria-labelledby="ghCasosTit">
@@ -1651,6 +1652,61 @@ function carregarEquipe(mes, ano){
   });
 }
 // Home do gestor: cada bloco vem pronto de /api/equipe (campo homeGestor). Aqui só se desenha.
+// Conceder bônus em lote (gestor, PR B). Mesmo formulário do CS (dinâmica, mês que conta, observação), com a
+// lista de CS do ranking, uma checkbox e pontos por CS. Grava por /api/gestor/bonus numa transação só.
+var BONUS_LOTE_ABERTO_ = false;
+var BONUS_LOTE_RANKING_ = [];
+function renderConcederBonusLote_(ranking){
+  BONUS_LOTE_RANKING_ = ranking || [];
+  var el = document.getElementById('ghConcederBonus');
+  if (!el) return;
+  if (!BONUS_LOTE_RANKING_.length) { el.innerHTML = ''; return; }
+  var cabeca = '<div class="gh-bonus-lote-cab" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px 0 6px;">'
+    + '<span style="font-weight:700;">Bônus de pontuação</span>'
+    + '<button class="info-btn" type="button" data-bonus-lote="alternar">' + (BONUS_LOTE_ABERTO_ ? 'Fechar' : 'Conceder bônus') + '</button></div>';
+  if (!BONUS_LOTE_ABERTO_) { el.innerHTML = cabeca; return; }
+  var agora = new Date(), meses = '';
+  for (var i = 0; i < 12; i++) {
+    var m = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    meses += '<option value="' + m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0') + '-01">' + m.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) + (i === 0 ? ' (mês corrente)' : '') + '</option>';
+  }
+  var linhas = BONUS_LOTE_RANKING_.map(function(c, idx){
+    return '<label class="gh-bonus-lote-linha" style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #2A2A2A;">'
+      + '<input type="checkbox" data-bonus-idx="' + idx + '"><span style="flex:1;">' + escHtml_(c.nome) + '</span>'
+      + '<input type="number" min="1" step="1" value="5" data-bonus-pontos="' + idx + '" style="width:80px;"> pts</label>';
+  }).join('');
+  el.innerHTML = cabeca + '<div class="gh-bonus-lote" style="padding:12px 0;">'
+    + '<label>Dinâmica<input type="text" id="bonusLoteDinamica" maxlength="120" placeholder="Ex.: vencedores da dinâmica de cases"></label> '
+    + '<label>Mês que conta<select id="bonusLoteMes">' + meses + '</select></label> '
+    + '<label>Observação (opcional)<input type="text" id="bonusLoteObs" maxlength="300"></label>'
+    + '<div style="margin:10px 0;">' + linhas + '</div>'
+    + '<button class="info-btn" type="button" id="bonusLoteConceder">Conceder a quem estiver marcado</button> <span id="bonusLoteMsg" style="font-size:12px;"></span></div>';
+}
+document.addEventListener('click', function(ev){
+  var alvo = ev.target;
+  if (!alvo || !alvo.closest) return;
+  var alternar = alvo.closest('[data-bonus-lote="alternar"]');
+  if (alternar) { BONUS_LOTE_ABERTO_ = !BONUS_LOTE_ABERTO_; renderConcederBonusLote_(BONUS_LOTE_RANKING_); return; }
+  if (alvo.id !== 'bonusLoteConceder') return;
+  var msg = document.getElementById('bonusLoteMsg');
+  var dinamica = document.getElementById('bonusLoteDinamica').value.trim();
+  var itens = [];
+  BONUS_LOTE_RANKING_.forEach(function(c, idx){
+    var marcado = document.querySelector('[data-bonus-idx="' + idx + '"]');
+    if (!marcado || !marcado.checked) return;
+    var pts = Number(document.querySelector('[data-bonus-pontos="' + idx + '"]').value);
+    itens.push({ csNome: c.nome, pontos: pts });
+  });
+  if (!dinamica) { msg.style.color = '#f0a0a0'; msg.textContent = 'Informe a dinâmica.'; return; }
+  if (!itens.length) { msg.style.color = '#f0a0a0'; msg.textContent = 'Marque ao menos um CS.'; return; }
+  if (itens.some(function(i){ return !Number.isInteger(i.pontos) || i.pontos <= 0; })) { msg.style.color = '#f0a0a0'; msg.textContent = 'Pontos devem ser inteiros maiores que zero.'; return; }
+  alvo.disabled = true; msg.style.color = '#9F9F9F'; msg.textContent = 'Concedendo';
+  fetch('/api/gestor/bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itens: itens, dinamica: dinamica, mesReferencia: document.getElementById('bonusLoteMes').value, observacao: document.getElementById('bonusLoteObs').value.trim() || null }) })
+    .then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || 'erro'); return j; }); })
+    .then(function(){ msg.style.color = '#9fe0b0'; msg.textContent = 'Bônus concedido a ' + itens.length + (itens.length === 1 ? ' CS.' : ' CS.'); alvo.disabled = false; BONUS_LOTE_ABERTO_ = false; setTimeout(function(){ renderConcederBonusLote_(BONUS_LOTE_RANKING_); }, 1200); })
+    .catch(function(err){ alvo.disabled = false; msg.style.color = '#f0a0a0'; msg.textContent = 'Erro: ' + err.message; });
+});
+
 function renderEquipe(data){
   modoGeralAtual = !!data.periodo.geral;
   var h = data.homeGestor || {};
@@ -1664,6 +1720,7 @@ function renderEquipe(data){
   renderEquipeSecao_('ghCrescimento', function () { renderGhCrescimento_(h); });
   renderEquipeSecao_('ghRetencao', function () { renderGhRetencao_(h); });
   renderEquipeSecao_('ghPodio', function () { renderGhPodio_(h); });
+  renderEquipeSecao_('ghConcederBonus', function () { renderConcederBonusLote_(data.rankingGeralPorScore || []); });
   renderEquipeSecao_('ghCases', function () { renderGhCases_(h); });
   renderEquipeSecao_('ghConselhos', function () { renderGhConselhos_(h); });
   document.getElementById('ghChurnOrfao').innerHTML = renderChurnOrfao(data.churnOrfao);
@@ -2817,8 +2874,10 @@ function carregarAdvertencias(nome){
     advertenciaTotais_ = { totalHistorico: d.totalHistorico || 0, desde: d.desde || null, proximoVencimento: d.proximoVencimento || null };
     advertenciaEfeito_ = d.efeito || null;
     advertenciasCarregadas_ = true;
-    renderAbaAdvertencias();
-    renderPendencias();
+    return carregarBonusDoCS(nome).then(function(){
+      renderAbaAdvertencias();
+      renderPendencias();
+    });
   }).catch(function(err){
     if (currentCS !== nome) return;
     document.getElementById('advertencias').innerHTML = rdMsgCartao_('Pontos tomados', 'Não foi possível carregar', err.message, true);
@@ -2859,10 +2918,28 @@ function advertenciaListaHtml_(){
   }).join('');
   return '<details class="rd-det"><summary>Ver os ' + advertenciasAtual_.length + (advertenciasAtual_.length === 1 ? ' registro' : ' registros') + '</summary>' + itens + '</details>';
 }
+// Bônus de pontuação do próprio CS (PR B): só leitura. O gestor concede e anula; o CS vê o que recebeu e o que foi anulado.
+var bonusCS_ = null;
+function carregarBonusDoCS(nome){
+  return fetchJSON_('/api/cs/' + encodeURIComponent(nome) + '/bonus').then(function(b){
+    if (currentCS !== nome) return;
+    bonusCS_ = b.registros || [];
+  }).catch(function(){ if (currentCS === nome) bonusCS_ = null; });
+}
+function bonusCSHtml_(){
+  if (!bonusCS_ || !bonusCS_.length) return '';
+  var linhas = bonusCS_.map(function(b){
+    var mes = String(b.mesReferencia).slice(0, 7).split('-').reverse().join('/');
+    return '<div class="adv-linha' + (b.anuladoEm ? ' adv-anulada' : '') + '"><div class="adv-topo"><span class="adv-tipo">' + escHtml_(b.dinamica) + '</span>'
+      + '<span class="adv-meta-pontos">+' + b.pontos + (b.pontos === 1 ? ' ponto' : ' pontos') + '</span></div>'
+      + '<div class="adv-meta">Mês que conta: ' + escHtml_(mes) + (b.anuladoEm ? ' · anulado' : '') + '</div></div>';
+  }).join('');
+  return '<div class="rd-nota" style="margin-top:14px;">Bônus de pontuação recebidos. Somam à pontuação do mês que contam.</div>' + linhas;
+}
 function renderAbaAdvertencias(){
   var el = document.getElementById('advertencias');
   el.innerHTML = rdCartao_('Pontos tomados', 'Pontos de advertência ativos e o efeito deles no Health da Base.', advertenciaResumoHtml_() + advertenciaEfeitoHtml_() + advertenciaAtalhoGestorHtml_() +
-    advertenciaListaHtml_());
+    advertenciaListaHtml_() + bonusCSHtml_());
 }
 
 // ============ agenda visual (Parte C, 28/09/2026) ============
@@ -3021,13 +3098,15 @@ function escHtml_(s){
 // (#caseModalOverlay), sempre com o detalhamento item a item que já vem pronto do servidor
 // (detalharScoreCS em lib/reports.ts, mesma fórmula/pesos de sempre, nunca inventados aqui).
 var SCORE_MODAL_DATA_ = [];
-function registrarScoreModal_(nome, score, detalhamento){
-  SCORE_MODAL_DATA_.push({ nome: nome, score: score, detalhamento: detalhamento || [] });
+function registrarScoreModal_(nome, score, detalhamento, bonus){
+  SCORE_MODAL_DATA_.push({ nome: nome, score: score, detalhamento: detalhamento || [], bonus: bonus || 0 });
   return SCORE_MODAL_DATA_.length - 1;
 }
 function abrirScoreModal(idx){
   var d = SCORE_MODAL_DATA_[idx];
   if (!d) return;
+  // Linha Bônus da composição (PR B): soma ao total do mês que o bônus conta, nunca aos indicadores.
+  var linhaBonus = d.bonus > 0 ? '<div class="score-detalhe-row"><span class="score-detalhe-label">Bônus<span class="meta-aviso" title="Concedido pelo gestor no mês que conta.">concedido</span></span><span class="score-detalhe-peso">fora dos pesos</span><span class="score-detalhe-valor">mês que conta</span><span class="score-detalhe-pontos">+' + d.bonus + ' pts</span></div>' : '';
   var linhas = d.detalhamento.map(function(item){
     var val = (item.valorAlcancado===null||item.valorAlcancado===undefined) ? '—' : item.valorAlcancado;
     var meta = (item.meta===null||item.meta===undefined) ? '—' : item.meta;
@@ -3045,7 +3124,7 @@ function abrirScoreModal(idx){
   document.getElementById('caseModalBody').innerHTML =
     '<div class="case-modal-header"><div><div class="case-modal-nome">'+d.nome+'</div>' +
     '<div class="case-modal-empresa">Pontuação: '+(d.score===null?'—':d.score)+'</div></div></div>' +
-    '<div class="case-modal-campo"><div class="case-modal-label">Como a pontuação foi composta</div>' + linhas +
+    '<div class="case-modal-campo"><div class="case-modal-label">Como a pontuação foi composta</div>' + linhas + linhaBonus +
     '<div class="case-modal-texto" style="margin-top:12px;color:#9F9F9F;">Pontos = peso × aproveitamento de cada indicador na meta. Indicador sem meta cadastrada fica fora da média e os pesos dos demais são redistribuídos. A carteira não dá pontos. Churn e Downsell não somam: só descontam, na proporção do estouro, quando passam do limite. Quem supera a meta passa de 100.</div></div>';
   document.getElementById('caseModalOverlay').classList.add('ativo');
 }
@@ -3060,7 +3139,7 @@ function renderCSTop(csTop, targetId){
     var eu = c.nome === currentCS;
     var inicial = String(c.nomeCompleto || c.nome || '?').trim().charAt(0).toUpperCase();
     var av = c.fotoUrl ? '<img src="' + escHtml_(c.fotoUrl) + '" alt="">' : escHtml_(inicial);
-    var idxModal = registrarScoreModal_(c.nome, c.score, c.detalhamento);
+    var idxModal = registrarScoreModal_(c.nome, c.score, c.detalhamento, c.bonus);
     return '<div class="rd-pd' + (i === 0 ? ' p1' : '') + (eu ? ' eu' : '') + '"><span class="rd-md">' + (i + 1) + 'º</span><div class="rd-av">' + av + '</div>' +
       '<b class="rd-nm">' + escHtml_(c.nome) + (eu ? ' <span class="rd-pill neutro" style="padding:1px 8px;font-size:11px;">Você</span>' : '') + '</b>' +
       '<div class="rd-n">' + rdNum_(c.score) + '<button class="info-btn" onclick="abrirScoreModal(' + idxModal + ')" title="Como essa pontuação foi composta" aria-label="Como essa pontuação foi composta">ⓘ</button></div><span class="rd-l">pontos</span></div>';
@@ -3076,7 +3155,7 @@ function renderMinhaPosicao(resumo){
   var pai = el.parentNode;
   if (resumo.minhaPosicao === null || resumo.minhaPosicao === undefined) { el.innerHTML = ''; pai.className = 'rd-pos so1'; return; }
   pai.className = 'rd-pos';
-  var idxModal = registrarScoreModal_(currentCS, resumo.meuScore, resumo.meuDetalhamento);
+  var idxModal = registrarScoreModal_(currentCS, resumo.meuScore, resumo.meuDetalhamento, resumo.meuBonus);
   var pos = resumo.minhaPosicao;
   var tem = resumo.meuScore !== null && resumo.meuScore !== undefined;
   var top = (resumo.top3 || []).map(function(c){ return Number(c.score); });
