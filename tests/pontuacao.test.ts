@@ -1,7 +1,7 @@
 // Roda com: node --experimental-strip-types tests/pontuacao.test.ts
 // Casos espelham a lógica de referência do prompt de 07/10/2026 (seção 6, pontuação).
 import assert from 'node:assert/strict';
-import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, bonusDoPeriodo, type BonusRegistro } from '../lib/pontuacao.ts';
+import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador } from '../lib/pontuacao.ts';
 
 const metas = (cases: number) => ({
   casesSucesso: { meta: 5, alcancado: cases, tipoMeta: 'min' }, matchmakings: { meta: 10, alcancado: 10, tipoMeta: 'min' },
@@ -75,8 +75,8 @@ const negativo = calcularScoreCS({ ...george.itens.reduce((o, i) => o, {}), case
 assert.equal(negativo.score, 0);
 
 // ranking só com ativos e elegíveis, sem Ex CS
-const bom = (score: number, el = 4) => ({ score, elegiveis: el, estado: 'com_pontuacao' as const, itens: [], bonus: 0 });
-const sem = { score: null, elegiveis: 1, estado: 'sem_dados_suficientes' as const, itens: [], bonus: 0 };
+const bom = (score: number, el = 4) => ({ score, elegiveis: el, estado: 'com_pontuacao' as const, itens: [] });
+const sem = { score: null, elegiveis: 1, estado: 'sem_dados_suficientes' as const, itens: [] };
 const r = rankingCSAtivos([
   { nome: 'Luma', ativo: false, ex: true, pontuacao: bom(90), extra: null },
   { nome: 'Luana', ativo: true, pontuacao: sem, extra: null },
@@ -109,43 +109,3 @@ import { detalharScoreCS } from '../lib/pontuacao.ts';
   assert.equal(dd.foraDaConta, true); assert.equal(dd.motivoFora, 'sem_meta'); assert.equal(dd.emAberto, null);
 }
 console.log('pontuacao: detalharScoreCS ok');
-
-// ---- bônus de pontuação (concedido pelo gestor, mês de vigência) ----
-{
-  const bonus: BonusRegistro[] = [
-    { pontos: 20, mes_referencia: '2026-10-01' },
-    { pontos: 5, mes_referencia: '2026-11-01' },
-    { pontos: 7, mes_referencia: '2026-10-01', anulado_em: '2026-10-15T10:00:00Z' },
-  ];
-  // Soma só o mês escolhido; anulado não soma; o período geral soma o ano inteiro.
-  assert.equal(bonusDoPeriodo(bonus, '2026-10-01', '2026-10-31'), 20);
-  assert.equal(bonusDoPeriodo(bonus, '2026-11-01', '2026-11-30'), 5);
-  assert.equal(bonusDoPeriodo(bonus, '2026-01-01', '2026-12-31'), 25);
-  assert.equal(bonusDoPeriodo(bonus, '2026-12-01', '2026-12-31'), 0);
-  assert.equal(bonusDoPeriodo([], '2026-10-01', '2026-10-31'), 0);
-}
-{
-  const base = calcularScoreCS(metas(5), { numConselhos: 6, metaPropria: 6 });
-  const comBonus = calcularScoreCS(metas(5), { numConselhos: 6, metaPropria: 6 }, undefined, 20);
-  // O bônus soma ao total final, sem mexer nos indicadores.
-  assert.equal(comBonus.score, (base.score as number) + 20);
-  assert.equal(comBonus.bonus, 20);
-  assert.equal(detalharScoreCS(comBonus).bonus, 20);
-  assert.equal(detalharScoreCS(base).bonus, 0);
-  // Total pode passar de 100: quem bate todas as metas e ganha bônus fica acima de 100.
-  const bateu = calcularScoreCS(
-    { casesSucesso: { meta: 5, alcancado: 5, tipoMeta: 'min' }, matchmakings: { meta: 10, alcancado: 10, tipoMeta: 'min' },
-      rounds: { meta: 2, alcancado: 2, tipoMeta: 'min' }, upsell: { meta: 1, alcancado: 1, tipoMeta: 'min' },
-      indicacoes: { meta: 4, alcancado: 4, tipoMeta: 'min' } },
-    { numConselhos: 6, metaPropria: 6 }, undefined, 15);
-  assert.equal(bateu.score, 115);
-}
-{
-  // Sem dados suficientes: o bônus não cria pontuação nem torna o CS elegível.
-  const semDados = calcularScoreCS({}, { numConselhos: 1, metaPropria: 1 }, undefined, 50);
-  assert.equal(semDados.estado, 'sem_dados_suficientes');
-  assert.equal(semDados.score, null);
-  assert.equal(semDados.bonus, 0);
-  assert.equal(detalharScoreCS(semDados).bonus, 0);
-}
-console.log('pontuacao: bônus ok');

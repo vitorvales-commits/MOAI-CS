@@ -326,44 +326,6 @@ export async function excluirAdvertenciaAplicada(sb: SupabaseClient, id: string)
   invalidarDadosBrutosCache(); // Health da Base depende da pontuação ativa
 }
 
-// ============ bônus de pontuação (PR B, 10/11/2026) ============
-// Só o gestor concede e anula (RPCs conceder_bonus e anular_bonus, auditadas). A leitura usa a sessão de quem
-// pergunta: o gestor vê os bônus de qualquer CS e o CS vê só os próprios (RLS de bonus_aplicados).
-export type BonusCS = {
-  id: string; dinamica: string; pontos: number; mesReferencia: string; observacao: string | null;
-  aplicadoPor: string; aplicadoEm: string; anuladoEm: string | null; anuladoPor: string | null;
-  motivoAnulacao: string | null; ativo: boolean;
-};
-function mapBonusCS(r: any): BonusCS {
-  return {
-    id: r.id, dinamica: r.dinamica, pontos: Number(r.pontos), mesReferencia: r.mes_referencia,
-    observacao: r.observacao ?? null, aplicadoPor: r.aplicado_por, aplicadoEm: r.aplicado_em,
-    anuladoEm: r.anulado_em ?? null, anuladoPor: r.anulado_por ?? null, motivoAnulacao: r.motivo_anulacao ?? null,
-    ativo: !r.anulado_em,
-  };
-}
-export async function listarBonusCS(sb: SupabaseClient, csNome: string): Promise<BonusCS[]> {
-  const { data, error } = await sb.from('bonus_aplicados').select('*')
-    .eq('cs_nome', csNome).order('mes_referencia', { ascending: false }).order('aplicado_em', { ascending: false });
-  if (error) throw new Error('Erro ao buscar bonus_aplicados: ' + error.message);
-  return (data || []).map(mapBonusCS);
-}
-// Uma transação só: se um item for recusado (CS desconhecido, pontos inválidos, mês fora do dia 1 ou futuro), nada é gravado.
-export async function concederBonus(sb: SupabaseClient, itens: { csNome: string; pontos: number }[], dinamica: string, mesReferencia: string, observacao: string | null): Promise<string[]> {
-  const { data, error } = await sb.rpc('conceder_bonus', {
-    p_itens: itens.map((i) => ({ cs_nome: i.csNome, pontos: i.pontos })),
-    p_dinamica: dinamica, p_mes: mesReferencia, p_observacao: observacao,
-  });
-  if (error) throw new Error(error.message);
-  invalidarDadosBrutosCache();
-  return (data || []) as string[];
-}
-export async function anularBonus(sb: SupabaseClient, id: string, motivo: string): Promise<void> {
-  const { error } = await sb.rpc('anular_bonus', { p_id: id, p_motivo: motivo });
-  if (error) throw new Error(error.message);
-  invalidarDadosBrutosCache();
-}
-
 // ============ controle de perfis (aba do gestor) ============
 // Roster ADMIN (ativos e inativos juntos, pra tela de toggle) — diferente de getCSListCompleto
 // (só ativo=true, usado pelo resto do app). cs_config já tem policy de SELECT liberada pra
@@ -1478,22 +1440,8 @@ function carteiraMetaResolvida(dados: DadosBrutos, csNome: string, mesAlvo: stri
 // Entrada única da pontuação ponderada (lib/pontuacao.ts). metaCarteiraPropria é a meta própria do
 // CS (null quando não há): sem ela a carteira não entra, nunca cai no maior número de conselhos do
 // time como régua da pontuação.
-function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: number | null, bonus: number = 0): ScoreCS {
-  return calcularScoreCS(indicadores, { numConselhos, metaPropria: metaCarteiraPropria }, undefined, bonus);
-}
-
-// Bônus de pontuação (PR B, 10/11/2026): total vigente por CS no intervalo de meses, pela RPC bonus_total_por_cs.
-// Lido por requisição (não entra no cache global dos dados brutos), porque o cache é compartilhado por todos os
-// usuários e a RLS de bonus_aplicados mostra ao CS só as próprias linhas. Sem esse total o ranking estaria errado.
-export async function bonusTotaisNoPeriodo(sb: SupabaseClient, mesInicio: string, mesFim: string): Promise<Map<string, number>> {
-  const { data, error } = await sb.rpc('bonus_total_por_cs', { p_mes_inicio: mesInicio, p_mes_fim: mesFim });
-  if (error) throw new Error('Erro ao buscar bonus_total_por_cs: ' + error.message);
-  const mapa = new Map<string, number>();
-  ((data || []) as { cs_nome: string; pontos: number | string }[]).forEach((r) => mapa.set(normalizeNome(r.cs_nome || ''), Number(r.pontos) || 0));
-  return mapa;
-}
-function bonusDoMapa(mapa: Map<string, number>, csNome: string): number {
-  return mapa.get(normalizeNome(csNome)) ?? 0;
+function pontuarCS(indicadores: any, numConselhos: number, metaCarteiraPropria: number | null): ScoreCS {
+  return calcularScoreCS(indicadores, { numConselhos, metaPropria: metaCarteiraPropria });
 }
 
 // ============ relatório individual ============
@@ -1701,16 +1649,14 @@ export async function generateEquipeReport(sb: SupabaseClient, seletorMes: strin
   // A lista inteira também serve pra /api/home-resumo achar a posição de um CS específico sem
   // expor o restante do ranking nomeado pra quem não é gestor.
   const mesAlvoCarteira = geral ? `${ano}-12-01` : mesInicio;
-  const periodoBonusEquipe = periodoDatas(seletorMes, ano);
-  const bonusEquipe = await bonusTotaisNoPeriodo(sb, periodoBonusEquipe.mesInicio, periodoBonusEquipe.mesFim);
   const pontuacaoPorCS = relatorios.map((r) => {
     const metaPropria = carteiraMetaResolvida(dados, r.cs.nome, mesAlvoCarteira, r.cs.metaCarteira);
-    return { nome: r.cs.nome, ativo: estaNoRoster(r.cs.nome), ex: false, pontuacao: pontuarCS(r.indicadores, r.conselhos.length, metaPropria, bonusDoMapa(bonusEquipe, r.cs.nome)),
+    return { nome: r.cs.nome, ativo: estaNoRoster(r.cs.nome), ex: false, pontuacao: pontuarCS(r.indicadores, r.conselhos.length, metaPropria),
       extra: { nomeCompleto: r.cs.nomeCompleto, fotoUrl: r.cs.fotoUrl } };
   });
   const rankingGeralPorScore = rankingCSAtivos(pontuacaoPorCS).map((x) => ({
     nome: x.nome, nomeCompleto: x.extra.nomeCompleto, fotoUrl: x.extra.fotoUrl,
-    score: x.pontuacao.score, posicao: x.posicao, elegiveis: x.pontuacao.elegiveis, detalhamento: x.pontuacao.itens, bonus: x.pontuacao.bonus,
+    score: x.pontuacao.score, posicao: x.posicao, elegiveis: x.pontuacao.elegiveis, detalhamento: x.pontuacao.itens,
   }));
   const csTop = rankingGeralPorScore.slice(0, 3);
 
@@ -2018,7 +1964,6 @@ export async function generateHomeResumoCS(sb: SupabaseClient, seletorMes: strin
     minhaPosicao,
     meuScore: meuScoreEntry ? meuScoreEntry.score : null,
     meuDetalhamento: meuScoreEntry ? meuScoreEntry.detalhamento : null,
-    meuBonus: meuScoreEntry ? meuScoreEntry.bonus : null,
     totalRankeados: equipe.rankingGeralPorScore.length,
   };
 }
@@ -2086,7 +2031,7 @@ function statusRisco(ach: number | null): StatusRisco {
 
 export type VisaoGestorCS = ReturnType<typeof montarVisaoGestorCS>;
 
-function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number, dados: DadosBrutos, mesAlvoCarteira: string, bonusMapa: Map<string, number>) {
+function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, maxConselhosTime: number, dados: DadosBrutos, mesAlvoCarteira: string) {
   const ind = r.indicadores as any;
   const indicadores: Record<string, { meta: number | null; calculado: number | null; manual: number | null; unidade: string; status: StatusRisco; divergencia: number | null; semMetaPropria?: boolean }> = {};
 
@@ -2140,7 +2085,7 @@ function montarVisaoGestorCS(r: Awaited<ReturnType<typeof generateCSReport>>, ma
     const i = ind[chave];
     indicadoresParaScoreReal[chave] = { ...i, alcancado: i.calculado };
   });
-  const pontuacao = pontuarCS(indicadoresParaScoreReal, r.conselhos.length, semMetaPropria ? null : metaCarteira, bonusDoMapa(bonusMapa, r.cs.nome));
+  const pontuacao = pontuarCS(indicadoresParaScoreReal, r.conselhos.length, semMetaPropria ? null : metaCarteira);
   const scoreReal = pontuacao.score;
   // detalhamento (Parte C, pedido do Vitor 25/09/2026): notinha clicável junto da pontuação no
   // ranking do gestor — mesma fórmula, sobre os mesmos indicadores 100% calculados (nunca o
@@ -2322,9 +2267,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   const { mesInicio: mesInicioVisao, geral: geralVisao } = periodoDatas(seletorMes, ano);
   const mesAlvoCarteiraVisao = geralVisao ? `${ano}-12-01` : mesInicioVisao;
   // Todo membro do recorte conta como ativo no ranking e nos cards, inclusive ex CS num mês fechado.
-  const periodoBonusVisao = periodoDatas(seletorMes, ano);
-  const bonusVisao = await bonusTotaisNoPeriodo(sb, periodoBonusVisao.mesInicio, periodoBonusVisao.mesFim);
-  const porCS = relatorios.map((r) => ({ ...montarVisaoGestorCS(r, maxConselhosTime, dados, mesAlvoCarteiraVisao, bonusVisao), ativo: true, ex: false }));
+  const porCS = relatorios.map((r) => ({ ...montarVisaoGestorCS(r, maxConselhosTime, dados, mesAlvoCarteiraVisao), ativo: true, ex: false }));
 
   const radarEquipe = RADAR_EIXOS.map((_, idx) => {
     const vals = porCS.map((c) => c.radar[idx]).filter((v) => v !== null && v !== undefined) as number[];
@@ -2334,7 +2277,7 @@ export async function generateVisaoGestor(sb: SupabaseClient, seletorMes: string
   // Só CS ativos e elegíveis entram no ranking nominal (lib/pontuacao.ts). Quem está sem dados
   // suficientes fica fora e aparece em semDadosSuficientes, sem número.
   const ranking = rankingCSAtivos(porCS.map((c) => ({ nome: c.nome, ativo: c.ativo, ex: c.ex, pontuacao: c.pontuacao, extra: c })))
-    .map((x) => ({ nome: x.nome, nomeCompleto: x.extra.nomeCompleto, fotoUrl: x.extra.fotoUrl, scoreReal: x.pontuacao.score, posicao: x.posicao, detalhamento: x.pontuacao.itens, bonus: x.pontuacao.bonus, semMetaPropria: x.extra.semMetaPropria }));
+    .map((x) => ({ nome: x.nome, nomeCompleto: x.extra.nomeCompleto, fotoUrl: x.extra.fotoUrl, scoreReal: x.pontuacao.score, posicao: x.posicao, detalhamento: x.pontuacao.itens, semMetaPropria: x.extra.semMetaPropria }));
   const semDadosSuficientes = porCS.filter((c) => c.ativo && !c.ex && c.pontuacao.estado === 'sem_dados_suficientes').map((c) => c.nome);
 
   return {
@@ -3782,7 +3725,7 @@ function ondePontosCS(cs: VisaoGestorCS) {
     indicadores[chave] = { meta: ind.meta, alcancado: chave === topo.chave ? ind.meta : ind.calculado, tipoMeta };
   });
   const cart = (cs.indicadores as any).numConselhos;
-  const simulada = calcularScoreCS(indicadores, { numConselhos: cart.calculado, metaPropria: cs.semMetaPropria ? null : cart.meta }, undefined, cs.pontuacao.bonus);
+  const simulada = calcularScoreCS(indicadores, { numConselhos: cart.calculado, metaPropria: cs.semMetaPropria ? null : cart.meta });
   return {
     ...detalhe,
     insight: simulada.score === null ? null : { chave: topo.chave, label: topo.label, emAberto: topo.emAberto, scoreAtual: cs.pontuacao.score, scoreNaMeta: simulada.score },
@@ -3806,7 +3749,7 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
 
   const cabecalho = await secaoIsolada('cabecalho', () => ({
     nome: cs.nome, nomeCompleto: cs.nomeCompleto, fotoUrl: cs.fotoUrl,
-    pontuacao: cs.scoreReal, posicao, estado: cs.pontuacao.estado, elegiveis: cs.pontuacao.elegiveis, bonus: cs.pontuacao.bonus,
+    pontuacao: cs.scoreReal, posicao, estado: cs.pontuacao.estado, elegiveis: cs.pontuacao.elegiveis,
     minimoIndicadores: PONTUACAO_MIN_INDICADORES_COM_META, detalhamento: cs.detalhamento,
     totalRankeados: visao.ranking.length,
     ondePontos: ondePontosCS(cs),
@@ -3846,14 +3789,7 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
     return { ...lista, tipos: tipos.filter((t) => t.ativo && !t.codigo) };
   });
 
-  // Bônus do mês (ou do ano, no período geral): total que entra na pontuação e a lista completa, com anuladas.
-  const bonus = await secaoIsolada('bonus', async () => {
-    const pb = periodoDatas(seletorMes, ano);
-    const [registros, totais] = await Promise.all([listarBonusCS(sb, nome), bonusTotaisNoPeriodo(sb, pb.mesInicio, pb.mesFim)]);
-    return { total: bonusDoMapa(totais, nome), registros, mesInicio: pb.mesInicio, mesFim: pb.mesFim, geral: pb.geral };
-  });
-
-  return { periodo: { mes: seletorMes, ano }, cabecalho, radar, gtd, criticos, health, advertencias, bonus };
+  return { periodo: { mes: seletorMes, ano }, cabecalho, radar, gtd, criticos, health, advertencias };
 }
 
 // Efeito dos pontos de advertência ativos no Health da Base de um CS: o valor com os pontos e o

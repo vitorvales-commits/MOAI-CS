@@ -96,14 +96,12 @@ export const ESPELHO_BOARDS: Record<string, string> = {
   '18439110274': 'advertencias_aplicadas',
   '18439110276': 'metas_definidas',
   '18439110277': 'cs_periodos',
-  '18439229782': 'bonus_aplicados',
 };
 export const ROTULO_ESPELHO: Record<string, string> = {
   relatorios_conselho: 'Relatórios pós conselho',
   advertencias_aplicadas: 'Advertências',
   metas_definidas: 'Metas definidas',
   cs_periodos: 'Períodos de CS',
-  bonus_aplicados: 'Bônus de pontuação',
 };
 export function ehBoardEspelho(boardId: string): boolean {
   return Object.prototype.hasOwnProperty.call(ESPELHO_BOARDS, boardId);
