@@ -144,6 +144,25 @@ jobs:
             bash scripts/backup/aplicar-migracao.sh testar "$(basename "$arquivo")"
           done < <(sort "$RUNNER_TEMP/migracoes.txt")
 
+      - name: Conferir que toda tabela tem origem definida no catálogo
+        run: |
+          set -euo pipefail
+          # Vale para todo PR que altera migrações, mesmo sem teste reversível: nenhuma tabela nova entra no banco
+          # sem origem (nativa, monday ou log) em seguranca.catalogo_tabelas.
+          if [ ! -s "$RUNNER_TEMP/migracoes.txt" ]; then
+            echo 'nenhuma migração neste PR: a checagem de catálogo não se aplica'
+            exit 0
+          fi
+          saida="$(printf '%s\n' "select tabela from seguranca.v_tabelas_sem_classificacao order by 1;" \
+            | docker run --rm -i --network host -e URL_BANCO="$ALVO" postgres:17 \
+                sh -c 'psql "$URL_BANCO" -X -At -v ON_ERROR_STOP=1')"
+          if [ -n "$saida" ]; then
+            echo 'REPROVADO: tabelas sem origem definida no catálogo de segurança:' >&2
+            echo "$saida" >&2
+            exit 1
+          fi
+          echo 'ok: toda tabela da cópia tem origem definida no catálogo'
+
       - name: Rodar os testes reversíveis na cópia
         run: |
           set -euo pipefail
