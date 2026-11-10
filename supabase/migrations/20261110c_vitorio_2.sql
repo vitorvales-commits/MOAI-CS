@@ -2,7 +2,8 @@
 -- Vitorio 2, PR A (10/11/2026): registro de consultas com intenção, entidades e resultado social.
 --
 -- O que muda (aditivo, nada renomeado nem removido):
---   public.vitorio_consultas           ganha intencao (text) e entidades (jsonb); o check de resultado aceita 'social'.
+--   public.vitorio_consultas           ganha intencao (text), entidades (jsonb) e chave_usuario (text, md5 do e-mail,
+--                                      sem a hora, gravado sempre); o check de resultado aceita 'social'.
 --   public.vitorio_registrar_consulta_v2(...)  nova função com os dois campos novos. A função antiga
 --                                      (vitorio_registrar_consulta, usada pela rota atual) continua como está.
 --   seguranca.catalogo_tabelas         vitorio_consultas já consta como origem 'log' (20261030b); nada a mudar.
@@ -16,6 +17,7 @@
 
 alter table public.vitorio_consultas add column if not exists intencao text;
 alter table public.vitorio_consultas add column if not exists entidades jsonb;
+alter table public.vitorio_consultas add column if not exists chave_usuario text;
 
 alter table public.vitorio_consultas drop constraint if exists vitorio_consultas_intencao_check;
 alter table public.vitorio_consultas add constraint vitorio_consultas_intencao_check
@@ -39,6 +41,7 @@ declare
   v_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   v_hora timestamptz := date_trunc('hour', now());
   v_chave text := md5(v_email || v_hora::text);
+  v_chave_usuario text := md5(v_email);
   v_n integer;
   v_id uuid;
 begin
@@ -50,15 +53,23 @@ begin
      or (p_entidades is not null and jsonb_typeof(p_entidades) <> 'object') then
     raise exception 'consulta inválida' using errcode = '22023';
   end if;
+  -- Repetição idêntica do mesmo usuário em até 10 segundos: devolve a linha existente, sem inserir nem contar no limite.
+  select c.id into v_id from public.vitorio_consultas c
+   where c.perfil = p_perfil and c.consulta_normalizada = trim(p_consulta) and c.chave_usuario = v_chave_usuario
+     and c.criado_em > now() - interval '10 seconds'
+   order by c.criado_em desc limit 1;
+  if v_id is not null then
+    return v_id;
+  end if;
   delete from public.vitorio_limite where hora < v_hora - interval '2 hours';
   insert into public.vitorio_limite as l (chave, hora, n) values (v_chave, v_hora, 1)
     on conflict (chave) do update set n = l.n + 1 returning l.n into v_n;
   if v_n > 30 then
     raise exception 'limite de consultas por hora atingido' using errcode = '54000';
   end if;
-  insert into public.vitorio_consultas (perfil, email, consulta_normalizada, resultado, chave_escolhida, intencao, entidades)
+  insert into public.vitorio_consultas (perfil, email, consulta_normalizada, resultado, chave_escolhida, intencao, entidades, chave_usuario)
   values (p_perfil, case when p_gravar_email then v_email else null end, trim(p_consulta), p_resultado,
-          left(p_chave, 200), left(p_intencao, 60), p_entidades)
+          left(p_chave, 200), left(p_intencao, 60), p_entidades, v_chave_usuario)
   returning id into v_id;
   return v_id;
 end

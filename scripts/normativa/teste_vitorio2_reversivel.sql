@@ -7,6 +7,9 @@ do $teste$
 declare
   v_gestor text;
   v_id uuid;
+  v_id2 uuid;
+  v_id3 uuid;
+  v_outro text;
   v_int text;
   v_ent text;
   v_n integer;
@@ -43,6 +46,26 @@ begin
   if not found then raise exception 'FALHA 3: função não gravou a consulta'; end if;
   if v_int is distinct from 'teste_fn' then raise exception 'FALHA 3: intenção gravada errada: %', v_int; end if;
   if v_ent is distinct from '{"a": 1}' then raise exception 'FALHA 3: entidades gravadas erradas: %', v_ent; end if;
+
+  -- 3b. Repetição idêntica do mesmo usuário em até 10 segundos devolve o mesmo id e não gera linha nova.
+  v_id := public.vitorio_registrar_consulta_v2('gestor', 'teste repeticao', 'nada', null, false, null, null);
+  v_id2 := public.vitorio_registrar_consulta_v2('gestor', '  teste repeticao ', 'nada', null, false, null, null);
+  if v_id2 is distinct from v_id then raise exception 'FALHA 3b: repetição gerou outro id'; end if;
+  select count(*) into v_n from public.vitorio_consultas where consulta_normalizada = 'teste repeticao';
+  if v_n <> 1 then raise exception 'FALHA 3b: repetição gerou % linhas', v_n; end if;
+
+  -- 3c. A mesma pergunta de outro usuário gera outra linha.
+  select g.email into v_outro from public.gestores g where g.email <> v_gestor order by g.email limit 1;
+  if v_outro is null then
+    select c.email into v_outro from canonico.cs c where c.email is not null and c.email <> v_gestor order by c.email limit 1;
+  end if;
+  if v_outro is null then raise exception 'FALHA preparo 3c: sem segundo usuário na cópia'; end if;
+  perform set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'email', v_outro)::text, true);
+  v_id3 := public.vitorio_registrar_consulta_v2('gestor', 'teste repeticao', 'nada', null, false, null, null);
+  if v_id3 is not distinct from v_id then raise exception 'FALHA 3c: outro usuário reaproveitou a linha'; end if;
+  select count(*) into v_n from public.vitorio_consultas where consulta_normalizada = 'teste repeticao';
+  if v_n <> 2 then raise exception 'FALHA 3c: esperava 2 linhas, achou %', v_n; end if;
+  perform set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'email', v_gestor)::text, true);
 
   -- 4. Entidades que não são objeto são recusadas com 22023.
   begin
