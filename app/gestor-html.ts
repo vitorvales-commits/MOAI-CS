@@ -307,6 +307,56 @@ export const GESTOR_STYLE = TEMA_CSS + GRADE_CONSELHOS_CSS + RELATORIOS_GESTOR_C
 
 footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinza-linha);font-size:11.5px;color:var(--cinza-apoio);}
 
+/* metas semanais (05/11/2026): cartões de largura igual, faixa com encaixe no celular */
+.toggle-modo{display:flex;gap:6px;}
+.btn-modo{height:34px;padding:0 16px;border-radius:999px;border:1px solid var(--cinza-borda);background:#fff;color:var(--preto-tinta);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-modo:hover{border-color:var(--preto-tinta);}
+.btn-modo.ativo{background:var(--preto-tinta);color:#fff;border-color:var(--preto-tinta);}
+.cs-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 16px;}
+.cs-chip{display:inline-flex;align-items:center;gap:8px;padding:3px 14px 3px 3px;border-radius:999px;border:1px solid var(--cinza-borda);background:#fff;color:var(--preto-tinta);font:inherit;font-size:13px;cursor:pointer;}
+.cs-chip .av{width:30px;height:30px;font-size:11px;}
+.cs-chip.ativo{background:var(--preto-tinta);color:#fff;border-color:var(--preto-tinta);}
+.cs-chip .av{background:var(--dourado,#b8860b);color:#fff;}
+.cs-chip .av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.meta-card-base .pill-select,.feriados-form .pill-select{height:32px;padding:0 10px;border:1px solid var(--cinza-borda);border-radius:8px;background:#fff;color:var(--preto-tinta);font:inherit;font-size:13px;}
+.meta-card-base .pill-select{width:76px;}
+.meta-card-base .pill-select:focus,.feriados-form .pill-select:focus{outline:2px solid var(--dourado,#b8860b);outline-offset:1px;}
+.meta-card .btn{height:28px;padding:0 10px;font-size:12px;width:fit-content;}
+.feriados-form .pill-select[type=date]{width:170px;}
+.feriados-form .pill-select[type=text]{min-width:240px;}
+.metas-resumo{display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 14px;}
+.metas-resumo > div{flex:0 1 240px;background:#fff;border:1px solid var(--cinza-borda);border-radius:12px;padding:10px 16px;display:flex;flex-direction:column;}
+.metas-resumo strong{font-size:22px;line-height:1.1;}
+.metas-resumo span{font-size:12px;color:var(--cinza-texto);}
+.metas-cs-bloco{margin-top:6px;}
+.metas-ind h4{margin:14px 0 8px;font-size:13px;}
+.metas-faixa{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;overflow-x:auto;padding:2px 2px 6px;scroll-snap-type:x mandatory;}
+.meta-card{scroll-snap-align:start;min-width:0;border:1px solid var(--cinza-borda);border-radius:12px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:6px;font-size:13px;}
+.meta-card.estado-futura{border-style:dashed;}
+.meta-card.estado-fechada{background:#faf8f2;}
+.meta-card.manual{border-color:var(--dourado,#b8860b);}
+.meta-card-data{font-size:12px;color:var(--cinza-texto);line-height:1.3;}
+.meta-card-numero{font-size:28px;font-weight:700;line-height:1;}
+.meta-card-rotulo{font-size:12px;color:var(--cinza-texto);}
+.meta-card-nota{font-size:11px;color:var(--cinza-texto);}
+.meta-card-base{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--cinza-texto);}
+.meta-card-base .pill-select{width:76px;}
+.meta-card-saldo{font-size:11px;color:var(--cinza-texto);}
+.marca-manual{font-size:11px;font-weight:600;color:var(--dourado,#b8860b);}
+.meta-card-fixa{color:var(--preto-tinta);font-size:14px;}
+.meta-card-trava{font-size:11px;color:var(--cinza-texto);border:1px solid var(--cinza-borda);border-radius:999px;padding:1px 8px;}
+.metas-dica{display:none;font-size:11px;color:var(--cinza-texto);margin:2px 0 0;}
+#cardFeriados{display:flex;flex-direction:column;align-items:stretch;gap:12px;}
+.feriados-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+.feriados-lista{display:flex;flex-direction:column;gap:6px;}
+.feriado-item{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--cinza-borda);border-radius:10px;background:#fff;font-size:13px;}
+.feriado-data{font-weight:600;min-width:110px;}
+@media (max-width:720px){
+  .metas-faixa{grid-auto-columns:78%;}
+  .metas-dica{display:block;}
+  .metas-resumo > div{flex:1 1 40%;}
+}
+
 /* matriz de metas (Parte G, 29/09/2026) */
 #tabelaMatrizMetas{border-collapse:separate;border-spacing:0;}
 #tabelaMatrizMetas th, #tabelaMatrizMetas td{white-space:nowrap;}
@@ -796,6 +846,11 @@ ${SAUDE_DADOS_HTML}
 
   <main class="content">
   <div class="tab-panel active" id="tab-visaoGeral" data-tab="visaoGeral">
+    <div class="av-barra" id="avVisaoHome" style="display:flex;justify-content:flex-end;margin:0 0 12px"></div>
+    <section class="panel" id="semanaTime" aria-labelledby="h-semana-time" hidden>
+      <div class="ph"><div><h2 id="h-semana-time">Semana atual do time</h2><p id="semanaTimeSub">Progresso do time na semana corrente, por indicador de metas semanais.</p></div></div>
+      <div id="semanaTimeCorpo"><p class="gestor-empty">Carregando…</p></div>
+    </section>
     <section class="kpis" id="kpisArea" data-tour="kpis" aria-label="Leitura de relance">
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
@@ -803,7 +858,7 @@ ${SAUDE_DADOS_HTML}
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
     </section>
 
-    <div class="layout" style="margin-top:22px">
+    <div class="layout" id="visaoGeralLayout" style="margin-top:22px">
       <div class="coluna">
         <section class="panel" id="mapa-time" data-tour="mapa-time" aria-labelledby="h-mapa">
           <div class="ph">
@@ -888,6 +943,19 @@ ${RELATORIOS_GESTOR_HTML}
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
+    <div class="config-card config-card-col" id="cardFeriados" style="margin-bottom:24px;">
+      <div>
+        <h3 style="margin:0 0 6px;">Feriados do cálculo de dias úteis</h3>
+        <div class="config-card-desc">Feriados não contam como dia útil nas semanas de metas. Carnaval e Corpus Christi ficam a critério do gestor.</div>
+      </div>
+      <p class="erro-msg" id="erroFeriados"></p>
+      <div class="feriados-form">
+        <input class="pill-select" type="date" id="feriadoData" aria-label="Data do feriado">
+        <input class="pill-select" type="text" id="feriadoNome" maxlength="120" placeholder="Nome do feriado" aria-label="Nome do feriado">
+        <button type="button" class="btn" id="btnSalvarFeriado">Salvar feriado</button>
+      </div>
+      <div id="listaFeriados" class="feriados-lista"></div>
+    </div>
     <div class="config-card" style="margin-bottom:24px;">
       <div>
         <h3 style="margin:0 0 6px;">Indicadores do time na home do CS</h3>
@@ -956,7 +1024,22 @@ ${RELATORIOS_GESTOR_HTML}
   </div>
 
   <div class="tab-panel" id="tab-metasDestaques" data-tab="metasDestaques">
-    <section class="block" style="margin-top:0;">
+    <section class="block" id="secModoMetas" style="margin-top:0;">
+      <div class="block-head">
+        <div>
+          <h2>Metas do mês</h2>
+          <p>Mensal mostra a matriz do mês. Semanal mostra a meta de cada semana por CS e indicador, derivada da meta mensal. Quem não estava no elenco do mês não aparece.</p>
+        </div>
+        <div class="toggle-modo" role="group" aria-label="Modo das metas">
+          <button type="button" class="btn-modo ativo" id="btnModoMensal">Mensal</button>
+          <button type="button" class="btn-modo" id="btnModoSemanal">Semanal</button>
+        </div>
+      </div>
+      <p class="erro-msg" id="erroMetasSemanais"></p>
+      <div id="metasSemanaisBox"></div>
+    </section>
+
+    <section class="block" id="secMatrizMensal" style="margin-top:0;">
       <div class="block-head">
         <div>
           <h2>Matriz de metas</h2>
@@ -1374,7 +1457,7 @@ function abrirAba(chave, opcoes) {
     } catch (e) { /* sem history API: a aba abre do mesmo jeito */ }
   }
   if (chave === 'conselhos') carregarConselhos_();
-  if (chave === 'controlePerfis') { carregarGestores(); carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); carregarCarteiraAlertas_(); }
+  if (chave === 'controlePerfis') { inicializarFeriados_(); carregarGestores();carregarCSRoster(); carregarConfigRevelar(); carregarVinculosCS(); carregarAdvertenciaTipos(); carregarCarteiraAlertas_(); }
   if (chave === 'metasDestaques' && !metasDestaquesCarregado) { metasDestaquesCarregado = true; inicializarMetasDestaques(); }
   if (chave === 'churn' && !churnCarregado) { churnCarregado = true; inicializarChurn(); }
   if (chave === 'nps' && !npsCarregado_) { npsCarregado_ = true; inicializarNps_(); }
@@ -1750,6 +1833,7 @@ function renderMapa_() {
 }
 
 // ---------- nível 2: Fila de ação ----------
+var RITMO_IND_ROTULO_ = { cases: 'cases de sucesso', matchmakings: 'matchmakings', matchmakings_resultado: 'matchmakings com resultado', indicacoes: 'indicações', upsell: 'upsell', rounds: 'rounds' };
 function itensFila_() {
   var itens = [], erros = [];
   if (!ACOES_) return { itens: itens, erros: erros };
@@ -1774,6 +1858,15 @@ function itensFila_() {
       }
     });
   }
+  // Ritmo semanal (PR 3): um item por CS e semana com indicador abaixo do limiar. Vem de fila_acao_itens.
+  var rs = ACOES_.ritmoSemanal;
+  if (rs && rs.erro) erros.push('Ritmo semanal indisponível: ' + rs.erro);
+  if (rs && rs.dado) rs.dado.forEach(function (it) {
+    var nomes = (it.indicadores || []).map(function (x) { return RITMO_IND_ROTULO_[x.indicador] || x.indicador; });
+    itens.push({ tipo: 'semana', cor: 'gold', ritmo: true, deficit: Number(it.deficit_total) || 0, tratarId: it.id, titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
+      texto: nomes.join(', ') + '. Déficit de ' + it.deficit_total + ' na semana. Próximo passo: tratar na 1:1 da semana.',
+      quem: it.cs_nome, quando: 'sem ' + dmAcoes_(it.semana_inicio), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(it.cs_nome) + '#secSemanalCS' } });
+  });
   var rl = ACOES_.relatorios;
   if (rl && rl.erro) erros.push('Relatórios do conselho indisponíveis: ' + rl.erro);
   if (rl && rl.dado) {
@@ -1857,7 +1950,8 @@ function itensFila_() {
   return { itens: itens, erros: erros };
 }
 function itemFilaHtml_(i) {
-  var acao = i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '';
+  var acao = (i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '') +
+    (i.tratarId ? '<button type="button" class="btn sm" data-tratar-ritmo="' + escCS_(i.tratarId) + '">Marcar como tratado</button>' : '');
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
     '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
     + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '')
@@ -1918,9 +2012,11 @@ function renderFilaAcao_() {
     var f = itensFila_();
     var semana = f.itens.filter(function (i) { return i.tipo === 'semana'; });
     var criticas = f.itens.filter(function (i) { return i.cor === 'red'; });
-    var visiveis = filaFiltro_ === 'semana' ? semana : (filaFiltro_ === 'criticas' ? criticas : f.itens);
+    // Ritmo: itens de ritmo semanal em aberto, do maior para o menor déficit (PR da fila por ritmo).
+    var ritmo = f.itens.filter(function (i) { return i.ritmo; }).sort(function (a, b) { return b.deficit - a.deficit; });
+    var visiveis = filaFiltro_ === 'semana' ? semana : (filaFiltro_ === 'criticas' ? criticas : (filaFiltro_ === 'ritmo' ? ritmo : f.itens));
     document.getElementById('filaTotal').textContent = String(f.itens.length);
-    var chips = [['semana', 'Esta semana', semana.length], ['criticas', 'Críticas', criticas.length], ['todas', 'Todas', f.itens.length]];
+    var chips = [['semana', 'Esta semana', semana.length], ['criticas', 'Críticas', criticas.length], ['ritmo', 'Ritmo', ritmo.length], ['todas', 'Todas', f.itens.length]];
     var filtros = document.getElementById('filaFiltros');
     filtros.innerHTML = chips.map(function (c) { return '<button type="button" class="chip' + (filaFiltro_ === c[0] ? ' on' : '') + '" data-filtro="' + c[0] + '">' + c[1] + ' ' + c[2] + '</button>'; }).join('');
     filtros.onclick = function (ev) { var b = ev.target.closest('button[data-filtro]'); if (!b) return; filaFiltro_ = b.getAttribute('data-filtro'); filaExpandida_ = false; renderFilaAcao_(); };
@@ -1966,10 +2062,98 @@ function renderFilaAcao_() {
     corpo.innerHTML = erroSecaoHtml_('Não foi possível montar a fila de ação', e);
   }
 }
+// ---------- PR 2b: alternância Geral (padrão) e Semana atual na home do gestor ----------
+// Em Semana atual aparecem só o progresso do time na semana, por indicador, e o acesso à fila de ritmo semanal (a
+// lista de CS fora do ritmo fica na fila, que é onde se age). A escolha vai para o parâmetro visao da URL.
+var RESUMO_SEMANA_ = null;
+function mesIsoHome_() {
+  var idx = MESES_GESTOR.indexOf(mesAtual);
+  return idx === -1 || !anoAtual ? null : anoAtual + '-' + String(idx + 1).padStart(2, '0') + '-01';
+}
+function visaoHomeAtual_() { return new URLSearchParams(location.search).get('visao') === 'semana' ? 'semana' : 'geral'; }
+function definirVisaoHome_(v) {
+  var u = new URL(location.href); u.searchParams.set('visao', v);
+  history.replaceState(null, '', u.pathname + u.search + u.hash);
+  desenhaVisaoHome_();
+}
+function desenhaVisaoHome_() {
+  var atual = visaoHomeAtual_(), semana = atual === 'semana';
+  var barra = document.getElementById('avVisaoHome');
+  barra.innerHTML = msAlternancia_([['geral', 'Geral'], ['semana', 'Semana atual']], atual);
+  msLigarAlternancia_(barra, definirVisaoHome_);
+  document.getElementById('kpisArea').style.display = semana ? 'none' : '';
+  document.getElementById('visaoGeralLayout').style.display = semana ? 'none' : '';
+  document.getElementById('semanaTime').hidden = !semana;
+  if (semana) carregarSemanaTime_();
+}
+function carregarSemanaTime_() {
+  var mes = mesIsoHome_(), el = document.getElementById('semanaTimeCorpo');
+  if (!mes) { el.innerHTML = '<p class="gestor-empty">Escolha um mês para ver a semana atual.</p>'; return; }
+  el.innerHTML = '<p class="gestor-empty">Carregando…</p>';
+  fetchJSON_('/api/gestor/metas-semanais?mes=' + encodeURIComponent(mes)).then(function (d) {
+    RESUMO_SEMANA_ = d;
+    pintaSemanaTime_();
+  }).catch(function (err) { el.innerHTML = erroSecaoHtml_('Não foi possível carregar a semana atual', err); });
+}
+function pintaSemanaTime_() {
+  var el = document.getElementById('semanaTimeCorpo');
+  if (visaoHomeAtual_() !== 'semana' || !RESUMO_SEMANA_) return;
+  var linhas = (RESUMO_SEMANA_.resumoTime || []).map(function (x) {
+    var pct = x.efetivaTotal > 0 ? Math.min(x.realizadoTotal / x.efetivaTotal * 100, 100) : 0;
+    var pace = x.previsto !== null && x.previsto !== undefined && x.efetivaTotal > 0 ? Math.min(x.previsto / x.efetivaTotal * 100, 100) : null;
+    var atras = x.status === 'atras' || x.status === 'atencao';
+    var st = x.status ? MS_ST_[x.status] : 'Sem apuração';
+    var sem = x.csSemApuracao ? ' · ' + x.csSemApuracao + ' sem apuração (fora da conta)' : '';
+    return '<div class="ms-card' + (atras ? ' atras' : '') + '"><b>' + msEsc_(x.label) + '</b>' +
+      '<div class="ms-barra"><span class="' + (atras ? 'gold' : '') + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i style="left:' + pace.toFixed(0) + '%" title="Esperado até hoje"></i>' : '') + '</div>' +
+      '<span>' + msNum_(x.realizadoTotal) + '<small>/' + msNum_(x.efetivaTotal) + ' do time</small></span>' +
+      '<div class="ms-sub"><b class="ms-st">' + st + '</b> · Faltam ' + msNum_(x.falta) + ' · ' + x.diasUteisRestantes + (x.diasUteisRestantes === 1 ? ' dia útil restante' : ' dias úteis restantes') + sem + '</div></div>';
+  }).join('');
+  var rs = ACOES_ ? ACOES_.ritmoSemanal : null;
+  var itens = rs && rs.dado ? rs.dado : [];
+  var acesso;
+  if (!ACOES_) acesso = '<p class="ms-sem">Carregando a fila de ação…</p>';
+  else if (rs && rs.erro) acesso = erroSecaoHtml_('Não foi possível ler o ritmo semanal', rs.erro);
+  else if (!itens.length) acesso = '<p class="ms-sem">Nenhum CS com ritmo semanal abaixo do limiar.</p>';
+  else acesso = '<p class="ms-sem"><b>' + itens.length + (itens.length === 1 ? ' item' : ' itens') + ' de ritmo semanal em aberto.</b> Maior déficit: ' + msEsc_(itens[0].cs_nome) + ', ' + msNum_(itens[0].deficit_total) + '.</p>' +
+    '<button type="button" class="btn sm" data-ir-fila-ritmo>Ver na fila de ação</button>';
+  var lim = rs && rs.limiar !== null && rs.limiar !== undefined ? Math.round(rs.limiar * 100) : 70;
+  var form = '<div class="ms-limiar"><label>Limiar do ritmo semanal <input type="number" id="limiarRitmo" min="1" max="100" step="1" value="' + lim + '" aria-describedby="limiarNota"> %</label> ' +
+    '<button type="button" class="btn sm" data-salvar-limiar>Salvar limiar</button> <small id="limiarNota" class="ms-sub">Abaixo desse percentual da meta efetiva o CS entra na fila. A mudança vale no próximo fechamento de segunda.</small></div>';
+  el.innerHTML = (linhas || '<div class="gh-vazio">Nenhum indicador com meta semanal no time nesta semana.</div>') + '<div class="ms-acesso">' + acesso + '</div>' + form;
+}
+function salvarLimiar_() {
+  var input = document.getElementById('limiarRitmo'), nota = document.getElementById('limiarNota');
+  var v = Number(input.value);
+  if (!(v >= 1 && v <= 100)) { nota.textContent = 'Informe um valor entre 1 e 100.'; return; }
+  fetchJSON_('/api/gestor/ritmo-limiar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ limiar: v / 100 }) })
+    .then(function () { carregarAcoes(); })
+    .catch(function (err) { nota.textContent = 'Não foi possível salvar: ' + err.message; });
+}
+document.getElementById('semanaTime').addEventListener('click', function (ev) {
+  if (!ev.target.closest) return;
+  if (ev.target.closest('[data-ir-fila-ritmo]')) {
+    filaFiltro_ = 'ritmo'; filaExpandida_ = false;
+    definirVisaoHome_('geral');
+    renderFilaAcao_();
+    setTimeout(function () { var f = document.getElementById('filaAcao'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  }
+  if (ev.target.closest('[data-salvar-limiar]')) salvarLimiar_();
+});
+document.getElementById('filaCorpo').addEventListener('click', function (ev) {
+  var b = ev.target.closest ? ev.target.closest('[data-tratar-ritmo]') : null;
+  if (!b) return;
+  b.disabled = true;
+  fetchJSON_('/api/gestor/fila-acao/ritmo/' + encodeURIComponent(b.getAttribute('data-tratar-ritmo')) + '/tratar', { method: 'POST' })
+    .then(function () { carregarAcoes(); })
+    .catch(function (err) { b.disabled = false; b.textContent = 'Erro: ' + err.message; });
+});
+
 function carregarAcoes() {
   fetchJSON_('/api/gestor/visao-geral/acoes').then(function (data) {
     ACOES_ = data;
     renderFilaAcao_();
+    pintaSemanaTime_();
     var snap = data.carimbos && data.carimbos.gtdSnapshot;
     if (snap && typeof dockDefinirSync === 'function') dockDefinirSync(dmAcoes_(snap), 'Posição do GTD de ' + dmaAcoes_(snap) + '. Clique para sincronizar agora.');
   }).catch(function (err) {
@@ -2279,6 +2463,7 @@ document.getElementById('chkSomaAdvHealth').addEventListener('change', alternarA
 carregarAdvHealthChave_();
 
 function carregarVisaoGeral() {
+  desenhaVisaoHome_();
   fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
     DADOS = data;
     renderRosterNota_();
@@ -3270,6 +3455,260 @@ function aplicarSugestao_(chaveInd) {
   fecharSugestaoMetas_();
 }
 
+// ============ metas semanais e feriados (05/11/2026) ============
+// Dados vêm de /api/gestor/metas-semanais (metasSemanaisDoElenco, a mesma montagem do fechamento). Esta tela só
+// apresenta: nenhum cálculo de meta aqui. Ausente aparece como ausente; zero só quando foi medido.
+var MODO_METAS = 'mensal';
+var DADOS_METAS_SEMANAIS = null;
+var CS_METAS_SELECIONADO = null;
+var ROTULO_INDICADOR_SEMANAL = {
+  cases: 'Cases de Sucesso', matchmakings: 'Matchmakings', matchmakings_resultado: 'Matchmakings com resultado',
+  indicacoes: 'Indicações', upsell: 'Upsell', rounds: 'Rounds'
+};
+var MESES_CURTOS_SEMANAL = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function dataCurtaSemanal_(iso) {
+  var p = iso.split('-');
+  return Number(p[2]) + ' ' + MESES_CURTOS_SEMANAL[Number(p[1]) - 1];
+}
+function textoDiasUteis_(n) {
+  return n === 1 ? '1 dia útil' : n + ' dias úteis';
+}
+function rotuloSemanaMetas_(p) {
+  if (p.parcelaInicio === p.parcelaFim) return dataCurtaSemanal_(p.parcelaInicio) + ', ' + textoDiasUteis_(p.diasUteis);
+  return dataCurtaSemanal_(p.parcelaInicio) + ' a ' + dataCurtaSemanal_(p.parcelaFim) + ' · ' + textoDiasUteis_(p.diasUteis);
+}
+function valorOuAusente_(v) {
+  return v === null || v === undefined ? 'ausente' : String(v);
+}
+function iniciaisCS_(nome) {
+  var partes = String(nome || '').trim().split(' ').filter(function (x) { return x; });
+  var ini = partes.length ? partes[0].charAt(0) : '';
+  if (partes.length > 1) ini += partes[partes.length - 1].charAt(0);
+  return ini.toUpperCase();
+}
+function avatarCSMetas_(cs) {
+  if (cs.fotoUrl) return '<span class="av"><img loading="lazy" src="' + escCS_(cs.fotoUrl) + '" alt="Foto de ' + escCS_(cs.cs) + '"></span>';
+  return '<span class="av">' + escCS_(iniciaisCS_(cs.cs)) + '</span>';
+}
+function definirModoMetas_(modo) {
+  MODO_METAS = modo;
+  document.getElementById('btnModoMensal').classList.toggle('ativo', modo === 'mensal');
+  document.getElementById('btnModoSemanal').classList.toggle('ativo', modo === 'semanal');
+  document.getElementById('secMatrizMensal').style.display = modo === 'mensal' ? '' : 'none';
+  if (modo === 'semanal') {
+    carregarMetasSemanais_();
+  } else {
+    document.getElementById('metasSemanaisBox').innerHTML = '';
+    document.getElementById('erroMetasSemanais').textContent = '';
+  }
+}
+function aoMudarMesMetas_() {
+  carregarMatriz();
+  if (MODO_METAS === 'semanal') carregarMetasSemanais_();
+}
+function carregarMetasSemanais_() {
+  var mes = matrizMesAtual_();
+  var box = document.getElementById('metasSemanaisBox');
+  var erro = document.getElementById('erroMetasSemanais');
+  erro.textContent = '';
+  if (!mes) return;
+  box.innerHTML = '<p class="gestor-empty">Carregando…</p>';
+  fetchJSON_('/api/gestor/metas-semanais?mes=' + encodeURIComponent(mes)).then(function (d) {
+    renderMetasSemanais_(d, mes);
+  }).catch(function (e) {
+    box.innerHTML = '';
+    erro.textContent = (e && e.message) || 'Não foi possível carregar as metas semanais agora.';
+  });
+}
+function renderMetasSemanais_(d, mes) {
+  DADOS_METAS_SEMANAIS = d;
+  var box = document.getElementById('metasSemanaisBox');
+  if (!d.cs || !d.cs.length) {
+    box.innerHTML = '<p class="gestor-empty">Nenhum CS no elenco deste mês.</p>';
+    return;
+  }
+  var semanasManuais = 0, csComAviso = 0;
+  d.cs.forEach(function (cs) {
+    var avisou = false;
+    cs.indicadores.forEach(function (ind) {
+      ind.parcelas.forEach(function (p) { if (p.manual) semanasManuais++; });
+      if (ind.excedeMeta) avisou = true;
+    });
+    if (avisou) csComAviso++;
+  });
+  if (!CS_METAS_SELECIONADO || !d.cs.some(function (c) { return c.cs === CS_METAS_SELECIONADO; })) {
+    CS_METAS_SELECIONADO = d.cs[0].cs;
+  }
+  var html = '<div class="metas-resumo">'
+    + '<div><strong>' + semanasManuais + '</strong><span>semanas com meta manual no mês</span></div>'
+    + '<div><strong>' + csComAviso + '</strong><span>CS com aviso de manual acima da meta</span></div>'
+    + '</div>';
+  html += '<div class="cs-chips" role="group" aria-label="Escolha o CS">';
+  d.cs.forEach(function (cs) {
+    var ativo = cs.cs === CS_METAS_SELECIONADO;
+    html += '<button type="button" class="cs-chip' + (ativo ? ' ativo' : '') + '" data-cs-chip="' + escCS_(cs.cs) + '" aria-pressed="' + (ativo ? 'true' : 'false') + '">'
+      + avatarCSMetas_(cs) + '<span>' + escCS_(cs.cs) + '</span></button>';
+  });
+  html += '</div>';
+  var sel = d.cs.filter(function (c) { return c.cs === CS_METAS_SELECIONADO; })[0];
+  html += '<div class="metas-cs-bloco">';
+  sel.indicadores.forEach(function (ind) {
+    html += '<div class="metas-ind"><h4>' + escCS_(ROTULO_INDICADOR_SEMANAL[ind.indicador] || ind.indicador) + '</h4>';
+    if (ind.metaMensal === null) {
+      html += '<p class="gestor-empty">Sem meta mensal cadastrada para derivar as semanas.</p>';
+    } else {
+      if (ind.excedeMeta) html += '<p class="erro-msg">As semanas manuais somam mais que a meta do mês. As demais ficam com zero.</p>';
+      html += '<div class="metas-faixa">';
+      ind.parcelas.forEach(function (p) { html += cardSemanaMeta_(sel.cs, ind.indicador, p); });
+      html += '</div><p class="metas-dica">Deslize para ver as outras semanas.</p>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+// Hierarquia do cartão: meta efetiva é o número principal; base e saldo herdado ficam abaixo, menores.
+// Semana futura mostra a base como prevista. Semana corrente não mostra déficit levado (só semanas fechadas).
+function cardSemanaMeta_(csNome, indicador, p) {
+  var temBase = p.base !== null;
+  var principal, rotulo, nota = '';
+  if (p.estado === 'fechada') {
+    principal = valorOuAusente_(p.metaEfetiva);
+    rotulo = 'meta efetiva';
+  } else if (p.estado === 'futura') {
+    principal = temBase ? String(p.base) : '—';
+    rotulo = temBase ? 'meta prevista' : 'sem meta mensal';
+    if (temBase) nota = 'O saldo entra no fechamento de segunda.';
+  } else if (p.metaEfetiva !== null) {
+    principal = String(p.metaEfetiva);
+    rotulo = 'meta efetiva';
+    if (p.estado === 'aguardando_fechamento') nota = 'Aguarda o fechamento de segunda.';
+  } else if (temBase) {
+    principal = String(p.base);
+    rotulo = 'meta prevista';
+    nota = 'O saldo entra no fechamento de segunda.';
+  } else {
+    principal = '—';
+    rotulo = 'sem meta mensal';
+  }
+  var cls = 'meta-card estado-' + p.estado + (p.manual ? ' manual' : '');
+  var h = '<div class="' + cls + '" data-cs="' + escCS_(csNome) + '" data-ind="' + escCS_(indicador) + '" data-semana="' + escCS_(p.inicio) + '">';
+  h += '<div class="meta-card-data">' + escCS_(rotuloSemanaMetas_(p)) + '</div>';
+  h += '<div class="meta-card-numero">' + escCS_(principal) + '</div>';
+  h += '<div class="meta-card-rotulo">' + escCS_(rotulo) + '</div>';
+  if (nota) h += '<div class="meta-card-nota">' + escCS_(nota) + '</div>';
+  h += '<div class="meta-card-base">';
+  if (p.estado === 'fechada') {
+    // Semana fechada: a base é a congelada no fechamento. Não edita nem volta ao automático (o servidor também recusa).
+    h += 'Base <strong class="meta-card-fixa">' + (temBase ? p.base : 'ausente') + '</strong><span class="meta-card-trava">fechada</span>';
+  } else {
+    h += '<label>Base <input class="pill-select" type="text" inputmode="numeric" value="' + (temBase ? p.base : '') + '" data-acao="salvar" aria-label="Base da semana"></label>';
+    if (p.manual) h += '<span class="marca-manual">manual</span><button type="button" class="btn" data-acao="automatico">Voltar ao automático</button>';
+  }
+  h += '</div>';
+  if (p.deficitRecebido !== null && p.deficitRecebido !== undefined) {
+    h += '<div class="meta-card-saldo">Saldo herdado ' + p.deficitRecebido + '</div>';
+  }
+  if (p.estado === 'fechada') {
+    h += '<div class="meta-card-saldo">Realizado ' + valorOuAusente_(p.realizado) + ' · déficit levado ' + valorOuAusente_(p.deficitTransferido) + '</div>';
+  } else if (p.estado === 'corrente' && p.realizado !== null && p.realizado !== undefined) {
+    h += '<div class="meta-card-saldo">Realizado até agora ' + p.realizado + '</div>';
+  }
+  h += '</div>';
+  return h;
+}
+function aoEditarMetaSemanal_(ev) {
+  var t = ev.target;
+  if (!t || t.getAttribute('data-acao') !== 'salvar') return;
+  var card = t.closest('.meta-card');
+  var erro = document.getElementById('erroMetasSemanais');
+  erro.textContent = '';
+  var texto = String(t.value || '').trim();
+  var valor = Number(texto);
+  if (texto === '' || !Number.isInteger(valor) || valor < 0) {
+    erro.textContent = 'A base precisa ser um número inteiro, zero ou maior.';
+    carregarMetasSemanais_();
+    return;
+  }
+  fetchJSON_('/api/gestor/metas-semanais', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mes: matrizMesAtual_(), csNome: card.getAttribute('data-cs'), indicador: card.getAttribute('data-ind'), semanaInicio: card.getAttribute('data-semana'), valor: valor })
+  }).then(function () { carregarMetasSemanais_(); }).catch(function (e) {
+    erro.textContent = (e && e.message) || 'Não foi possível salvar a base.';
+    carregarMetasSemanais_();
+  });
+}
+function aoClicarMetasSemanais_(ev) {
+  var t = ev.target && ev.target.closest ? ev.target.closest('[data-cs-chip],[data-acao="automatico"]') : null;
+  if (!t) return;
+  if (t.hasAttribute('data-cs-chip')) {
+    CS_METAS_SELECIONADO = t.getAttribute('data-cs-chip');
+    renderMetasSemanais_(DADOS_METAS_SEMANAIS, matrizMesAtual_());
+    return;
+  }
+  var card = t.closest('.meta-card');
+  var erro = document.getElementById('erroMetasSemanais');
+  erro.textContent = '';
+  fetchJSON_('/api/gestor/metas-semanais', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mes: matrizMesAtual_(), csNome: card.getAttribute('data-cs'), indicador: card.getAttribute('data-ind'), semanaInicio: card.getAttribute('data-semana') })
+  }).then(function () { carregarMetasSemanais_(); }).catch(function (e) {
+    erro.textContent = (e && e.message) || 'Não foi possível voltar ao automático.';
+  });
+}
+// Feriados ficam na área de configurações (aba controlePerfis), que não passa por inicializarMetasDestaques.
+// Por isso a inicialização própria, uma vez, quando a aba é aberta.
+var FERIADOS_INICIALIZADOS = false;
+function inicializarFeriados_() {
+  if (FERIADOS_INICIALIZADOS) return;
+  FERIADOS_INICIALIZADOS = true;
+  document.getElementById('btnSalvarFeriado').addEventListener('click', salvarFeriado_);
+  document.getElementById('listaFeriados').addEventListener('click', removerFeriado_);
+  carregarFeriados_();
+}
+function carregarFeriados_() {
+  fetchJSON_('/api/gestor/feriados').then(function (d) {
+    renderFeriados_(d.feriados || []);
+  }).catch(function (e) {
+    document.getElementById('erroFeriados').textContent = (e && e.message) || 'Não foi possível carregar os feriados.';
+  });
+}
+function renderFeriados_(lista) {
+  var html = '';
+  lista.forEach(function (f) {
+    html += '<div class="feriado-item"><span class="feriado-data">' + escCS_(dataCurtaSemanal_(f.data)) + ' ' + escCS_(f.data.slice(0, 4)) + '</span>';
+    html += '<span class="feriado-nome">' + escCS_(f.nome) + '</span>';
+    html += '<button type="button" class="btn-remover" data-feriado-remover="' + escCS_(f.data) + '">Remover</button></div>';
+  });
+  document.getElementById('listaFeriados').innerHTML = html || '<p class="gestor-empty">Nenhum feriado cadastrado.</p>';
+}
+function salvarFeriado_() {
+  var data = document.getElementById('feriadoData').value;
+  var nome = document.getElementById('feriadoNome').value.trim();
+  var erro = document.getElementById('erroFeriados');
+  erro.textContent = '';
+  if (!data || !nome) { erro.textContent = 'Informe a data e o nome do feriado.'; return; }
+  fetchJSON_('/api/gestor/feriados', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: data, nome: nome })
+  }).then(function () {
+    document.getElementById('feriadoNome').value = '';
+    carregarFeriados_();
+    if (MODO_METAS === 'semanal') carregarMetasSemanais_();
+  }).catch(function (e) { erro.textContent = (e && e.message) || 'Não foi possível salvar o feriado.'; });
+}
+function removerFeriado_(ev) {
+  var t = ev.target;
+  if (!t || !t.getAttribute('data-feriado-remover')) return;
+  var erro = document.getElementById('erroFeriados');
+  erro.textContent = '';
+  fetchJSON_('/api/gestor/feriados', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: t.getAttribute('data-feriado-remover') })
+  }).then(function () {
+    carregarFeriados_();
+    if (MODO_METAS === 'semanal') carregarMetasSemanais_();
+  }).catch(function (e) { erro.textContent = (e && e.message) || 'Não foi possível remover o feriado.'; });
+}
+
 function inicializarMetasDestaques() {
   try {
     document.getElementById('btnSugerirMetas').addEventListener('click', abrirSugestaoMetas_);
@@ -3278,8 +3717,12 @@ function inicializarMetasDestaques() {
     document.getElementById('sgAplicarTudo').addEventListener('click', function () { aplicarSugestao_(null); });
     carregarRecordesCalculados('');
     popularSeletorMesMatriz_();
-    document.getElementById('selMesMatriz').addEventListener('change', carregarMatriz);
-    document.getElementById('selAnoMatriz').addEventListener('change', carregarMatriz);
+    document.getElementById('selMesMatriz').addEventListener('change', aoMudarMesMetas_);
+    document.getElementById('selAnoMatriz').addEventListener('change', aoMudarMesMetas_);
+    document.getElementById('btnModoMensal').addEventListener('click', function () { definirModoMetas_('mensal'); });
+    document.getElementById('btnModoSemanal').addEventListener('click', function () { definirModoMetas_('semanal'); });
+    document.getElementById('metasSemanaisBox').addEventListener('change', aoEditarMetaSemanal_);
+    document.getElementById('metasSemanaisBox').addEventListener('click', aoClicarMetasSemanais_);
     document.getElementById('chkMostrarOcultosMatriz').addEventListener('change', renderMatrizTabela_);
     document.getElementById('btnSalvarMatriz').addEventListener('click', salvarMatriz_);
     document.getElementById('btnCopiarMesAnterior').addEventListener('click', copiarMesAnterior_);

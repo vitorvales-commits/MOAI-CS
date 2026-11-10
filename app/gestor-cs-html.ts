@@ -314,6 +314,7 @@ ${ICONES_SVG}
       <div class="aba" id="aba-indicadores" data-aba="indicadores" role="tabpanel">
         <section class="block">
           <h2>Indicadores do mês <span class="sub" id="indSub">Onde o CS está em relação à meta de cada indicador, do mais longe para o mais perto.</span></h2>
+          <div id="secSemanalCS" class="card" style="display:none"></div>
           <div class="card" id="secRadar"><div class="vazio">Carregando…</div></div>
         </section>
       </div>
@@ -599,7 +600,10 @@ document.addEventListener('click', function (ev) {
 // Estado: na meta (100 ou mais), abaixo (60 a 99), longe (menos de 60), sem meta. Os números vêm prontos
 // do servidor (pct na escala de 0 a 150); aqui só se desenha.
 var IND_LIMIAR_LONGE_ = 60;
-var IND_ROTULO_ESTADO_ = { ok: 'Na meta', ritmo: 'No ritmo', atencao: 'Abaixo', critico: 'Longe', cedo: 'No prazo', neutro: 'Sem meta' };
+// Rótulos do mesmo vocabulário de calcularRitmo (lib/ritmo.ts) e da Semana atual (PR 2b). Meta cheia segue com "Na meta".
+var IND_ROTULO_ESTADO_ = { ok: 'Na meta', ritmo: 'No ritmo', atencao: 'Atenção', critico: 'Atrás', cedo: 'Começando', neutro: 'Sem meta' };
+// Status de ritmo vindo do servidor (calcularRitmo em lib/reports.ts, montarRitmoDoMes) para os indicadores de fluxo.
+var IND_STATUS_RITMO_ = { no_ritmo: 'ritmo', atencao: 'atencao', atras: 'critico', cedo: 'cedo' };
 var IND_COR_ESTADO_ = { ok: '#3D8B5F', ritmo: '#3D8B5F', atencao: '#C89A2E', critico: '#C0433D', cedo: '#9F9F9F', neutro: '#9F9F9F' };
 var MESES_CURTOS_ = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -617,31 +621,27 @@ function indFracaoMes_() {
   var dias = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   return hoje.getDate() / dias;
 }
+// Só lê o ritmo que o servidor calculou (e.ritmo). Indicador sem ritmo do servidor é de meta cheia. Nada é recalculado aqui.
 function indRitmo_(e) {
-  var f = indFracaoMes_();
-  if (f === null || e.semMeta || e.pct === null || e.pct === undefined || e.pct >= 100) return null;
-  if (IND_FLUXO_RITMO_.indexOf(e.chave) === -1 || !e.meta) return null;
-  var esperado = e.meta * f;
-  return { esperado: esperado, pct: esperado > 0 ? Math.round((Number(e.valor) || 0) / esperado * 100) : 100, cedo: esperado < 1, fracao: f };
+  if (e.semMeta || e.pct === null || e.pct === undefined || e.pct >= 100) return null;
+  if (!e.ritmo || e.ritmo.previsto === null || e.ritmo.previsto === undefined) return null;
+  var esperado = e.ritmo.previsto;
+  return { esperado: esperado, pct: esperado > 0 ? Math.round((Number(e.valor) || 0) / esperado * 100) : 100, cedo: e.ritmo.status === 'cedo', fracao: e.ritmo.fracao, status: e.ritmo.status };
 }
 function indEstado_(e) {
   if (e.semMeta || e.pct === null || e.pct === undefined) return 'neutro';
   if (e.pct >= 100) return 'ok';
   var r = indRitmo_(e);
-  if (r) {
-    if (r.cedo && !(Number(e.valor) > 0)) return 'cedo';
-    if (r.pct >= 100) return 'ritmo';
-    return r.pct >= IND_LIMIAR_LONGE_ ? 'atencao' : 'critico';
-  }
+  if (r) return IND_STATUS_RITMO_[r.status] || 'critico';
   if (e.pct >= IND_LIMIAR_LONGE_) return 'atencao';
   return 'critico';
 }
 function indPill_(e, est) {
   var r = indRitmo_(e);
   if (est === 'neutro') return 'Sem meta';
-  if (est === 'cedo') return 'No prazo';
-  if (est === 'ritmo') return 'No ritmo';
-  if (r) return 'Atrás';
+  if (est === 'cedo') return IND_ROTULO_ESTADO_.cedo;
+  if (est === 'ritmo') return IND_ROTULO_ESTADO_.ritmo;
+  if (r) return IND_ROTULO_ESTADO_[est] || IND_ROTULO_ESTADO_.critico;
   return e.pct + '%';
 }
 function decimalBR_(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR'); }
@@ -782,7 +782,7 @@ function renderRadarCS(d) {
   }).join(', ') + '. É por aí que a pontuação mais sobe; vale levar para a próxima 1:1.';
   else frase = 'Nenhum indicador está longe; ' + (comMeta.length - bem.length) + ' ainda pede atenção.';
   var aviso = aberto ? '<div class="ind-aviso">Mês em andamento: nos indicadores de volume a régua é o esperado até hoje, e a barra mostra o ritmo com um traço âmbar.</div>' : '';
-  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>' + (aberto ? 'na meta ou no ritmo' : 'na meta') + '</span><span><i style="background:#C89A2E"></i>abaixo</span><span><i style="background:#C0433D"></i>' + (aberto ? 'atrás' : 'longe') + '</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta ou cedo</span></div>';
+  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>' + (aberto ? 'na meta ou no ritmo' : 'na meta') + '</span><span><i style="background:#C89A2E"></i>' + (aberto ? 'atenção' : 'abaixo') + '</span><span><i style="background:#C0433D"></i>' + (aberto ? 'atrás' : 'longe') + '</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta ou cedo</span></div>';
   var tom = longe.length ? 'critico' : (bem.length === comMeta.length ? 'ok' : 'atencao');
   el.innerHTML = '<div class="ind-resumo"><div class="ind-placar ' + tom + '"><b>' + bem.length + '</b><span>de ' + comMeta.length + (aberto ? ' na meta ou no ritmo' : ' na meta') + '</span></div>'
     + '<div class="ind-resumo-txt">' + frase + aviso + '</div></div>'
@@ -1420,9 +1420,30 @@ function evoAoClicar_(ev) {
 }
 document.addEventListener('click', evoAoClicar_);
 
+// Metas semanais do CS no mês (PR 2a). Semana atual por padrão; Geral mostra o radar do mês. A escolha vai para visao na URL.
+var DADOS_SEMANAL_CS_ = null;
+function renderSemanalCS(d) { DADOS_SEMANAL_CS_ = d.semanal || null; desenhaSemanalCS_(); }
+function desenhaSemanalCS_() {
+  var el = document.getElementById('secSemanalCS'), radar = document.getElementById('secRadar');
+  if (!el || !radar) return;
+  var s = DADOS_SEMANAL_CS_;
+  var opcoes = !s || s.erro ? [['geral', 'Geral']] : (s.mesAtual ? [['semana', 'Semana atual'], ['geral', 'Geral']] : [['semanas', 'Semanas do mês'], ['geral', 'Geral']]);
+  var pedido = new URLSearchParams(location.search).get('visao');
+  var atual = opcoes.some(function (o) { return o[0] === pedido; }) ? pedido : opcoes[0][0];
+  if (atual === 'geral') { el.style.display = 'none'; el.innerHTML = ''; radar.style.display = ''; return; }
+  radar.style.display = 'none'; el.style.display = '';
+  var corpo = s.erro ? '<div class="vazio">Não foi possível carregar as metas semanais: ' + msEsc_(s.erro) + '</div>' : (atual === 'semana' ? msCorpoSemana_(s) : msCorpoSemanasMes_(s));
+  el.innerHTML = '<div class="ms-cab" style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b>Metas semanais de ' + msEsc_(CS_NOME) + '</b>' + msAlternancia_(opcoes, atual) + '</div>' + corpo;
+  msLigarAlternancia_(el, function (v) {
+    var u = new URL(location.href); u.searchParams.set('visao', v);
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    desenhaSemanalCS_();
+  });
+}
+
 function renderTudoCS(d) {
   DADOS_CS = d;
-  var passos = [renderHeroCS, renderPontosCS, renderRadarCS, renderGtdCS, renderGtdAtencaoCS_, renderCriticosCS, renderAdvertenciasCS];
+  var passos = [renderHeroCS, renderPontosCS, renderRadarCS, renderSemanalCS, renderGtdCS, renderGtdAtencaoCS_, renderCriticosCS, renderAdvertenciasCS];
   // cada seção é desenhada à parte: se uma quebrar, as outras seguem
   passos.forEach(function (fn) { try { fn(d); } catch (e) { console.error(e); } });
   try { renderPautaCS_(); } catch (e2) { console.error(e2); }

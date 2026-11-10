@@ -7,6 +7,7 @@ import { requireMoaiUser, AuthError } from '@/lib/auth';
 import { GESTOR_CS_STYLE, GESTOR_CS_HTML, gestorCSScript } from '../../../gestor-cs-html';
 import { montarDock, DOCK_SCRIPT, FONTES_LINK } from '@/lib/ui/tema';
 import { AGENDA_CSS, agendaConfigJson } from '../../../../lib/agenda-ui';
+import { METAS_SEMANAIS_CSS, METAS_SEMANAIS_UI_SCRIPT } from '../../../../lib/ui/metas-semanais-ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +37,12 @@ export default async function GestorCSPage({ params }: { params: { nome: string 
       <div dangerouslySetInnerHTML={{ __html: FONTES_LINK }} />
       <style dangerouslySetInnerHTML={{ __html: GESTOR_CS_STYLE }} />
       <style dangerouslySetInnerHTML={{ __html: AGENDA_CSS }} />
+      <style dangerouslySetInnerHTML={{ __html: METAS_SEMANAIS_CSS }} />
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <script dangerouslySetInnerHTML={{ __html: DOCK_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: 'window.AGENDA_CFG = ' + agendaConfigJson() + ';' }} />
       <script src="/agenda-cs.js" />
+      <script dangerouslySetInnerHTML={{ __html: METAS_SEMANAIS_UI_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: gestorCSScript(decodificar(params.nome)) }} />
       <script dangerouslySetInnerHTML={{ __html: "window.addEventListener('load', function () { agendaMontar('agendaCs', { csNome: " + JSON.stringify(decodificar(params.nome)).replace(/</g, '\\u003c') + " }); });" }} />
     </>

@@ -1,7 +1,7 @@
 // Roda com: npx tsx tests/metas-semanais.test.ts
 // Montagem das metas semanais de um CS a partir de dados já carregados (lib/metas-semanais.ts, parte pura).
 import assert from 'node:assert/strict';
-import { montarMetasSemanaisCS, elencoDoMesPuro, type DadosMetas } from '../lib/metas-semanais.ts';
+import { montarMetasSemanaisCS, elencoDoMesPuro, estadoDaParcela, type DadosMetas } from '../lib/metas-semanais.ts';
 import type { CSConfig } from '../lib/reports.ts';
 
 const FERIADOS_2026 = [
@@ -99,7 +99,7 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
 {
   const d = vazio();
   d.metasMensais.push({ indicador: 'cases', mes: MES, cs_nome: 'Rodrigo', valor: 50 });
-  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: MES, semana_inicio: '2026-11-02', realizado: 5 });
+  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: MES, semana_inicio: '2026-11-02', base: 11, realizado: 5 });
   const ps = montarMetasSemanaisCS(cs(), MES, d).indicadores.find((x) => x.indicador === 'cases')!.parcelas;
   assert.equal(ps[0].realizado, 5);
   assert.equal(ps[0].fechada, true);
@@ -205,6 +205,22 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
   // Período sem cadastro em cs_config não some em silêncio: aparece em faltando.
   const comFantasma = [...periodos, { nome_curto: 'Fantasma', nome_completo: 'Fantasma', primeiro_mes: '2026-01-01', ultimo_mes: null, aliases: [] }];
   assert.deepEqual(elencoDoMesPuro(listaElenco, comFantasma, '2026-10-01', '2026-11-05').faltando, ['Fantasma']);
+}
+
+// 13. Estado da semana em relação a hoje: fechada, corrente, futura, ou aguardando o fechamento de segunda.
+{
+  const p = (ini: string, fim: string, fechada = false) => ({ parcelaInicio: ini, parcelaFim: fim, fechada });
+  assert.equal(estadoDaParcela(p('2026-11-09', '2026-11-15', true), '2026-11-11'), 'fechada', 'fechada vence qualquer data');
+  assert.equal(estadoDaParcela(p('2026-11-09', '2026-11-15'), '2026-11-11'), 'corrente');
+  assert.equal(estadoDaParcela(p('2026-11-09', '2026-11-15'), '2026-11-09'), 'corrente', 'primeiro dia é corrente');
+  assert.equal(estadoDaParcela(p('2026-11-09', '2026-11-15'), '2026-11-15'), 'corrente', 'último dia é corrente');
+  assert.equal(estadoDaParcela(p('2026-11-16', '2026-11-22'), '2026-11-11'), 'futura');
+  assert.equal(estadoDaParcela(p('2026-11-02', '2026-11-08'), '2026-11-11'), 'aguardando_fechamento');
+  // Montagem usa a data de hoje informada.
+  const d = vazio();
+  d.metasMensais.push({ indicador: 'cases', mes: MES, cs_nome: 'Rodrigo', valor: 50 });
+  const ps = montarMetasSemanaisCS(cs(), MES, d, '2026-11-11').indicadores.find((x) => x.indicador === 'cases')!.parcelas;
+  assert.deepEqual(ps.map((x) => x.estado), ['aguardando_fechamento', 'corrente', 'futura', 'futura', 'futura']);
 }
 
 console.log('metas-semanais: todos os casos passaram');

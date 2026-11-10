@@ -16,7 +16,16 @@ export async function GET() {
     if (!isGestor) {
       return NextResponse.json({ error: 'Esta área é restrita a gestores.' }, { status: 403 });
     }
-    return NextResponse.json(await acoesVisaoGeralGestor(supabase));
+    const base = await acoesVisaoGeralGestor(supabase);
+    // Fila de ação, fonte ritmo_semanal (PR 3): itens abertos. Isolado, um erro aqui não derruba as outras seções.
+    const { data, error } = await supabase.from('fila_acao_itens')
+      .select('id, cs_nome, semana_inicio, semana_fim, indicadores, deficit_total')
+      .eq('fonte', 'ritmo_semanal').eq('status', 'aberto')
+      .order('deficit_total', { ascending: false }).order('cs_nome');
+    const { data: cfg } = await supabase.from('ritmo_semanal_config').select('valor').eq('chave', 'limiar').maybeSingle();
+    const ritmoSemanal = error ? { dado: null, erro: 'Não foi possível ler o ritmo semanal agora.', limiar: null } : { dado: data || [], erro: null, limiar: cfg ? Number(cfg.valor) : null };
+    if (error) console.error('acoes ritmo_semanal', error);
+    return NextResponse.json({ ...base, ritmoSemanal });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 });

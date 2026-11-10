@@ -19,6 +19,8 @@ export interface EntradaMesMetas {
   overrides: Record<string, number>; // semana (inicio) -> valor manual; só exceções
   // semana (inicio) -> realizado congelado no fechamento. Ausente quando a semana ainda não fechou.
   realizadoCongelado: Record<string, number | null | undefined>;
+  // semana (inicio) -> base congelada no fechamento. Semana fechada não muda base ao editar outras semanas.
+  baseCongelada?: Record<string, number | null | undefined>;
 }
 
 export interface SemanaMeta {
@@ -38,30 +40,42 @@ const inteiro = (n: number) => Number.isInteger(n);
 
 // Distribui metaMensal entre as semanas não editadas, proporcionalmente aos dias úteis, com arredondamento
 // por maior resto para a soma fechar exatamente. Semanas editadas mantêm o valor manual.
-export function distribuirBase(metaMensal: number, semanas: SemanaDoMes[], overrides: Record<string, number>): { valores: number[]; manual: boolean[]; excedeMeta: boolean } {
+// Semana com base fixa não entra no rebalanceamento: edição manual (override) ou base congelada no fechamento
+// (semana já fechada, P3). Editar uma semana aberta reequilibra só as abertas; a base fechada não muda.
+export function distribuirBase(
+  metaMensal: number,
+  semanas: SemanaDoMes[],
+  overrides: Record<string, number>,
+  congeladas: Record<string, number | null | undefined> = {},
+): { valores: number[]; manual: boolean[]; excedeMeta: boolean } {
   if (!inteiro(metaMensal)) throw new Error(`meta mensal precisa ser inteira (recebido ${metaMensal})`);
   const manual = semanas.map((s) => Object.prototype.hasOwnProperty.call(overrides, s.inicio));
-  const valorManual = semanas.map((s, i) => (manual[i] ? overrides[s.inicio] : 0));
-  const somaManual = valorManual.reduce((t, v) => t + v, 0);
-  if (somaManual >= metaMensal) {
-    // Override que passa da meta: as demais ficam com zero e o aviso vai para a tela.
-    return { valores: semanas.map((_, i) => valorManual[i]), manual, excedeMeta: somaManual > metaMensal };
+  const fixa: (number | null)[] = semanas.map((s, i) => {
+    if (manual[i]) return overrides[s.inicio];
+    const c = congeladas[s.inicio];
+    return typeof c === 'number' ? c : null;
+  });
+  const travada = fixa.map((v) => v !== null);
+  const somaFixa = fixa.reduce<number>((t, v) => t + (v ?? 0), 0);
+  if (somaFixa >= metaMensal) {
+    // Base fixa que passa da meta: as demais ficam com zero e o aviso vai para a tela.
+    return { valores: semanas.map((_, i) => fixa[i] ?? 0), manual, excedeMeta: somaFixa > metaMensal };
   }
-  const restante = metaMensal - somaManual;
-  const pesoTotal = semanas.reduce((t, s, i) => t + (manual[i] ? 0 : s.diasUteis), 0);
-  // Sem nenhum dia útil livre (todas as semanas editadas), o restante não tem onde cair; a soma fica abaixo
-  // da meta e o aviso de excedeMeta não se aplica. Aqui não ocorre com meta válida, mas o caso não pode
-  // inventar valor.
-  if (pesoTotal === 0) return { valores: valorManual, manual, excedeMeta: false };
-  const ideais = semanas.map((s, i) => (manual[i] ? 0 : (restante * s.diasUteis) / pesoTotal));
+  const restante = metaMensal - somaFixa;
+  const pesoTotal = semanas.reduce((t, s, i) => t + (travada[i] ? 0 : s.diasUteis), 0);
+  // Sem nenhum dia útil livre, o restante não tem onde cair; a soma fica abaixo da meta e o aviso de excedeMeta
+  // não se aplica. Aqui não ocorre com meta válida, mas o caso não pode inventar valor.
+  if (pesoTotal === 0) return { valores: semanas.map((_, i) => fixa[i] ?? 0), manual, excedeMeta: false };
+  const valorManual = fixa.map((v) => v ?? 0);
+  const ideais = semanas.map((s, i) => (travada[i] ? 0 : (restante * s.diasUteis) / pesoTotal));
   const base = ideais.map((x) => Math.floor(x));
   let faltam = restante - base.reduce((t, x) => t + x, 0);
   const ordem = ideais
-    .map((x, i) => ({ i, resto: x - Math.floor(x), livre: !manual[i] }))
+    .map((x, i) => ({ i, resto: x - Math.floor(x), livre: !travada[i] }))
     .filter((o) => o.livre)
     .sort((a, b) => b.resto - a.resto || a.i - b.i);
   for (let k = 0; faltam > 0 && k < ordem.length; k++, faltam--) base[ordem[k].i] += 1;
-  return { valores: semanas.map((_, i) => (manual[i] ? valorManual[i] : base[i])), manual, excedeMeta: false };
+  return { valores: semanas.map((_, i) => (travada[i] ? valorManual[i] : base[i])), manual, excedeMeta: false };
 }
 
 // Metas efetivas das semanas de um mês. Chamado uma vez por mês: o encadeamento de déficit não passa de um
@@ -74,7 +88,7 @@ export function metasSemanaisDoMes(e: EntradaMesMetas): SemanaMeta[] {
       realizado: pegaRealizado(e, s.inicio), deficitTransferido: null, excedeMeta: false,
     }));
   }
-  const dist = distribuirBase(metaMensal, semanas, e.overrides);
+  const dist = distribuirBase(metaMensal, semanas, e.overrides, e.baseCongelada ?? {});
   const saida: SemanaMeta[] = [];
   // Anterior: meta efetiva e realizado congelado da semana anterior do mesmo mês. Null quando a semana anterior
   // não tem um dos dois (ausência propaga, não vira zero).

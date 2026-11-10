@@ -24,6 +24,7 @@ import { RELATORIO_CSS, RELATORIO_PAINEL_HTML, RELATORIO_SCRIPT } from '../lib/u
 import { REDESENHO_CS_CSS, REDESENHO_CS_SCRIPT } from '../lib/ui/redesenho-cs-ui.ts';
 import { LIMIAR_PRESENCA_ATENCAO } from '../lib/constants.ts';
 import { AGENDA_CSS, agendaConfigJson } from '../lib/agenda-ui.ts';
+import { METAS_SEMANAIS_CSS, METAS_SEMANAIS_UI_SCRIPT } from '../lib/ui/metas-semanais-ui.ts';
 
 export const DASHBOARD_HTML = `<!DOCTYPE html>
 <html lang="pt-br">
@@ -1013,6 +1014,8 @@ ${ICONES_SVG}
 </div>
 
 ${RELATORIO_PAINEL_HTML}
+<style>${METAS_SEMANAIS_CSS}</style>
+<script>${METAS_SEMANAIS_UI_SCRIPT}</script>
 <script>${DOCK_SCRIPT}</script>
 <script>window.AGENDA_CFG = ${agendaConfigJson()};</script>
 <script src="/agenda-cs.js"></script>
@@ -1391,10 +1394,32 @@ function renderInPontuacao_(ini) {
   el.innerHTML = cab + delta + '</div><div class="ch-score">' + svg + txt + '</div>' + pts;
 }
 
-// Ritmo do mês: metas com barra e traço do esperado até hoje, e a dica do atraso. Sem meta não aparece como zero.
-function renderInMetas_(ini) {
+// Metas da home (PR 2a). Alternância Semana atual ou Semanas do mês (mês fechado) com Geral; a escolha vai para
+// o parâmetro visao da URL. Nada é calculado aqui: o ritmo da semana vem de calcularRitmo no servidor (ini.dado.semanal).
+var inMetasIni_ = null;
+function renderInMetas_(ini) { inMetasIni_ = ini; desenhaInMetas_(); }
+function desenhaInMetas_() {
   var el = document.getElementById('inMetas');
-  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Ritmo de ' + escHtml_(String(currentMes).toLowerCase()) + '</span><a class="gh-link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div>';
+  var ini = inMetasIni_ || {};
+  var s = ini.dado && ini.dado.semanal;
+  var opcoes = !s || s.erro ? [['geral', 'Geral']] : (s.mesAtual ? [['semana', 'Semana atual'], ['geral', 'Geral']] : [['semanas', 'Semanas do mês'], ['geral', 'Geral']]);
+  var pedido = new URLSearchParams(location.search).get('visao');
+  var atual = opcoes.some(function (o) { return o[0] === pedido; }) ? pedido : opcoes[0][0];
+  var alt = msAlternancia_(opcoes, atual);
+  if (atual === 'geral') renderInMetasGeral_(ini, el, alt);
+  else if (atual === 'semana') el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Semana atual</span>' + alt + '</div>' + msCorpoSemana_(s);
+  else el.innerHTML = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Semanas do mês</span>' + alt + '</div>' + msCorpoSemanasMes_(s);
+  el.querySelectorAll('.av-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var u = new URL(location.href); u.searchParams.set('visao', b.getAttribute('data-visao'));
+      history.replaceState(null, '', u.pathname + u.search + u.hash);
+      desenhaInMetas_();
+    });
+  });
+}
+// Ritmo do mês: metas com barra e traço do esperado até hoje, e a dica do atraso. Sem meta não aparece como zero.
+function renderInMetasGeral_(ini, el, alt) {
+  var cab = '<div class="gh-w-h"><span class="gh-w-t" id="h-metas">Ritmo de ' + escHtml_(String(currentMes).toLowerCase()) + '</span>' + alt + '<a class="gh-link" href="/?aba=indicadores" data-aba-cs="indicadores">Detalhar</a></div>';
   if (ini.erro || !ini.dado) { el.innerHTML = cab + inErro_('Não foi possível carregar as metas', ini.erro || 'sem dados'); return; }
   var d = ini.dado;
   var linhas = d.metas.filter(function (m) { return m.status !== 'sem_meta'; }).map(function (m) {

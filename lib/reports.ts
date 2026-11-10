@@ -31,6 +31,7 @@ import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato, 
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, detalharScoreCS, type ScoreCS } from './pontuacao';
 import { mediana } from './evolucao';
+import { dataDeAtribuicao } from './atribuicao.ts';
 import { montarCiclo, taxaGtdAgregada, contarEtapas, gtdDoConselho, gtdAgregadoCS, type CicloGtd } from './gtd';
 import { cicloAberto, etapasPendentes, chaveEtapaGTD, hojeSP, somarDias, statusEtapaGTD } from './gtd-prazos';
 import { calcularRitmo, avaliarMetaCheia, type BaseRitmo } from './ritmo';
@@ -1576,7 +1577,13 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   const casesCalc = casesRegistrados.length;
   const mmDoCS = matchmakingsDoCS(dados.matchmakings, cfg.userId, seletorMes, ano, geral);
   const mmCalc = mmDoCS.length;
-  const mmResultadoCalc = mmDoCS.filter(matchmakingTemResultado).length;
+  // D7 (05/11/2026): matchmakings com resultado contam pelo mês do registro do resultado, e não pelo mês do matchmaking.
+  // Mesma data de atribuição do realizado semanal (lib/atribuicao.ts).
+  const mmResultadoCalc = dados.matchmakings.filter((r: any) => {
+    if (!temUserId || Number(r.creator_id) !== cfg.userId || !matchmakingTemResultado(r)) return false;
+    const data = dataDeAtribuicao('matchmakings_resultado', r);
+    return data !== null && data >= mesInicio && data <= mesFim;
+  }).length;
   const roundsCalc = parseRounds(dados.rounds, grafias, seletorMes, geral);
   const upDown = parseUpsellDownsell(dados.upsellDownsell, grafias, mesInicio, mesFim);
   const semanal = parseReportsSemanais(resumo, cfg.nome, mesInicio, mesFim);
@@ -3873,7 +3880,10 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
   const radar = await secaoIsolada('radar', () => RADAR_EIXOS.map((eixo, i) => {
     const ind = (cs.indicadores as any)[eixo.chave];
     const pct = cs.radar[i];
-    return { chave: eixo.chave, label: eixo.label, tipoMeta: eixo.tipoMeta, pct, valor: ind.calculado, meta: ind.meta, unidade: ind.unidade, semMeta: pct === null };
+    // Ritmo do mês vem de montarRitmoDoMes (calcularRitmo), o mesmo da home. A página do CS não recalcula.
+    const itemRitmo = (visao as any).ritmo?.linhas?.find((l: any) => l.nome === nome)?.itens?.[eixo.chave] ?? null;
+    const ritmo = itemRitmo ? { status: itemRitmo.status, previsto: itemRitmo.previsto ?? null, fracao: itemRitmo.fracao ?? null } : null;
+    return { chave: eixo.chave, label: eixo.label, tipoMeta: eixo.tipoMeta, pct, valor: ind.calculado, meta: ind.meta, unidade: ind.unidade, semMeta: pct === null, ritmo };
   }));
 
   const gtd = await secaoIsolada('gtd', () => {

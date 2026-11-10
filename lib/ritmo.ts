@@ -22,6 +22,9 @@ export interface EntradaRitmo {
   // Só para base 'conselho': conselhos do CS no mês e quantos já aconteceram até hoje.
   conselhosTotal?: number;
   conselhosRealizados?: number;
+  // Fração do período por dias úteis já decorridos e total do período (uma semana de meta semanal). Quando
+  // vem, substitui o cálculo pelo mês; é a base do ritmo da semana atual.
+  uteis?: { decorridos: number; total: number };
 }
 
 export interface ResultadoRitmo {
@@ -50,6 +53,15 @@ function ehDiaUtil(iso: string): boolean {
   return dow !== 0 && dow !== 6 && !FERIADOS_NACIONAIS_2026.includes(iso);
 }
 
+// Dias úteis entre duas datas AAAA-MM-DD, inclusive nas duas pontas. Fim antes do início: zero.
+export function diasUteisEntre(inicio: string, fim: string): number {
+  let n = 0;
+  for (let d = new Date(`${inicio}T12:00:00Z`); d.toISOString().slice(0, 10) <= fim; d.setUTCDate(d.getUTCDate() + 1)) {
+    if (ehDiaUtil(d.toISOString().slice(0, 10))) n++;
+  }
+  return n;
+}
+
 // Dias úteis do mês e quantos já passaram até hoje (hoje inclusive). Hoje depois do mês: tudo decorrido.
 export function diasUteisDoMes(mes: string, hoje: string): { decorridos: number; total: number } {
   const dias = diasDoMes(mes);
@@ -59,9 +71,9 @@ export function diasUteisDoMes(mes: string, hoje: string): { decorridos: number;
 }
 
 export function calcularRitmo(e: EntradaRitmo): ResultadoRitmo {
-  const uteis = diasUteisDoMes(e.mes, e.hoje);
+  const uteis = e.uteis ?? diasUteisDoMes(e.mes, e.hoje);
   const fracaoUtil = uteis.total ? uteis.decorridos / uteis.total : 0;
-  const usaConselho = e.base === 'conselho' && (e.conselhosTotal ?? 0) > 0;
+  const usaConselho = e.base === 'conselho' && (e.conselhosTotal ?? 0) > 0 && !e.uteis;
 
   let fracao: number;
   let baseTexto: string;
@@ -72,7 +84,9 @@ export function calcularRitmo(e: EntradaRitmo): ResultadoRitmo {
     baseTexto = `${realizados} de ${total} conselhos realizados`;
   } else {
     fracao = fracaoUtil;
-    baseTexto = `${uteis.decorridos} de ${uteis.total} dias úteis`;
+    baseTexto = e.uteis
+      ? `${uteis.decorridos} de ${uteis.total} dias úteis da semana`
+      : `${uteis.decorridos} de ${uteis.total} dias úteis`;
   }
 
   const realizado = e.realizado ?? null;
@@ -92,6 +106,8 @@ export function calcularRitmo(e: EntradaRitmo): ResultadoRitmo {
   else if (realizado >= previsto) status = 'no_ritmo';
   else if (previsto > 0 && realizado / previsto >= RITMO_LIMIAR_ATENCAO) status = 'atencao';
   else status = 'atras';
+  // Semana (com uteis): "atras" só quando o que falta não cabe nos dias úteis restantes. Antes disso, "atencao".
+  if (status === 'atras' && e.uteis && realizado !== null && meta - realizado <= uteis.total - uteis.decorridos) status = 'atencao';
 
   return { previsto, fracao, status, projecao, baseTexto };
 }

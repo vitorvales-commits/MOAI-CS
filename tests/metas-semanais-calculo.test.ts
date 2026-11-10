@@ -108,4 +108,17 @@ const ini = (i: number) => nov[i].inicio;
   assert.equal(r[0].realizado, 4);
 }
 
+// Base congelada no fechamento não muda ao editar uma semana aberta (P3). Sem congelada, a semana 1 mudaria.
+{
+  const semMudanca = distribuirBase(50, nov, {});
+  assert.deepEqual(semMudanca.valores, [11, 13, 10, 13, 3]);
+  // Semana 1 fechada com base 11. Editando a semana 2 para 20, a semana 1 continua 11 e o resto fecha 50.
+  const r = distribuirBase(50, nov, { [ini(1)]: 20 }, { [ini(0)]: 11 });
+  assert.equal(r.valores[0], 11, 'base congelada da semana fechada não muda');
+  assert.equal(r.valores[1], 20);
+  assert.equal(r.valores.reduce((t, v) => t + v, 0), 50, 'o mês continua fechando');
+  // Mesmo com a semana 1 fechada, o rebalanceamento dá às demais o que sobra de 50 - 11 - 20 = 19.
+  assert.equal(r.valores.slice(2).reduce((t, v) => t + v, 0), 19);
+}
+
 console.log('metas-semanais-calculo: todos os casos passaram');
