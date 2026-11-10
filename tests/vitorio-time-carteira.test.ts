@@ -50,7 +50,10 @@ assert.equal(vazioSet.temRegistro, false);
 // Carteira de setembro: não tem registro, mesmo com carga '-infinity' cobrindo o conselho g1.
 const carteiraSet = guardar(responderCarteira('g1', '2026-09-15', dados));
 assert.equal(carteiraSet.temRegistro, false);
-assert.match(carteiraSet.texto, /Não tenho esse registro/);
+assert.equal(
+  carteiraSet.texto,
+  'Sobre Conselho Um em 15/09/2026: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026, então não tenho esse registro.',
+);
 assert.match(carteiraSet.texto, /15\/09\/2026/);
 assert.doesNotMatch(carteiraSet.texto, /Bia/);
 assert.match(carteiraSet.comoCheguei, /sem registro/);
