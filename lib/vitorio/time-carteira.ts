@@ -67,7 +67,7 @@ export function responderCarteira(groupId: string, dataIso: string, d: DadosTime
   const data = dataBR(dataIso);
   if (f.fonte === 'sem_registro') {
     return {
-      texto: `Não tenho esse registro: a carteira de ${titulo} em ${data} é anterior à carga de 30/10/2026, e antes dela não há histórico de carteira.`,
+      texto: `Sobre ${titulo} em ${data}: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026, então não tenho esse registro.`,
       comoCheguei: `Fonte: ${f.rotulo}. Data: ${data}.`,
       temRegistro: false,
     };
