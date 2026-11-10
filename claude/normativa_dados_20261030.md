@@ -232,3 +232,15 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
 - Falhas do gatilho: considera só as últimas 24 horas (o corte é feito no app; a RPC `sincronia_falhas_espelho` ainda devolve 7 dias).
 - Pendente, para evolução futura: descontar falhas já resolvidas (linha de origem com comando concluído depois da falha). Exige que a RPC exponha a chave de origem; hoje as duas leituras não trazem essa informação.
 - Pendente: "Ver no Monday" por item. Exige uma RPC de leitura do vínculo `sincronia.vinculo_nativo`; fica para um PR de banco separado.
+
+## Etapas 6 e 7: saúde dos dados (PR A, em revisão, 10/11/2026)
+
+- Migração `20261109c_saude_normativa.sql` (só SQL, aditiva):
+  - `public.lixeira_nativa_recente(p_dias)`: exclusões de dado nativo do dash, só gestor. Devolve tabela, rótulo, chave, resumo (até três campos), quando foi removido, por quem e se foi restaurado. Janela de 30 dias por padrão.
+  - `public.restaurar_da_lixeira(p_id)`: recusa linha cuja tabela não é de origem `nativa` ("Esta linha vem do Monday ou é calculada; restaurar aqui não teria efeito.") e grava cada restauração em `access_audit_log` (ação `restaurar_lixeira`, com id, tabela, chave e resultado).
+- Tabelas que a lista de saúde não expõe, por decisão desta etapa:
+  - `um_a_um_*` (inclui `um_a_um_privado`, `um_a_um_itens` e `um_a_um_registros`): sigilosas.
+  - Tabelas fora de `public` (`canonico.*`, `sincronia.*`): a restauração de `seguranca.restaurar` só atinge `public`.
+  - Tabelas de origem `monday` e linhas derivadas: a restauração não teria efeito (a sync remove de novo, ou o cálculo refaz).
+- Teste reversível `scripts/normativa/teste_saude_reversivel.sql`, marcador `TESTE_SAUDE_OK`.
+- Etapa 6, no workflow de cópia: passo que reprova o PR se `seguranca.v_tabelas_sem_classificacao` devolver qualquer tabela. Roda em todo PR que altera migração.
