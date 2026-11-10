@@ -35,7 +35,7 @@ export interface DadosMetas {
   feriados: string[]; // 'AAAA-MM-DD'
   metasMensais: { indicador: string; mes: string; cs_nome: string; valor: number | null }[];
   overrides: { cs_nome: string; indicador: string; mes: string; semana_inicio: string; valor: number }[];
-  fechamentos: { cs_nome: string; indicador: string; mes: string; semana_inicio: string; realizado: number | null }[];
+  fechamentos: { cs_nome: string; indicador: string; mes: string; semana_inicio: string; base: number | null; realizado: number | null }[];
 }
 
 // Uma parcela de mês de um indicador. realizado null quando não há como medir (sem vínculo do CS).
@@ -151,8 +151,12 @@ export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMet
     dados.overrides.filter((o) => normalizeNome(o.cs_nome) === normalizeNome(cs.nome) && o.indicador === ind && o.mes === mes)
       .forEach((o) => { overrides[o.semana_inicio] = Number(o.valor); });
     const fechadas = new Map<string, number | null>();
+    const basesFechadas: Record<string, number | null> = {};
     dados.fechamentos.filter((f) => normalizeNome(f.cs_nome) === normalizeNome(cs.nome) && f.indicador === ind && f.mes === mes)
-      .forEach((f) => fechadas.set(f.semana_inicio, f.realizado === null || f.realizado === undefined ? null : Number(f.realizado)));
+      .forEach((f) => {
+        fechadas.set(f.semana_inicio, f.realizado === null || f.realizado === undefined ? null : Number(f.realizado));
+        basesFechadas[f.semana_inicio] = f.base === null || f.base === undefined ? null : Number(f.base);
+      });
 
     // Realizado por parcela: congelado quando a parcela está fechada, ao vivo quando não.
     const realizadoCongelado: Record<string, number | null | undefined> = {};
@@ -165,7 +169,7 @@ export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMet
         .reduce((t, i) => t + i.valor, 0);
     });
 
-    const calc = metasSemanaisDoMes({ metaMensal, semanas, overrides, realizadoCongelado });
+    const calc = metasSemanaisDoMes({ metaMensal, semanas, overrides, realizadoCongelado, baseCongelada: basesFechadas });
     const parcelas: ParcelaMetaSemanal[] = calc.map((c) => {
       const s = semanas.find((x) => x.inicio === c.inicio)!;
       return {
@@ -202,7 +206,7 @@ export async function carregarDadosMetas(sb: SupabaseClient, mes: string): Promi
     selectPaginado(() => sb.from('feriados').select('data').order('data'), { nome: 'feriados' }),
     selectPaginado(() => sb.from('metas_definidas').select('indicador, mes, cs_nome, valor').eq('escopo', 'cs').eq('mes', mes).order('id'), { nome: 'metas_definidas' }),
     selectPaginado(() => sb.from('metas_semanais_override').select('cs_nome, indicador, mes, semana_inicio, valor').eq('mes', mes).order('id'), { nome: 'metas_semanais_override' }),
-    selectPaginado(() => sb.from('metas_semanais_fechamento').select('cs_nome, indicador, mes, semana_inicio, realizado').eq('mes', mes).order('semana_inicio'), { nome: 'metas_semanais_fechamento' }),
+    selectPaginado(() => sb.from('metas_semanais_fechamento').select('cs_nome, indicador, mes, semana_inicio, base, realizado').eq('mes', mes).order('semana_inicio'), { nome: 'metas_semanais_fechamento' }),
     (async () => {
       const { data, error } = await sb.rpc('reports_resumo_cs');
       if (error) throw new Error('Erro ao buscar reports_resumo_cs: ' + error.message);

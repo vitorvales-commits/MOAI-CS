@@ -47,7 +47,7 @@ const dados = (): DadosMetas => ({
 // Parcela já fechada não é regravada, a não ser com reprocessar.
 {
   const d = dados();
-  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: '2026-11-01', semana_inicio: '2026-11-02', realizado: 9 });
+  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: '2026-11-01', semana_inicio: '2026-11-02', base: 10, realizado: 9 });
   const r = montarMetasSemanaisCS(cs, '2026-11-01', d);
   const semReprocessar = linhasDeFechamento(r, '2026-11-23', false).filter((l) => l.indicador === 'cases');
   assert.ok(!semReprocessar.some((l) => l.semana_inicio === '2026-11-02'), 'já fechada: não regrava');

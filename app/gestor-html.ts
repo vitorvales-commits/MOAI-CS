@@ -331,6 +331,8 @@ footer.footnote{margin-top:60px;padding-top:20px;border-top:1px solid var(--cinz
 .meta-card-base .pill-select{width:76px;}
 .meta-card-saldo{font-size:11px;color:var(--cinza-texto);}
 .marca-manual{font-size:11px;font-weight:600;color:var(--dourado,#b8860b);}
+.meta-card-fixa{color:var(--preto-tinta);font-size:14px;}
+.meta-card-trava{font-size:11px;color:var(--cinza-texto);border:1px solid var(--cinza-borda);border-radius:999px;padding:1px 8px;}
 .metas-dica{display:none;font-size:11px;color:var(--cinza-texto);margin:2px 0 0;}
 #cardFeriados{display:flex;flex-direction:column;align-items:stretch;gap:12px;}
 .feriados-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
@@ -3443,14 +3445,21 @@ function cardSemanaMeta_(csNome, indicador, p) {
   h += '<div class="meta-card-rotulo">' + escCS_(rotulo) + '</div>';
   if (nota) h += '<div class="meta-card-nota">' + escCS_(nota) + '</div>';
   h += '<div class="meta-card-base">';
-  h += '<label>Base <input class="pill-select" type="text" inputmode="numeric" value="' + (temBase ? p.base : '') + '" data-acao="salvar" aria-label="Base da semana"></label>';
-  if (p.manual) h += '<span class="marca-manual">manual</span><button type="button" class="btn" data-acao="automatico">Voltar ao automático</button>';
+  if (p.estado === 'fechada') {
+    // Semana fechada: a base é a congelada no fechamento. Não edita nem volta ao automático (o servidor também recusa).
+    h += 'Base <strong class="meta-card-fixa">' + (temBase ? p.base : 'ausente') + '</strong><span class="meta-card-trava">fechada</span>';
+  } else {
+    h += '<label>Base <input class="pill-select" type="text" inputmode="numeric" value="' + (temBase ? p.base : '') + '" data-acao="salvar" aria-label="Base da semana"></label>';
+    if (p.manual) h += '<span class="marca-manual">manual</span><button type="button" class="btn" data-acao="automatico">Voltar ao automático</button>';
+  }
   h += '</div>';
   if (p.deficitRecebido !== null && p.deficitRecebido !== undefined) {
     h += '<div class="meta-card-saldo">Saldo herdado ' + p.deficitRecebido + '</div>';
   }
   if (p.estado === 'fechada') {
     h += '<div class="meta-card-saldo">Realizado ' + valorOuAusente_(p.realizado) + ' · déficit levado ' + valorOuAusente_(p.deficitTransferido) + '</div>';
+  } else if (p.estado === 'corrente' && p.realizado !== null && p.realizado !== undefined) {
+    h += '<div class="meta-card-saldo">Realizado até agora ' + p.realizado + '</div>';
   }
   h += '</div>';
   return h;

@@ -99,7 +99,7 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
 {
   const d = vazio();
   d.metasMensais.push({ indicador: 'cases', mes: MES, cs_nome: 'Rodrigo', valor: 50 });
-  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: MES, semana_inicio: '2026-11-02', realizado: 5 });
+  d.fechamentos.push({ cs_nome: 'Rodrigo', indicador: 'cases', mes: MES, semana_inicio: '2026-11-02', base: 11, realizado: 5 });
   const ps = montarMetasSemanaisCS(cs(), MES, d).indicadores.find((x) => x.indicador === 'cases')!.parcelas;
   assert.equal(ps[0].realizado, 5);
   assert.equal(ps[0].fechada, true);
