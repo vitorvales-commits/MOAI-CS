@@ -14,7 +14,7 @@ export interface FonteDecidida { fonte: FonteCs; rotulo: string }
 const ROTULO: Record<FonteCs, string> = {
   vigencia: 'vigências de conselho (canonico.conselho_cs_vigencia, desde 30/10/2026)',
   cs_periodos: 'períodos de CS (cs_periodos, regra quem_era_cs do dash)',
-  ativos_hoje: 'CS ativos hoje (cs_config, mês corrente ou futuro)',
+  ativos_hoje: 'CS ativos hoje (canonico.cs, via vitorio_dicionario; mês corrente ou futuro)',
   sem_registro: 'sem registro para essa data',
 };
 

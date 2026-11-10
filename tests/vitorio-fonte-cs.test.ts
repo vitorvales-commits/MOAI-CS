@@ -60,4 +60,8 @@ const fim: VigenciaConselho[] = [{ group_id: 'g5', cs_id: 3, inicio: '-infinity'
 assert.equal(csDaCarteira(fim, 'g5', '2026-11-02'), 3);
 assert.equal(csDaCarteira(fim, 'g5', '2026-11-03'), null);
 
+// O rótulo de ativos_hoje cita canonico.cs (fonte real), não cs_config.
+assert.match(fonteParaData('2026-11-05', 'elenco', HOJE).rotulo, /canonico\.cs/);
+assert.doesNotMatch(fonteParaData('2026-11-05', 'elenco', HOJE).rotulo, /cs_config/);
+
 console.log('ok vitorio-fonte-cs');
