@@ -44,4 +44,20 @@ assert.equal(csDaCarteira(vig, 'g1', '2026-10-31'), 7);
 assert.equal(csDaCarteira(vig, 'g1', '2026-11-01'), 8);
 assert.equal(csDaCarteira(vig, 'g2', '2026-11-05'), null);
 
+// Carga inicial ('-infinity') responde a partir de 30/10/2026, mas nunca por setembro.
+const carga: VigenciaConselho[] = [{ group_id: 'g3', cs_id: 5, inicio: '-infinity', fim: null }];
+assert.equal(csDaCarteira(carga, 'g3', '2026-11-05'), 5);
+assert.equal(csDaCarteira(carga, 'g3', '2026-09-15'), null);
+assert.equal(csDaCarteira(carga, 'g3', '2026-10-29'), null);
+
+// Início em 01/11 não responde para 31/10.
+const novaVig: VigenciaConselho[] = [{ group_id: 'g4', cs_id: 9, inicio: '2026-11-01', fim: null }];
+assert.equal(csDaCarteira(novaVig, 'g4', '2026-10-31'), null);
+assert.equal(csDaCarteira(novaVig, 'g4', '2026-11-01'), 9);
+
+// Fim exclusivo: no dia do fim já não é a vigência anterior.
+const fim: VigenciaConselho[] = [{ group_id: 'g5', cs_id: 3, inicio: '-infinity', fim: '2026-11-03' }];
+assert.equal(csDaCarteira(fim, 'g5', '2026-11-02'), 3);
+assert.equal(csDaCarteira(fim, 'g5', '2026-11-03'), null);
+
 console.log('ok vitorio-fonte-cs');

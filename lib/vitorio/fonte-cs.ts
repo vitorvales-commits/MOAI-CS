@@ -35,10 +35,20 @@ export function elencoAntesDaCarga(periodos: LinhaPeriodo[], mesIso: string, hoj
 }
 
 export interface VigenciaConselho { group_id: string; cs_id: number; inicio: string; fim: string | null }
+// inicio pode ser '-infinity' (carga inicial); fim nulo é vigência aberta.
 
-// Quem cuidava do conselho na data, pela vigência. null quando a vigência não cobre a data.
+// Início '-infinity' (carga inicial) e fim nulo ou '+infinity' viram limites explícitos, sem comparar texto.
+function ticks(data: string | null): number {
+  if (data === null || data === '+infinity') return Infinity;
+  if (data === '-infinity') return -Infinity;
+  return Date.parse(data.slice(0, 10) + 'T00:00:00Z');
+}
+
+// Quem cuidava do conselho na data, pela vigência (fim exclusivo). null quando a vigência não cobre a data,
+// e null sempre para datas anteriores à carga: a carga inicial ('-infinity') nunca responde por antes de 30/10/2026.
 export function csDaCarteira(vigencias: VigenciaConselho[], groupId: string, dataIso: string): number | null {
-  const d = dataIso.slice(0, 10);
-  const v = vigencias.find((x) => x.group_id === groupId && x.inicio <= d && (x.fim === null || x.fim > d));
+  const d = Date.parse(dataIso.slice(0, 10) + 'T00:00:00Z');
+  if (d < Date.parse(INICIO_VIGENCIA + 'T00:00:00Z')) return null;
+  const v = vigencias.find((x) => x.group_id === groupId && ticks(x.inicio) <= d && d < ticks(x.fim));
   return v ? v.cs_id : null;
 }
