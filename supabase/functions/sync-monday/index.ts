@@ -1565,6 +1565,8 @@ async function syncAgenda() {
         conselheiro_nome: item.name,
         data_iso: dataHoraBRParaISO(dataTxt),
         status: colText(item.column_values, AGENDA_COLS.status),
+        // Sem isto o upsert (merge-duplicates) mantém o synced_at de quando a linha foi criada: o default now() só vale no insert.
+        synced_at: new Date().toISOString(),
       });
     });
   });
