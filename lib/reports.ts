@@ -43,7 +43,7 @@ import { resumoRelatoriosPorCS } from './relatorio-conselho';
 import { churnDaArea } from './churn-area';
 import { listarDuvidasSemResposta } from './vitorio/fila';
 import { listarExtrasOrfas } from './vitorio/servidor';
-import { escritasPendentesDaFila, espelhosEmErroDaFila, ROTULO_ESPELHO, type EscritaPendente, type FalhaEspelho, type EspelhoEmErro } from './sincronia';
+import { escritasPendentesDaFila, espelhosEmErroDaFila, agruparFalhasEspelho, type EscritaPendente, type FalhaEspelho } from './sincronia';
 import { VITORIO_FILA_JANELA_DIAS } from './constants';
 import { consolidarCriticosPorProduto, percentualCriticosDecimos, type LinhaProduto } from './criticos';
 
@@ -3968,10 +3968,11 @@ export async function acoesVisaoGeralGestor(sb: SupabaseClient) {
     if (e1) throw new Error(e1.message);
     const { data: pendentes, error: e2 } = await sb.rpc('sincronia_escritas_pendentes');
     if (e2) throw new Error(e2.message);
-    const rotulo = (t: string) => ROTULO_ESPELHO[t] ?? t;
     return {
-      falhas: ((falhas || []) as FalhaEspelho[]).map((f) => ({ ...f, rotulo: rotulo(f.tabela_origem) })),
-      emErro: (espelhosEmErroDaFila((pendentes || []) as EscritaPendente[]) as EspelhoEmErro[]).map((e) => ({ ...e, rotulo: rotulo(e.tabela) })),
+      grupos: agruparFalhasEspelho(
+        (falhas || []) as FalhaEspelho[],
+        espelhosEmErroDaFila((pendentes || []) as EscritaPendente[]),
+      ),
     };
   });
 

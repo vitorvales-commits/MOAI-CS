@@ -1835,15 +1835,11 @@ function itensFila_() {
       var h = Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 3600000));
       return h < 48 ? h + (h === 1 ? ' hora' : ' horas') : Math.floor(h / 24) + ' dias';
     };
-    esp.dado.falhas.forEach(function (f) {
-      itens.push({ tipo: 'semana', cor: 'red', titulo: 'Espelho no Monday com falha: ' + f.rotulo,
-        texto: 'Erro: ' + f.erro_mensagem + '. A escrita no dash não foi afetada; o registro no Monday pode estar desatualizado.',
-        quem: 'Espelho', quando: 'há ' + haEspelho_(f.ocorrido_em), acao: null });
-    });
-    esp.dado.emErro.forEach(function (e) {
-      itens.push({ tipo: 'semana', cor: 'red', titulo: 'Espelho no Monday com falha: ' + e.rotulo,
-        texto: 'Erro: ' + (e.erro || 'sem mensagem') + '. As tentativas se esgotaram; o registro no Monday não foi atualizado.',
-        quem: 'Espelho', quando: 'há ' + haEspelho_(e.executado_em || e.criado_em), acao: null });
+    esp.dado.grupos.forEach(function (g) {
+      itens.push({ tipo: 'semana', cor: 'red', titulo: 'Espelho no Monday com falha: ' + g.rotulo,
+        texto: g.total + ' registro(s) não chegaram ao Monday. A última falha foi há ' + haEspelho_(g.ultimaEm) + ': ' + g.ultimaMensagem +
+          '. A escrita no dash não foi afetada. Avise o responsável pelo dash para reprocessar.',
+        quem: 'Espelho', quando: 'há ' + haEspelho_(g.ultimaEm), acao: null });
     });
   }
   var ins = ACOES_.insights;

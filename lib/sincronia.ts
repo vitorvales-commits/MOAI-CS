@@ -118,6 +118,37 @@ export function espelhosEmErroDaFila(linhas: EscritaPendente[]): EspelhoEmErro[]
     .sort((a, b) => new Date(a.executado_em ?? a.criado_em).getTime() - new Date(b.executado_em ?? b.criado_em).getTime());
 }
 
+// Bloco de espelho na fila de ação: um item por tabela de origem, somando falhas do gatilho e comandos em erro.
+// Falhas do gatilho só contam nas últimas JANELA_FALHA_HORAS horas (a RPC devolve 7 dias; o corte é aqui).
+// Não há como saber, sem mudança no banco, se uma falha já foi resolvida por um comando concluído depois dela.
+export const JANELA_FALHA_HORAS = 24;
+export type GrupoEspelho = { tabela: string; rotulo: string; total: number; ultimaEm: string; ultimaMensagem: string };
+
+export function agruparFalhasEspelho(falhas: FalhaEspelho[], emErro: EspelhoEmErro[], agora: Date = new Date()): GrupoEspelho[] {
+  const limite = agora.getTime() - JANELA_FALHA_HORAS * 3_600_000;
+  const registros: { tabela: string; em: string; msg: string }[] = [
+    ...falhas
+      .filter((f) => new Date(f.ocorrido_em).getTime() >= limite)
+      .map((f) => ({ tabela: f.tabela_origem, em: f.ocorrido_em, msg: f.erro_mensagem })),
+    ...emErro.map((e) => ({ tabela: e.tabela, em: e.executado_em ?? e.criado_em, msg: e.erro ?? 'sem mensagem' })),
+  ];
+  const porTabela = new Map<string, { total: number; ultimo: { em: string; msg: string } }>();
+  for (const r of registros) {
+    const atual = porTabela.get(r.tabela);
+    const maisRecente = !atual || new Date(r.em).getTime() > new Date(atual.ultimo.em).getTime();
+    porTabela.set(r.tabela, {
+      total: (atual?.total ?? 0) + 1,
+      ultimo: maisRecente ? { em: r.em, msg: r.msg } : atual!.ultimo,
+    });
+  }
+  return [...porTabela.entries()]
+    .map(([tabela, g]) => ({
+      tabela, rotulo: ROTULO_ESPELHO[tabela] ?? tabela, total: g.total,
+      ultimaEm: g.ultimo.em, ultimaMensagem: g.ultimo.msg,
+    }))
+    .sort((a, b) => new Date(b.ultimaEm).getTime() - new Date(a.ultimaEm).getTime());
+}
+
 // Fila de ação de visitas: erro, ou conflito parado há mais de HORAS_PENDENTE. Mais antigo primeiro.
 // Comandos de espelho ficam de fora: têm bloco próprio ("Espelho no Monday com falha").
 export function escritasPendentesDaFila(linhas: EscritaPendente[], agora: Date = new Date()): EscritaPendente[] {
