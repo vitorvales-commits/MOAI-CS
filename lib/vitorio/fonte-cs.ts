@@ -44,6 +44,14 @@ function ticks(data: string | null): number {
   return Date.parse(data.slice(0, 10) + 'T00:00:00Z');
 }
 
+// CS que tinham algum conselho na data, pela vigência. Vazio antes da carga (mesma guarda de csDaCarteira).
+export function csVigentes(vigencias: VigenciaConselho[], dataIso: string): number[] {
+  const d = Date.parse(dataIso.slice(0, 10) + 'T00:00:00Z');
+  if (d < Date.parse(INICIO_VIGENCIA + 'T00:00:00Z')) return [];
+  const ids = vigencias.filter((x) => ticks(x.inicio) <= d && d < ticks(x.fim)).map((x) => x.cs_id);
+  return Array.from(new Set(ids));
+}
+
 // Quem cuidava do conselho na data, pela vigência (fim exclusivo). null quando a vigência não cobre a data,
 // e null sempre para datas anteriores à carga: a carga inicial ('-infinity') nunca responde por antes de 30/10/2026.
 export function csDaCarteira(vigencias: VigenciaConselho[], groupId: string, dataIso: string): number | null {
