@@ -1850,7 +1850,7 @@ function itensFila_() {
   if (rs && rs.erro) erros.push('Ritmo semanal indisponível: ' + rs.erro);
   if (rs && rs.dado) rs.dado.forEach(function (it) {
     var nomes = (it.indicadores || []).map(function (x) { return RITMO_IND_ROTULO_[x.indicador] || x.indicador; });
-    itens.push({ tipo: 'semana', cor: 'gold', tratarId: it.id, titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
+    itens.push({ tipo: 'semana', cor: 'gold', ritmo: true, deficit: Number(it.deficit_total) || 0, tratarId: it.id, titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
       texto: nomes.join(', ') + '. Déficit de ' + it.deficit_total + ' na semana. Próximo passo: tratar na 1:1 da semana.',
       quem: it.cs_nome, quando: 'sem ' + dmAcoes_(it.semana_inicio), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(it.cs_nome) + '#secSemanalCS' } });
   });
@@ -1966,9 +1966,11 @@ function renderFilaAcao_() {
     var f = itensFila_();
     var semana = f.itens.filter(function (i) { return i.tipo === 'semana'; });
     var criticas = f.itens.filter(function (i) { return i.cor === 'red'; });
-    var visiveis = filaFiltro_ === 'semana' ? semana : (filaFiltro_ === 'criticas' ? criticas : f.itens);
+    // Ritmo: itens de ritmo semanal em aberto, do maior para o menor déficit (PR da fila por ritmo).
+    var ritmo = f.itens.filter(function (i) { return i.ritmo; }).sort(function (a, b) { return b.deficit - a.deficit; });
+    var visiveis = filaFiltro_ === 'semana' ? semana : (filaFiltro_ === 'criticas' ? criticas : (filaFiltro_ === 'ritmo' ? ritmo : f.itens));
     document.getElementById('filaTotal').textContent = String(f.itens.length);
-    var chips = [['semana', 'Esta semana', semana.length], ['criticas', 'Críticas', criticas.length], ['todas', 'Todas', f.itens.length]];
+    var chips = [['semana', 'Esta semana', semana.length], ['criticas', 'Críticas', criticas.length], ['ritmo', 'Ritmo', ritmo.length], ['todas', 'Todas', f.itens.length]];
     var filtros = document.getElementById('filaFiltros');
     filtros.innerHTML = chips.map(function (c) { return '<button type="button" class="chip' + (filaFiltro_ === c[0] ? ' on' : '') + '" data-filtro="' + c[0] + '">' + c[1] + ' ' + c[2] + '</button>'; }).join('');
     filtros.onclick = function (ev) { var b = ev.target.closest('button[data-filtro]'); if (!b) return; filaFiltro_ = b.getAttribute('data-filtro'); filaExpandida_ = false; renderFilaAcao_(); };
@@ -2085,7 +2087,9 @@ function salvarLimiar_() {
 document.getElementById('semanaTime').addEventListener('click', function (ev) {
   if (!ev.target.closest) return;
   if (ev.target.closest('[data-ir-fila-ritmo]')) {
+    filaFiltro_ = 'ritmo'; filaExpandida_ = false;
     definirVisaoHome_('geral');
+    renderFilaAcao_();
     setTimeout(function () { var f = document.getElementById('filaAcao'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
   }
   if (ev.target.closest('[data-salvar-limiar]')) salvarLimiar_();
