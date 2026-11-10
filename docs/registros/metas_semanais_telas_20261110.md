@@ -130,9 +130,37 @@ Base: a #50 (PR 2a). Não depende de nenhuma outra PR além das anteriores.
 - **Editar o limiar na tela**: `salvar_limiar_ritmo` existe, sem tela. Mesma situação.
 - **Itens do retroativo**: a semana de 02/11 não depende de nenhum dado novo. Depois de aplicar, a consulta 2 mostra os CS com item.
 
-## PR 2b
+## PR 2b: home do gestor, unificação do Geral, tratar item e limiar (branch `feat/metas-semanais-home-gestor`)
 
-- Home do gestor com alternância Geral e Semana atual (progresso do time e acesso aos itens `ritmo_semanal`). Decisão do Vitor: a lista de CS fora do ritmo não é duplicada na home, porque a fila é o lugar de agir.
-- Unificação da grade de status do Geral do gestor com `calcularRitmo`. Decisão do Vitor: entra nesta PR.
-- Botão para tratar item e tela do limiar (pendências da PR 3).
-- Pendente.
+Base: a PR 3 (#52), que sai da #50 e da #33.
+
+### O que foi entregue
+
+- **Home do gestor com alternância** (`app/gestor-html.ts`): Geral é o padrão. Em Semana atual, somem os KPIs e o mapa, e aparecem só:
+  - o progresso do time na semana, por indicador de metas semanais, com a soma das efetivas e dos realizados dos CS com realizado apurado. CS sem apuração conta à parte, nunca como zero;
+  - o status do time pelo mesmo `calcularRitmo`;
+  - o acesso à fila de ritmo: quantidade de itens em aberto e o maior déficit, com o botão "Ver na fila de ação", que volta para Geral e leva até a fila;
+  - a tela do limiar do ritmo semanal (em porcentagem, de 1 a 100).
+  A escolha vai para `?visao=`. A lista de CS fora do ritmo não é duplicada na home, por decisão do Vitor: a fila é o lugar de agir.
+- **Resumo do time** (`resumoSemanaTime` em `lib/metas-semanais-visao.ts`, pura, testada): soma por indicador a partir de `metasSemanaisDoCS`. A rota `GET /api/gestor/metas-semanais` devolve o campo `resumoTime`.
+- **Fila ordenada pelo maior déficit**: a rota de ações devolve os itens de ritmo com `order by deficit_total desc`. A fila também mostra o limiar atual.
+- **Tratar item**: botão "Marcar como tratado" na fila, para cada item de ritmo. Chama `POST /api/gestor/fila-acao/ritmo/:id/tratar`, que executa `tratar_item_ritmo` no banco com checagem de gestor. Depois a fila é recarregada.
+- **Tela do limiar**: `GET` e `POST /api/gestor/ritmo-limiar`, que executam `salvar_limiar_ritmo`. Valor entre 1% e 100%. A mudança vale no próximo fechamento de segunda.
+- **Unificação do Geral da página do CS** (`app/gestor-cs-html.ts`, `lib/reports.ts`): cada eixo do radar leva o `ritmo` que o servidor já calcula com `calcularRitmo` (`montarRitmoDoMes`). O navegador não recalcula mais a fração do mês. Rótulos do mesmo vocabulário da Semana atual: "No ritmo", "Atenção", "Atrás", "Começando". Indicador sem ritmo do servidor (churn, downsell, GTD) segue como meta cheia.
+- **CSS e script compartilhados** (`lib/ui/metas-semanais-ui.ts`) incluídos também na home do gestor (`app/gestor/page.tsx`).
+
+### Verificação
+
+- `tsc --noEmit` limpo; `npm test` 69 de 69 arquivos; `next build` compilado.
+- JavaScript inline das páginas validado com `node --check`.
+- Capturas em `docs/registros/capturas_metas_semanais_visao/`:
+  - `gestor-home-semana-atual-desktop.png`: Semana atual com o time da semana de 09/11 a 15/11. Soma conferida contra os fixtures: cases 1 de 10, matchmakings 6 de 19, resultado 1 de 12, indicações 0 de 5. Fila com dois itens, Vilker (déficit 11) à frente de George (6).
+  - `gestor-home-geral-fila-desktop.png`: Geral com a fila de ritmo e o botão "Marcar como tratado".
+- Os avisos de erro nas outras seções da home (KPIs, mapa e rede) são do harness: os endpoints não estão mockados. Não existem em produção.
+
+### Pendências
+
+- **Visual da unificação do Geral do CS**: o código está pronto e compila, mas não há captura. O fixture de radar do harness não traz `ritmo`. Fica para a conferência no preview com dados reais.
+- **Conferência no preview**: depende da liberação de variáveis para Preview, já autorizada e feita (`SUPABASE_URL` e `SUPABASE_ANON_KEY`). A URL de redirecionamento do Supabase Auth para o domínio de preview ainda precisa ser incluída pelo Vitor no painel do Supabase.
+- **Dependência do banco**: a PR 2b depende da migração `20261110_ritmo_semanal_fila` aplicada. Sem ela, a fila e o limiar mostram erro isolado e o botão de tratar falha com mensagem.
+- **Teste automatizado da rota de tratar e do limiar**: não há. A checagem de gestor e as validações estão nas funções do banco, cobertas pelo script SQL da PR 3.

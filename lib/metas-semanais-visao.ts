@@ -120,3 +120,49 @@ export function semanasFechadasDoMes(m: MetasSemanaisCS): SemanaFechadaMes[] {
   }
   return saida;
 }
+
+// Progresso do time na semana corrente, por indicador (PR 2b). Soma só os CS com realizado apurado, para comparar
+// efetiva com realizado da mesma base; os demais contam como "sem apuração", nunca como zero.
+export interface ResumoSemanaTime {
+  indicador: IndicadorSemanal;
+  label: string;
+  inicio: string;
+  fim: string;
+  efetivaTotal: number; // soma da efetiva dos CS com realizado apurado
+  realizadoTotal: number;
+  csComMeta: number; // CS com meta efetiva na semana
+  csSemApuracao: number; // CS com meta efetiva e realizado ausente
+  falta: number;
+  diasUteisRestantes: number;
+  previsto: number | null;
+  status: StatusRitmo | null; // null quando nenhum CS tem base apurada
+}
+
+export function resumoSemanaTime(cs: MetasSemanaisCS[], hoje: string): ResumoSemanaTime[] {
+  const saida: ResumoSemanaTime[] = [];
+  for (const ind of ['cases', 'matchmakings', 'matchmakings_resultado', 'indicacoes', 'upsell', 'rounds'] as IndicadorSemanal[]) {
+    const parcelas: ParcelaMetaSemanal[] = [];
+    for (const c of cs) {
+      const i = c.indicadores.find((x) => x.indicador === ind);
+      const p = i?.parcelas.find((x) => x.estado === 'corrente');
+      if (i && i.metaMensal !== null && p && p.metaEfetiva !== null) parcelas.push(p);
+    }
+    if (!parcelas.length) continue;
+    const base = parcelas[0];
+    const apuradas = parcelas.filter((p) => p.realizado !== null);
+    const efetivaTotal = apuradas.reduce((t, p) => t + p.metaEfetiva!, 0);
+    const realizadoTotal = apuradas.reduce((t, p) => t + p.realizado!, 0);
+    const total = diasUteisEntre(base.parcelaInicio, base.parcelaFim);
+    const decorridos = diasUteisEntre(base.parcelaInicio, hoje < base.parcelaFim ? hoje : base.parcelaFim);
+    const ritmo = apuradas.length && efetivaTotal > 0
+      ? calcularRitmo({ indicador: ind, base: 'util', mes: base.parcelaInicio.slice(0, 7), hoje, meta: efetivaTotal, realizado: realizadoTotal, uteis: { decorridos, total } })
+      : null;
+    saida.push({
+      indicador: ind, label: LABEL_INDICADOR_SEMANAL[ind], inicio: base.parcelaInicio, fim: base.parcelaFim,
+      efetivaTotal, realizadoTotal, csComMeta: parcelas.length, csSemApuracao: parcelas.length - apuradas.length,
+      falta: Math.max(0, efetivaTotal - realizadoTotal), diasUteisRestantes: total - decorridos,
+      previsto: ritmo ? ritmo.previsto : null, status: ritmo ? ritmo.status : null,
+    });
+  }
+  return saida;
+}

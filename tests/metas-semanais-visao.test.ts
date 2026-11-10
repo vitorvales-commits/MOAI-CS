@@ -3,7 +3,7 @@
 // de 60% dos dias úteis com zero feito; realizado ausente fica nulo, nunca zero; superávit não gera falta.
 import assert from 'node:assert/strict';
 import { diasUteisEntre } from '../lib/ritmo.ts';
-import { linhasSemanaAtual, semanasFechadasDoMes } from '../lib/metas-semanais-visao.ts';
+import { linhasSemanaAtual, semanasFechadasDoMes, resumoSemanaTime } from '../lib/metas-semanais-visao.ts';
 import type { MetasSemanaisCS, ParcelaMetaSemanal } from '../lib/metas-semanais.ts';
 
 // Semana de 09/11 a 15/11/2026: segunda a domingo, cinco dias úteis, sem feriado nacional.
@@ -89,6 +89,18 @@ assert.equal(diasUteisEntre('2026-11-11', '2026-11-09'), 0);
   assert.equal(f.length, 1);
   assert.equal(f[0].atingiu, false);
   assert.equal(f[0].deficitTransferido, 3);
+}
+
+// 9. Time na semana: soma só CS com realizado apurado; realizado ausente conta como sem apuração, nunca zero.
+{
+  const a = cs([{ indicador: 'cases', metaMensal: 4, parcelas: [parcela({ metaEfetiva: 2, base: 2, realizado: 1 })] }]);
+  const b = cs([{ indicador: 'cases', metaMensal: 4, parcelas: [parcela({ metaEfetiva: 2, base: 2, realizado: null })] }]);
+  const r = resumoSemanaTime([a, b], '2026-11-11').find((x) => x.indicador === 'cases')!;
+  assert.equal(r.csComMeta, 2);
+  assert.equal(r.csSemApuracao, 1);
+  assert.equal(r.efetivaTotal, 2, 'só o CS apurado entra na soma da efetiva');
+  assert.equal(r.realizadoTotal, 1);
+  assert.equal(r.falta, 1);
 }
 
 console.log('metas-semanais-visao: ok');

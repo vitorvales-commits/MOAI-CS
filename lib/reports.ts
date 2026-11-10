@@ -3772,7 +3772,10 @@ export async function paginaCSGestor(sb: SupabaseClient, nome: string, seletorMe
   const radar = await secaoIsolada('radar', () => RADAR_EIXOS.map((eixo, i) => {
     const ind = (cs.indicadores as any)[eixo.chave];
     const pct = cs.radar[i];
-    return { chave: eixo.chave, label: eixo.label, tipoMeta: eixo.tipoMeta, pct, valor: ind.calculado, meta: ind.meta, unidade: ind.unidade, semMeta: pct === null };
+    // Ritmo do mês vem de montarRitmoDoMes (calcularRitmo), o mesmo da home. A página do CS não recalcula.
+    const itemRitmo = (visao as any).ritmo?.linhas?.find((l: any) => l.nome === nome)?.itens?.[eixo.chave] ?? null;
+    const ritmo = itemRitmo ? { status: itemRitmo.status, previsto: itemRitmo.previsto ?? null, fracao: itemRitmo.fracao ?? null } : null;
+    return { chave: eixo.chave, label: eixo.label, tipoMeta: eixo.tipoMeta, pct, valor: ind.calculado, meta: ind.meta, unidade: ind.unidade, semMeta: pct === null, ritmo };
   }));
 
   const gtd = await secaoIsolada('gtd', () => {

@@ -597,7 +597,10 @@ document.addEventListener('click', function (ev) {
 // Estado: na meta (100 ou mais), abaixo (60 a 99), longe (menos de 60), sem meta. Os números vêm prontos
 // do servidor (pct na escala de 0 a 150); aqui só se desenha.
 var IND_LIMIAR_LONGE_ = 60;
-var IND_ROTULO_ESTADO_ = { ok: 'Na meta', ritmo: 'No ritmo', atencao: 'Abaixo', critico: 'Longe', cedo: 'No prazo', neutro: 'Sem meta' };
+// Rótulos do mesmo vocabulário de calcularRitmo (lib/ritmo.ts) e da Semana atual (PR 2b). Meta cheia segue com "Na meta".
+var IND_ROTULO_ESTADO_ = { ok: 'Na meta', ritmo: 'No ritmo', atencao: 'Atenção', critico: 'Atrás', cedo: 'Começando', neutro: 'Sem meta' };
+// Status de ritmo vindo do servidor (calcularRitmo em lib/reports.ts, montarRitmoDoMes) para os indicadores de fluxo.
+var IND_STATUS_RITMO_ = { no_ritmo: 'ritmo', atencao: 'atencao', atras: 'critico', cedo: 'cedo' };
 var IND_COR_ESTADO_ = { ok: '#3D8B5F', ritmo: '#3D8B5F', atencao: '#C89A2E', critico: '#C0433D', cedo: '#9F9F9F', neutro: '#9F9F9F' };
 var MESES_CURTOS_ = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -615,31 +618,27 @@ function indFracaoMes_() {
   var dias = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   return hoje.getDate() / dias;
 }
+// Só lê o ritmo que o servidor calculou (e.ritmo). Indicador sem ritmo do servidor é de meta cheia. Nada é recalculado aqui.
 function indRitmo_(e) {
-  var f = indFracaoMes_();
-  if (f === null || e.semMeta || e.pct === null || e.pct === undefined || e.pct >= 100) return null;
-  if (IND_FLUXO_RITMO_.indexOf(e.chave) === -1 || !e.meta) return null;
-  var esperado = e.meta * f;
-  return { esperado: esperado, pct: esperado > 0 ? Math.round((Number(e.valor) || 0) / esperado * 100) : 100, cedo: esperado < 1, fracao: f };
+  if (e.semMeta || e.pct === null || e.pct === undefined || e.pct >= 100) return null;
+  if (!e.ritmo || e.ritmo.previsto === null || e.ritmo.previsto === undefined) return null;
+  var esperado = e.ritmo.previsto;
+  return { esperado: esperado, pct: esperado > 0 ? Math.round((Number(e.valor) || 0) / esperado * 100) : 100, cedo: e.ritmo.status === 'cedo', fracao: e.ritmo.fracao, status: e.ritmo.status };
 }
 function indEstado_(e) {
   if (e.semMeta || e.pct === null || e.pct === undefined) return 'neutro';
   if (e.pct >= 100) return 'ok';
   var r = indRitmo_(e);
-  if (r) {
-    if (r.cedo && !(Number(e.valor) > 0)) return 'cedo';
-    if (r.pct >= 100) return 'ritmo';
-    return r.pct >= IND_LIMIAR_LONGE_ ? 'atencao' : 'critico';
-  }
+  if (r) return IND_STATUS_RITMO_[r.status] || 'critico';
   if (e.pct >= IND_LIMIAR_LONGE_) return 'atencao';
   return 'critico';
 }
 function indPill_(e, est) {
   var r = indRitmo_(e);
   if (est === 'neutro') return 'Sem meta';
-  if (est === 'cedo') return 'No prazo';
-  if (est === 'ritmo') return 'No ritmo';
-  if (r) return 'Atrás';
+  if (est === 'cedo') return IND_ROTULO_ESTADO_.cedo;
+  if (est === 'ritmo') return IND_ROTULO_ESTADO_.ritmo;
+  if (r) return IND_ROTULO_ESTADO_[est] || IND_ROTULO_ESTADO_.critico;
   return e.pct + '%';
 }
 function decimalBR_(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR'); }
@@ -780,7 +779,7 @@ function renderRadarCS(d) {
   }).join(', ') + '. É por aí que a pontuação mais sobe; vale levar para a próxima 1:1.';
   else frase = 'Nenhum indicador está longe; ' + (comMeta.length - bem.length) + ' ainda pede atenção.';
   var aviso = aberto ? '<div class="ind-aviso">Mês em andamento: nos indicadores de volume a régua é o esperado até hoje, e a barra mostra o ritmo com um traço âmbar.</div>' : '';
-  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>' + (aberto ? 'na meta ou no ritmo' : 'na meta') + '</span><span><i style="background:#C89A2E"></i>abaixo</span><span><i style="background:#C0433D"></i>' + (aberto ? 'atrás' : 'longe') + '</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta ou cedo</span></div>';
+  var legenda = '<div class="ind-legenda"><span><i style="background:#3D8B5F"></i>' + (aberto ? 'na meta ou no ritmo' : 'na meta') + '</span><span><i style="background:#C89A2E"></i>' + (aberto ? 'atenção' : 'abaixo') + '</span><span><i style="background:#C0433D"></i>' + (aberto ? 'atrás' : 'longe') + '</span><span><i style="background:#fff;border:1px dashed #9F9F9F"></i>sem meta ou cedo</span></div>';
   var tom = longe.length ? 'critico' : (bem.length === comMeta.length ? 'ok' : 'atencao');
   el.innerHTML = '<div class="ind-resumo"><div class="ind-placar ' + tom + '"><b>' + bem.length + '</b><span>de ' + comMeta.length + (aberto ? ' na meta ou no ritmo' : ' na meta') + '</span></div>'
     + '<div class="ind-resumo-txt">' + frase + aviso + '</div></div>'

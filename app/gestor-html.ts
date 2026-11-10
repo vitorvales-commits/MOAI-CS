@@ -833,6 +833,11 @@ ${SAUDE_DADOS_HTML}
 
   <main class="content">
   <div class="tab-panel active" id="tab-visaoGeral" data-tab="visaoGeral">
+    <div class="av-barra" id="avVisaoHome" style="display:flex;justify-content:flex-end;margin:0 0 12px"></div>
+    <section class="panel" id="semanaTime" aria-labelledby="h-semana-time" hidden>
+      <div class="ph"><div><h2 id="h-semana-time">Semana atual do time</h2><p id="semanaTimeSub">Progresso do time na semana corrente, por indicador de metas semanais.</p></div></div>
+      <div id="semanaTimeCorpo"><p class="gestor-empty">Carregando…</p></div>
+    </section>
     <section class="kpis" id="kpisArea" data-tour="kpis" aria-label="Leitura de relance">
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
@@ -840,7 +845,7 @@ ${SAUDE_DADOS_HTML}
       <div class="panel kpi"><span class="sk sk-kpi"></span></div>
     </section>
 
-    <div class="layout" style="margin-top:22px">
+    <div class="layout" id="visaoGeralLayout" style="margin-top:22px">
       <div class="coluna">
         <section class="panel" id="mapa-time" data-tour="mapa-time" aria-labelledby="h-mapa">
           <div class="ph">
@@ -1845,7 +1850,7 @@ function itensFila_() {
   if (rs && rs.erro) erros.push('Ritmo semanal indisponível: ' + rs.erro);
   if (rs && rs.dado) rs.dado.forEach(function (it) {
     var nomes = (it.indicadores || []).map(function (x) { return RITMO_IND_ROTULO_[x.indicador] || x.indicador; });
-    itens.push({ tipo: 'semana', cor: 'gold', titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
+    itens.push({ tipo: 'semana', cor: 'gold', tratarId: it.id, titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
       texto: nomes.join(', ') + '. Déficit de ' + it.deficit_total + ' na semana. Próximo passo: tratar na 1:1 da semana.',
       quem: it.cs_nome, quando: 'sem ' + dmAcoes_(it.semana_inicio), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(it.cs_nome) + '#secSemanalCS' } });
   });
@@ -1900,7 +1905,8 @@ function itensFila_() {
   return { itens: itens, erros: erros };
 }
 function itemFilaHtml_(i) {
-  var acao = i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '';
+  var acao = (i.acao ? '<a class="btn sm' + (i.cor === 'red' ? ' pri' : '') + '" href="' + escCS_(i.acao.href) + '"' + (i.acao.externo ? ' target="_blank" rel="noopener"' : '') + '>' + escCS_(i.acao.rotulo) + '</a>' : '') +
+    (i.tratarId ? '<button type="button" class="btn sm" data-tratar-ritmo="' + escCS_(i.tratarId) + '">Marcar como tratado</button>' : '');
   return '<div class="item"><span class="dot ' + i.cor + '"></span><div><h3>' + escCS_(i.titulo) + '</h3>' + (i.texto ? '<p>' + escCS_(i.texto) + '</p>' : '') + '</div>' +
     '<div class="item-meta"><span>' + escCS_(i.quem) + '</span>' + (i.quando ? '<span>·</span><span>' + escCS_(i.quando) + '</span>' : '') + acao
     + (i.tratar ? '<button type="button" class="btn sm" data-tratar="' + escCS_(i.tratar) + '">Marcar como tratado</button>' : '')
@@ -2008,10 +2014,96 @@ function renderFilaAcao_() {
     corpo.innerHTML = erroSecaoHtml_('Não foi possível montar a fila de ação', e);
   }
 }
+// ---------- PR 2b: alternância Geral (padrão) e Semana atual na home do gestor ----------
+// Em Semana atual aparecem só o progresso do time na semana, por indicador, e o acesso à fila de ritmo semanal (a
+// lista de CS fora do ritmo fica na fila, que é onde se age). A escolha vai para o parâmetro visao da URL.
+var RESUMO_SEMANA_ = null;
+function mesIsoHome_() {
+  var idx = MESES_GESTOR.indexOf(mesAtual);
+  return idx === -1 || !anoAtual ? null : anoAtual + '-' + String(idx + 1).padStart(2, '0') + '-01';
+}
+function visaoHomeAtual_() { return new URLSearchParams(location.search).get('visao') === 'semana' ? 'semana' : 'geral'; }
+function definirVisaoHome_(v) {
+  var u = new URL(location.href); u.searchParams.set('visao', v);
+  history.replaceState(null, '', u.pathname + u.search + u.hash);
+  desenhaVisaoHome_();
+}
+function desenhaVisaoHome_() {
+  var atual = visaoHomeAtual_(), semana = atual === 'semana';
+  var barra = document.getElementById('avVisaoHome');
+  barra.innerHTML = msAlternancia_([['geral', 'Geral'], ['semana', 'Semana atual']], atual);
+  msLigarAlternancia_(barra, definirVisaoHome_);
+  document.getElementById('kpisArea').style.display = semana ? 'none' : '';
+  document.getElementById('visaoGeralLayout').style.display = semana ? 'none' : '';
+  document.getElementById('semanaTime').hidden = !semana;
+  if (semana) carregarSemanaTime_();
+}
+function carregarSemanaTime_() {
+  var mes = mesIsoHome_(), el = document.getElementById('semanaTimeCorpo');
+  if (!mes) { el.innerHTML = '<p class="gestor-empty">Escolha um mês para ver a semana atual.</p>'; return; }
+  el.innerHTML = '<p class="gestor-empty">Carregando…</p>';
+  fetchJSON_('/api/gestor/metas-semanais?mes=' + encodeURIComponent(mes)).then(function (d) {
+    RESUMO_SEMANA_ = d;
+    pintaSemanaTime_();
+  }).catch(function (err) { el.innerHTML = erroSecaoHtml_('Não foi possível carregar a semana atual', err); });
+}
+function pintaSemanaTime_() {
+  var el = document.getElementById('semanaTimeCorpo');
+  if (visaoHomeAtual_() !== 'semana' || !RESUMO_SEMANA_) return;
+  var linhas = (RESUMO_SEMANA_.resumoTime || []).map(function (x) {
+    var pct = x.efetivaTotal > 0 ? Math.min(x.realizadoTotal / x.efetivaTotal * 100, 100) : 0;
+    var pace = x.previsto !== null && x.previsto !== undefined && x.efetivaTotal > 0 ? Math.min(x.previsto / x.efetivaTotal * 100, 100) : null;
+    var atras = x.status === 'atras' || x.status === 'atencao';
+    var st = x.status ? MS_ST_[x.status] : 'Sem apuração';
+    var sem = x.csSemApuracao ? ' · ' + x.csSemApuracao + ' sem apuração (fora da conta)' : '';
+    return '<div class="ms-card' + (atras ? ' atras' : '') + '"><b>' + msEsc_(x.label) + '</b>' +
+      '<div class="ms-barra"><span class="' + (atras ? 'gold' : '') + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i style="left:' + pace.toFixed(0) + '%" title="Esperado até hoje"></i>' : '') + '</div>' +
+      '<span>' + msNum_(x.realizadoTotal) + '<small>/' + msNum_(x.efetivaTotal) + ' do time</small></span>' +
+      '<div class="ms-sub"><b class="ms-st">' + st + '</b> · Faltam ' + msNum_(x.falta) + ' · ' + x.diasUteisRestantes + (x.diasUteisRestantes === 1 ? ' dia útil restante' : ' dias úteis restantes') + sem + '</div></div>';
+  }).join('');
+  var rs = ACOES_ ? ACOES_.ritmoSemanal : null;
+  var itens = rs && rs.dado ? rs.dado : [];
+  var acesso;
+  if (!ACOES_) acesso = '<p class="ms-sem">Carregando a fila de ação…</p>';
+  else if (rs && rs.erro) acesso = erroSecaoHtml_('Não foi possível ler o ritmo semanal', rs.erro);
+  else if (!itens.length) acesso = '<p class="ms-sem">Nenhum CS com ritmo semanal abaixo do limiar.</p>';
+  else acesso = '<p class="ms-sem"><b>' + itens.length + (itens.length === 1 ? ' item' : ' itens') + ' de ritmo semanal em aberto.</b> Maior déficit: ' + msEsc_(itens[0].cs_nome) + ', ' + msNum_(itens[0].deficit_total) + '.</p>' +
+    '<button type="button" class="btn sm" data-ir-fila-ritmo>Ver na fila de ação</button>';
+  var lim = rs && rs.limiar !== null && rs.limiar !== undefined ? Math.round(rs.limiar * 100) : 70;
+  var form = '<div class="ms-limiar"><label>Limiar do ritmo semanal <input type="number" id="limiarRitmo" min="1" max="100" step="1" value="' + lim + '" aria-describedby="limiarNota"> %</label> ' +
+    '<button type="button" class="btn sm" data-salvar-limiar>Salvar limiar</button> <small id="limiarNota" class="ms-sub">Abaixo desse percentual da meta efetiva o CS entra na fila. A mudança vale no próximo fechamento de segunda.</small></div>';
+  el.innerHTML = (linhas || '<div class="gh-vazio">Nenhum indicador com meta semanal no time nesta semana.</div>') + '<div class="ms-acesso">' + acesso + '</div>' + form;
+}
+function salvarLimiar_() {
+  var input = document.getElementById('limiarRitmo'), nota = document.getElementById('limiarNota');
+  var v = Number(input.value);
+  if (!(v >= 1 && v <= 100)) { nota.textContent = 'Informe um valor entre 1 e 100.'; return; }
+  fetchJSON_('/api/gestor/ritmo-limiar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ limiar: v / 100 }) })
+    .then(function () { carregarAcoes(); })
+    .catch(function (err) { nota.textContent = 'Não foi possível salvar: ' + err.message; });
+}
+document.getElementById('semanaTime').addEventListener('click', function (ev) {
+  if (!ev.target.closest) return;
+  if (ev.target.closest('[data-ir-fila-ritmo]')) {
+    definirVisaoHome_('geral');
+    setTimeout(function () { var f = document.getElementById('filaAcao'); if (f) f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  }
+  if (ev.target.closest('[data-salvar-limiar]')) salvarLimiar_();
+});
+document.getElementById('filaCorpo').addEventListener('click', function (ev) {
+  var b = ev.target.closest ? ev.target.closest('[data-tratar-ritmo]') : null;
+  if (!b) return;
+  b.disabled = true;
+  fetchJSON_('/api/gestor/fila-acao/ritmo/' + encodeURIComponent(b.getAttribute('data-tratar-ritmo')) + '/tratar', { method: 'POST' })
+    .then(function () { carregarAcoes(); })
+    .catch(function (err) { b.disabled = false; b.textContent = 'Erro: ' + err.message; });
+});
+
 function carregarAcoes() {
   fetchJSON_('/api/gestor/visao-geral/acoes').then(function (data) {
     ACOES_ = data;
     renderFilaAcao_();
+    pintaSemanaTime_();
     var snap = data.carimbos && data.carimbos.gtdSnapshot;
     if (snap && typeof dockDefinirSync === 'function') dockDefinirSync(dmAcoes_(snap), 'Posição do GTD de ' + dmaAcoes_(snap) + '. Clique para sincronizar agora.');
   }).catch(function (err) {
@@ -2321,6 +2413,7 @@ document.getElementById('chkSomaAdvHealth').addEventListener('change', alternarA
 carregarAdvHealthChave_();
 
 function carregarVisaoGeral() {
+  desenhaVisaoHome_();
   fetchJSON_(ENDPOINT_VISAO_GERAL + '?mes=' + encodeURIComponent(mesAtual) + '&ano=' + encodeURIComponent(anoAtual)).then(function (data) {
     DADOS = data;
     renderRosterNota_();

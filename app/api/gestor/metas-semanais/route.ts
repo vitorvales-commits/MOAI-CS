@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireMoaiUser, authErrorResponse } from '@/lib/auth';
 import { metasSemanaisDoElenco } from '@/lib/metas-semanais';
+import { resumoSemanaTime } from '@/lib/metas-semanais-visao';
 import { validarRemoverMetaSemanal, validarSalvarMetaSemanal } from '@/lib/metas-semanais-api';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     const mes = new URL(req.url).searchParams.get('mes');
     if (!mes || !RE_MES.test(mes)) return NextResponse.json({ error: 'Parâmetro mes inválido (esperado AAAA-MM-01).' }, { status: 400 });
     const r = await metasSemanaisDoElenco(supabase, mes);
-    return NextResponse.json({ mes, hoje: r.hoje, modo: r.modo, cs: r.cs });
+    return NextResponse.json({ mes, hoje: r.hoje, modo: r.modo, cs: r.cs, resumoTime: resumoSemanaTime(r.cs, r.hoje) });
   } catch (e: any) {
     if (e?.status) return authErrorResponse(e);
     console.error('GET /api/gestor/metas-semanais falhou', e);
