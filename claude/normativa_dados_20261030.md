@@ -252,3 +252,13 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
   - Tabelas de origem `monday` e linhas derivadas: a restauração não teria efeito (a sync remove de novo, ou o cálculo refaz).
 - Teste reversível `scripts/normativa/teste_saude_reversivel.sql`, marcador `TESTE_SAUDE_OK`.
 - Etapa 6, no workflow de cópia: passo que reprova o PR se `seguranca.v_tabelas_sem_classificacao` devolver qualquer tabela. Roda em todo PR que altera migração.
+
+### Bônus de pontuação: produção e espelho (10/11/2026)
+
+- PR #40 (PR A, banco) mergeado na `main` (merge `2911ee3`). Backup verde antes da aplicação: execução `42819550830` (dump criptografado e teste de restauração).
+- Aplicação de `20261110a_bonus_pontos.sql`: execução `42819877162` do `aplicar-migracao`, fora da janela de 05h45 a 06h45 UTC (aplicada às 12h55 UTC). Dump com snapshot, teste na cópia e produção, todos verdes. Versão registrada em `supabase_migrations.schema_migrations` (`20261110a_bonus_pontos`). Conferido por leitura: `is_gestor()` e `meu_cs()` existem na produção; `bonus_aplicados`, `conceder_bonus` e `bonus_total_por_cs` existem; espelho de `bonus_aplicados` inativo antes da ativação.
+- PR #43 (PR B, app) mergeado na `main` (merge `b22962b`), com o head `8ff05e6` verde (Vercel). O app foi separado do PR A, que ficou só com a fase de banco.
+- Espelho ligado: `sincronia_definir_espelho_ativo('bonus_aplicados', true)` e `sincronia_carga_inicial_espelho('bonus_aplicados')`, que carregou 0 linhas (tabela vazia).
+- Teste de ponta a ponta: bônus de 1 ponto para Amanda, mês de outubro de 2026 (mês passado), dinâmica "TESTE integracao espelho (anular)". A concessão foi feita pela função `conceder_bonus` com a sessão de um gestor real, não pela tela. Comando de espelho `concluido`, sem erro. Item criado no board "Registro: bônus" (item `13514072677`), situação "Ativo", chave do dash e valores corretos.
+- Anulação pela função `anular_bonus` com motivo. Total de Amanda em outubro voltou de 1 para 0. Último comando de espelho `concluido` com situação "Anulada". No Monday, o item ficou "Anulada", com data e motivo da anulação.
+- Pendente: conferir o mesmo fluxo pela tela do dash, com login de gestor, quando o Vitor quiser.
