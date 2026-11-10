@@ -132,6 +132,12 @@ declare
   v_origem text;
   v_resultado text;
 begin
+  -- Perfil primeiro: antes disso, nada da lixeira é consultado. Assim um CS não consegue sondar o que existe nela
+  -- (a mesma mensagem vale para id existente e inexistente). seguranca.restaurar mantém a mesma checagem.
+  if not (sincronia.chamador_privilegiado() or public.is_gestor()) then
+    raise exception 'Apenas gestor restaura dados.';
+  end if;
+
   select l.tabela, l.chave into v_tabela, v_chave from seguranca.lixeira l where l.id = p_id;
   if not found then raise exception 'Item % não está na lixeira.', p_id; end if;
 

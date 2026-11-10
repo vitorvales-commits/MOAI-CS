@@ -16,6 +16,8 @@ declare
   v_resumo text;
   v_txt text;
   v_msg text;
+  v_qualquer bigint;
+  v_id bigint;
 begin
   alter table sincronia.comandos disable trigger comandos_disparar;
 
@@ -76,6 +78,28 @@ begin
     where action = 'restaurar_lixeira' and metadata->>'lixeira_id' = v_mon::text;
   if v_n is distinct from 0 then raise exception 'FALHA 4b: recusa gravou auditoria (% linhas)', v_n; end if;
   v_res := v_res || jsonb_build_object('4_monday_recusado_sem_auditoria', true);
+
+  -- 5. CS comum (papel authenticated, e-mail que não é gestor): recebe só a mensagem de perfil, para id existente
+  -- e para id inexistente. Assim não dá para sondar o conteúdo da lixeira.
+  select l.id into v_qualquer from seguranca.lixeira l order by l.id limit 1;
+  if not found then raise exception 'FALHA preparo: lixeira vazia na cópia'; end if;
+
+  perform set_config('request.jwt.claims', '{"role":"authenticated","email":"cs.comum@teste.invalid"}', true);
+  set local role authenticated;
+  for v_id in select unnest(array[v_qualquer, 999999999::bigint]) loop
+    v_msg := null;
+    begin
+      perform public.restaurar_da_lixeira(v_id);
+    exception when others then
+      v_msg := sqlerrm;
+    end;
+    if v_msg is distinct from 'Apenas gestor restaura dados.' then
+      raise exception 'FALHA 5: CS comum recebeu % para o id %', coalesce(v_msg, '(sem erro)'), v_id;
+    end if;
+  end loop;
+  reset role;
+  perform set_config('request.jwt.claims', '', true);
+  v_res := v_res || jsonb_build_object('5_cs_comum_so_recebe_mensagem_de_perfil', true);
 
   raise exception 'TESTE_SAUDE_OK %', v_res::text;
 end;
