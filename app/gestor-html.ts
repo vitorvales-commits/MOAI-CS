@@ -1815,6 +1815,7 @@ function renderMapa_() {
 }
 
 // ---------- nível 2: Fila de ação ----------
+var RITMO_IND_ROTULO_ = { cases: 'cases de sucesso', matchmakings: 'matchmakings', matchmakings_resultado: 'matchmakings com resultado', indicacoes: 'indicações', upsell: 'upsell', rounds: 'rounds' };
 function itensFila_() {
   var itens = [], erros = [];
   if (!ACOES_) return { itens: itens, erros: erros };
@@ -1839,6 +1840,15 @@ function itensFila_() {
       }
     });
   }
+  // Ritmo semanal (PR 3): um item por CS e semana com indicador abaixo do limiar. Vem de fila_acao_itens.
+  var rs = ACOES_.ritmoSemanal;
+  if (rs && rs.erro) erros.push('Ritmo semanal indisponível: ' + rs.erro);
+  if (rs && rs.dado) rs.dado.forEach(function (it) {
+    var nomes = (it.indicadores || []).map(function (x) { return RITMO_IND_ROTULO_[x.indicador] || x.indicador; });
+    itens.push({ tipo: 'semana', cor: 'gold', titulo: it.cs_nome + ': ritmo semanal abaixo do limiar',
+      texto: nomes.join(', ') + '. Déficit de ' + it.deficit_total + ' na semana. Próximo passo: tratar na 1:1 da semana.',
+      quem: it.cs_nome, quando: 'sem ' + dmAcoes_(it.semana_inicio), acao: { rotulo: 'Ver CS', href: '/gestor/cs/' + encodeURIComponent(it.cs_nome) + '#secSemanalCS' } });
+  });
   var rl = ACOES_.relatorios;
   if (rl && rl.erro) erros.push('Relatórios do conselho indisponíveis: ' + rl.erro);
   if (rl && rl.dado) {

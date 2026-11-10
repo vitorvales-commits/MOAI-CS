@@ -89,7 +89,50 @@ Ressalvas das capturas:
 - **Unificar a grade de status do Geral do gestor com `calcularRitmo`: entra na PR 2b** (decisão do Vitor, 10/11/2026). A grade atual calcula o ritmo em JavaScript (`indRitmo_` em `app/gestor-cs-html.ts`) com rótulos "No prazo", "Abaixo", "Longe". A Semana atual usa `calcularRitmo` no servidor, com "Começando", "Atenção", "Atrás", "No ritmo". Até a PR 2b, as duas visões podem divergir no rótulo do mesmo indicador.
 - A página do gestor tem estado de erro próprio na seção de metas semanais (`s.erro`), mas ainda não há teste automatizado para ele.
 
-## PR 2b e PR 3
+## PR 3: fonte ritmo_semanal na fila de ação (branch `feat/metas-semanais-ritmo-fila`)
 
-- PR 2b (home do gestor com alternância; Semana atual mostra progresso do time e acesso aos itens `ritmo_semanal`): pendente.
-- PR 3 (fonte `ritmo_semanal` na fila de ação, limiar 0,70 configurável, retroativo de 02/11 a 08/11): pendente. Precisa estar pronta antes do fechamento de segunda, 16/11.
+Base: a #50 (PR 2a). Não depende de nenhuma outra PR além das anteriores.
+
+### O que foi entregue
+
+- **Migração `supabase/migrations/20261110_ritmo_semanal_fila.sql`** (idempotente):
+  - `ritmo_semanal_config`: limiar do ritmo semanal, valor inicial 0,70, editável pelo gestor.
+  - `fila_acao_itens`: itens persistidos da fila de ação. Único por (fonte, cs_nome, semana_inicio), RLS com leitura só para gestor.
+  - `gerar_itens_ritmo_semanal(semana)`: lê `metas_semanais_fechamento`. Um item por CS quando algum indicador de crescimento (os seis de P4) tem realizado abaixo do limiar vezes a meta efetiva. Realizado ausente não entra. Idempotente: item já tratado não muda.
+  - `salvar_limiar_ritmo(valor)` e `tratar_item_ritmo(id)`: funções de gestor, com checagem de `is_gestor` no banco.
+  - Catálogo da normativa (`seguranca.catalogo_tabelas`) e `seguranca.aplicar_protecoes()`, como a 20261030b pede.
+  - Retroativo: a semana de 02/11 a 08/11 é gerada no fim da própria migração, a partir do fechamento já gravado.
+- **Fechamento de segunda** (`lib/metas-semanais-fechamento.ts`): depois de gravar cada mês, chama `gerar_itens_ritmo_semanal` para cada semana já encerrada do mês. Mesma execução, sem cron novo. Falha nessa etapa não derruba o fechamento: volta em `erroRitmo` no resultado do mês.
+- **Fila de ação** (`app/api/gestor/visao-geral/acoes/route.ts` e `app/gestor-html.ts`): os itens abertos entram na fila como urgência "ritmo semanal abaixo do limiar", com o déficit e o próximo passo "Tratar na 1:1 da semana". Leitura isolada: erro vira mensagem na fila, sem derrubar as outras seções.
+- **Glossário do Vitorio** (`lib/vitorio/glossario.ts`): entradas Meta semanal, Meta efetiva, Déficit semanal e Ritmo da semana.
+- **Testes**: `scripts/testes/ritmo_semanal_fila.sql` (8 casos, em transação com rollback) e `scripts/testes/ritmo_semanal_fila_conferencia.sql` (consulta de conferência, só leitura).
+
+### Decisões desta PR
+
+- **Indicadores de crescimento**: os seis de P4 (cases, matchmakings, matchmakings com resultado, indicações, upsell e rounds).
+- **Limiar**: abaixo de 0,70 da meta efetiva vale. Igual a 0,70 não entra. Realizado ausente não entra; realizado zero entra.
+- **Item aberto não é apagado**: se o realizado depois subir acima do limiar, o item continua aberto até o gestor tratar. Só a regra de tratado é imutável.
+- **Semanas geradas**: no fechamento, só as semanas com `fim` antes de hoje. A semana corrente não gera item.
+- **Responsável**: "gestao". **Próximo passo**: "Tratar na 1:1 da semana".
+
+### Ordem de deploy (importante)
+
+1. Aplicar `20261110_ritmo_semanal_fila.sql` no SQL Editor de produção (o Vitor aplica).
+2. Rodar `scripts/testes/ritmo_semanal_fila.sql`: esperado, oito notices OK e rollback.
+3. Rodar `scripts/testes/ritmo_semanal_fila_conferencia.sql`: confere limiar, itens do retroativo e a regra contra o fechamento.
+4. Só então fazer o deploy desta PR. Sem a migração aplicada, o fechamento grava as linhas, mas `erroRitmo` aparece no resultado.
+
+### Pendências desta PR
+
+- **Teste SQL não executado aqui**: não há Postgres local nem branch de teste neste ambiente. O script está escrito e revisado, mas a execução é do Vitor no SQL Editor.
+- **Teste TypeScript da chamada do fechamento**: não há. A chamada é uma linha de `rpc` com tratamento de erro, coberta pelo teste SQL e pela conferência.
+- **Tratar item na tela**: a função `tratar_item_ritmo` existe, mas a tela ainda não tem botão. Enquanto isso, o item fica aberto. Entra na PR 2b, junto com a unificação da grade.
+- **Editar o limiar na tela**: `salvar_limiar_ritmo` existe, sem tela. Mesma situação.
+- **Itens do retroativo**: a semana de 02/11 não depende de nenhum dado novo. Depois de aplicar, a consulta 2 mostra os CS com item.
+
+## PR 2b
+
+- Home do gestor com alternância Geral e Semana atual (progresso do time e acesso aos itens `ritmo_semanal`). Decisão do Vitor: a lista de CS fora do ritmo não é duplicada na home, porque a fila é o lugar de agir.
+- Unificação da grade de status do Geral do gestor com `calcularRitmo`. Decisão do Vitor: entra nesta PR.
+- Botão para tratar item e tela do limiar (pendências da PR 3).
+- Pendente.

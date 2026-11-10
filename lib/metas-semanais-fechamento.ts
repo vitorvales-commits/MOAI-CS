@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { carregarDadosMetas, elencoDoMes, montarMetasSemanaisCS, type MetasSemanaisCS, type ParcelaMetaSemanal } from './metas-semanais.ts';
 import { normalizeNome } from './reports.ts';
+import { semanasDoMes } from './semanas.ts';
 import { hojeSP } from './gtd-prazos.ts';
 import type { ModoRoster } from './cs-periodos.ts';
 
@@ -67,7 +68,7 @@ export function mesesDoFechamento(hoje: string): string[] {
 export interface ResultadoFechamento {
   hoje: string;
   reprocessar: boolean;
-  porMes: Record<string, { cs: number; modo: ModoRoster; linhasCandidatas: number; gravadas: number; removidasForaDoElenco: number }>;
+  porMes: Record<string, { cs: number; modo: ModoRoster; linhasCandidatas: number; gravadas: number; removidasForaDoElenco: number; itensRitmo: number; erroRitmo: string | null }>;
 }
 
 // Grava em lotes. Sem reprocessar, a unique key faz a linha existente ser ignorada (ignoreDuplicates).
@@ -111,7 +112,22 @@ export async function fecharMetasSemanais(
         removidas = count ?? 0;
       }
     }
-    porMes[mes] = { cs: elenco.length, modo, linhasCandidatas: linhas.length, gravadas, removidasForaDoElenco: removidas };
+    // Fila de ação, fonte ritmo_semanal (migração 20261110): cada semana do mês já encerrada, na mesma execução.
+    // Idempotente por CS e semana no banco; semana sem fechamento gravado não gera item.
+    // Falha aqui não derruba o fechamento, que já gravou as linhas: o erro volta no resultado do mês, e a geração
+    // roda de novo no próximo fechamento (idempotente).
+    let itensRitmo = 0;
+    let erroRitmo: string | null = null;
+    try {
+      for (const semana of semanasDoMes(mes, dados.feriados).filter((s) => s.fim < hoje)) {
+        const { data, error } = await sb.rpc('gerar_itens_ritmo_semanal', { p_semana_inicio: semana.inicio });
+        if (error) throw new Error(`semana ${semana.inicio}: ${error.message}`);
+        itensRitmo += Number(data ?? 0);
+      }
+    } catch (e: any) {
+      erroRitmo = e?.message || String(e);
+    }
+    porMes[mes] = { cs: elenco.length, modo, linhasCandidatas: linhas.length, gravadas, removidasForaDoElenco: removidas, itensRitmo, erroRitmo };
   }
   return { hoje, reprocessar, porMes };
 }
