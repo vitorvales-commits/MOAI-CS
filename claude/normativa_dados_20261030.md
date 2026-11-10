@@ -232,3 +232,10 @@ Divergências entre o texto e o banco, tratadas no `montar_espelho`: `cs_periodo
 - Falhas do gatilho: considera só as últimas 24 horas (o corte é feito no app; a RPC `sincronia_falhas_espelho` ainda devolve 7 dias).
 - Pendente, para evolução futura: descontar falhas já resolvidas (linha de origem com comando concluído depois da falha). Exige que a RPC exponha a chave de origem; hoje as duas leituras não trazem essa informação.
 - Pendente: "Ver no Monday" por item. Exige uma RPC de leitura do vínculo `sincronia.vinculo_nativo`; fica para um PR de banco separado.
+
+### Bônus de pontuação (PR A, 10/11/2026)
+
+- Board privado "Registro: bônus" criado na pasta "Registro do dash de CS" (21878501), grupo "Registros" (`topics`). ID `18439229782`. Colunas: Chave do dash `text_mm8zprf5`, CS `text_mm8zwzag`, Dinâmica `text_mm8ztga0`, Pontos `numeric_mm8zmh9r`, Mês que conta `date_mm8zvnd6`, Observação `long_text_mm8z8t7w`, Concedido por `text_mm8z4pz4`, Concedido em `date_mm8zvbyc`, Anulado em `date_mm8zm1na`, Anulado por `text_mm8zbf9x`, Motivo da anulação `long_text_mm8zvgph`, Situação no dash `color_mm8zb9s8` (Ativo verde, Anulada cinza, Excluído no dash vermelho).
+- Migração `20261110a_bonus_pontos` (tabela `public.bonus_aplicados`, funções `conceder_bonus`, `editar_bonus`, `anular_bonus`, `bonus_cs_canonico`, `bonus_validar_mes`, ramo `bonus_aplicados` em `sincronia.montar_espelho`, catálogo, linha em `sincronia.espelhos` com `ativo = false`, gatilho de espelho). Redefinição de `montar_espelho` a partir do corpo da `20261109a`, que é a última definição no repositório.
+- Teste reversível `scripts/normativa/teste_bonus_reversivel.sql` (marcador `TESTE_BONUS_OK`). Passou num Postgres 16 local com stubs do esquema (as duas migrações aplicam sem erro e o teste conclui com o marcador como único erro). Mutação de controle (validação do dia 1 desligada) reprova o teste. A verificação oficial é o workflow `testar-migracao` no PR.
+- Pendente: PR A mergeado pelo Vitor, backup verde, `aplicar-migracao` fora de 05h45 a 06h45 UTC, versão registrada. Depois, PR B (app) e a ligação do espelho.
