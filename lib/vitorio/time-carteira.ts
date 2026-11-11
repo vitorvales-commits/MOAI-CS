@@ -4,6 +4,7 @@
 // Texto visível: datas em português ("05/11/2026", "setembro de 2026"), nunca AAAA-MM-DD.
 import { fonteParaData, elencoAntesDaCarga, csDaCarteira, csVigentes, type VigenciaConselho } from './fonte-cs.ts';
 import type { LinhaPeriodo } from '../cs-periodos.ts';
+import { tituloDeExibicao } from './titulo.ts';
 
 export interface DadosTime {
   hojeIso: string;
@@ -68,7 +69,8 @@ export function responderElenco(mesIso: string, d: DadosTime): RespostaTime {
 // "Quem cuida do conselho X em novembro?" Verbo segue a data: "estava" para antes de hoje, "está" para hoje ou depois.
 export function responderCarteira(groupId: string, dataIso: string, d: DadosTime): RespostaTime {
   const f = fonteParaData(dataIso, 'carteira', d.hojeIso);
-  const titulo = d.conselhos[groupId] || 'esse conselho';
+  // Título sem o CS entre parênteses: o parêntese é o CS atual, e numa data passada pode não bater.
+  const titulo = tituloDeExibicao(d.conselhos[groupId] || 'esse conselho');
   const data = dataBR(dataIso);
   if (f.fonte === 'sem_registro') {
     return {
