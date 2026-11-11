@@ -28,7 +28,7 @@ button{font-family:inherit}
 .muted{color:var(--ink2)} .faint{color:var(--ink3)}
 
 /* Dock de vidro flutuante */
-.dock-wrap{position:sticky;top:0;z-index:50;padding:14px 24px 0}
+.dock-wrap{position:sticky;top:0;z-index:50;padding:14px 24px 0;background:var(--bg)}
 .dock{position:relative;isolation:isolate;max-width:1312px;margin:0 auto;height:58px;display:flex;align-items:center;gap:6px;padding:0 10px 0 12px;border-radius:20px;border:1px solid var(--glass-edge);box-shadow:0 10px 34px rgba(20,20,20,.10),0 1px 2px rgba(20,20,20,.06),inset 0 1px 0 rgba(255,255,255,.9)}
 /* O vidro mora num pseudo elemento: assim o menu filho também consegue desfocar o que está atrás */
 .dock::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%)}
