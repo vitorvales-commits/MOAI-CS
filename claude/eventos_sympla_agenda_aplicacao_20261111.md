@@ -98,3 +98,9 @@ Status geral: **parcial**. Código aplicado e verificado localmente. Migração 
 - Deploy pelo workflow após o merge, e a confirmação de `sync-monday` e `sync-sympla`.
 - Sync manual com `board=eventos`, e as conferências do Comitê de IA 18/11, Connect 22/10 e Mesa 24/11.
 - Modal de evento e 390 px.
+
+## Tentativa de pós-merge (16:4x UTC)
+
+**Bloqueio:** `gh pr view 64` continua em `OPEN`, sem `mergedAt`, e `origin/main` não contém nenhum commit do PR (último: merge do #62). Não há execução de "Deploy das Edge Functions" disparada pelo PR. Por isso os passos 1 a 7 não foram executados: a implantação de `sync-monday` e a tarefa `eventos` dependem do merge.
+
+**Pendente:** confirmar o merge do #64; depois, passos 1 a 7 na ordem do prompt.
