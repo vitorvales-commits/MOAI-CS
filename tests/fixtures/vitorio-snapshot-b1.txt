@@ -1,0 +1,174 @@
+g;;duplicate_of_bruno_capanema___;;C-Level+ | Luis Gustavo (Luana)
+g;;group_mktkqd1;;C-Level+ | Renato Santos (Vilker)
+g;;topics;;C-Level | Alan (George)
+g;;group_title;;C-Level | Carol Borges (Vitor)
+g;;novo_grupo84680;;C-Level | Eraldo Queiroz (Vitor)
+g;;novo_grupo;;C-Level | Gallo (Vitor)
+g;;group_mm7f2nx0;;Novo grupo
+g;;group_mm331w1n;;Fast Track | Livia
+g;;novo_grupo18849;;C-Level | Gui Figueiredo (George)
+g;;novo_grupo50247;;C-Level | Herick (Vilker)
+g;;group_mm3sw05w;;Reposições no Executivo | João Vitor
+g;;group_mkz5tsgn;;Reposições no Executivo | Kadydja
+g;;group_mkz54bkh;;Reposições no Executivo | Marcos Cunha
+g;;group_mkx4v5qn;;Reposições no Executivo | Murilo
+g;;group_mkz5309h;;Reposições no Executivo | Rafael Gianesini
+g;;group_mkx147g5;;Reposições no Executivo | Rodrigo Gianesini
+g;;group_mkx04bn6;;Reposições no  Executivo | Thiago
+g;;group_mkz7rm9p;;Reposições no Fast Track | Bruno Teixeira
+g;;group_mkx4ky2w;;Reposições no Fast Track | Caio Vivan
+g;;group_mkxcdr94;;Reposições no Fast Track | Gustavo Dayahn
+g;;group_mkx0vtwa;;Reposições no Fast Track | Julio Faccioli (Vitor)
+g;;group_mm1660ty;;Reposição | Rodrigo Félix
+g;;group_mkz7v4nh;;Reposições no Fast Track | Tati Moura
+g;;group_mktkwg6v;;C-Level | JP (Rodrigo)
+g;;group_mkw5757m;;CONGELADO C-Level | Lucas Marques (Vilker)
+g;;group_mktkzr1y;;C-Level | Zago (Vilker)
+g;;group_mkvegqts;;Setorial | Tarso (Amanda)
+g;;novo_grupo8268;;Setorial | Pedro Prado (Vitor)
+g;;novo_grupo58809;;Executivo | Adriana Soares (Mateus)
+g;;novo_grupo74947;;Executivo | Henrique Guimaraes (Vitor)
+g;;novo_grupo33254;;Executivo | André Soares (Rodrigo)
+g;;novo_grupo91575;;Executivo | Carlos Júnior (Iasmin)
+g;;novo_grupo36799;;Executivo | Daniel Brayer (George)
+g;;group_mkvcqfd8;;[CONGELADO] Executivo | Digo Melo (Ale)
+g;;novo_grupo64326;;Executivo | Eduardo Santinoni (Vilker)
+g;;group_mm33rstr;;Executivo | João Vitor (Mateus) | EXTERNO
+g;;novo_grupo65945;;Executivo | Kadydja (Rodrigo)
+g;;novo_grupo21990;;Executivo | Marcos Cunha (Vilker)
+g;;novo_grupo70162;;Executivo | Murilo (Amanda)
+g;;group_mkvvwbpj;;Executivo | Rafael Gianesini (Mateus)
+g;;novo_grupo17438;;Executivo | Rodrigo Gianesini (George)
+g;;group_mkv9wd3q;;Executivo | Thiago Correa (Amanda)
+g;;novo_grupo76506;;Fast Track | Bruno Teixeira (Iasmin)
+g;;novo_grupo46057;;Fast Track | Caio Vivan (George)
+g;;novo_grupo47062;;Fast Track | Gustavo Dayahn (Rodrigo)
+g;;new_group;;Fast Track | Julio Faccioli (Vitor)
+g;;novo_grupo__1;;Fast Track | Rodrigo Félix (Rodrigo)
+g;;group_mkz7tfgw;;Fast Track | Tati Moura (George)
+g;;group_mkwycjaz;;Reposições no C-Level+ | Luis Gustavo
+g;;group_mkx0gfmt;;Reposições no C-Level+ | Renato Santos
+g;;group_mkyppy12;;Reposições no C-Level | Alan
+g;;group_mkwzpywy;;Reposições no C-Level | Carol Borges
+g;;group_mkypw7rc;;Reposições no C-Level | Eraldo Queiroz
+g;;group_mkx7s52z;;Reposições no C-Level | Gallo (Vitor)
+g;;group_mkyp7jdf;;Reposições no C-Level | Gui Figueiredo (George)
+g;;group_mkx094vx;;Reposições no C-Level | Herick
+g;;group_mkx4y5e4;;Reposições no C-Level | JP
+g;;group_mkx46ens;;Reposições no C-Level | Lucas Marques
+g;;group_mkx4e5gc;;Reposições no C-Level | Zago
+g;;group_mkz537he;;Reposições no Setorial | Tarso
+g;;group_mkz5kgfb;;Reposições no Setorial | Pedro Prado (Vitor)
+g;;group_mkx4efkq;;Reposições no Executivo | Adriana Soares
+g;;group_mkx1hgaf;;Reposições no Executivo | Henrique Guimarães (Vitor)
+g;;group_mm44mzvn;;Reposições no  Executivo | André Soares
+g;;group_mkx0qzmh;;Reposições no Executivo | Carlos Júnior
+g;;group_mkx1c9qp;;Reposições no Executivo | Daniel Brayer
+g;;group_mkx051vk;;Reposições no Executivo | Eduardo Santinoni
+v;;duplicate_of_bruno_capanema___;;1;;-infinity;;
+v;;group_mktkqd1;;4;;-infinity;;
+v;;topics;;6;;-infinity;;
+v;;group_title;;2;;-infinity;;
+v;;novo_grupo84680;;2;;-infinity;;
+v;;novo_grupo;;2;;-infinity;;
+v;;novo_grupo18849;;6;;-infinity;;
+v;;novo_grupo50247;;4;;-infinity;;
+v;;group_mktkwg6v;;8;;-infinity;;
+v;;group_mktkzr1y;;4;;-infinity;;
+v;;group_mkvegqts;;5;;-infinity;;
+v;;novo_grupo8268;;2;;-infinity;;
+v;;novo_grupo58809;;3;;-infinity;;
+v;;novo_grupo74947;;2;;-infinity;;
+v;;novo_grupo33254;;8;;-infinity;;
+v;;novo_grupo91575;;7;;-infinity;;
+v;;novo_grupo36799;;6;;-infinity;;
+v;;novo_grupo64326;;4;;-infinity;;
+v;;novo_grupo65945;;8;;-infinity;;
+v;;novo_grupo21990;;4;;-infinity;;
+v;;novo_grupo70162;;5;;-infinity;;
+v;;group_mkvvwbpj;;3;;-infinity;;
+v;;novo_grupo17438;;6;;-infinity;;
+v;;group_mkv9wd3q;;5;;-infinity;;
+v;;novo_grupo76506;;7;;-infinity;;
+v;;novo_grupo46057;;6;;-infinity;;
+v;;novo_grupo47062;;8;;-infinity;;
+v;;new_group;;2;;-infinity;;
+v;;novo_grupo__1;;8;;-infinity;;
+v;;group_mkz7tfgw;;6;;-infinity;;
+v;;group_mm33rstr;;3;;2026-11-01;;
+c;;1;;Luana;;true
+c;;2;;Vitor;;true
+c;;3;;Mateus;;true
+c;;4;;Vilker;;true
+c;;5;;Amanda;;true
+c;;6;;George;;true
+c;;7;;Iasmin;;true
+c;;8;;Rodrigo;;true
+c;;9;;Marcos;;false
+c;;10;;Gustavo;;false
+c;;11;;Giovanna;;false
+c;;16;;Lanna;;false
+c;;12;;Alejandro;;false
+c;;13;;Luma;;false
+c;;15;;Yasmim;;false
+c;;14;;Vinicius W.;;false
+c;;17;;Lucas;;false
+c;;27;;Lorena;;false
+a;;luana;;cs;;1
+a;;vitor;;cs;;2
+a;;mateus;;cs;;3
+a;;vilker;;cs;;4
+a;;amanda;;cs;;5
+a;;george;;cs;;6
+a;;iasmin;;cs;;7
+a;;rodrigo;;cs;;8
+a;;marcos;;cs;;9
+a;;gustavo;;cs;;10
+a;;giovanna;;cs;;11
+a;;alejandro;;cs;;12
+a;;luma;;cs;;13
+a;;vinicius w;;cs;;14
+a;;yasmim;;cs;;15
+a;;lanna;;cs;;16
+a;;lucas;;cs;;17
+a;;luana sampaio alves;;cs;;1
+a;;vitor lucas lacerda de oliveira;;cs;;2
+a;;mateus ries;;cs;;3
+a;;vilker ferreira;;cs;;4
+a;;amanda borges;;cs;;5
+a;;george washington;;cs;;6
+a;;iasmin lyara cabral da silva;;cs;;7
+a;;rodrigo queiroz campos;;cs;;8
+a;;marcos vinicius de oliveira teixeira;;cs;;9
+a;;gustavo lucas;;cs;;10
+a;;giovanna monteiro;;cs;;11
+a;;alejandro colina;;cs;;12
+a;;luma guadanhim;;cs;;13
+a;;vinicius walviesse;;cs;;14
+a;;yasmim cardoso marques;;cs;;15
+a;;lanna rosa;;cs;;16
+a;;lucas nicoli;;cs;;17
+a;;luanasampaio@moaiclubedelideres.com;;cs;;1
+a;;giovannamonteiro@mmoai.com.br;;cs;;11
+a;;vinicius.souza@mmoai.com.br;;cs;;14
+a;;lorena;;cs;;27
+a;;lorena menezes batista pitt;;cs;;27
+a;;ale;;cs;;12
+p;;Gustavo;;2025-07-01;;2025-10-01
+p;;Giovanna;;2025-08-01;;2025-11-01
+p;;Alejandro;;2025-08-01;;2026-09-01
+p;;Luma;;2025-08-01;;2026-05-01
+p;;Vinicius W.;;2025-08-01;;2026-05-01
+p;;Yasmim;;2025-10-01;;2026-06-01
+p;;Lanna;;2025-10-01;;2026-02-01
+p;;Lucas;;2026-01-01;;2026-09-01
+p;;Marcos;;2026-05-01;;2026-10-01
+p;;George;;2026-05-01;;
+p;;Vilker;;2026-05-01;;
+p;;Vitor;;2026-05-01;;
+p;;Mateus;;2026-06-01;;
+p;;Rodrigo;;2026-06-01;;
+p;;Luana;;2026-09-01;;
+p;;Amanda;;2026-10-01;;
+p;;Iasmin;;2026-11-01;;
+p;;Lorena;;2026-02-01;;2026-03-01
