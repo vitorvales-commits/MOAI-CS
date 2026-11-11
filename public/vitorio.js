@@ -126,10 +126,58 @@
     marca(true, 'Sim'); marca(false, 'Não');
     wrap.appendChild(l);
   }
+  // ---------------- Vitorio no servidor (primeiro), depois a busca de processos ----------------
+  var ESPERA_CARREGANDO = 300;
   function buscar() {
     var q = campo.value.trim();
     if (!q) return;
-    if (!indice) { mostrarMsg('Lendo os processos…'); carregarIndice().then(function () { saida.removeAttribute('data-estado'); buscar(); }).catch(mostrarErroIndice); return; }
+    vitorioPrimeiro(q, null);
+  }
+  // Resposta e esclarecimento vêm da rota; sem intenção, ou "Nenhum desses", segue para a busca de processos.
+  function vitorioPrimeiro(q, escolhido) {
+    saida.textContent = ''; saida.removeAttribute('data-estado');
+    var tCarr = setTimeout(function () { mostrarMsg('Consultando os dados…'); }, ESPERA_CARREGANDO);
+    return api('/api/vitorio/responder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: q.slice(0, 200), perfil: perfil, escolhido: escolhido || undefined }) })
+      .then(function (r) { clearTimeout(tCarr); if (!r.ok) throw new Error('responder ' + r.status); return r.json(); })
+      .then(function (d) {
+        saida.textContent = ''; saida.removeAttribute('data-estado');
+        if (d.status === 'resposta') { mostrarRespostaVitorio(d.resposta); return true; }
+        if (d.status === 'esclarecimento') { mostrarEsclarecimento(d, q); return true; }
+        buscarProcessos(q);
+        return false;
+      })
+      .catch(function () { clearTimeout(tCarr); mostrarErroVitorio(q, escolhido); return true; });
+  }
+  function comoCheguei(txt) {
+    var d = el('details', 'vt-como'); d.appendChild(el('summary', null, 'Como cheguei nisso')); d.appendChild(el('p', null, txt)); return d;
+  }
+  function mostrarRespostaVitorio(r) {
+    estado('respondendo', 1000);
+    var c = el('article', 'vt-cartao vt-cartao-vitorio' + (r.temRegistro ? '' : ' vt-sem-registro'));
+    c.appendChild(el('h3', null, r.texto));
+    c.appendChild(comoCheguei(r.comoCheguei));
+    saida.appendChild(c);
+  }
+  function mostrarEsclarecimento(d, q) {
+    estado('neutro');
+    saida.appendChild(el('p', 'vt-msg', d.pergunta));
+    (d.opcoes || []).forEach(function (o) {
+      var b = el('button', 'vt-btn sm claro vt-opcao', o.label); b.type = 'button';
+      b.onclick = function () { if (o.valor === 'nenhum') buscarProcessos(q); else vitorioPrimeiro(q, o.valor); };
+      saida.appendChild(b);
+    });
+  }
+  function mostrarErroVitorio(q, escolhido) {
+    estado('nada');
+    saida.textContent = '';
+    saida.appendChild(el('p', 'vt-msg erro', 'Não consegui consultar os dados agora.'));
+    var b = el('button', 'vt-btn sm claro', 'Tentar de novo'); b.type = 'button';
+    b.onclick = function () { vitorioPrimeiro(q, escolhido); };
+    saida.appendChild(b);
+  }
+
+  function buscarProcessos(q) {
+    if (!indice) { mostrarMsg('Lendo os processos…'); carregarIndice().then(function () { saida.removeAttribute('data-estado'); buscarProcessos(q); }).catch(mostrarErroIndice); return; }
     var r = B.buscar(indice, q, config);
     saida.removeAttribute('data-estado'); saida.textContent = '';
     ultimaConsultaId = null;

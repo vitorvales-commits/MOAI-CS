@@ -50,6 +50,12 @@ const PAINEL_CSS = `
 .vt-cartao{border:1px solid rgba(26,26,26,.08);border-radius:14px;padding:14px;margin-top:8px;background:#fff;box-shadow:0 1px 2px rgba(20,20,20,.04)}
 .vt-origem{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--vt-gold-ink)}
 .vt-cartao h3{margin:3px 0 6px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.vt-cartao-vitorio h3{font-size:15px;font-weight:600;line-height:1.35}
+.vt-sem-registro{border-style:dashed;background:var(--vt-gold-soft)}
+.vt-como{margin-top:10px;font-size:12px;color:var(--vt-ink2)}
+.vt-como summary{cursor:pointer;color:var(--vt-gold-ink);font-weight:600}
+.vt-como p{margin:6px 0 0}
+.vt-opcao{display:flex;width:100%;justify-content:flex-start;margin-top:6px;white-space:normal;text-align:left}
 .vt-trecho{margin:0 0 8px;color:var(--vt-ink2);font-size:13px}
 .vt-trecho mark{background:var(--vt-gold-soft);color:var(--vt-ink);border-radius:3px;padding:0 2px;font-weight:600}
 .vt-data{font-size:11.5px;color:var(--vt-ink3);margin:0 0 10px}

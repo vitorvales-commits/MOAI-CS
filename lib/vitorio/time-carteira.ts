@@ -1,6 +1,6 @@
 // Respostas de time e carteira do Vitorio (B1, parte puro). Sem banco: recebe os dados já lidos.
-// Elenco de um mês: cs_periodos antes da carga, vigência depois, CS ativos hoje no mês corrente.
-// Carteira de um conselho: vigência a partir da carga; antes, o Vitorio diz que não tem o registro.
+// Elenco de um mês: histórico de períodos antes da carga, registro depois, CS ativos hoje no mês corrente.
+// Carteira de um conselho: registro a partir da carga; antes, o Vitorio diz que não há registro.
 // Texto visível: datas em português ("05/11/2026", "setembro de 2026"), nunca AAAA-MM-DD.
 import { fonteParaData, elencoAntesDaCarga, csDaCarteira, csVigentes, type VigenciaConselho } from './fonte-cs.ts';
 import type { LinhaPeriodo } from '../cs-periodos.ts';
@@ -18,8 +18,10 @@ export interface DadosTime {
 
 export interface RespostaTime {
   texto: string;
-  // Fonte usada, para o bloco "Como cheguei nisso"
+  // Texto para o usuário, em "Como cheguei nisso"
   comoCheguei: string;
+  // Rótulo técnico da fonte, para o log e os testes
+  fonteTecnica: string;
   temRegistro: boolean;
 }
 
@@ -57,29 +59,31 @@ export function responderElenco(mesIso: string, d: DadosTime): RespostaTime {
   const texto = temRegistro
     ? `CS em ${mes}: ${nomes.join(', ')}.`
     : `Não encontrei CS registrado em ${mes}.`;
-  return { texto, comoCheguei: `Fonte: ${f.rotulo}. Período: ${mes}.`, temRegistro };
+  return { texto, comoCheguei: `Fonte: ${f.rotuloUsuario}. Período: ${mes}.`, fonteTecnica: f.rotulo, temRegistro };
 }
 
-// "Quem cuida do conselho X em novembro?" O verbo segue a data: "é" para hoje ou depois, "era" para antes.
+// "Quem cuida do conselho X em novembro?" Verbo segue a data: "estava" para antes de hoje, "está" para hoje ou depois.
 export function responderCarteira(groupId: string, dataIso: string, d: DadosTime): RespostaTime {
   const f = fonteParaData(dataIso, 'carteira', d.hojeIso);
   const titulo = d.conselhos[groupId] || 'esse conselho';
   const data = dataBR(dataIso);
   if (f.fonte === 'sem_registro') {
     return {
-      texto: `Sobre ${titulo} em ${data}: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026, então não tenho esse registro.`,
-      comoCheguei: `Fonte: ${f.rotulo}. Data: ${data}.`,
+      texto: `Não tenho esse registro: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026. Para ${data}, consulte o gestor da área ou o board do Monday.`,
+      comoCheguei: `Fonte: ${f.rotuloUsuario}. Data: ${data}.`,
+      fonteTecnica: f.rotulo,
       temRegistro: false,
     };
   }
   const id = csDaCarteira(d.vigencias, groupId, dataIso);
   const nome = id === null ? null : d.csPorId[id] || null;
-  const verbo = dataIso.slice(0, 10) >= d.hojeIso ? 'é cuidado por' : 'era cuidado por';
+  const verbo = dataIso.slice(0, 10) >= d.hojeIso ? 'está' : 'estava';
   return {
     texto: nome
-      ? `${titulo} ${verbo} ${nome} em ${data}.`
-      : `Não encontrei quem cuidava de ${titulo} em ${data}.`,
-    comoCheguei: `Fonte: ${f.rotulo}. Data: ${data}.`,
+      ? `O conselho ${titulo} ${verbo} com ${nome} em ${data}.`
+      : `Não encontrei quem estava com o conselho ${titulo} em ${data}.`,
+    comoCheguei: `Fonte: ${f.rotuloUsuario}. Data: ${data}.`,
+    fonteTecnica: f.rotulo,
     temRegistro: !!nome,
   };
 }

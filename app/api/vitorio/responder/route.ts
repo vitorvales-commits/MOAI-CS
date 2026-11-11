@@ -69,7 +69,9 @@ export async function POST(req: NextRequest) {
     if (typeof b.texto === 'string') {
       const texto = b.texto.trim().slice(0, 200);
       if (!texto || !normalizarTexto(texto)) return NextResponse.json({ error: 'Pergunta vazia.' }, { status: 400 });
-      const saida = responderTexto(texto, dados);
+      // escolhido: opção clicada num esclarecimento; a pergunta reenviada já traz o conselho resolvido.
+      const escolhido = typeof b.escolhido === 'string' ? b.escolhido.slice(0, 80) : undefined;
+      const saida = responderTexto(texto, dados, escolhido);
       // Sem intenção não registra: a busca de processos, que a tela chama em seguida, já registra essa pergunta.
       if (saida.status !== 'sem_intencao') {
         const perfil = perfilPermitido(String(b.perfil || ''), isGestor, csNome);
