@@ -199,6 +199,8 @@ select en.membro_id,
        en.anotacao_com_texto
 from entradas en;
 
+revoke all on public.vitorio_dicionario_membros from anon;
+
 insert into seguranca.catalogo_tabelas (tabela, origem, board_monday, proteger_exclusao, versionar, descricao) values
   ('vitorio_entradas',  'nativa', null, true, false, 'Registros enviados ao Vitorio pelo CS: texto original, proposta, confirmado e comandos da fila'),
   ('vitorio_sinonimos', 'nativa', null, true, false, 'Sinônimos de categoria e origem para os valores canônicos do board de Matchmakings')

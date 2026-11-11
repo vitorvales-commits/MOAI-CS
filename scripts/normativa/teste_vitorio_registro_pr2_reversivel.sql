@@ -20,6 +20,10 @@ begin
      or has_table_privilege('anon', 'public.vitorio_entradas', 'select') then
     raise exception 'FALHA 1: vitorio_entradas com select direto para anon ou authenticated';
   end if;
+  -- 1b. A view de dicionário não pode ser lida por anon.
+  if has_table_privilege('anon', 'public.vitorio_dicionario_membros', 'select') then
+    raise exception 'FALHA 1b: view vitorio_dicionario_membros com select para anon';
+  end if;
 
   -- 2. Check de situacao aceita os cinco estados e recusa outro valor.
   select cs.id into v_cs from canonico.cs cs order by cs.id limit 1;
