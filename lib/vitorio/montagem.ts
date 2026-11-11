@@ -56,6 +56,7 @@ const PAINEL_CSS = `
 .vt-como summary{cursor:pointer;color:var(--vt-gold-ink);font-weight:600}
 .vt-como p{margin:6px 0 0}
 .vt-opcao{display:flex;width:100%;justify-content:flex-start;margin-top:6px;white-space:normal;text-align:left}
+.vt-acoes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
 .vt-trecho{margin:0 0 8px;color:var(--vt-ink2);font-size:13px}
 .vt-trecho mark{background:var(--vt-gold-soft);color:var(--vt-ink);border-radius:3px;padding:0 2px;font-weight:600}
 .vt-data{font-size:11.5px;color:var(--vt-ink3);margin:0 0 10px}

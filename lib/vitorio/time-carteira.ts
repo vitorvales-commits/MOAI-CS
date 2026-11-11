@@ -23,6 +23,9 @@ export interface RespostaTime {
   // Rótulo técnico da fonte, para o log e os testes
   fonteTecnica: string;
   temRegistro: boolean;
+  // Carteira: conselho e CS responsável, para a tela montar os links (sem deduzir nada do texto)
+  groupId?: string | null;
+  csNome?: string | null;
 }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];

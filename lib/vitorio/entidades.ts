@@ -78,7 +78,9 @@ function distintivas(titulo: string, excluir: Set<string>): string[] {
 }
 
 // Palavra da pergunta casa com palavra do título: exata, ou com um erro quando tem cinco letras ou mais.
-const casaPalavra = (titulo: string, q: string) => q === titulo || (titulo.length >= 5 && q.length >= 5 && levenshtein(q, titulo) <= 1);
+// Erro de digitação só entra em palavras só com letras: "pessoa1" não é "pessoa2".
+const soLetras = (s: string) => /^[a-z]+$/.test(s);
+const casaPalavra = (titulo: string, q: string) => q === titulo || (soLetras(titulo) && soLetras(q) && titulo.length >= 5 && q.length >= 5 && levenshtein(q, titulo) <= 1);
 
 // Regra: uma palavra que aparece em mais de um título nunca resolve sozinha, e o esclarecimento lista todos esses
 // títulos. Só uma sequência de palavras presente em um único título resolve. Títulos de reposição só entram

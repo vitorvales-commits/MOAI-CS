@@ -3,6 +3,7 @@
 import { classificar, type Intencao } from './classificador.ts';
 import { extrairConselho, extrairCs, extrairData, NOMES_DE_MES, type ConselhoRef, type CsRef } from './entidades.ts';
 import { normalizarTexto } from './texto.ts';
+import { csDaCarteira } from './fonte-cs.ts';
 import { responderCarteira, responderElenco, type DadosTime, type RespostaTime } from './time-carteira.ts';
 
 export interface DadosPipeline extends DadosTime {
@@ -40,6 +41,13 @@ function palavrasDeCs(csLista: CsRef[]): Set<string> {
   const s = new Set<string>(NOMES_DE_MES);
   csLista.forEach((c) => [c.nome_curto, ...c.apelidos].forEach((n) => normalizarTexto(n).split(' ').forEach((p) => p && s.add(p))));
   return s;
+}
+
+// Resposta de carteira com o conselho e o CS responsável, para os links da tela.
+function respostaCarteiraComVinculos(groupId: string, dataIso: string, d: DadosPipeline): RespostaTime {
+  const resp = responderCarteira(groupId, dataIso, d);
+  const csId = csDaCarteira(d.vigencias, groupId, dataIso);
+  return { ...resp, groupId, csNome: csId === null ? null : d.csPorId[csId] ?? null };
 }
 
 // escolhido: group_id que o usuário escolheu numa pergunta de esclarecimento. A pergunta já vem resolvida.
@@ -83,7 +91,8 @@ export function responderTexto(texto: string, d: DadosPipeline, escolhido?: stri
         confianca,
         entidades,
         pergunta: 'Digite mais do nome do conselho para eu identificar qual é.',
-        opcoes: [],
+        // Mesmo com muitos candidatos, a saída "Nenhum desses" continua disponível.
+        opcoes: [OPCAO_NENHUM],
       };
     }
     const lista = ambiguo
@@ -105,6 +114,6 @@ export function responderTexto(texto: string, d: DadosPipeline, escolhido?: stri
     intencao,
     confianca,
     entidades: { ...entidades, data },
-    resposta: responderCarteira(entidades.conselho as string, data, d),
+    resposta: respostaCarteiraComVinculos(entidades.conselho as string, data, d),
   };
 }

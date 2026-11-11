@@ -141,7 +141,7 @@
       .then(function (r) { clearTimeout(tCarr); if (!r.ok) throw new Error('responder ' + r.status); return r.json(); })
       .then(function (d) {
         saida.textContent = ''; saida.removeAttribute('data-estado');
-        if (d.status === 'resposta') { mostrarRespostaVitorio(d.resposta); return true; }
+        if (d.status === 'resposta') { mostrarRespostaVitorio(d); return true; }
         if (d.status === 'esclarecimento') { mostrarEsclarecimento(d, q); return true; }
         buscarProcessos(q);
         return false;
@@ -151,12 +151,26 @@
   function comoCheguei(txt) {
     var d = el('details', 'vt-como'); d.appendChild(el('summary', null, 'Como cheguei nisso')); d.appendChild(el('p', null, txt)); return d;
   }
-  function mostrarRespostaVitorio(r) {
+  // Cartão de resposta: texto em linguagem de gestão, links do conselho (e do CS, só para gestor), "Como cheguei nisso"
+  // e "Isso ajudou?" quando o servidor devolveu consultaId. Sem registro, sem links de conselho.
+  function mostrarRespostaVitorio(d) {
+    var r = d.resposta;
     estado('respondendo', 1000);
     var c = el('article', 'vt-cartao vt-cartao-vitorio' + (r.temRegistro ? '' : ' vt-sem-registro'));
     c.appendChild(el('h3', null, r.texto));
+    if (r.temRegistro && r.groupId) {
+      var acoes = el('div', 'vt-acoes');
+      var ver = el('a', 'vt-btn sm claro', 'Ver conselho'); ver.href = '/conselho/' + encodeURIComponent(r.groupId);
+      acoes.appendChild(ver);
+      if (perfil === 'gestor' && r.csNome) {
+        var verCs = el('a', 'vt-btn sm claro', 'Ver carteira do ' + r.csNome); verCs.href = '/gestor/cs/' + encodeURIComponent(r.csNome);
+        acoes.appendChild(verCs);
+      }
+      c.appendChild(acoes);
+    }
     c.appendChild(comoCheguei(r.comoCheguei));
     saida.appendChild(c);
+    if (d.consultaId) { ultimaConsultaId = d.consultaId; perguntaAjudou(c); }
   }
   function mostrarEsclarecimento(d, q) {
     estado('neutro');
