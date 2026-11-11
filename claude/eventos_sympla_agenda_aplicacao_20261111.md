@@ -60,3 +60,41 @@ Status geral: **parcial**. Código aplicado e verificado localmente. Migração 
 3. Push da branch e preview para validação visual com login.
 4. Teste de erro de leitura num app rodando.
 5. Quando o token chegar: `supabase secrets set SYMPLA_TOKEN=<token>` e conferir a Mesa de 24/11 (3647115) em `sympla_eventos`.
+
+## Execução de 11/11, tarde (PR #64)
+
+**Patches:** o `git am` dos três patches já tinha sido feito antes, como os commits `b3c9bb6`, `f62f9b6` e `e0f9ac3`. Não foi reaplicado.
+
+**Correção no workflow (commit `6398a07`):** `deploy-functions.yml` incluía `_shared` na lista do diff, e a validação `^[a-z0-9]` reprovaria o job. Simulei a seleção sobre os commits da branch: antes, `_shared` era inválido; agora a lista fica só com `sync-monday` e `sync-sympla`.
+
+**PR #64:** aberto contra a main, `https://github.com/vitorvales-commits/MOAI-CS/pull/64`. Checks verdes: Vercel (preview) e "Restaurar, aplicar e testar na cópia" (1m43s).
+
+**Preview com login real:** `https://moai-cs-dashboard-git-feat-eventos-sympla-agenda-moai7.vercel.app`. Entrei com Google, conta `vitorvales@moaiclubedelideres.com`.
+
+**API `/api/agenda` (sessão logada):**
+- 16 a 22/11: status 200, 7 conselhos, 0 rounds, 0 eventos, `eventosErro: null`.
+- 23 a 29/11: status 200, 11 conselhos, 0 rounds, 0 eventos, `eventosErro: null`.
+
+**Agenda em 1440 px:** semanas de 16/11 e 23/11 renderizam normalmente, com conselhos e a legenda `EVENTO`. Não há cartão de evento, porque `eventos_items` está vazia.
+
+**Agenda em 390 px:** NÃO VERIFICADO. A janela do navegador não desce abaixo de cerca de 500 px, e o app não pode ser embutido em iframe (`contentDocument` nulo), então não consegui renderizar em 390 px.
+
+**Modal de evento:** NÃO TESTADO. Não existe cartão de evento para abrir enquanto `eventos_items` estiver vazia (depende da `sync-monday`).
+
+**Erro forçado de leitura:** teste temporário fora do commit (script removido depois). O cliente devolve erro só para `eventos_items` e `sympla_eventos`; as outras tabelas devolvem lista vazia, porque o cliente anônimo não tem sessão. Resultado: `generateAgendaVisual` não lançou exceção e devolveu `eventosErro: "eventos_items: erro forçado no teste (eventos_items)"`, com `conselhos`, `rounds` e `eventos` presentes. Limitação: conselhos e rounds vieram vazios por causa do stub, então isso prova o caminho do erro, não a preservação de dados reais. Não foi testado no app rodando.
+
+**Merge:** NÃO FEITO. O comando `gh pr merge 64 --squash` foi negado pelo classificador de permissões ("Merge Without Review"). Depende de autorização explícita para o merge.
+
+**Consequências do merge pendente:**
+- O workflow Deploy das Edge Functions não roda, então `sync-monday` continua sem a tarefa `eventos` em produção.
+- `sync-sympla` já está implantada pelo MCP, com o conteúdo conferido por leitura.
+
+**Advisors (segunda rodada, 11/11 15:26 UTC):**
+- Segurança: nenhum achado cita `eventos_items`, `sympla_eventos` ou `sympla_disparar`. Os achados são antigos.
+- Performance: `eventos_items_sympla_idx` aparece como não usado (INFO, esperado em tabela vazia). `sympla_eventos_inicio_idx` saiu da lista de não usados, o que indica uso pela agenda. Demais achados antigos.
+
+**Não feito neste ciclo:**
+- Merge do PR #64 (negado pelo classificador).
+- Deploy pelo workflow após o merge, e a confirmação de `sync-monday` e `sync-sympla`.
+- Sync manual com `board=eventos`, e as conferências do Comitê de IA 18/11, Connect 22/10 e Mesa 24/11.
+- Modal de evento e 390 px.
