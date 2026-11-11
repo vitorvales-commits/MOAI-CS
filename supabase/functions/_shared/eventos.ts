@@ -149,6 +149,19 @@ export function ritmoDoEvento(p: { vendidos: number | null; meta: number | null;
   return 'no_ritmo';
 }
 
+// A coluna de pessoas do Monday devolve o email quando o usuário não tem nome de exibição
+// (ex.: convite pendente). Nenhum email é gravado: vira nome a partir da parte local
+// ("vinicius.souza@..." vira "Vinicius Souza"). Lista separada por vírgula entra e sai assim.
+export function nomesDePessoasMonday(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const nomes = String(raw).split(',').map((p) => p.trim()).filter(Boolean).map((p) => {
+    if (!p.includes('@')) return p;
+    const local = p.split('@')[0].replace(/[._-]+/g, ' ').replace(/\d+/g, ' ').trim();
+    return local.split(/\s+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }).filter(Boolean);
+  return nomes.length ? Array.from(new Set(nomes)).join(', ') : null;
+}
+
 // Escala cancelada ou status do evento cancelado.
 export function eventoCancelado(escala: string | null | undefined, status: string | null | undefined): boolean {
   return /cancelad/i.test(String(escala || '')) || /cancelad/i.test(String(status || ''));

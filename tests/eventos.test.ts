@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   parseMeta, metaTotal, parseHorarioInicio, minutosDoTurno, parseTimeline, idSymplaDoLink, nomeLimpo,
-  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes,
+  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes, nomesDePessoasMonday,
 } from '../lib/eventos.ts';
 
 // Meta
@@ -81,5 +81,12 @@ assert.equal(ritmoDoEvento({ vendidos: 5, meta: 30, diasAteEvento: -1, passado: 
 assert.equal(eventoCancelado('Evento Cancelado', null), true);
 assert.equal(eventoCancelado('Escala Fechada', 'Cancelado'), true);
 assert.equal(eventoCancelado('Escala Fechada', 'A iniciar'), false);
+
+// Email na coluna de pessoas vira nome e nunca é gravado
+assert.equal(nomesDePessoasMonday('vinicius.souza@mmoai.com.br, Luma Guadanhim'), 'Vinicius Souza, Luma Guadanhim');
+assert.equal(nomesDePessoasMonday('Mateus Ries, Mateus Ries'), 'Mateus Ries');
+assert.equal(nomesDePessoasMonday('  '), null);
+assert.equal(nomesDePessoasMonday(null), null);
+assert.ok(!/@/.test(nomesDePessoasMonday('a.b@x.com, c_d2@y.com.br')!));
 
 console.log('eventos: todos os testes passaram');

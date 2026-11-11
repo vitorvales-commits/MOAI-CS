@@ -384,6 +384,8 @@
         + (e.sympla.vendidos7d != null && !e.passado ? ', ' + esc(String(e.sympla.vendidos7d)) + ' nos últimos 7 dias' : '') + '</dd>';
       if (e.passado && e.sympla.checkins != null) h += '<dt>Check in</dt><dd>' + esc(e.sympla.checkins + ' de ' + (e.sympla.vendidos || 0)) + '</dd>';
       if (lido) h += '<dt>Leitura</dt><dd>Sympla, ' + pad(lido.getDate()) + '/' + pad(lido.getMonth() + 1) + ' às ' + pad(lido.getHours()) + ':' + pad(lido.getMinutes()) + '</dd>';
+    } else if (e.fonte === 'monday' && e.symplaIdVinculado) {
+      h += '<dt>Ingressos</dt><dd>Link do Sympla vinculado. As vendas aparecem assim que a leitura do Sympla estiver ativa.</dd>';
     } else if (e.fonte === 'monday') {
       h += '<dt>Ingressos</dt><dd>Evento sem par no Sympla. Coloque o link do Sympla em Link dos convites, no Monday.</dd>';
     }

@@ -18,6 +18,8 @@ export type AgendaEventoItem = {
   sympla: { id: number; vendidos: number | null; checkins: number | null; vendidos7d: number | null; url: string | null; contagemEm: string | null } | null;
   ritmo: RitmoEvento; faltam: number | null; diasAteEvento: number;
   fonte: 'monday' | 'sympla' | 'ambos';
+  // Id do Sympla tirado do link dos convites no Monday, mesmo quando o Sympla ainda não foi lido.
+  symplaIdVinculado: number | null;
 };
 
 const COLS_MONDAY = 'id,nome,nome_limpo,data_inicio,data_fim,horario_raw,inicio,local,label,produto,escala_status,status_evento,meta_raw,escalados_raw,sympla_event_id';
@@ -79,6 +81,7 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
       faltam: total != null && sym && sym.vendidos != null ? Math.max(0, total - sym.vendidos) : null,
       diasAteEvento: dias,
       fonte: sym ? 'ambos' : 'monday',
+      symplaIdVinculado: r.sympla_event_id == null ? null : Number(r.sympla_event_id),
     });
   });
 
@@ -94,7 +97,7 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
       diaIso, diaInicioIso: diaIso, diaFimIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos), horarioTexto: null,
       passado, cancelado: false, escalaStatus: null, cs: null, csLista: [], meta: null, sympla: sym,
       ritmo: ritmoDoEvento({ vendidos: sym!.vendidos, meta: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), passado }),
-      faltam: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), fonte: 'sympla',
+      faltam: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), fonte: 'sympla', symplaIdVinculado: Number(r.id),
     });
   });
 
