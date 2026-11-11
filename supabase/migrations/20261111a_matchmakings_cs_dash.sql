@@ -1,0 +1,32 @@
+-- ============================================================================
+-- Vitorio registro, PR 1 (11/11/2026): atribuição do matchmaking pela coluna "CS do dash".
+--
+-- Aditivo. A coluna cs_dash_texto recebe o texto da coluna "CS do dash" do board de Matchmakings
+-- (sincronizada pela sync-monday numa etapa seguinte). Enquanto a coluna estiver vazia, a view
+-- canonico.v_matchmakings resolve exatamente como antes, pelo creator_id. Quando preenchida, o CS
+-- é resolvido pelo texto (canonico.resolver_cs). Nenhuma tabela nova: não entra em catalogo_tabelas.
+-- ============================================================================
+
+alter table public.matchmakings_items add column if not exists cs_dash_texto text;
+
+create or replace view canonico.v_matchmakings with (security_invoker = true) as
+select m.id as chave,
+       coalesce(nullif(btrim(m.cs_dash_texto), ''), m.creator_id::text) as cs_texto_original,
+       case
+         when nullif(btrim(m.cs_dash_texto), '') is not null then
+           coalesce((select array_agg(c.id order by c.id) from canonico.cs c where c.id = canonico.resolver_cs(m.cs_dash_texto)), '{}'::bigint[])
+         else
+           coalesce((select array_agg(c.id order by c.id) from canonico.cs c where c.monday_user_id = m.creator_id), '{}'::bigint[])
+       end as cs_ids,
+       case
+         when nullif(btrim(m.cs_dash_texto), '') is not null then
+           case when canonico.resolver_cs(m.cs_dash_texto) is not null then 'cs' else 'pendente' end
+         when m.creator_id is null then 'ignorar'
+         when exists (select 1 from canonico.cs c where c.monday_user_id = m.creator_id) then 'cs'
+         else coalesce((select a.classe from canonico.cs_apelidos a where a.texto_normalizado = m.creator_id::text), 'pendente')
+       end as classe,
+       m.data as data_referencia,
+       canonico.mes_de_titulo(m.mes_grupo_titulo, coalesce(extract(year from m.synced_at)::int, extract(year from now())::int)) as mes
+from public.matchmakings_items m;
+
+select seguranca.aplicar_protecoes();
