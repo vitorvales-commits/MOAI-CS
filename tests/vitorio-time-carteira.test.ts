@@ -32,13 +32,15 @@ assert.match(set.texto, /Ana, Bia/);
 assert.match(set.texto, /setembro de 2026/);
 assert.doesNotMatch(set.texto, /Caio/);
 assert.equal(set.temRegistro, true);
-assert.match(set.comoCheguei, /cs_periodos/);
+assert.match(set.comoCheguei, /Histórico de períodos dos CS/);
+assert.match(set.fonteTecnica, /cs_periodos/);
 
 // Elenco de novembro: mês corrente, CS ativos hoje, com a fonte real (canonico.cs via vitorio_dicionario).
 const nov = guardar(responderElenco('2026-11-01', dados));
 assert.match(nov.texto, /Bia, Caio/);
-assert.match(nov.comoCheguei, /canonico\.cs/);
-assert.doesNotMatch(nov.comoCheguei, /cs_config/);
+assert.match(nov.comoCheguei, /Lista de CS ativos hoje/);
+assert.match(nov.fonteTecnica, /canonico\.cs/);
+assert.doesNotMatch(nov.fonteTecnica, /cs_config/);
 
 // Elenco vazio: temRegistro false, nos dois ramos.
 const vazioHoje = guardar(responderElenco('2026-11-01', { ...dados, ativosHoje: [] }));
@@ -52,29 +54,30 @@ const carteiraSet = guardar(responderCarteira('g1', '2026-09-15', dados));
 assert.equal(carteiraSet.temRegistro, false);
 assert.equal(
   carteiraSet.texto,
-  'Sobre Conselho Um em 15/09/2026: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026, então não tenho esse registro.',
+  'Não tenho esse registro: o dash só passou a guardar quem cuida de cada conselho em 30/10/2026. Para 15/09/2026, consulte o gestor da área ou o board do Monday.',
 );
 assert.match(carteiraSet.texto, /15\/09\/2026/);
 assert.doesNotMatch(carteiraSet.texto, /Bia/);
-assert.match(carteiraSet.comoCheguei, /sem registro/);
+assert.match(carteiraSet.comoCheguei, /Sem registro para essa data/);
 
 // Carteira antes de hoje: "era cuidado por", com data em português.
 const carteiraNov = guardar(responderCarteira('g1', '2026-11-05', dados));
 assert.equal(carteiraNov.temRegistro, true);
-assert.equal(carteiraNov.texto, 'Conselho Um era cuidado por Bia em 05/11/2026.');
-assert.match(carteiraNov.comoCheguei, /conselho_cs_vigencia/);
+assert.equal(carteiraNov.texto, 'O conselho Conselho Um estava com Bia em 05/11/2026.');
+assert.match(carteiraNov.comoCheguei, /Registro de responsáveis por conselho/);
+assert.match(carteiraNov.fonteTecnica, /conselho_cs_vigencia/);
 
 // Carteira de hoje e de data futura: "é cuidado por".
 const hoje = guardar(responderCarteira('g1', '2026-11-10', dados));
-assert.equal(hoje.texto, 'Conselho Um é cuidado por Bia em 10/11/2026.');
+assert.equal(hoje.texto, 'O conselho Conselho Um está com Bia em 10/11/2026.');
 const futuro = guardar(responderCarteira('g1', '2026-12-01', dados));
-assert.equal(futuro.texto, 'Conselho Um é cuidado por Bia em 01/12/2026.');
+assert.equal(futuro.texto, 'O conselho Conselho Um está com Bia em 01/12/2026.');
 
 // Conselho com vigência só a partir de 01/11: 31/10 não tem registro (guarda da carga), 01/11 responde.
 const antes = guardar(responderCarteira('g2', '2026-10-31', dados));
 assert.equal(antes.temRegistro, false);
 const depois = guardar(responderCarteira('g2', '2026-11-01', dados));
-assert.equal(depois.texto, 'Conselho Dois era cuidado por Caio em 01/11/2026.');
+assert.equal(depois.texto, 'O conselho Conselho Dois estava com Caio em 01/11/2026.');
 
 // Nenhuma resposta visível traz data AAAA-MM-DD.
 for (const r of respostas) {

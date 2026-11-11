@@ -90,18 +90,21 @@ if (set.status === 'resposta') {
 const nov = responderTexto('quem cuida do conselho um em 05/11', dados);
 assert.equal(nov.status, 'resposta');
 if (nov.status === 'resposta') {
-  assert.equal(nov.resposta.texto, 'Conselho Um era cuidado por Bia em 05/11/2026.');
-  assert.match(nov.resposta.comoCheguei, /conselho_cs_vigencia/);
+  assert.equal(nov.resposta.texto, 'O conselho Conselho Um estava com Bia em 05/11/2026.');
+  assert.match(nov.resposta.comoCheguei, /Registro de responsáveis por conselho/);
+  assert.match(nov.resposta.fonteTecnica, /conselho_cs_vigencia/);
 }
 const elencoSet = responderTexto('quem era cs em setembro', dados);
-if (elencoSet.status === 'resposta') assert.match(elencoSet.resposta.comoCheguei, /cs_periodos/);
+if (elencoSet.status === 'resposta') assert.match(elencoSet.resposta.fonteTecnica, /cs_periodos/);
 
 // Esclarecimento: conselho faltando, com até cinco opções.
 const semConselho = responderTexto('quem cuida do conselho em 05/11', dados);
 assert.equal(semConselho.status, 'esclarecimento');
 if (semConselho.status === 'esclarecimento') {
   assert.equal(semConselho.pergunta, 'De qual conselho?');
-  assert.ok(semConselho.opcoes.length >= 1 && semConselho.opcoes.length <= 5);
+  const conselhosNaLista = semConselho.opcoes.filter((o) => o.valor !== 'nenhum');
+assert.ok(conselhosNaLista.length >= 1 && conselhosNaLista.length <= 5);
+assert.equal(semConselho.opcoes[semConselho.opcoes.length - 1].valor, 'nenhum');
 }
 
 // Sem intenção: abaixo do limiar, o pipeline não responde.

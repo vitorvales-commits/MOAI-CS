@@ -70,7 +70,9 @@ for (const c of cego) {
   }
   if (c.maxOpcoes !== undefined && out.status === 'esclarecimento') {
     entTot++;
-    if (out.opcoes.length <= c.maxOpcoes) entOk++; else notas.push(`opções demais: ${out.opcoes.length}`);
+    // O limite de cinco vale para os conselhos; "Nenhum desses" (valor nenhum) fica fora da contagem.
+    const conselhosOpc = out.opcoes.filter((o) => o.valor !== 'nenhum').length;
+    if (conselhosOpc <= c.maxOpcoes) entOk++; else notas.push(`opções demais: ${conselhosOpc}`);
   }
   const marca = intOkI && stOkI && !notas.length ? 'OK ' : 'XX ';
   console.log(`${marca}${String(c.id).padStart(2)} ${c.pergunta}`);

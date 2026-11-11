@@ -31,7 +31,7 @@ const dados: DadosPipeline = {
 // Opções de esclarecimento, como conjunto de group_ids.
 const opcoesDe = (s: ReturnType<typeof responderTexto>) => {
   assert.equal(s.status, 'esclarecimento', `esperava esclarecimento, veio ${s.status}`);
-  return new Set((s as any).opcoes.map((o: { valor: string }) => o.valor));
+  return new Set((s as any).opcoes.map((o: { valor: string }) => o.valor).filter((v: string) => v !== 'nenhum'));
 };
 
 // 1. Sobrenome compartilhado com sinal de carteira: esclarecimento com todos os conselhos que o contêm.

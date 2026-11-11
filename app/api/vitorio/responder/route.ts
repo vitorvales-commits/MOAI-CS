@@ -11,6 +11,7 @@ import { perfilPermitido } from '@/lib/vitorio/servidor';
 import { responderCarteira, responderElenco, type DadosTime } from '@/lib/vitorio/time-carteira';
 import { responderTexto, type DadosPipeline, type Saida } from '@/lib/vitorio/pipeline';
 import { normalizarTexto } from '@/lib/vitorio/texto';
+import { argsRegistro, registrarConsulta } from '@/lib/vitorio/registro';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,23 +70,30 @@ export async function POST(req: NextRequest) {
     if (typeof b.texto === 'string') {
       const texto = b.texto.trim().slice(0, 200);
       if (!texto || !normalizarTexto(texto)) return NextResponse.json({ error: 'Pergunta vazia.' }, { status: 400 });
-      const saida = responderTexto(texto, dados);
+      // escolhido: opção clicada num esclarecimento; a pergunta reenviada já traz o conselho resolvido.
+      const escolhido = typeof b.escolhido === 'string' ? b.escolhido.slice(0, 80) : undefined;
+      const saida = responderTexto(texto, dados, escolhido);
       // Sem intenção não registra: a busca de processos, que a tela chama em seguida, já registra essa pergunta.
+      // Registro com erro ou no limite de 30 por hora sai sem consultaId: a tela então não mostra "Isso ajudou?".
+      let consultaId: string | null = null;
       if (saida.status !== 'sem_intencao') {
         const perfil = perfilPermitido(String(b.perfil || ''), isGestor, csNome);
-        // Registro: falha nunca atrapalha quem perguntou; o limite de 30 por hora também não aparece.
-        const { error } = await supabase.rpc('vitorio_registrar_consulta_v2', {
-          p_perfil: perfil,
-          p_consulta: texto,
-          p_resultado: resultadoDoRegistro(saida),
-          p_chave: null,
-          p_gravar_email: VITORIO_REGISTRAR_PESSOA,
-          p_intencao: saida.intencao,
-          p_entidades: saida.entidades,
-        });
-        if (error && error.code !== '54000') console.error('[api/vitorio/responder] registro', error.message);
+        const escolhidoValido = !!escolhido && escolhido !== 'nenhum' && !!dados.conselhos[escolhido];
+        const reg = await registrarConsulta(
+          (nome, args) => supabase.rpc(nome, args) as any,
+          argsRegistro({
+            perfil,
+            texto,
+            resultado: resultadoDoRegistro(saida),
+            escolhido: escolhidoValido ? escolhido as string : null,
+            intencao: saida.intencao,
+            entidades: saida.entidades as unknown as Record<string, unknown>,
+            gravarPessoa: VITORIO_REGISTRAR_PESSOA,
+          }),
+        );
+        consultaId = reg.consultaId;
       }
-      return NextResponse.json(saida);
+      return NextResponse.json(consultaId ? { ...saida, consultaId } : saida);
     }
 
     // Campos estruturados (teste): mesmo pipeline de respostas, sem classificar o texto.

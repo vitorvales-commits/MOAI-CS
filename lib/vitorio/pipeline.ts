@@ -1,8 +1,9 @@
-// Pipeline do Vitorio no servidor (B1, começo): classifica, extrai entidades e responde ou pede esclarecimento.
+// Pipeline do Vitorio no servidor (B1): classifica, extrai entidades e responde ou pede esclarecimento.
 // Puro: recebe os dados já lidos (dicionário, períodos, vigências). Sem SQL montado a partir do texto.
 import { classificar, type Intencao } from './classificador.ts';
 import { extrairConselho, extrairCs, extrairData, NOMES_DE_MES, type ConselhoRef, type CsRef } from './entidades.ts';
 import { normalizarTexto } from './texto.ts';
+import { csDaCarteira } from './fonte-cs.ts';
 import { responderCarteira, responderElenco, type DadosTime, type RespostaTime } from './time-carteira.ts';
 
 export interface DadosPipeline extends DadosTime {
@@ -17,12 +18,16 @@ export interface Entidades {
   cs: number[];
 }
 
+export interface Opcao { label: string; valor: string }
+
 export type Saida =
   | { status: 'resposta'; intencao: Intencao; confianca: number; entidades: Entidades; resposta: RespostaTime }
-  | { status: 'esclarecimento'; intencao: Intencao; confianca: number; entidades: Entidades; pergunta: string; opcoes: { label: string; valor: string }[] }
+  | { status: 'esclarecimento'; intencao: Intencao; confianca: number; entidades: Entidades; pergunta: string; opcoes: Opcao[] }
   | { status: 'sem_intencao'; intencao: null; confianca: number; entidades: Entidades };
 
+// Até cinco conselhos por pergunta de esclarecimento. Mais que isso: pede mais do nome.
 const MAX_OPCOES = 5;
+export const OPCAO_NENHUM: Opcao = { label: 'Nenhum desses', valor: 'nenhum' };
 
 // Último dia do mês AAAA-MM-01 -> AAAA-MM-DD.
 function ultimoDiaDoMes(mesIso: string): string {
@@ -38,19 +43,32 @@ function palavrasDeCs(csLista: CsRef[]): Set<string> {
   return s;
 }
 
-export function responderTexto(texto: string, d: DadosPipeline): Saida {
+// Resposta de carteira com o conselho e o CS responsável, para os links da tela.
+function respostaCarteiraComVinculos(groupId: string, dataIso: string, d: DadosPipeline): RespostaTime {
+  const resp = responderCarteira(groupId, dataIso, d);
+  const csId = csDaCarteira(d.vigencias, groupId, dataIso);
+  return { ...resp, groupId, csNome: csId === null ? null : d.csPorId[csId] ?? null };
+}
+
+// escolhido: group_id que o usuário escolheu numa pergunta de esclarecimento. A pergunta já vem resolvida.
+export function responderTexto(texto: string, d: DadosPipeline, escolhido?: string): Saida {
   const hoje = d.hojeIso.slice(0, 10);
   const dataEnt = extrairData(texto, hoje);
   const conselho = extrairConselho(texto, d.conselhosLista, palavrasDeCs(d.csLista));
   const cs = extrairCs(texto, d.csLista);
-  const { intencao, confianca } = classificar(texto, {
-    temConselho: conselho.candidatos.length > 0,
-    conselhoAmbiguo: conselho.candidatos.length > 1,
-    temData: !!dataEnt,
-    temCs: cs.length > 0,
-  });
+  const escolhidoValido = !!escolhido && escolhido !== 'nenhum' && !!d.conselhos[escolhido];
+
+  const candidatos = escolhidoValido ? [escolhido as string] : conselho.candidatos;
+  const { intencao, confianca } = escolhidoValido
+    ? { intencao: 'carteira' as Intencao, confianca: 0.6 }
+    : classificar(texto, {
+      temConselho: candidatos.length > 0,
+      conselhoAmbiguo: candidatos.length > 1,
+      temData: !!dataEnt,
+      temCs: cs.length > 0,
+    });
   const entidades: Entidades = {
-    conselho: conselho.candidatos.length === 1 ? conselho.candidatos[0] : null,
+    conselho: candidatos.length === 1 ? candidatos[0] : null,
     data: dataEnt?.tipo === 'dia' ? dataEnt.iso : null,
     mes: dataEnt ? (dataEnt.tipo === 'mes' ? dataEnt.iso : dataEnt.iso.slice(0, 7) + '-01') : null,
     cs,
@@ -64,17 +82,29 @@ export function responderTexto(texto: string, d: DadosPipeline): Saida {
   }
 
   // carteira: precisa de conselho. Sem data, usa hoje; com só o mês, o último dia do mês (antes da carga, sem registro).
-  if (conselho.candidatos.length !== 1) {
-    const opcoes = conselho.candidatos.length > 1
-      ? conselho.candidatos
+  if (candidatos.length !== 1) {
+    const ambiguo = candidatos.length > 1;
+    if (ambiguo && candidatos.length > MAX_OPCOES) {
+      return {
+        status: 'esclarecimento',
+        intencao,
+        confianca,
+        entidades,
+        pergunta: 'Digite mais do nome do conselho para eu identificar qual é.',
+        // Mesmo com muitos candidatos, a saída "Nenhum desses" continua disponível.
+        opcoes: [OPCAO_NENHUM],
+      };
+    }
+    const lista = ambiguo
+      ? candidatos
       : conselho.ordenados.slice(0, MAX_OPCOES).map((o) => o.group_id);
     return {
       status: 'esclarecimento',
       intencao,
       confianca,
       entidades,
-      pergunta: conselho.candidatos.length > 1 ? 'Qual conselho?' : 'De qual conselho?',
-      opcoes: opcoes.slice(0, MAX_OPCOES).map((gid) => ({ label: d.conselhos[gid] || gid, valor: gid })),
+      pergunta: ambiguo ? 'Qual destes conselhos você quer dizer?' : 'De qual conselho?',
+      opcoes: [...lista.map((gid) => ({ label: d.conselhos[gid] || gid, valor: gid })), OPCAO_NENHUM],
     };
   }
   const data = entidades.data
@@ -84,6 +114,6 @@ export function responderTexto(texto: string, d: DadosPipeline): Saida {
     intencao,
     confianca,
     entidades: { ...entidades, data },
-    resposta: responderCarteira(entidades.conselho as string, data, d),
+    resposta: respostaCarteiraComVinculos(entidades.conselho as string, data, d),
   };
 }

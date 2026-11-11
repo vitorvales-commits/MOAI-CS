@@ -9,7 +9,15 @@ export const INICIO_VIGENCIA = '2026-10-30';
 export type Pergunta = 'elenco' | 'carteira';
 export type FonteCs = 'vigencia' | 'cs_periodos' | 'ativos_hoje' | 'sem_registro';
 
-export interface FonteDecidida { fonte: FonteCs; rotulo: string }
+// rotulo: técnico (log e testes). rotuloUsuario: o que a pessoa lê em "Como cheguei nisso".
+export interface FonteDecidida { fonte: FonteCs; rotulo: string; rotuloUsuario: string }
+
+const ROTULO_USUARIO: Record<FonteCs, string> = {
+  vigencia: "Registro de responsáveis por conselho, mantido desde 30/10/2026",
+  cs_periodos: "Histórico de períodos dos CS",
+  ativos_hoje: "Lista de CS ativos hoje",
+  sem_registro: "Sem registro para essa data",
+};
 
 const ROTULO: Record<FonteCs, string> = {
   vigencia: 'vigências de conselho (canonico.conselho_cs_vigencia, desde 30/10/2026)',
@@ -22,11 +30,11 @@ const ROTULO: Record<FonteCs, string> = {
 export function fonteParaData(dataIso: string, pergunta: Pergunta, hojeIso: string): FonteDecidida {
   const d = dataIso.slice(0, 10);
   if (pergunta === 'elenco' && d.slice(0, 7) >= hojeIso.slice(0, 7)) {
-    return { fonte: 'ativos_hoje', rotulo: ROTULO.ativos_hoje };
+    return { fonte: 'ativos_hoje', rotulo: ROTULO.ativos_hoje, rotuloUsuario: ROTULO_USUARIO.ativos_hoje };
   }
-  if (d >= INICIO_VIGENCIA) return { fonte: 'vigencia', rotulo: ROTULO.vigencia };
-  if (pergunta === 'elenco') return { fonte: 'cs_periodos', rotulo: ROTULO.cs_periodos };
-  return { fonte: 'sem_registro', rotulo: ROTULO.sem_registro };
+  if (d >= INICIO_VIGENCIA) return { fonte: 'vigencia', rotulo: ROTULO.vigencia, rotuloUsuario: ROTULO_USUARIO.vigencia };
+  if (pergunta === 'elenco') return { fonte: 'cs_periodos', rotulo: ROTULO.cs_periodos, rotuloUsuario: ROTULO_USUARIO.cs_periodos };
+  return { fonte: 'sem_registro', rotulo: ROTULO.sem_registro, rotuloUsuario: ROTULO_USUARIO.sem_registro };
 }
 
 // Elenco de um mês fechado antes da carga: nomes de cs_periodos, pela mesma regra do dash.
