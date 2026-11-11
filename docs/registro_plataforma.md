@@ -99,3 +99,11 @@ Os dois alertas pedidos foram a zero. O de funções executáveis por authentica
 Título: Robustez da plataforma: retenção do sync_log, índices e policies, funções SECURITY DEFINER, sync-monday resiliente e cartão de saúde dos dados.
 
 Justificativa de gestão: o gestor precisa saber, sem abrir nenhum detalhe, se os números que lê estão atualizados e se alguma rotina automática falhou, porque uma falha silenciosa de sete dias já ocorreu e só foi descoberta por inspeção técnica. O insight é a frescura dos dados por board e a ação é acionar o responsável técnico quando algo sai do padrão.
+
+## Normativa: escrita em produção (válida a partir de 11/11/2026)
+
+- **Nenhuma escrita em produção pelo conector do Supabase.** Isso vale para `apply_migration`, `execute_sql` com DDL ou DML, e `deploy_edge_function`, em qualquer sessão.
+- Produção só muda por dois caminhos: o workflow `aplicar-migracao`, com o arquivo já em `main`, e o `deploy-functions` no merge.
+- Leitura pelo conector continua permitida, inclusive `execute_sql` com SELECT.
+- Origem da regra: revisão de 11/11/2026. A migração `20261111_eventos_sympla` foi aplicada por `apply_migration` às 15h12 UTC, antes do merge da branch. O mesmo ocorreu em 10/11 com as versões `20261110140007` e `20261110173242`. As três foram comparadas: o código aplicado é idêntico ao arquivo, e a diferença é só em comentários.
+- Referência da normativa: `claude/normativa_dados_20261030.md`.
