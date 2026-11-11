@@ -9,6 +9,7 @@ declare
   v_n integer;
   v_empresa text;
   v_origem text;
+  v_chaves text;
 begin
   -- 1. Tabelas novas com RLS ligada e sem acesso direto para anon e authenticated.
   if not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -88,9 +89,10 @@ begin
   end if;
 
   -- 6. Chave limpa: nenhuma chave com " - " nem parênteses.
-  select count(*) into v_n from public.vitorio_dicionario_membros
+  select count(*), string_agg(nome_normalizado, ' | ') into v_n, v_chaves
+  from public.vitorio_dicionario_membros
    where nome_normalizado like '%-%' or nome_normalizado like '%(%' or nome_normalizado like '%)%';
-  if v_n > 0 then raise exception 'FALHA 6: % chaves com " - " ou parênteses', v_n; end if;
+  if v_n > 0 then raise exception 'FALHA 6: % chaves com " - " ou parênteses: %', v_n, v_chaves; end if;
 
   -- 7. Jocivane Brito: "Jocivane Brito - Monumental Contabilidade" no board, empresa vinda do membro.
   select empresa, empresa_origem into v_empresa, v_origem
