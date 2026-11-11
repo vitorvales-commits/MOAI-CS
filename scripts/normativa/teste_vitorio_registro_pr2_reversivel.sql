@@ -55,9 +55,9 @@ begin
     from public.conselhos_membros m
     cross join lateral regexp_split_to_table(
       regexp_replace(
-        case when position('|' in regexp_replace(m.nome, '\s*\(copy\)\s*$', '')) > 0
-             then split_part(regexp_replace(m.nome, '\s*\(copy\)\s*$', ''), '|', 1)
-             else regexp_replace(m.nome, '\s*\(copy\)\s*$', '') end,
+        case when position('|' in regexp_replace(replace(m.nome, chr(160), ' '), '\s*\(copy\)\s*$', '')) > 0
+             then split_part(regexp_replace(replace(m.nome, chr(160), ' '), '\s*\(copy\)\s*$', ''), '|', 1)
+             else regexp_replace(replace(m.nome, chr(160), ' '), '\s*\(copy\)\s*$', '') end,
         '\s+-\s+.*$', ''),
       '\s*\+\s*') as p(t)
     where m.nome like '%+%' and m.nome not ilike '%convidado%' and nullif(btrim(split_part(p.t, '(', 1)), '') is not null

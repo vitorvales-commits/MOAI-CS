@@ -83,9 +83,11 @@ with grupos as (
   select g.group_id, g.titulo, (g.is_repo is true or g.group_id like 'duplicate_of%') as reserva
   from public.conselhos_grupos g
 ),
+-- Espaço sem quebra (U+00A0) vira espaço comum antes das regex: o \s do Postgres não o trata igual em
+-- todas as locales (a cópia de teste e a produção divergiram por causa dele).
 nomes as (
   select m.id as membro_id, m.group_id, m.nome,
-         regexp_replace(m.nome, '\s*\(copy\)\s*$', '') as nome_sem_copy
+         regexp_replace(replace(m.nome, chr(160), ' '), '\s*\(copy\)\s*$', '') as nome_sem_copy
   from public.conselhos_membros m
 ),
 partes as (
@@ -118,7 +120,7 @@ pessoas as (
   where nullif(btrim(split_part(p.nome_txt, '(', 1)), '') is not null
 ),
 pedacos as (
-  select regexp_split_to_table(m.nome, '\s*\+\s*') as pedaco
+  select regexp_split_to_table(replace(m.nome, chr(160), ' '), '\s*\+\s*') as pedaco
   from public.matchmakings_items m
   where m.nome is not null
 ),
