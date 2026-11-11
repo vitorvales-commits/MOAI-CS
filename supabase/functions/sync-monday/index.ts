@@ -277,6 +277,9 @@ const MATCHMAKINGS_COLS = {
   motivo: 'long_textuevre4t8', categoria: 'single_selectyleiwd8', origem: 'single_selecto6mf971',
   resultado: 'long_texto8zt8o1n', data: 'date_mm4e7y75',
 };
+// Coluna "CS do dash" (texto) do board de Matchmaking, que a atribuição do CS passa a preferir. Nulo enquanto o
+// id não é cadastrado: sem ele a sync não pede a coluna nem envia cs_dash_texto (a coluna do banco fica como está).
+const MATCHMAKINGS_CS_DASH_COL: string | null = null;
 const CONSELHOS_COL_POR_MES: Record<string, string> = {
   Janeiro: 'color_mkz343x2', Fevereiro: 'color_mkzt3sk3', Março: 'color_mkzt7139',
   Abril: 'color_mkztzmry', Maio: 'color_mkztc9tw', Junho: 'color_mkzt6p3k',
@@ -1194,7 +1197,7 @@ async function syncMatchmakings() {
   // "matchmakings sem resultado" (calcularImpactoConselhos em lib/reports.ts), que por isso
   // mostrava 100% sem resultado pra TODO matchmaking sincronizado. Agora pede as 5 colunas de
   // conteúdo junto (ver MATCHMAKINGS_COLS).
-  const colsIds = Object.values(MATCHMAKINGS_COLS);
+  const colsIds = [...Object.values(MATCHMAKINGS_COLS), ...(MATCHMAKINGS_CS_DASH_COL ? [MATCHMAKINGS_CS_DASH_COL] : [])];
   // value traz o changed_at da coluna Resultado (instante da última alteração no Monday). Só leitura.
   const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id created_at column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text value}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
@@ -1215,6 +1218,7 @@ async function syncMatchmakings() {
         resultado,
         resultado_alterado_em_monday: resultado ? changedAtDe(item.column_values, MATCHMAKINGS_COLS.resultado) : null,
         data: dateOrNull(colText(item.column_values, MATCHMAKINGS_COLS.data)),
+        ...(MATCHMAKINGS_CS_DASH_COL ? { cs_dash_texto: colText(item.column_values, MATCHMAKINGS_CS_DASH_COL) } : {}),
       });
     });
   });

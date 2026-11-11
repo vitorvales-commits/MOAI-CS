@@ -29,4 +29,17 @@ select m.id as chave,
        canonico.mes_de_titulo(m.mes_grupo_titulo, coalesce(extract(year from m.synced_at)::int, extract(year from now())::int)) as mes
 from public.matchmakings_items m;
 
+-- Campos que o Vitorio poderá escrever no board de Matchmaking. A fila sincronia.comandos já está ligada em
+-- produção (sincronia.configuracao 'fila_escrita_ativa' = true desde 09/11/2026): estes campos só passam a ser
+-- escritos quando houver comandos para eles, e o fluxo do Vitorio que os cria é o PR 3. Nome do item não entra
+-- aqui: é o nome do elemento, enviado em criar_item. "CS do dash" entra quando o id da coluna for cadastrado
+-- (ver MATCHMAKINGS_CS_DASH_COL na sync).
+insert into sincronia.campos_editaveis (board_id, coluna_id, tipo_coluna, rotulo, papel, ativo) values
+  ('18409198202', 'long_textuevre4t8', 'long_text', 'Motivo',    'cs', true),
+  ('18409198202', 'single_selectyleiwd8', 'status', 'Categoria', 'cs', true),
+  ('18409198202', 'single_selecto6mf971', 'status', 'Origem',    'cs', true),
+  ('18409198202', 'long_texto8zt8o1n', 'long_text', 'Resultado', 'cs', true),
+  ('18409198202', 'date_mm4e7y75', 'date', 'Data',               'cs', true)
+on conflict (board_id, coluna_id) do nothing;
+
 select seguranca.aplicar_protecoes();
