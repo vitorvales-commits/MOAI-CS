@@ -133,6 +133,8 @@ export interface ResumoSemanaTime {
   csComMeta: number; // CS com meta efetiva na semana
   csSemApuracao: number; // CS com meta efetiva e realizado ausente
   falta: number;
+  diasUteisDecorridos: number; // dias úteis da semana já passados, hoje incluso
+  diasUteisTotal: number;
   diasUteisRestantes: number;
   previsto: number | null;
   status: StatusRitmo | null; // null quando nenhum CS tem base apurada
@@ -160,7 +162,7 @@ export function resumoSemanaTime(cs: MetasSemanaisCS[], hoje: string): ResumoSem
     saida.push({
       indicador: ind, label: LABEL_INDICADOR_SEMANAL[ind], inicio: base.parcelaInicio, fim: base.parcelaFim,
       efetivaTotal, realizadoTotal, csComMeta: parcelas.length, csSemApuracao: parcelas.length - apuradas.length,
-      falta: Math.max(0, efetivaTotal - realizadoTotal), diasUteisRestantes: total - decorridos,
+      falta: Math.max(0, efetivaTotal - realizadoTotal), diasUteisDecorridos: decorridos, diasUteisTotal: total, diasUteisRestantes: total - decorridos,
       previsto: ritmo ? ritmo.previsto : null, status: ritmo ? ritmo.status : null,
     });
   }

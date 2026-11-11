@@ -101,6 +101,8 @@ assert.equal(diasUteisEntre('2026-11-11', '2026-11-09'), 0);
   assert.equal(r.efetivaTotal, 2, 'só o CS apurado entra na soma da efetiva');
   assert.equal(r.realizadoTotal, 1);
   assert.equal(r.falta, 1);
+  assert.equal(r.diasUteisTotal, 5);
+  assert.equal(r.diasUteisDecorridos, 3, 'quarta-feira 11/11: segunda a quarta');
 }
 
 console.log('metas-semanais-visao: ok');

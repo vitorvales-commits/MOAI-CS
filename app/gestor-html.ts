@@ -943,6 +943,17 @@ ${RELATORIOS_GESTOR_HTML}
   </div>
 
   <div class="tab-panel" id="tab-controlePerfis" data-tab="controlePerfis">
+    <div class="config-card config-card-col" id="cardRitmoLimiar" style="margin-bottom:24px;">
+      <div>
+        <h3 style="margin:0 0 6px;">Ritmo semanal: limiar da fila</h3>
+        <div class="config-card-desc">Um CS entra na fila de ação quando algum indicador de metas semanais fica abaixo deste percentual da meta efetiva da semana. A mudança vale no próximo fechamento de segunda.</div>
+      </div>
+      <div class="feriados-form">
+        <label>Limiar <input class="pill-select" type="number" id="limiarRitmo" min="1" max="100" step="1" value="70" aria-describedby="limiarNota" style="width:90px"> %</label>
+        <button type="button" class="btn sm pri" data-salvar-limiar>Salvar limiar</button>
+      </div>
+      <small id="limiarNota" class="ms-sub"></small>
+    </div>
     <div class="config-card config-card-col" id="cardFeriados" style="margin-bottom:24px;">
       <div>
         <h3 style="margin:0 0 6px;">Feriados do cálculo de dias úteis</h3>
@@ -2098,30 +2109,52 @@ function carregarSemanaTime_() {
 function pintaSemanaTime_() {
   var el = document.getElementById('semanaTimeCorpo');
   if (visaoHomeAtual_() !== 'semana' || !RESUMO_SEMANA_) return;
-  var linhas = (RESUMO_SEMANA_.resumoTime || []).map(function (x) {
-    var pct = x.efetivaTotal > 0 ? Math.min(x.realizadoTotal / x.efetivaTotal * 100, 100) : 0;
-    var pace = x.previsto !== null && x.previsto !== undefined && x.efetivaTotal > 0 ? Math.min(x.previsto / x.efetivaTotal * 100, 100) : null;
-    var atras = x.status === 'atras' || x.status === 'atencao';
-    var st = x.status ? MS_ST_[x.status] : 'Sem apuração';
-    var sem = x.csSemApuracao ? ' · ' + x.csSemApuracao + ' sem apuração (fora da conta)' : '';
-    return '<div class="ms-card' + (atras ? ' atras' : '') + '"><b>' + msEsc_(x.label) + '</b>' +
-      '<div class="ms-barra"><span class="' + (atras ? 'gold' : '') + '" style="width:' + pct.toFixed(0) + '%"></span>' + (pace !== null ? '<i style="left:' + pace.toFixed(0) + '%" title="Esperado até hoje"></i>' : '') + '</div>' +
-      '<span>' + msNum_(x.realizadoTotal) + '<small>/' + msNum_(x.efetivaTotal) + ' do time</small></span>' +
-      '<div class="ms-sub"><b class="ms-st">' + st + '</b> · Faltam ' + msNum_(x.falta) + ' · ' + x.diasUteisRestantes + (x.diasUteisRestantes === 1 ? ' dia útil restante' : ' dias úteis restantes') + sem + '</div></div>';
+  var CINCO = ['cases', 'matchmakings', 'matchmakings_resultado', 'indicacoes', 'rounds'];
+  var linhas = (RESUMO_SEMANA_.resumoTime || []).filter(function (x) { return CINCO.indexOf(x.indicador) !== -1; });
+  if (!linhas.length) { el.innerHTML = '<div class="gh-vazio">Nenhum indicador com meta semanal no time nesta semana.</div>'; return; }
+  var r0 = linhas[0], entregas = 0, meta = 0, esperado = 0, temEsperado = false;
+  linhas.forEach(function (x) {
+    entregas += x.realizadoTotal; meta += x.efetivaTotal;
+    if (x.previsto !== null && x.previsto !== undefined) { esperado += x.previsto; temEsperado = true; }
+  });
+  var contexto = '<p class="rs-contexto">Semana de ' + msData_(r0.inicio) + ' a ' + msData_(r0.fim) + ' · dia útil ' + r0.diasUteisDecorridos + ' de ' + r0.diasUteisTotal + '</p>';
+  var frase = '<p class="rs-frase"><b>' + msNum_(entregas) + ' entregas de ' + msNum_(meta) + ' previstas.</b>' +
+    (temEsperado ? ' Pelo ritmo, o time já deveria ter ' + msNum_(Math.round(esperado)) + '.' : '') + '</p>';
+  var cards = linhas.map(function (x) {
+    var semMeta = !(x.efetivaTotal > 0);
+    var pct = semMeta ? 0 : Math.min(x.realizadoTotal / x.efetivaTotal * 100, 100);
+    var marca = !semMeta && x.previsto !== null && x.previsto !== undefined ? Math.min(x.previsto / x.efetivaTotal * 100, 100) : null;
+    var rotulo = x.status === 'atras' ? 'Atrás' : (x.status === 'atencao' ? 'Atenção' : (x.status === 'no_ritmo' ? 'No ritmo' : (x.status === 'cedo' ? 'Começando' : 'Sem apuração')));
+    var corSt = x.status === 'atras' ? 'var(--red-ink)' : (x.status === 'atencao' ? 'var(--gold-ink)' : '');
+    var foot = '<div class="rs-barra" role="img" aria-label="' + msEsc_(x.label) + ': ' + msNum_(x.realizadoTotal) + ' de ' + msNum_(x.efetivaTotal) + '"><i style="width:' + pct.toFixed(0) + '%"></i>' +
+      (marca !== null ? '<u style="left:' + marca.toFixed(0) + '%"></u>' : '') + '</div>' +
+      '<span class="rs-st"' + (corSt ? ' style="color:' + corSt + '"' : '') + '>' + rotulo + '</span> · Faltam ' + msNum_(x.falta);
+    return kpiHtml_({ rotulo: msEsc_(x.label), num: msNum_(x.realizadoTotal), small: ' / ' + msNum_(x.efetivaTotal), foot: foot, cor: x.status === 'atras' ? 'var(--red-ink)' : null });
   }).join('');
+  el.innerHTML = contexto + frase + '<div class="rs-cards">' + cards + '</div>' + conversasSemanaHtml_();
+}
+function conversasSemanaHtml_() {
   var rs = ACOES_ ? ACOES_.ritmoSemanal : null;
   var itens = rs && rs.dado ? rs.dado : [];
-  var acesso;
-  if (!ACOES_) acesso = '<p class="ms-sem">Carregando a fila de ação…</p>';
-  else if (rs && rs.erro) acesso = erroSecaoHtml_('Não foi possível ler o ritmo semanal', rs.erro);
-  else if (!itens.length) acesso = '<p class="ms-sem">Nenhum CS com ritmo semanal abaixo do limiar.</p>';
-  else acesso = '<p class="ms-sem"><b>' + itens.length + (itens.length === 1 ? ' item' : ' itens') + ' de ritmo semanal em aberto.</b> Maior déficit: ' + msEsc_(itens[0].cs_nome) + ', ' + msNum_(itens[0].deficit_total) + '.</p>' +
-    '<button type="button" class="btn sm" data-ir-fila-ritmo>Ver na fila de ação</button>';
-  var lim = rs && rs.limiar !== null && rs.limiar !== undefined ? Math.round(rs.limiar * 100) : 70;
-  var form = '<div class="ms-limiar"><label>Limiar do ritmo semanal <input type="number" id="limiarRitmo" min="1" max="100" step="1" value="' + lim + '" aria-describedby="limiarNota"> %</label> ' +
-    '<button type="button" class="btn sm" data-salvar-limiar>Salvar limiar</button> <small id="limiarNota" class="ms-sub">Abaixo desse percentual da meta efetiva o CS entra na fila. A mudança vale no próximo fechamento de segunda.</small></div>';
-  el.innerHTML = (linhas || '<div class="gh-vazio">Nenhum indicador com meta semanal no time nesta semana.</div>') + '<div class="ms-acesso">' + acesso + '</div>' + form;
+  var corpo;
+  if (!ACOES_) corpo = '<p class="ms-sem">Carregando a fila de ação…</p>';
+  else if (rs && rs.erro) corpo = erroSecaoHtml_('Não foi possível ler a fila de ritmo', rs.erro);
+  else if (!itens.length) corpo = '<p class="ms-sem">Nenhum CS com ritmo semanal abaixo do limiar nesta semana.</p>';
+  else corpo = '<ul class="rs-conversas">' + itens.slice(0, 3).map(function (it) {
+      var nomes = (it.indicadores || []).map(function (x) { return RITMO_IND_ROTULO_[x.indicador] || x.indicador; }).join(', ');
+      return '<li><b>' + msEsc_(it.cs_nome) + '</b><span>' + msEsc_(nomes) + '</span><em>' + msNum_(it.deficit_total) + ' a recuperar</em></li>';
+    }).join('') + '</ul>' +
+    '<button type="button" class="btn sm pri" data-ir-fila-ritmo>Ver os ' + itens.length + ' na fila de ação</button>';
+  return '<section class="rs-conversas-cartao"><h3>Conversas da 1:1 desta semana</h3>' + corpo + '</section>';
 }
+// O limiar fica nas configurações do gestor. Preenche o campo com o valor atual, vindo da fila.
+function preencheLimiar_() {
+  var i = document.getElementById('limiarRitmo');
+  if (i && ACOES_ && ACOES_.ritmoSemanal && ACOES_.ritmoSemanal.limiar !== null && ACOES_.ritmoSemanal.limiar !== undefined) i.value = Math.round(ACOES_.ritmoSemanal.limiar * 100);
+}
+document.addEventListener('click', function (ev) {
+  if (ev.target.closest && ev.target.closest('[data-salvar-limiar]')) salvarLimiar_();
+});
 function salvarLimiar_() {
   var input = document.getElementById('limiarRitmo'), nota = document.getElementById('limiarNota');
   var v = Number(input.value);
@@ -2154,6 +2187,7 @@ function carregarAcoes() {
     ACOES_ = data;
     renderFilaAcao_();
     pintaSemanaTime_();
+    preencheLimiar_();
     var snap = data.carimbos && data.carimbos.gtdSnapshot;
     if (snap && typeof dockDefinirSync === 'function') dockDefinirSync(dmAcoes_(snap), 'Posição do GTD de ' + dmaAcoes_(snap) + '. Clique para sincronizar agora.');
   }).catch(function (err) {
