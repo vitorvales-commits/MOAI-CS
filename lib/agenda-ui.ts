@@ -55,6 +55,18 @@ export const AGENDA_CSS = `
 .ag-sub { font-size:10.5px; color:#5D5D5D; line-height:1.35; margin-top:2px; overflow-wrap:anywhere; }
 .ag-cobranca { font-size:10.5px; font-weight:800; margin-top:4px; }
 .ag-pill { font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:99px; color:#fff; display:inline-block; white-space:nowrap; }
+.ag-card.ag-evento { border-left:4px solid #14213D; }
+.ag-card.ag-evento[data-ritmo="atencao"] { border-left-color:#F4A21B; }
+.ag-card.ag-evento[data-ritmo="critico"] { border-left-color:#C0433D; }
+.ag-ev-tag { font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:9.5px; font-weight:600; letter-spacing:0.3px; text-transform:uppercase; color:#14213D; border:0.75pt dashed #8C97B0; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+.ag-ev-venda { font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; color:#3A3A3A; margin-top:4px; }
+.ag-ev-barra { display:block; height:4px; border-radius:99px; background:#EEECEC; margin-top:4px; overflow:hidden; }
+.ag-ev-barra > span { display:block; height:100%; background:#14213D; }
+.ag-card.ag-evento[data-ritmo="atencao"] .ag-ev-barra > span { background:#F4A21B; }
+.ag-card.ag-evento[data-ritmo="critico"] .ag-ev-barra > span { background:#C0433D; }
+.ag-card.ag-evento[data-ritmo="atencao"] .ag-cobranca { color:#8A5A00; }
+.ag-card.ag-evento[data-ritmo="critico"] .ag-cobranca { color:#8A2A24; }
+.ag-ev-acao { font-size:12px; line-height:1.5; background:#FFF6E5; border:0.75pt dashed #F4A21B; border-radius:10px; padding:8px 10px; margin-top:10px; color:#5C3D00; }
 .ag-lista { display:flex; flex-direction:column; gap:14px; }
 .ag-lista-dia-titulo { font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11.5px; font-weight:600; color:#14213D; text-transform:uppercase; margin-bottom:6px; }
 .ag-lista-itens { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr)); gap:8px; }
