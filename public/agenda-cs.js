@@ -1,4 +1,4 @@
-/* Agenda de conselhos e Rounds (13/10/2026). Componente único: a home do gestor, a visão do próprio CS
+/* Agenda de conselhos, Rounds e eventos (13/10/2026; eventos da Escala e do Sympla em 11/11/2026). Componente único: a home do gestor, a visão do próprio CS
    e a página do CS aberta pelo gestor montam esta mesma agenda com agendaMontar(raizId, opcoes).
    Os dados vêm de /api/agenda. Faixa, turno, cobrança e prazo já chegam prontos do servidor
    (lib/agenda.ts); este script só filtra e desenha. Configuração em window.AGENDA_CFG. */
@@ -45,23 +45,28 @@
   function ehMobile() { return global.matchMedia && global.matchMedia('(max-width:700px)').matches; }
 
   // Gravidade para ordenar dentro da célula: vermelho primeiro, passado e round por último.
+  // Evento com venda crítica sobe junto dos conselhos vermelhos; em atenção, junto dos laranja.
   function gravidade(item) {
+    if (item.tipo === 'evento') return item.ritmo === 'critico' ? 0.5 : item.ritmo === 'atencao' ? 1.5 : 5.5;
     if (item.tipo === 'round') return 6;
     if (item.passado || !item.faixa) return 5;
     return GRAVIDADE[item.faixa] != null ? GRAVIDADE[item.faixa] : 5;
   }
 
+  function normNome(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   function doEscopo(st, item) {
     if (st.escopo !== 'meus') return true;
+    if (item.tipo === 'evento') { var alvo = normNome(st.csNome); return (item.csLista || []).some(function (n) { return normNome(n) === alvo; }); }
     if (item.tipo === 'round') return item.csLista.indexOf(st.csNome) >= 0;
     return item.cs === st.csNome;
   }
 
   function itensDaSemana(st) {
-    var d = st.dados || { conselhos: [], rounds: [] };
+    var d = st.dados || { conselhos: [], rounds: [], eventos: [] };
     var lista = [];
     (d.conselhos || []).forEach(function (c) { lista.push(c); });
     (d.rounds || []).forEach(function (r) { lista.push(r); });
+    (d.eventos || []).forEach(function (e) { lista.push(e); });
     return lista.filter(function (it) { return doEscopo(st, it); });
   }
 
@@ -84,7 +89,22 @@
     return quem + ', ' + DIAS_CURTOS[dePartesIso(c.diaIso).getDay()] + ' ' + ddmm(c.diaIso) + ' ' + c.hhmm + ', ' + prazo;
   }
 
+  // Frase dos eventos no resumo: quantos e quantos estão abaixo do ritmo de venda (a primeira coisa a tratar).
+  function resumoEventos(itens) {
+    var ev = itens.filter(function (i) { return i.tipo === 'evento' && !i.cancelado; });
+    if (!ev.length) return '';
+    var risco = ev.filter(function (e) { return e.ritmo === 'atencao' || e.ritmo === 'critico'; });
+    var txt = ' ' + plural(ev.length, 'evento', 'eventos') + ' na semana';
+    if (risco.length) txt += ', ' + (risco.length === 1 ? '1 abaixo do ritmo de venda: ' : risco.length + ' abaixo do ritmo de venda, o primeiro é ')
+      + risco[0].nome + ' (faltam ' + risco[0].faltam + ')';
+    return txt + '.';
+  }
+
   function resumoTexto(st, itens) {
+    return resumoConselhos(st, itens.filter(function (i) { return i.tipo !== 'evento'; })) + resumoEventos(itens);
+  }
+
+  function resumoConselhos(st, itens) {
     var conselhos = itens.filter(function (i) { return i.tipo === 'conselho'; });
     var rounds = itens.length - conselhos.length;
     var cobra = entradasCobranca(conselhos);
@@ -174,7 +194,50 @@
       + '<span class="ag-pill" style="background:' + esc(cor) + ';">' + esc(r.status || 'sem status') + '</span>' + cs + '</div></button>';
   }
 
-  function htmlItem(st, it, idx) { return it.tipo === 'round' ? cardRound(st, it, idx) : cardConselho(st, it, idx); }
+  // Linha de venda do evento: vendidos contra a meta, com barra. Cor só quando o ritmo pede ação.
+  function textoVenda(e) {
+    var v = e.sympla ? e.sympla.vendidos : null;
+    var meta = e.meta ? e.meta.total : null;
+    if (v == null && meta == null) return e.sympla ? 'Vendas ainda não lidas' : '';
+    if (v == null) return 'Meta ' + meta + ' · vendas sem leitura do Sympla';
+    if (meta == null) return plural(v, 'ingresso', 'ingressos') + (e.passado ? '' : ' · sem meta');
+    return v + ' de ' + meta + (e.passado ? '' : e.faltam > 0 ? ' · faltam ' + e.faltam : ' · meta batida');
+  }
+  function barraVenda(e) {
+    var v = e.sympla ? e.sympla.vendidos : null;
+    var meta = e.meta ? e.meta.total : null;
+    if (v == null || !meta) return '';
+    var pct = Math.max(0, Math.min(100, Math.round(v / meta * 100)));
+    return '<span class="ag-ev-barra" aria-hidden="true"><span style="width:' + pct + '%;"></span></span>';
+  }
+  function quandoEvento(e) {
+    if (e.diaFimIso && e.diaFimIso !== e.diaInicioIso) return ddmm(e.diaInicioIso) + ' a ' + ddmm(e.diaFimIso);
+    return e.hhmm || (e.horarioTexto || 'horário a definir');
+  }
+  function cardEvento(st, e, idx) {
+    var ritmo = e.cancelado ? 'cancelado' : e.ritmo;
+    // No cartão, só o primeiro nome de cada escalado; o nome completo fica no detalhe.
+    var curtos = (e.csLista || []).map(function (n) { var p = String(n).trim().split(/\s+/)[0] || ''; return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase(); });
+    var esc_ = st.escopo === 'equipe' && e.fonte !== 'sympla' ? (curtos.length ? 'Escala ' + curtos.join(', ') : 'Escala a definir') : null;
+    var venda = textoVenda(e);
+    var rotulo = 'Evento ' + e.nome + ', ' + DIAS_CURTOS[dePartesIso(e.diaIso).getDay()] + ' ' + ddmm(e.diaIso) + ', ' + quandoEvento(e)
+      + (e.cancelado ? ', cancelado' : textoVenda(e) ? ', ' + textoVenda(e) : '') + (e.cs ? ', escalados ' + e.cs : ', sem escalados');
+    var alerta = '';
+    if (!e.cancelado && (e.ritmo === 'critico' || e.ritmo === 'atencao')) {
+      alerta = '<div class="ag-cobranca">' + (e.ritmo === 'critico' ? 'Venda crítica' : 'Abaixo do ritmo') + ', cobrar divulgação</div>';
+    }
+    return '<button type="button" class="ag-card ag-evento' + (e.passado || e.cancelado ? ' passado' : '') + '" data-ritmo="' + esc(ritmo) + '" data-ag="card" data-ag-idx="' + idx + '" aria-label="' + esc(rotulo) + '">'
+      + '<div class="ag-topo"><span>' + esc(e.diaFimIso !== e.diaInicioIso ? quandoEvento(e) : (e.hhmm || 'a definir')) + '</span><span class="ag-ev-tag">' + esc(e.label && e.label !== 'A definir' ? e.label : 'Evento') + '</span></div>'
+      + '<div class="ag-nome" style="margin-top:6px;">' + esc(e.nome) + '</div>'
+      + (e.cancelado ? '<div class="ag-sub">Cancelado</div>' : venda ? '<div class="ag-ev-venda">' + esc(venda) + barraVenda(e) + '</div>' : '')
+      + (esc_ ? '<div class="ag-sub">' + esc(esc_) + '</div>' : '')
+      + alerta + '</button>';
+  }
+
+  function htmlItem(st, it, idx) {
+    if (it.tipo === 'evento') return cardEvento(st, it, idx);
+    return it.tipo === 'round' ? cardRound(st, it, idx) : cardConselho(st, it, idx);
+  }
 
   function ordenarItens(a, b) {
     if (a.hhmm !== b.hhmm) return a.hhmm < b.hhmm ? -1 : 1;
@@ -240,6 +303,7 @@
     });
     h += '<span class="ag-legenda-item"><span class="ag-lamp" data-faixa="sem_dados"></span>Sem dados</span>';
     h += '<span class="ag-legenda-item"><span class="ag-lamp encerrado"></span>Encerrado</span>';
+    h += '<span class="ag-legenda-item"><span class="ag-ev-tag">Evento</span>barra de ingressos contra a meta, em âmbar quando abaixo do ritmo</span>';
     return h;
   }
 
@@ -268,7 +332,8 @@
     st.resumo.textContent = resumoTexto(st, itens);
     var usaLista = st.visao === 'lista' || ehMobile();
     var html = usaLista ? renderLista(st, st.visiveis) : renderSemana(st, st.visiveis);
-    st.corpo.innerHTML = html || '<div class="ag-vazio">Nenhum conselho ou round nesta semana.</div>';
+    var avisoEventos = st.dados && st.dados.eventosErro ? '<div class="ag-sub ag-erro" style="margin-bottom:8px;">Os eventos não carregaram nesta semana (' + esc(st.dados.eventosErro) + '). Conselhos e rounds estão completos.</div>' : '';
+    st.corpo.innerHTML = avisoEventos + (html || '<div class="ag-vazio">Nenhum conselho, round ou evento nesta semana.</div>');
     desenharControles(st);
   }
 
@@ -297,6 +362,43 @@
       });
   }
 
+  // Detalhe do evento: quando e onde, quem está escalado, meta contra venda e o que fazer.
+  function corpoModalEvento(e) {
+    var dia = e.diaFimIso && e.diaFimIso !== e.diaInicioIso
+      ? ddmm(e.diaInicioIso) + ' a ' + ddmm(e.diaFimIso)
+      : DIAS_LONGOS[dePartesIso(e.diaInicioIso).getDay()] + ', ' + ddmm(e.diaInicioIso);
+    var h = '<dl><dt>Quando</dt><dd>' + esc(dia) + (e.horarioTexto ? ' · ' + esc(e.horarioTexto) : e.hhmm ? ' às ' + esc(e.hhmm) : '') + '</dd>'
+      + (e.local ? '<dt>Local</dt><dd>' + esc(e.local) + '</dd>' : '')
+      + ((e.label && e.label !== 'A definir') || e.produto ? '<dt>Tipo</dt><dd>' + esc([e.label && e.label !== 'A definir' ? e.label : null, e.produto].filter(Boolean).join(' · ')) + '</dd>' : '')
+      + (e.escalaStatus ? '<dt>Escala</dt><dd>' + esc(e.escalaStatus) + '</dd>' : '');
+    if (e.meta) {
+      h += '<dt>Meta</dt><dd>' + (e.meta.tipo === 'por_escalado'
+        ? esc(e.meta.valor + ' por escalado' + (e.meta.total != null ? ', ' + e.meta.total + ' no total' : ', sem escalados para somar'))
+        : esc(String(e.meta.total))) + '</dd>';
+    } else if (e.fonte !== 'sympla') {
+      h += '<dt>Meta</dt><dd>Não preenchida na Escala de Eventos</dd>';
+    }
+    if (e.sympla) {
+      var lido = e.sympla.contagemEm ? new Date(e.sympla.contagemEm) : null;
+      h += '<dt>Ingressos</dt><dd>' + (e.sympla.vendidos == null ? 'ainda não lidos' : esc(plural(e.sympla.vendidos, 'vendido', 'vendidos')))
+        + (e.sympla.vendidos7d != null && !e.passado ? ', ' + esc(String(e.sympla.vendidos7d)) + ' nos últimos 7 dias' : '') + '</dd>';
+      if (e.passado && e.sympla.checkins != null) h += '<dt>Check in</dt><dd>' + esc(e.sympla.checkins + ' de ' + (e.sympla.vendidos || 0)) + '</dd>';
+      if (lido) h += '<dt>Leitura</dt><dd>Sympla, ' + pad(lido.getDate()) + '/' + pad(lido.getMonth() + 1) + ' às ' + pad(lido.getHours()) + ':' + pad(lido.getMinutes()) + '</dd>';
+    } else if (e.fonte === 'monday') {
+      h += '<dt>Ingressos</dt><dd>Evento sem par no Sympla. Coloque o link do Sympla em Link dos convites, no Monday.</dd>';
+    }
+    h += '</dl>';
+    if (e.fonte === 'sympla') h += '<div class="ag-sub">Evento só no Sympla: sem escala e sem meta na Escala de Eventos.</div>';
+    var nomes = (e.csLista || []).map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
+    if (e.fonte !== 'sympla') h += '<div class="ag-sub">Escalados</div>' + (nomes ? '<ul>' + nomes + '</ul>' : '<div class="ag-sub">Ninguém escalado ainda.</div>');
+    if (!e.cancelado && (e.ritmo === 'atencao' || e.ritmo === 'critico')) {
+      h += '<div class="ag-ev-acao">Faltam ' + esc(String(e.faltam)) + ' ingressos e ' + esc(e.diasAteEvento <= 0 ? 'o evento é hoje' : plural(e.diasAteEvento, 'dia', 'dias') + ' para o evento')
+        + '. Próximo passo: ' + (nomes ? 'os escalados reforçam o convite na carteira' : 'fechar a escala e distribuir os convites') + '.</div>';
+    }
+    if (e.sympla && e.sympla.url) h += '<p style="margin:8px 0 0;"><a href="' + esc(e.sympla.url) + '" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:#14213D;">Abrir no Sympla</a></p>';
+    return h;
+  }
+
   function fecharModal() {
     var m = document.getElementById('agendaModalFundo');
     if (m) m.parentNode.removeChild(m);
@@ -307,9 +409,11 @@
     var fundo = document.createElement('div');
     fundo.id = 'agendaModalFundo';
     fundo.className = 'ag-modal-fundo';
-    var titulo = item.tipo === 'round' ? (item.nome || 'Round') : item.conselheiroNome;
+    var titulo = item.tipo === 'round' ? (item.nome || 'Round') : item.tipo === 'evento' ? item.nome : item.conselheiroNome;
     var corpo = '';
-    if (item.tipo === 'round') {
+    if (item.tipo === 'evento') {
+      corpo = corpoModalEvento(item);
+    } else if (item.tipo === 'round') {
       corpo = '<dl><dt>Dia</dt><dd>' + esc(DIAS_LONGOS[dePartesIso(item.diaIso).getDay()] + ', ' + ddmm(item.diaIso)) + ' às ' + esc(item.hhmm) + '</dd>'
         + '<dt>Status</dt><dd>' + esc(item.status || 'sem status') + '</dd>'
         + (item.tema ? '<dt>Tema</dt><dd>' + esc(item.tema) + '</dd>' : '')
@@ -342,7 +446,7 @@
       }
     }
     fundo.innerHTML = '<div class="ag-modal" role="dialog" aria-modal="true" aria-labelledby="agendaModalTitulo">'
-      + '<h3 id="agendaModalTitulo">' + esc(titulo) + '</h3>' + corpo + (item.tipo === 'round' ? '' : blocoPorGrupo(item))
+      + '<h3 id="agendaModalTitulo">' + esc(titulo) + '</h3>' + corpo + (item.tipo === 'conselho' ? blocoPorGrupo(item) : '')
       + '<button type="button" class="ag-modal-fechar" data-ag="fechar">Fechar</button></div>';
     fundo.addEventListener('click', function (ev) {
       if (ev.target === fundo || (ev.target.getAttribute && ev.target.getAttribute('data-ag') === 'fechar')) fecharModal();
