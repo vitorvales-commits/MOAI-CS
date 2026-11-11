@@ -8,7 +8,7 @@ declare
   v_cs bigint;
   v_n integer;
   v_empresa text;
-  v_ocorr integer;
+  v_origem text;
 begin
   -- 1. Tabelas novas com RLS ligada e sem acesso direto para anon e authenticated.
   if not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -41,18 +41,53 @@ begin
     raise exception 'FALHA 3: valor canônico fora da lista do board';
   end if;
 
-  -- 4. Dicionário: toda linha traz conselho e a empresa, quando houver, tem ao menos uma ocorrência.
-  select count(*) into v_n from public.vitorio_dicionario_membros;
-  if v_n < 600 then raise exception 'FALHA 4: dicionário com menos linhas que membros (%)', v_n; end if;
-  if exists (select 1 from public.vitorio_dicionario_membros where empresa is not null and empresa_ocorrencias < 1) then
-    raise exception 'FALHA 4: empresa sem ocorrência';
+  -- 4a. Uma entrada por pessoa e conselho principal: nenhuma chave repetida no mesmo conselho.
+  select count(*) into v_n from (
+    select nome_normalizado, group_id from public.vitorio_dicionario_membros group by 1, 2 having count(*) > 1
+  ) z;
+  if v_n > 0 then raise exception 'FALHA 4a: % chaves repetidas no mesmo conselho', v_n; end if;
+
+  -- 4b. Toda pessoa que aparece em linha de dupla tem entrada no dicionário.
+  select count(*) into v_n from (
+    select canonico.normalizar(nullif(btrim(p.t), '')) as chave
+    from public.conselhos_membros m
+    cross join lateral regexp_split_to_table(split_part(m.nome, '|', 1), '\s*\+\s*') as p(t)
+    where m.nome like '%+%' and m.nome not ilike '%convidado%' and nullif(btrim(p.t), '') is not null
+  ) pessoas
+  where not exists (select 1 from public.vitorio_dicionario_membros v where v.nome_normalizado = pessoas.chave);
+  if v_n > 0 then raise exception 'FALHA 4b: % pessoas de dupla sem entrada', v_n; end if;
+
+  -- 4c. Empresa vinda do próprio membro. A medição com esta regra foi de 450 entradas (linhas de membro com
+  -- "|" são 572; a contagem por entrada é menor porque uma pessoa tem uma entrada só). Piso de regressão.
+  select count(*) into v_n from public.vitorio_dicionario_membros where empresa_origem = 'membro';
+  if v_n < 450 then raise exception 'FALHA 4c: empresa vinda do membro em só % entradas', v_n; end if;
+
+  -- 4d. Nenhuma entrada cujo conselho principal seja reserva ou duplicado quando a pessoa tem grupo principal.
+  select count(*) into v_n
+  from public.vitorio_dicionario_membros v
+  join public.conselhos_grupos g on g.group_id = v.group_id
+  where (g.is_repo is true or g.group_id like 'duplicate_of%')
+    and exists (
+      select 1 from public.vitorio_dicionario_membros v2
+      join public.conselhos_grupos g2 on g2.group_id = v2.group_id
+      where v2.nome_normalizado = v.nome_normalizado
+        and g2.is_repo is not true and g2.group_id not like 'duplicate_of%'
+    );
+  if v_n > 0 then raise exception 'FALHA 4d: % entradas de reserva ou duplicado com grupo principal', v_n; end if;
+
+  -- 5. Convidado fica no dicionário com tipo convidado e sem empresa.
+  if exists (select 1 from public.vitorio_dicionario_membros where tipo = 'convidado' and empresa is not null) then
+    raise exception 'FALHA 5: convidado com empresa';
   end if;
 
-  -- 5. Empresa do BMAI para o Pedro Coelho: a mais frequente no histórico (20 ocorrências, a maior do banco).
-  select empresa, empresa_ocorrencias into v_empresa, v_ocorr
-    from public.vitorio_dicionario_membros where nome_normalizado = 'pedro coelho' limit 1;
-  if v_empresa is distinct from 'BMAI' or v_ocorr < 20 then
-    raise exception 'FALHA 5: empresa do Pedro Coelho (%, %)', v_empresa, v_ocorr;
+  -- 6. Pedro Coelho: BMAI vem do nome do membro no board ("Pedro coelho | BMAI"), não só do histórico.
+  if not exists (select 1 from public.conselhos_membros where nome ilike 'pedro coelho | bmai%') then
+    raise exception 'FALHA 6: nome do membro Pedro Coelho no board sem BMAI';
+  end if;
+  select empresa, empresa_origem into v_empresa, v_origem
+  from public.vitorio_dicionario_membros where nome_normalizado = 'pedro coelho' limit 1;
+  if v_empresa is distinct from 'BMAI' or v_origem is distinct from 'membro' then
+    raise exception 'FALHA 6: empresa do Pedro Coelho (%, %)', v_empresa, v_origem;
   end if;
 
   raise exception 'TESTE_VITORIO_REGISTRO_OK';
