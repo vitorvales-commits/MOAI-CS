@@ -55,6 +55,8 @@ export interface Classificacao { intencao: Intencao | null; confianca: number }
 
 export interface Sinais {
   temConselho: boolean;
+  // Mais de um conselho casa com a pergunta: é carteira (esclarecimento), com ou sem sinal de "quem cuida".
+  conselhoAmbiguo: boolean;
   temData: boolean;
   temCs: boolean;
 }
@@ -62,7 +64,7 @@ export interface Sinais {
 // 0,6: com um termo em comum só, a pergunta não é classificada ("quem é o cs mais bonito" fica sem intenção).
 const LIMIAR = 0.6;
 
-export function classificar(texto: string, sinais: Sinais = { temConselho: false, temData: false, temCs: false }): Classificacao {
+export function classificar(texto: string, sinais: Sinais = { temConselho: false, conselhoAmbiguo: false, temData: false, temCs: false }): Classificacao {
   const lista = tokens(texto);
   const norm = normalizarTexto(texto);
   const palavras = new Set(norm.split(' '));
@@ -72,7 +74,8 @@ export function classificar(texto: string, sinais: Sinais = { temConselho: false
   // Regra 2: conselho reconhecido manda. Carteira só com sinal de "quem cuida" e sem outro assunto.
   if (sinais.temConselho) {
     if ([...palavras].some((p) => OUTRO_ASSUNTO_COM_CONSELHO.has(p))) return { intencao: null, confianca: 0 };
-    if (!SINAL_QUEM_CUIDA.test(norm)) return { intencao: null, confianca: 0 };
+    // Ambíguo: o esclarecimento lista os conselhos, então não exige o sinal de "quem cuida".
+    if (!sinais.conselhoAmbiguo && !SINAL_QUEM_CUIDA.test(norm)) return { intencao: null, confianca: 0 };
     return { intencao: 'carteira', confianca: 0.6 };
   }
 

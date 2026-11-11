@@ -45,6 +45,7 @@ export function responderTexto(texto: string, d: DadosPipeline): Saida {
   const cs = extrairCs(texto, d.csLista);
   const { intencao, confianca } = classificar(texto, {
     temConselho: conselho.candidatos.length > 0,
+    conselhoAmbiguo: conselho.candidatos.length > 1,
     temData: !!dataEnt,
     temCs: cs.length > 0,
   });
