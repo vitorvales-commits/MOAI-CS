@@ -5,7 +5,7 @@
 // O script não usa barra invertida, crase nem cifrão com chave: ele vive dentro da template string de gestor-html.ts.
 
 export const SAUDE_DADOS_CSS = `
-.rd-saude{margin:10px 0 14px}
+.rd-saude{box-sizing:border-box;width:100%;max-width:1312px;margin:10px auto 14px}
 .rd-saude-faixa{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);border-radius:12px;padding:9px 14px;font:inherit;font-size:12.5px;line-height:1.4;cursor:pointer}
 .rd-saude-faixa:hover{border-color:var(--ink3)}
 .rd-saude-ponto{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ink3)}
