@@ -64,37 +64,58 @@ insert into public.vitorio_sinonimos (campo, sinonimo, valor_canonico) values
 on conflict (campo, sinonimo) do nothing;
 
 -- Dicionário de membros.
---   Pessoa: o nome do membro é "Pessoa | Empresa"; a parte antes do "|" é separada em pessoas por " + " (dupla).
+--   Separação pessoa e empresa: se o nome tem "|", a parte depois é a empresa. Se não tem "|" mas tem " - "
+--   (com qualquer espaço em volta do traço), o trecho depois do primeiro " - " é a empresa. Em qualquer caso,
+--   um " - " na parte da pessoa termina o nome. Sem "|" nem " - ", não há empresa.
+--   Sufixo "(copy)" é descartado. Anotação entre parênteses sai do nome: a chave é o texto antes do "(".
+--   Se restar texto depois do parêntese, ele não é usado como empresa (não há adivinhação); entra na conta
+--   de entradas com anotação (ver o PR).
+--   Pessoa: a parte do nome antes da empresa é separada em pessoas por " + " (dupla).
 --   Grupo principal: não é de reposição (is_repo falso) nem duplicado (group_id começa com duplicate_of).
 --   Uma entrada por (pessoa, conselho principal). Mesmo nome em dois conselhos principais são duas entradas
 --   (homônimos). Pessoa só em grupos de reposição ou duplicados tem uma entrada, no primeiro desses grupos.
 --   outros_grupos: grupos em que a pessoa aparece e que não são conselho principal de nenhuma entrada dela.
---   Empresa: a parte depois do "|" no nome do membro; sem ela na linha escolhida, a mais frequente entre as
---   linhas da mesma pessoa (empresa_origem = 'membro'). Sem nenhuma, a mais frequente no histórico de
---   matchmakings (empresa_origem = 'historico'). Sufixo "(copy)" é descartado. Convidado não recebe empresa.
---   tipo: 'convidado' (nome com "convidado"), 'dupla' (nome com " + ") ou 'membro'. Convidados ficam no
---   dicionário para o PR 3 não confundi-los com membros: não entram em pergunta de ambiguidade.
+--   Empresa: a da linha escolhida; sem ela, a mais frequente entre as linhas da mesma pessoa
+--   (empresa_origem = 'membro'); sem nenhuma, a mais frequente no histórico (empresa_origem = 'historico').
+--   tipo: 'convidado' (nome com "convidado"), 'dupla' (nome com " + ") ou 'membro'. Convidado não recebe empresa.
 create or replace view public.vitorio_dicionario_membros with (security_invoker = true) as
 with grupos as (
   select g.group_id, g.titulo, (g.is_repo is true or g.group_id like 'duplicate_of%') as reserva
   from public.conselhos_grupos g
 ),
-base as (
-  select m.id as membro_id, m.group_id, coalesce(gr.reserva, true) as reserva, gr.titulo as conselho_titulo,
-         (m.nome ilike '%convidado%') as convidado, (m.nome like '%+%') as dupla,
-         -- "(copy)" é sufixo de grupo duplicado no Monday, não faz parte da empresa.
-         nullif(btrim(regexp_replace(split_part(m.nome, '|', 2), '\s*\(copy\)\s*$', '')), '') as empresa_membro,
-         split_part(m.nome, '|', 1) as pessoas_txt
+nomes as (
+  select m.id as membro_id, m.group_id, m.nome,
+         regexp_replace(m.nome, '\s*\(copy\)\s*$', '') as nome_sem_copy
   from public.conselhos_membros m
-  left join grupos gr on gr.group_id = m.group_id
+),
+partes as (
+  select n.membro_id, n.group_id, n.nome,
+         -- Um " - " dentro da parte da pessoa (mesmo com "|") termina o nome: o resto não é nome. Caso de
+         -- "Adriano Guimarães Sales - Manaíra de Paula Araújo Sales | Merkabá Viagens e Turismo": sai "Adriano Guimarães Sales".
+         regexp_replace(case when position('|' in n.nome_sem_copy) > 0 then split_part(n.nome_sem_copy, '|', 1)
+                             else n.nome_sem_copy end, '\s+-\s+.*$', '') as pessoas_txt,
+         case when position('|' in n.nome_sem_copy) > 0 then nullif(btrim(split_part(n.nome_sem_copy, '|', 2)), '')
+              when n.nome_sem_copy ~ '\s+-\s+' then nullif(btrim(regexp_replace(n.nome_sem_copy, '^.*?\s+-\s+', '')), '')
+              else null end as empresa_txt
+  from nomes n
+),
+base as (
+  select p.membro_id, p.group_id, coalesce(gr.reserva, true) as reserva, gr.titulo as conselho_titulo,
+         (p.nome ilike '%convidado%') as convidado, (p.nome like '%+%') as dupla,
+         -- Empresa da linha: sem anotação entre parênteses (o que vem depois do parêntese não é usado).
+         nullif(btrim(split_part(p.empresa_txt, '(', 1)), '') as empresa_membro,
+         p.pessoas_txt
+  from partes p
+  left join grupos gr on gr.group_id = p.group_id
 ),
 pessoas as (
   select b.membro_id, b.group_id, b.reserva, b.conselho_titulo, b.convidado, b.dupla, b.empresa_membro,
-         btrim(p.nome_txt) as nome_exibicao,
-         canonico.normalizar(nullif(btrim(p.nome_txt), '')) as chave
+         btrim(split_part(p.nome_txt, '(', 1)) as nome_exibicao,
+         canonico.normalizar(nullif(btrim(split_part(p.nome_txt, '(', 1)), '')) as chave,
+         (position('(' in p.nome_txt) > 0 and btrim(split_part(p.nome_txt, ')', 2)) <> '') as anotacao_com_texto
   from base b
   cross join lateral regexp_split_to_table(b.pessoas_txt, '\s*\+\s*') as p(nome_txt)
-  where nullif(btrim(p.nome_txt), '') is not null
+  where nullif(btrim(split_part(p.nome_txt, '(', 1)), '') is not null
 ),
 pedacos as (
   select regexp_split_to_table(m.nome, '\s*\+\s*') as pedaco
@@ -102,7 +123,7 @@ pedacos as (
   where m.nome is not null
 ),
 hp as (
-  select canonico.normalizar(nullif(btrim(split_part(pedaco, '|', 1)), '')) as chave,
+  select canonico.normalizar(nullif(btrim(split_part(split_part(pedaco, '|', 1), '(', 1)), '')) as chave,
          nullif(btrim(split_part(pedaco, '|', 2)), '') as empresa
   from pedacos
 ),
@@ -146,6 +167,7 @@ escolhidos as (
 entradas as (
   select e.membro_id, e.nome_exibicao, e.chave, e.group_id, e.conselho_titulo, e.convidado, e.dupla,
          coalesce(e.empresa_membro, ep.empresa) as empresa_membro, h.empresa as empresa_historico, h.n as historico_n,
+         e.anotacao_com_texto,
          array(
            select distinct p2.group_id
            from pessoas p2
@@ -171,7 +193,8 @@ select en.membro_id,
             when en.empresa_membro is not null then 'membro'
             when en.empresa_historico is not null then 'historico' end as empresa_origem,
        case when en.convidado or en.empresa_membro is not null then 0
-            else coalesce(en.historico_n, 0) end::integer as empresa_ocorrencias
+            else coalesce(en.historico_n, 0) end::integer as empresa_ocorrencias,
+       en.anotacao_com_texto
 from entradas en;
 
 insert into seguranca.catalogo_tabelas (tabela, origem, board_monday, proteger_exclusao, versionar, descricao) values

@@ -47,20 +47,27 @@ begin
   ) z;
   if v_n > 0 then raise exception 'FALHA 4a: % chaves repetidas no mesmo conselho', v_n; end if;
 
-  -- 4b. Toda pessoa que aparece em linha de dupla tem entrada no dicionário.
+  -- 4b. Toda pessoa que aparece em linha de dupla tem entrada. Mesma regra de corte da view: "(copy)" fora,
+  -- " - " termina o nome, "(" termina a chave, " + " separa pessoas.
   select count(*) into v_n from (
-    select canonico.normalizar(nullif(btrim(p.t), '')) as chave
+    select canonico.normalizar(nullif(btrim(split_part(p.t, '(', 1)), '')) as chave
     from public.conselhos_membros m
-    cross join lateral regexp_split_to_table(split_part(m.nome, '|', 1), '\s*\+\s*') as p(t)
-    where m.nome like '%+%' and m.nome not ilike '%convidado%' and nullif(btrim(p.t), '') is not null
+    cross join lateral regexp_split_to_table(
+      regexp_replace(
+        case when position('|' in regexp_replace(m.nome, '\s*\(copy\)\s*$', '')) > 0
+             then split_part(regexp_replace(m.nome, '\s*\(copy\)\s*$', ''), '|', 1)
+             else regexp_replace(m.nome, '\s*\(copy\)\s*$', '') end,
+        '\s+-\s+.*$', ''),
+      '\s*\+\s*') as p(t)
+    where m.nome like '%+%' and m.nome not ilike '%convidado%' and nullif(btrim(split_part(p.t, '(', 1)), '') is not null
   ) pessoas
   where not exists (select 1 from public.vitorio_dicionario_membros v where v.nome_normalizado = pessoas.chave);
   if v_n > 0 then raise exception 'FALHA 4b: % pessoas de dupla sem entrada', v_n; end if;
 
-  -- 4c. Empresa vinda do próprio membro. A medição com esta regra foi de 450 entradas (linhas de membro com
-  -- "|" são 572; a contagem por entrada é menor porque uma pessoa tem uma entrada só). Piso de regressão.
+  -- 4c. Empresa vinda do próprio membro. Medição com esta regra: 459 entradas. A contagem é por entrada (uma
+  -- por pessoa), não por linha de membro (572 linhas com "|"). Piso de regressão.
   select count(*) into v_n from public.vitorio_dicionario_membros where empresa_origem = 'membro';
-  if v_n < 450 then raise exception 'FALHA 4c: empresa vinda do membro em só % entradas', v_n; end if;
+  if v_n < 459 then raise exception 'FALHA 4c: empresa vinda do membro em só % entradas', v_n; end if;
 
   -- 4d. Nenhuma entrada cujo conselho principal seja reserva ou duplicado quando a pessoa tem grupo principal.
   select count(*) into v_n
@@ -80,14 +87,26 @@ begin
     raise exception 'FALHA 5: convidado com empresa';
   end if;
 
-  -- 6. Pedro Coelho: BMAI vem do nome do membro no board ("Pedro coelho | BMAI"), não só do histórico.
+  -- 6. Chave limpa: nenhuma chave com " - " nem parênteses.
+  select count(*) into v_n from public.vitorio_dicionario_membros
+   where nome_normalizado like '%-%' or nome_normalizado like '%(%' or nome_normalizado like '%)%';
+  if v_n > 0 then raise exception 'FALHA 6: % chaves com " - " ou parênteses', v_n; end if;
+
+  -- 7. Jocivane Brito: "Jocivane Brito - Monumental Contabilidade" no board, empresa vinda do membro.
+  select empresa, empresa_origem into v_empresa, v_origem
+  from public.vitorio_dicionario_membros where nome_normalizado = 'jocivane brito' limit 1;
+  if v_empresa is distinct from 'Monumental Contabilidade' or v_origem is distinct from 'membro' then
+    raise exception 'FALHA 7: Jocivane Brito (%, %)', v_empresa, v_origem;
+  end if;
+
+  -- 8. Pedro Coelho: BMAI vem do nome do membro no board ("Pedro coelho | BMAI"), não só do histórico.
   if not exists (select 1 from public.conselhos_membros where nome ilike 'pedro coelho | bmai%') then
-    raise exception 'FALHA 6: nome do membro Pedro Coelho no board sem BMAI';
+    raise exception 'FALHA 8: nome do membro Pedro Coelho no board sem BMAI';
   end if;
   select empresa, empresa_origem into v_empresa, v_origem
   from public.vitorio_dicionario_membros where nome_normalizado = 'pedro coelho' limit 1;
   if v_empresa is distinct from 'BMAI' or v_origem is distinct from 'membro' then
-    raise exception 'FALHA 6: empresa do Pedro Coelho (%, %)', v_empresa, v_origem;
+    raise exception 'FALHA 8: empresa do Pedro Coelho (%, %)', v_empresa, v_origem;
   end if;
 
   raise exception 'TESTE_VITORIO_REGISTRO_OK';
