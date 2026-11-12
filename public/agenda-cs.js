@@ -226,6 +226,8 @@
     var alerta = '';
     if (!e.cancelado && (e.ritmo === 'critico' || e.ritmo === 'atencao')) {
       alerta = '<div class="ag-cobranca">' + (e.ritmo === 'critico' ? 'Venda crítica' : 'Abaixo do ritmo') + ', cobrar divulgação</div>';
+    } else if (!e.cancelado && e.divergenciaDias) {
+      alerta = '<div class="ag-cobranca ag-ev-aviso">Data diferente no Sympla</div>';
     }
     return '<button type="button" class="ag-card ag-evento' + (e.passado || e.cancelado ? ' passado' : '') + '" data-ritmo="' + esc(ritmo) + '" data-ag="card" data-ag-idx="' + idx + '" aria-label="' + esc(rotulo) + '">'
       + '<div class="ag-topo"><span>' + esc(e.diaFimIso !== e.diaInicioIso ? quandoEvento(e) : (e.hhmm || 'a definir')) + '</span><span class="ag-ev-tag">' + esc(e.label && e.label !== 'A definir' ? e.label : 'Evento') + '</span></div>'
@@ -387,7 +389,14 @@
       h += '<dt>Ingressos</dt><dd>' + (e.sympla.vendidos == null ? 'ainda não lidos' : esc(plural(e.sympla.vendidos, 'vendido', 'vendidos')))
         + (e.sympla.vendidos7d != null && !e.passado ? ', ' + esc(String(e.sympla.vendidos7d)) + ' nos últimos 7 dias' : '') + '</dd>';
       if (e.passado && e.sympla.checkins != null) h += '<dt>Check in</dt><dd>' + esc(e.sympla.checkins + ' de ' + (e.sympla.vendidos || 0)) + '</dd>';
+      if (e.divergenciaDias) {
+        var dS = e.sympla.inicio ? new Date(e.sympla.inicio) : null;
+        h += '<dt>Data</dt><dd class="ag-ev-diverge">O Sympla marca ' + (dS ? pad(dS.getDate()) + '/' + pad(dS.getMonth() + 1) : 'outra data')
+          + ' e o Monday ' + ddmm(e.diaInicioIso) + '. Corrija a fonte errada.</dd>';
+      }
       if (lido) h += '<dt>Leitura</dt><dd>Sympla, ' + pad(lido.getDate()) + '/' + pad(lido.getMonth() + 1) + ' às ' + pad(lido.getHours()) + ':' + pad(lido.getMinutes()) + '</dd>';
+    } else if (e.fonte === 'monday' && e.symplaIdVinculado) {
+      h += '<dt>Ingressos</dt><dd>Link do Sympla vinculado. As vendas aparecem assim que a leitura do Sympla estiver ativa.</dd>';
     } else if (e.fonte === 'monday') {
       h += '<dt>Ingressos</dt><dd>Evento sem par no Sympla. Coloque o link do Sympla em Link dos convites, no Monday.</dd>';
     }

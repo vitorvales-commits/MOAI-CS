@@ -185,7 +185,7 @@ const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 import { decidirPrune } from './prune-trava.ts';
 import { parseGrupoAtivo } from './parse-grupo.ts';
 import { decidirEscrita, executarCiclo, montarColumnValues, proximaTentativa } from './fila-escrita.ts';
-import { parseTimeline, parseHorarioInicio, minutosDoTurno, isoBRT, idSymplaDoLink, nomeLimpo } from '../_shared/eventos.ts';
+import { parseTimeline, parseHorarioInicio, minutosDoTurno, isoBRT, idSymplaDoLink, nomeLimpo, nomesDePessoasMonday } from '../_shared/eventos.ts';
 import { decidirDestinoEspelho, precisaRenomear, vinculoFoiRecriado } from './espelho.ts';
 
 const BOARDS = {
@@ -270,12 +270,14 @@ const EVENTOS_SUB_COLS = { pessoa: 'person', escala: 'color_mkzrpq9v' };
 // Escalados: a coluna Escalados do item é a fonte; vazia, valem os subitens com Escala = Escalado
 // (pessoa do subitem, ou o nome do subitem quando a pessoa não foi marcada).
 function escaladosDoEvento(coluna: string | null, subitens: any[]): { escalados_raw: string | null; escalados_fonte: string | null } {
-  if (coluna && coluna.trim()) return { escalados_raw: coluna.trim(), escalados_fonte: 'coluna' };
+  const daColuna = nomesDePessoasMonday(coluna);
+  if (daColuna) return { escalados_raw: daColuna, escalados_fonte: 'coluna' };
   const nomes = subitens
     .filter((si) => /^escalad/i.test(colText(si.column_values || [], EVENTOS_SUB_COLS.escala) || ''))
     .map((si) => (colText(si.column_values || [], EVENTOS_SUB_COLS.pessoa) || si.name || '').trim())
     .filter(Boolean);
-  return nomes.length ? { escalados_raw: nomes.join(', '), escalados_fonte: 'subitens' } : { escalados_raw: null, escalados_fonte: null };
+  const daLista = nomesDePessoasMonday(nomes.join(', '));
+  return daLista ? { escalados_raw: daLista, escalados_fonte: 'subitens' } : { escalados_raw: null, escalados_fonte: null };
 }
 const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
 const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
@@ -297,6 +299,9 @@ const MATCHMAKINGS_COLS = {
   motivo: 'long_textuevre4t8', categoria: 'single_selectyleiwd8', origem: 'single_selecto6mf971',
   resultado: 'long_texto8zt8o1n', data: 'date_mm4e7y75',
 };
+// Coluna "CS do dash" (texto) do board de Matchmaking, criada em 11/11/2026 16:51 UTC (text_mm90ny4r). A atribuição
+// do CS prefere essa coluna: o trigger matchmakings_atribuir_cs (migração 20261111a, aplicada em produção) resolve cs_monday_user_id.
+const MATCHMAKINGS_CS_DASH_COL: string | null = 'text_mm90ny4r';
 const CONSELHOS_COL_POR_MES: Record<string, string> = {
   Janeiro: 'color_mkz343x2', Fevereiro: 'color_mkzt3sk3', Março: 'color_mkzt7139',
   Abril: 'color_mkztzmry', Maio: 'color_mkztc9tw', Junho: 'color_mkzt6p3k',
@@ -1261,7 +1266,7 @@ async function syncMatchmakings() {
   // "matchmakings sem resultado" (calcularImpactoConselhos em lib/reports.ts), que por isso
   // mostrava 100% sem resultado pra TODO matchmaking sincronizado. Agora pede as 5 colunas de
   // conteúdo junto (ver MATCHMAKINGS_COLS).
-  const colsIds = Object.values(MATCHMAKINGS_COLS);
+  const colsIds = [...Object.values(MATCHMAKINGS_COLS), ...(MATCHMAKINGS_CS_DASH_COL ? [MATCHMAKINGS_CS_DASH_COL] : [])];
   // value traz o changed_at da coluna Resultado (instante da última alteração no Monday). Só leitura.
   const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:250){items{id name creator_id created_at column_values(ids:[${colsIds.map((c) => `"${c}"`).join(',')}]){id text value}}}}}}`;
   const data = await mondayFetch(query, { boardId: [BOARDS.MATCHMAKINGS], groupIds: groups.map((g) => g.id) });
@@ -1282,6 +1287,7 @@ async function syncMatchmakings() {
         resultado,
         resultado_alterado_em_monday: resultado ? changedAtDe(item.column_values, MATCHMAKINGS_COLS.resultado) : null,
         data: dateOrNull(colText(item.column_values, MATCHMAKINGS_COLS.data)),
+        ...(MATCHMAKINGS_CS_DASH_COL ? { cs_dash_texto: colText(item.column_values, MATCHMAKINGS_CS_DASH_COL) } : {}),
       });
     });
   });
