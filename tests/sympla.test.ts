@@ -41,7 +41,11 @@ const lista = [
   { ...ev, id: 3, inicio: '2026-11-22T13:00:00Z', fim: '2026-11-22T15:00:00Z', cancelado: true },
   { ...ev, id: 4, inicio: '2026-11-21T13:00:00Z', fim: '2026-11-21T15:00:00Z', cancelado: false },
 ];
-assert.deepEqual(eventosParaContar(lista, agora).map((e) => e.id), [4, 1]);
+assert.deepEqual(eventosParaContar(lista, agora).map((e) => e.id), [4, 1, 2]); // 2 encerrado sem contagem: fecha
+const jaFechado = new Map<number, string | null>([[2, '2026-10-02T12:00:00Z']]);
+assert.deepEqual(eventosParaContar(lista, agora, 40, jaFechado).map((e) => e.id), [4, 1]); // contado depois do fim: não relê
+const contadoAntes = new Map<number, string | null>([[2, '2026-10-01T14:00:00Z']]);
+assert.deepEqual(eventosParaContar(lista, agora, 40, contadoAntes).map((e) => e.id), [4, 1, 2]);
 assert.equal(temProximaPagina({ pagination: { has_next: true } }), true);
 assert.equal(temProximaPagina({}), false);
 console.log('sympla: todos os testes passaram');

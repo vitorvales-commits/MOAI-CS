@@ -100,6 +100,10 @@ export function semelhancaNomes(a: string, b: string): number {
   return comum / (pa.size + pb.size - comum);
 }
 export const SEMELHANCA_MINIMA_CASAMENTO = 0.34;
+// Mesmo horário de início (diferença de até 60 minutos) soma este bônus à semelhança dos nomes: o Monday
+// costuma usar o nome curto ("Talks B2HR") e o Sympla o título de divulgação ("MOAI Talks | Plano...").
+export const BONUS_MESMO_HORARIO = 0.5;
+export const TOLERANCIA_HORARIO_MIN = 60;
 
 export type EventoMonday = {
   id: number; nome: string; data_inicio: string | null; data_fim: string | null; inicio: string | null;
@@ -126,12 +130,22 @@ export function casarEventos(monday: EventoMonday[], sympla: EventoSympla[]): Ma
       if (usados.has(s.id)) return;
       const dia = diaDe(s.inicio);
       if (!dia || dia < m.data_inicio! || dia > (m.data_fim || m.data_inicio!)) return;
-      const nota = semelhancaNomes(m.nome, s.nome);
+      const mesmoHorario = !!(m.inicio && s.inicio) &&
+        Math.abs(new Date(m.inicio).getTime() - new Date(s.inicio).getTime()) <= TOLERANCIA_HORARIO_MIN * 60_000;
+      const nota = semelhancaNomes(m.nome, s.nome) + (mesmoHorario ? BONUS_MESMO_HORARIO : 0);
       if (nota >= SEMELHANCA_MINIMA_CASAMENTO && (!melhor || nota > melhor.nota)) melhor = { id: s.id, nota };
     });
     if (melhor) { casados.set(m.id, (melhor as { id: number }).id); usados.add((melhor as { id: number }).id); }
   });
   return casados;
+}
+
+// Diferença de dias entre a data do Monday e a do Sympla de um evento já casado. Zero quando concordam
+// ou quando falta uma das datas. O modal mostra a divergência para alguém corrigir a fonte errada.
+export function diasDeDivergencia(diaMondayIso: string | null, inicioSymplaIso: string | null): number {
+  if (!diaMondayIso || !inicioSymplaIso) return 0;
+  const diaS = new Date(new Date(inicioSymplaIso).getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+  return Math.round((Date.parse(diaS + 'T00:00:00Z') - Date.parse(diaMondayIso + 'T00:00:00Z')) / 86_400_000);
 }
 
 // Ritmo de venda contra a meta. Cor só para exceção: 'atencao' quando faltam poucos dias e a venda

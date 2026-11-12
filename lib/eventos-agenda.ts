@@ -4,7 +4,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgendaTurnoChave } from './constants';
 import { instanteBRT, turnoDoMinuto, hhmmDeMinutos, csDoRound, diaNumero } from './agenda';
-import { parseMeta, metaTotal, casarEventos, ritmoDoEvento, eventoCancelado, type RitmoEvento } from './eventos';
+import { parseMeta, metaTotal, casarEventos, ritmoDoEvento, eventoCancelado, diasDeDivergencia, type RitmoEvento } from './eventos';
 
 export type AgendaEventoItem = {
   tipo: 'evento';
@@ -15,7 +15,9 @@ export type AgendaEventoItem = {
   passado: boolean; cancelado: boolean; escalaStatus: string | null;
   cs: string | null; csLista: string[];
   meta: { tipo: 'total' | 'por_escalado'; valor: number; total: number | null; texto: string } | null;
-  sympla: { id: number; vendidos: number | null; checkins: number | null; vendidos7d: number | null; url: string | null; contagemEm: string | null } | null;
+  sympla: { id: number; vendidos: number | null; checkins: number | null; vendidos7d: number | null; url: string | null; contagemEm: string | null; inicio: string | null } | null;
+  // Dias entre a data do Sympla e a do Monday (positivo: Sympla depois). Zero quando concordam.
+  divergenciaDias: number;
   ritmo: RitmoEvento; faltam: number | null; diasAteEvento: number;
   fonte: 'monday' | 'sympla' | 'ambos';
   // Id do Sympla tirado do link dos convites no Monday, mesmo quando o Sympla ainda não foi lido.
@@ -40,6 +42,13 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
   if (s.error) throw new Error('sympla_eventos: ' + s.error.message);
   const monday = (m.data || []) as any[];
   const sympla = (s.data || []) as any[];
+  // Evento do Monday vinculado por link a um Sympla com data fora da janela também recebe a venda.
+  const faltantes = Array.from(new Set(monday.map((r) => r.sympla_event_id).filter((id) => id != null && !sympla.some((x) => Number(x.id) === Number(id)))));
+  if (faltantes.length) {
+    const extra = await sb.from('sympla_eventos').select(COLS_SYMPLA).in('id', faltantes);
+    if (extra.error) throw new Error('sympla_eventos: ' + extra.error.message);
+    (extra.data || []).forEach((r: any) => sympla.push(r));
+  }
 
   const casados = casarEventos(
     monday.map((r) => ({ id: Number(r.id), nome: r.nome_limpo || r.nome, data_inicio: r.data_inicio, data_fim: r.data_fim, inicio: r.inicio, sympla_event_id: r.sympla_event_id == null ? null : Number(r.sympla_event_id) })),
@@ -51,7 +60,7 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
 
   const resumoSympla = (r: any | undefined) => r ? {
     id: Number(r.id), vendidos: r.vendidos ?? null, checkins: r.checkins ?? null, vendidos7d: r.vendidos_7d ?? null,
-    url: r.url || null, contagemEm: r.contagem_em || null,
+    url: r.url || null, contagemEm: r.contagem_em || null, inicio: r.inicio || null,
   } : null;
 
   const itens: AgendaEventoItem[] = [];
@@ -81,6 +90,7 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
       faltam: total != null && sym && sym.vendidos != null ? Math.max(0, total - sym.vendidos) : null,
       diasAteEvento: dias,
       fonte: sym ? 'ambos' : 'monday',
+      divergenciaDias: sy ? diasDeDivergencia(diaIso, sy.inicio) : 0,
       symplaIdVinculado: r.sympla_event_id == null ? null : Number(r.sympla_event_id),
     });
   });
@@ -97,7 +107,7 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
       diaIso, diaInicioIso: diaIso, diaFimIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos), horarioTexto: null,
       passado, cancelado: false, escalaStatus: null, cs: null, csLista: [], meta: null, sympla: sym,
       ritmo: ritmoDoEvento({ vendidos: sym!.vendidos, meta: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), passado }),
-      faltam: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), fonte: 'sympla', symplaIdVinculado: Number(r.id),
+      faltam: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), fonte: 'sympla', symplaIdVinculado: Number(r.id), divergenciaDias: 0,
     });
   });
 

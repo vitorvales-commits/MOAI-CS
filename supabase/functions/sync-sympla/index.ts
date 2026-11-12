@@ -75,6 +75,16 @@ async function upsert(rows: any[]) {
   if (!res.ok) throw new Error(`Supabase upsert sympla_eventos: ${res.status} ${await res.text()}`);
 }
 
+// Quando cada evento foi contado pela última vez, para fechar a contagem dos encerrados uma vez só.
+async function contagensGravadas(): Promise<Map<number, string | null>> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/sympla_eventos?select=id,contagem_em`, {
+    headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Supabase leitura sympla_eventos: ${res.status}`);
+  const linhas = (await res.json()) as { id: number; contagem_em: string | null }[];
+  return new Map(linhas.map((l) => [Number(l.id), l.contagem_em]));
+}
+
 async function sincronizar(): Promise<number> {
   const agora = Date.now();
   const brutos = await listarTudo('/events', {
@@ -86,7 +96,7 @@ async function sincronizar(): Promise<number> {
   // Primeiro grava os eventos sem tocar nas contagens já existentes.
   await upsert(eventos.map((e) => ({ ...e, synced_at: agoraIso })));
   // Depois conta os eventos ativos, um por vez (a API do Sympla limita a taxa de chamadas).
-  const alvo = eventosParaContar(eventos, agora);
+  const alvo = eventosParaContar(eventos, agora, undefined, await contagensGravadas());
   const falhas: string[] = [];
   for (const e of alvo) {
     try {
