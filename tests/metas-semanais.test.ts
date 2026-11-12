@@ -69,7 +69,7 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
   const d = vazio();
   d.metasMensais.push({ indicador: 'matchmakings_resultado', mes: MES, cs_nome: 'Rodrigo', valor: 10 });
   d.matchmakings.push({
-    id: 7, creator_id: 123, mes_grupo_titulo: 'Outubro 2026', data: '2026-10-20', created_at_monday: '2026-10-16T16:18:56Z',
+    id: 7, cs_monday_user_id: 123, mes_grupo_titulo: 'Outubro 2026', data: '2026-10-20', created_at_monday: '2026-10-16T16:18:56Z',
     resultado: 'Negocio fechado', resultado_registrado_em: '2026-11-03T14:03:50Z',
   });
   const ind = montarMetasSemanaisCS(cs(), MES, d).indicadores.find((x) => x.indicador === 'matchmakings_resultado')!;
@@ -80,7 +80,7 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
 // 5. Matchmakings sem resultado não entram em matchmakings_resultado.
 {
   const d = vazio();
-  d.matchmakings.push({ id: 8, creator_id: 123, mes_grupo_titulo: 'Novembro 2026', data: '2026-11-04', created_at_monday: null, resultado: '  ', resultado_registrado_em: null });
+  d.matchmakings.push({ id: 8, cs_monday_user_id: 123, mes_grupo_titulo: 'Novembro 2026', data: '2026-11-04', created_at_monday: null, resultado: '  ', resultado_registrado_em: null });
   const ind = montarMetasSemanaisCS(cs(), MES, d).indicadores.find((x) => x.indicador === 'matchmakings_resultado')!;
   assert.ok(ind.parcelas.every((p) => p.realizado === 0));
 }
@@ -154,8 +154,8 @@ const parcela = (r: ReturnType<typeof montarMetasSemanaisCS>, ind: string, i: nu
   );
   // Matchmakings do Rodrigo no grupo Outubro: um com data própria, um só com a criação (sem data própria).
   d.matchmakings.push(
-    { id: 201, creator_id: 123, mes_grupo_titulo: 'Outubro', data: '2026-10-20', created_at_monday: '2026-10-16T16:18:56Z', resultado: 'Negocio fechado', resultado_registrado_em: '2026-10-22T14:00:00Z' },
-    { id: 202, creator_id: 123, mes_grupo_titulo: 'Outubro', data: null, created_at_monday: '2026-10-13T12:00:00Z', resultado: null, resultado_registrado_em: null },
+    { id: 201, cs_monday_user_id: 123, mes_grupo_titulo: 'Outubro', data: '2026-10-20', created_at_monday: '2026-10-16T16:18:56Z', resultado: 'Negocio fechado', resultado_registrado_em: '2026-10-22T14:00:00Z' },
+    { id: 202, cs_monday_user_id: 123, mes_grupo_titulo: 'Outubro', data: null, created_at_monday: '2026-10-13T12:00:00Z', resultado: null, resultado_registrado_em: null },
   );
   // Rounds do Rodrigo no grupo Outubro: um com início, um só com a criação depois do mês. Um cancelado não conta.
   d.rounds.push(
