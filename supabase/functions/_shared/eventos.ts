@@ -100,6 +100,11 @@ export function semelhancaNomes(a: string, b: string): number {
   return comum / (pa.size + pb.size - comum);
 }
 export const SEMELHANCA_MINIMA_CASAMENTO = 0.34;
+// Link errado: nome do Sympla com quase nenhuma palavra em comum com o nome limpo da Escala.
+export const SEMELHANCA_MINIMA_LINK = 0.2;
+export function linkSymplaDivergente(nomeEscala: string, nomeSympla: string): boolean {
+  return semelhancaNomes(nomeEscala, nomeSympla) < SEMELHANCA_MINIMA_LINK;
+}
 
 export type EventoMonday = {
   id: number; nome: string; data_inicio: string | null; data_fim: string | null; inicio: string | null;
@@ -136,7 +141,7 @@ export function casarEventos(monday: EventoMonday[], sympla: EventoSympla[]): Ma
 
 // Ritmo de venda contra a meta. Cor só para exceção: 'atencao' quando faltam poucos dias e a venda
 // está longe da meta; 'critico' na véspera ou no dia com menos da metade. Evento passado não tem ritmo.
-export const EVENTO_RITMO = { diasAtencao: 7, proporcaoAtencao: 0.7, diasCritico: 1, proporcaoCritico: 0.5 };
+export const EVENTO_RITMO = { diasAtencao: 7, proporcaoAtencao: 0.7, diasCritico: 1, proporcaoCritico: 0.5, diasJanelaVenda: 30 };
 export type RitmoEvento = 'sem_meta' | 'sem_venda' | 'no_ritmo' | 'atencao' | 'critico' | 'meta_batida' | 'encerrado';
 export function ritmoDoEvento(p: { vendidos: number | null; meta: number | null; diasAteEvento: number; passado: boolean }): RitmoEvento {
   if (p.passado) return 'encerrado';
@@ -146,6 +151,9 @@ export function ritmoDoEvento(p: { vendidos: number | null; meta: number | null;
   const prop = p.vendidos / p.meta;
   if (p.diasAteEvento <= EVENTO_RITMO.diasCritico && prop < EVENTO_RITMO.proporcaoCritico) return 'critico';
   if (p.diasAteEvento <= EVENTO_RITMO.diasAtencao && prop < EVENTO_RITMO.proporcaoAtencao) return 'atencao';
+  // Ritmo esperado: venda linear nos últimos diasJanelaVenda dias antes do evento. Abaixo dele, já é atenção.
+  const esperado = Math.min(1, Math.max(0, (EVENTO_RITMO.diasJanelaVenda - p.diasAteEvento) / EVENTO_RITMO.diasJanelaVenda));
+  if (prop < esperado) return 'atencao';
   return 'no_ritmo';
 }
 

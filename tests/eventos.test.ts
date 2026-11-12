@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   parseMeta, metaTotal, parseHorarioInicio, minutosDoTurno, parseTimeline, idSymplaDoLink, nomeLimpo,
-  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes,
+  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes, linkSymplaDivergente,
 } from '../lib/eventos.ts';
 
 // Meta
@@ -69,13 +69,22 @@ assert.equal(casados.has(3), false);
 assert.ok(semelhancaNomes('Talks B2HR', 'MOAI Talks | B2HR') >= 0.34);
 
 // Ritmo
-assert.equal(ritmoDoEvento({ vendidos: 10, meta: 60, diasAteEvento: 20, passado: false }), 'no_ritmo');
+// 10 de 60 a 20 dias: o ritmo esperado é 10/30 da meta, então já está abaixo.
+assert.equal(ritmoDoEvento({ vendidos: 10, meta: 60, diasAteEvento: 20, passado: false }), 'atencao');
 assert.equal(ritmoDoEvento({ vendidos: 30, meta: 60, diasAteEvento: 5, passado: false }), 'atencao');
 assert.equal(ritmoDoEvento({ vendidos: 20, meta: 60, diasAteEvento: 1, passado: false }), 'critico');
 assert.equal(ritmoDoEvento({ vendidos: 60, meta: 60, diasAteEvento: 1, passado: false }), 'meta_batida');
 assert.equal(ritmoDoEvento({ vendidos: 5, meta: null, diasAteEvento: 1, passado: false }), 'sem_meta');
 assert.equal(ritmoDoEvento({ vendidos: null, meta: 30, diasAteEvento: 1, passado: false }), 'sem_venda');
 assert.equal(ritmoDoEvento({ vendidos: 5, meta: 30, diasAteEvento: -1, passado: true }), 'encerrado');
+// MOAI Business Poker (26/11, 14 dias antes, 0 de 60): abaixo do esperado (16/30 da meta), vira atenção.
+assert.equal(ritmoDoEvento({ vendidos: 0, meta: 60, diasAteEvento: 14, passado: false }), 'atencao');
+assert.equal(ritmoDoEvento({ vendidos: 40, meta: 60, diasAteEvento: 25, passado: false }), 'no_ritmo');
+assert.equal(ritmoDoEvento({ vendidos: 60, meta: 60, diasAteEvento: 14, passado: false }), 'meta_batida');
+// Link do Sympla: nome sem palavra em comum com a Escala é divergente; nome parecido não é.
+assert.equal(linkSymplaDivergente('MOAI Meetup | PAV', 'MOAI Mentoria |Planejamento Comercial para 2027'), true);
+assert.equal(linkSymplaDivergente('MOAI Meetup | Sociedade boa também precisa de regra', 'MOAI Meetup | Até que os negócios nos separem'), true);
+assert.equal(linkSymplaDivergente('MOAI Connect', 'MOAI Connect |O Palco é seu'), false);
 
 // Cancelamento
 assert.equal(eventoCancelado('Evento Cancelado', null), true);
