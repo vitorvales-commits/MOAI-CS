@@ -440,15 +440,20 @@ begin
    where tipo = 'texto' and texto_normalizado = canonico.normalizar('texto sem cs xyz') and texto_original = 'texto sem cs xyz';
   if v_n <> 1 then raise exception 'FALHA 6 vinculos_pendentes: texto sem CS deveria aparecer 1 vez, apareceu % vez(es)', v_n; end if;
 
-  -- 4. Chamadas como service_role (papel que a sync e o dash usam em produção).
+  -- 4. Chamadas como service_role. Os grants espelham produção (verificados por leitura: service_role tem select nas
+  -- tabelas de public, execute nas funções, bypassrls, e NÃO tem usage em canonico). Por isso atualizar_pendencias não
+  -- é chamada direto aqui: em produção ela roda pelas funções security definer (canonico_confirmar_apelido, cron).
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
   alter role service_role bypassrls;
+  grant usage on schema public to service_role;
+  grant select on all tables in schema public to service_role;
+  grant execute on all functions in schema public to service_role;
   execute 'set local role service_role';
   select count(*) into v_n from public.metas_cs_base(null, v_mes_atual);
   if v_n = 0 then raise exception 'FALHA 7a: metas_cs_base como service_role sem linhas'; end if;
   select count(*) into v_n from public.indicador_pontos('matchmakings', 'Luana');
   select count(*) into v_n from public.historico_indicador('matchmakings', 'cs', 'Luana');
-  perform canonico.atualizar_pendencias();
+  perform public.consultar_metas_cs('Luana', v_mes_atual);
   execute 'reset role';
 
   raise exception 'TESTE_VITORIO_BANCO_66B_OK';
