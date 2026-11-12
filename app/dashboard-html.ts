@@ -908,7 +908,6 @@ ${ICONES_SVG}
       <section class="gh-w gh-c12" aria-labelledby="ghAgendaTit">
         <div class="gh-w-h"><span class="gh-w-t" id="ghAgendaTit">Agenda da equipe</span></div>
         <div id="agendaHome"></div>
-        <div class="gh-w-h" style="margin-top:4px"><div id="farolSemana" class="gh-ajuda" aria-live="polite"></div></div>
       </section>
       <section class="gh-w gh-podio-w gh-c7" aria-labelledby="ghPodioTit">
         <div class="gh-w-h"><span class="gh-w-t" id="ghPodioTit">Top 3 do mês</span><a class="gh-link gh-link-periodo" href="/gestor?aba=visaoGeral#mapa-time">Ranking completo</a></div>
@@ -1202,7 +1201,6 @@ function iniciarHomeGestor(){
   renderSkeletonEquipe();
   carregarEquipe(currentMes, currentAno);
   agendaMontar('agendaHome', {});
-  carregarFarolSemana_();
 }
 
 // Parte A (25/09/2026): CS logado sem vínculo ainda em cs_usuarios — não existe "os próprios
@@ -3021,28 +3019,6 @@ function agendaItensUnificados_(d){
   return itens;
 }
 
-
-// Farol da semana: virou o resumo do rodapé da agenda (prompt 5.5.10). Os cards saem; a contagem vem da agenda.
-function carregarFarolSemana_(){
-  var el = document.getElementById('farolSemana');
-  if (!el) return;
-  el.textContent = 'Carregando o resumo da semana…';
-  var inicio = agendaInicioSemana_(agendaZerarHora_(new Date()));
-  var fim = agendaAddDias_(inicio, 7);
-  fetchJSON_('/api/gestor/agenda?inicio=' + agendaFmtYYYYMMDD_(inicio) + '&fim=' + agendaFmtYYYYMMDD_(fim)).then(function (d) {
-    renderFarolSemana_(d);
-  }).catch(function (err) {
-    el.innerHTML = '<span class="gh-erro">Não foi possível carregar o resumo da semana: ' + escAgenda_(err.message) + '.</span>';
-  });
-}
-function renderFarolSemana_(d){
-  var el = document.getElementById('farolSemana');
-  var conselhos = d.conselhos || [];
-  var rounds = (d.rounds || []).length;
-  var atencao = conselhos.filter(function (c) { return !c.passado && (c.confirmados || []).length <= 3; }).length;
-  el.textContent = conselhos.length + (conselhos.length === 1 ? ' conselho' : ' conselhos') + ' e ' + rounds + (rounds === 1 ? ' round' : ' rounds') +
-    ' na semana · ' + atencao + ' com 3 confirmados ou menos';
-}
 
 function agendaAbrirModal_(i){
   var item = agendaItensClique_[i];
