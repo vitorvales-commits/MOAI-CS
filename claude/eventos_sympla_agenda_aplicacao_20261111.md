@@ -104,3 +104,35 @@ Status geral: **parcial**. Código aplicado e verificado localmente. Migração 
 **Bloqueio:** `gh pr view 64` continua em `OPEN`, sem `mergedAt`, e `origin/main` não contém nenhum commit do PR (último: merge do #62). Não há execução de "Deploy das Edge Functions" disparada pelo PR. Por isso os passos 1 a 7 não foram executados: a implantação de `sync-monday` e a tarefa `eventos` dependem do merge.
 
 **Pendente:** confirmar o merge do #64; depois, passos 1 a 7 na ordem do prompt.
+
+## Execução pós-merge (PR #64 mergeado às 16:51:22 UTC, merge commit 81ece45)
+
+**Merge:** feito com `gh pr merge 64 --merge`, autorizado por você. `origin/main` contém `b3c9bb6` e `6398a07`.
+
+**Passo 1, workflow "Deploy das Edge Functions" (run 43062415852): PASSOU.** Seleção no log: `sync-monday` e `sync-sympla`. `Deployed Functions ... sync-monday` às 16:51:48 UTC e `... sync-sympla` às 16:51:51 UTC. Conclusão: `success`.
+
+**Passo 2, "Aplicar migração" para 20261111_eventos_sympla: NÃO EXECUTADO**, conforme instrução. As execuções de 15h17 e 15h20 UTC na `main` eram da `20261111b_vitorio_registro_dados` (PR #62).
+
+**Passo 3, sync manual `sync-monday?board=eventos`: PASSOU.** Disparada por `net.http_post` no banco, com os segredos do Vault que o cron usa (request id 21075). `sync_log`: `board = 'eventos'`, `sucesso`, `itens_sincronizados = 74`, `finished_at` 16:52:24 UTC.
+
+**Passo 4, conferências em `eventos_items`:**
+- a) **Comitê de IA 18/11: PASSOU.** `inicio` 2026-11-18 19:00 BRT; `meta_raw` "60 pessoas"; 4 escalados.
+- b) **Connect 22/10: PASSOU COM RESSALVA.** `escalados_fonte` = `subitens`, mas `escalados_raw` tem **cinco** nomes: RODRIGO QUEIROZ CAMPOS, Mateus Ries, Vilker Ferreira, George Washington, Amanda Borges. O prompt esperava três (Rodrigo, Mateus e Vilker). Não investiguei a origem dos dois extras.
+- c) **Mesa 24/11: PASSOU.** `sympla_event_id` = 3647115.
+- d) **Sem link de convite: PASSOU.** A tabela não tem coluna de link. Nas 74 linhas, 0 com `http(s)://`, `monday.com`, `sympla.com`, `token`, `convite` ou `invite`.
+- Observação: alguns `escalados_raw` trazem o e-mail de um membro do time (`vinicius.souza@mmoai.com.br`), vindo da coluna de pessoas do Monday. Não é link de convite nem dado de participante, mas fica gravado.
+
+**Passo 5, agenda de produção logada: PARCIAL.**
+- **16/11:** cartão do Comitê de IA em QUA 18, 19:00, legenda "Meta 60 · vendas sem leitura do Sympla", escala "Vitor, George, Rodrigo, Iasmin" (primeiros nomes), sem linha de venda. Modal: quarta 18/11, 19h; local MOAI; tipo Comitê · Executivo; "Escala Fechada"; meta 60; quatro escalados com nome completo.
+- **23/11:** 6 eventos. Cartão "MOAI Mesa" (terça 24/11, 10:00), "Escala Amanda", sem linha de venda. Modal: terça 24/11, 10h–12h; local MOAI; tipo Mesa · Conselhos; "Escala Fechada"; meta "Não preenchida na Escala de Eventos"; escalada Amanda Borges.
+- O modal da Mesa diz "Evento sem par no Sympla" apesar de `sympla_event_id` = 3647115. Esperado: `sympla_eventos` está vazia sem o token.
+- **390 px: NÃO VERIFICADO.** Não há modo de dispositivo do DevTools nas ferramentas disponíveis; a janela não desce abaixo de ~500 px; o app não pode ser embutido em iframe.
+
+**Passo 6, conselhos e rounds: PASSOU.** 16/11: 7 conselhos, 0 rounds (antes do merge: 7 e 0). 23/11: 11 conselhos, 0 rounds (antes: 11 e 0). `eventosErro` = null nas duas.
+
+**Pendências:**
+- Origem dos dois escalados extras do Connect 22/10 (George Washington e Amanda Borges).
+- Decidir sobre e-mails de membros em `escalados_raw`.
+- Token do Sympla: depois dele, a Mesa 24/11 ganha venda e o modal deixa de dizer "sem par".
+- Regularização da migração `20261111_eventos_sympla`, conforme `handoff/prompt_regularizar_migracoes_mcp.md`.
+- Commit e push deste relatório: negados pelo classificador. Está só no arquivo local.
