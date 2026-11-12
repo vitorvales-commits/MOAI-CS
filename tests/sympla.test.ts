@@ -41,7 +41,13 @@ const lista = [
   { ...ev, id: 3, inicio: '2026-11-22T13:00:00Z', fim: '2026-11-22T15:00:00Z', cancelado: true },
   { ...ev, id: 4, inicio: '2026-11-21T13:00:00Z', fim: '2026-11-21T15:00:00Z', cancelado: false },
 ];
+// Fora da janela de 45 dias (1/10 é 50 dias antes de 20/11): não entra.
 assert.deepEqual(eventosParaContar(lista, agora).map((e) => e.id), [4, 1]);
+// Dentro da janela de 45 dias (10/10), ainda sem contagem: entra, ordenado pelo início.
+const dentro = { ...ev, id: 6, inicio: '2026-10-10T13:00:00Z', fim: '2026-10-10T15:00:00Z', cancelado: false };
+assert.deepEqual(eventosParaContar([...lista, dentro], agora).map((e) => e.id), [6, 4, 1]);
+// Já contado e terminado há mais de 2 dias: sai (leitura pós-evento já feita).
+assert.deepEqual(eventosParaContar([...lista, dentro], agora, new Set([6])).map((e) => e.id), [4, 1]);
 assert.equal(temProximaPagina({ pagination: { has_next: true } }), true);
 assert.equal(temProximaPagina({}), false);
 console.log('sympla: todos os testes passaram');
