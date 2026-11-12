@@ -86,12 +86,13 @@ export function contarEvento(participantes: any[], pedidos: any[], agoraMs: numb
   return { vendidos, checkins, vendidos_7d: v7, ultima_venda: ultima ? new Date(ultima).toISOString() : null };
 }
 
-// Quais eventos recebem contagem neste ciclo: não cancelados, que terminam a partir de 2 dias atrás,
-// os mais próximos primeiro, até o máximo.
-export function eventosParaContar(eventos: EventoSymplaLinha[], agoraMs: number, max = SYMPLA_MAX_EVENTOS_CONTAGEM): EventoSymplaLinha[] {
-  const corte = agoraMs - 2 * 86_400_000;
+// Quais eventos recebem contagem neste ciclo: não cancelados, que começaram dentro da janela de passado,
+// exceto os que já têm a leitura pós-evento (`jaFechados`: contados e terminados há mais de 2 dias).
+// Assim um evento passado ainda é contado uma vez, depois do fim, e não só nos 2 dias após o término.
+export function eventosParaContar(eventos: EventoSymplaLinha[], agoraMs: number, jaFechados: Set<number> = new Set(), max = SYMPLA_MAX_EVENTOS_CONTAGEM): EventoSymplaLinha[] {
+  const corteJanela = agoraMs - SYMPLA_JANELA_PASSADO_DIAS * 86_400_000;
   return eventos
-    .filter((e) => !e.cancelado && new Date(e.fim || e.inicio || 0).getTime() >= corte)
+    .filter((e) => !e.cancelado && !jaFechados.has(e.id) && new Date(e.inicio || e.fim || 0).getTime() >= corteJanela)
     .sort((a, b) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime())
     .slice(0, max);
 }
