@@ -136,3 +136,38 @@ Status geral: **parcial**. Código aplicado e verificado localmente. Migração 
 - Token do Sympla: depois dele, a Mesa 24/11 ganha venda e o modal deixa de dizer "sem par".
 - Regularização da migração `20261111_eventos_sympla`, conforme `handoff/prompt_regularizar_migracoes_mcp.md`.
 - Commit e push deste relatório: negados pelo classificador. Está só no arquivo local.
+
+---
+
+## Execução pós-merge do PR #69 (12/11/2026)
+
+Autorizada pelo Vitor. PR #69 (`fix/eventos-nomes-e-aviso-sympla`) com os patches 5 e 6 da série e o relatório.
+
+**Conflito com a PR #67** (`fix/sympla-contagem-pos-evento`, mergeada antes da #69): os dois mexiam em `sync-sympla/index.ts`, `sync-sympla/logica.ts` e `tests/sympla.test.ts`. Resolvido ficando com a versão da `main` (PR #67) nesses três arquivos. Consequência: a lógica de contagem final do patch 6 (`SYMPLA_HORAS_FECHAMENTO`, `contagensGravadas`) saiu; vale a da PR #67 (`jaFechados`, janela de 45 dias). Testes: `tsc` sem erros, `npm test` 84 de 84, `next build` ok.
+
+**Passo 5, merge: PASSOU.** `gh pr merge 69 --merge` na primeira tentativa falhou por conflito, depois da resolução foi mesclado. Commit de merge `ca2730c`.
+
+**Passo 6, deploy: PASSOU.** `git fetch`: `799be00` está na `main`. Workflow "Deploy das Edge Functions" (run 43230088936, success) publicou `sync-monday`. `sync-sympla` não foi republicada nesse run porque não mudou em relação à `main`; o deploy dela está no run 43227504508 (PR #67, success, `Deployed Functions ... sync-sympla`, 13:28 UTC).
+
+**Passo 7, sync-monday `?board=eventos`: PASSOU.** Disparada por `net.http_post` no banco com os segredos do Vault (request 21575). O `_http_response` marcou timeout de 5 s do pg_net, mas a função concluiu: `sync_log` id 251271, `eventos`, `sucesso`, 74 itens, 13:44:53 UTC. `select count(*) from eventos_items where escalados_raw like '%@%'` = **0**.
+
+**Passo 8, sympla: PASSOU, sem esperar o ciclo.** Os três eventos já tinham a contagem do ciclo de 13:30 UTC (`contagem_em` preenchido):
+- 3604515 Mentoria: vendidos 95, check-ins **0** (valor gravado, não nulo; conferir se o evento é posterior ou se realmente não houve check-in)
+- 3613885 Meetup: vendidos 27, check-ins 17
+- 3618652 Connect: vendidos 104, check-ins 96
+
+**Passo 9, agenda em produção (https://moai-cs-dashboard.vercel.app/):**
+- **(a) 16/11: PASSOU.** Comitê de Inteligência Artificial: "5 de 40 · faltam 35", "Abaixo do ritmo, cobrar divulgação".
+- **(b) 23/11: PASSOU PARCIALMENTE.** "Talks B2HR" aparece uma vez (qua 25/11, 19:00), mas o cartão mostra "0 de 40 · faltam 40" sem venda do Sympla. Motivo: `eventos_items` do Talks B2HR (13453456058) tem `sympla_event_id` null. O evento do Sympla no dia 25/11 é "MOAI Talks | Plano estratégico: seu time aguenta?" (3645642), com 0 vendidos, então o zero também é o dado real. Falta vincular o `sympla_event_id` no Monday.
+- **(c) 23/11: NÃO PASSOU (o aviso aparece).** O cartão "MOAI Mesa" mostra "Data diferente no Sympla" e o modal diz: "O Sympla marca 26/11 e o Monday 24/11."
+  - `eventos_items` do item 13453408121: `data_inicio` 2026-11-24, `horario_raw` "10h-12h", `inicio` 2026-11-24 13:00:00+00.
+  - `sympla_eventos` 3647115: `inicio` 2026-11-26 12:00:00+00 (quinta, 9h BRT), vendidos 5, check-ins 0.
+  - O aviso está correto para estes dados: a data do Monday (24/11) não bate com a do Sympla (26/11). Para sumir, corrigir a data no Monday ou no Sympla.
+
+**Passo 10:** este registro. Commit e push na `main` só deste arquivo.
+
+**Pendências:**
+- Vincular `sympla_event_id` do Talks B2HR no Monday (ou confirmar que o evento do Sympla de 25/11 é o mesmo).
+- Decidir qual data está certa para a Mesa (24/11 no Monday ou 26/11 no Sympla).
+- Conferir o check-in 0 do Mentoria (3604515).
+- Rotacionar o `X-Sync-Secret` da sync-monday: ele apareceu em texto puro na saída de uma consulta a `cron.job` nesta sessão.
