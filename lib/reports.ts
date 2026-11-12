@@ -1233,7 +1233,7 @@ function parseCases(casesRows: any[], nomeCompletoCS: string | string[], mes: st
 function matchmakingsDoCS(mmRows: any[], userId: number | null, mes: string, ano: number, geral: boolean): any[] {
   if (userId === null || userId === undefined) return [];
   const filtradas = geral ? filtrarAnoFlexivel(mmRows, ano) : filtrarPorMesAnoFlexivel(mmRows, mes, ano);
-  return filtradas.filter((r) => Number(r.creator_id) === userId);
+  return filtradas.filter((r) => Number(r.cs_monday_user_id) === userId);
 }
 function parseMatchmakings(mmRows: any[], userId: number | null, mes: string, ano: number, geral: boolean) {
   return matchmakingsDoCS(mmRows, userId, mes, ano, geral).length;
@@ -1580,7 +1580,7 @@ export async function generateCSReport(sb: SupabaseClient, nomeCS: string, selet
   // D7 (05/11/2026): matchmakings com resultado contam pelo mês do registro do resultado, e não pelo mês do matchmaking.
   // Mesma data de atribuição do realizado semanal (lib/atribuicao.ts).
   const mmResultadoCalc = dados.matchmakings.filter((r: any) => {
-    if (!temUserId || Number(r.creator_id) !== cfg.userId || !matchmakingTemResultado(r)) return false;
+    if (!temUserId || Number(r.cs_monday_user_id) !== cfg.userId || !matchmakingTemResultado(r)) return false;
     const data = dataDeAtribuicao('matchmakings_resultado', r);
     return data !== null && data >= mesInicio && data <= mesFim;
   }).length;

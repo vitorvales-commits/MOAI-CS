@@ -277,9 +277,9 @@ const MATCHMAKINGS_COLS = {
   motivo: 'long_textuevre4t8', categoria: 'single_selectyleiwd8', origem: 'single_selecto6mf971',
   resultado: 'long_texto8zt8o1n', data: 'date_mm4e7y75',
 };
-// Coluna "CS do dash" (texto) do board de Matchmaking, que a atribuição do CS passa a preferir. Nulo enquanto o
-// id não é cadastrado: sem ele a sync não pede a coluna nem envia cs_dash_texto (a coluna do banco fica como está).
-const MATCHMAKINGS_CS_DASH_COL: string | null = null;
+// Coluna "CS do dash" (texto) do board de Matchmaking, criada em 11/11/2026 16:51 UTC (text_mm90ny4r). A atribuição
+// do CS prefere essa coluna: o trigger matchmakings_atribuir_cs (migração 20261111a) resolve cs_monday_user_id.
+const MATCHMAKINGS_CS_DASH_COL: string | null = 'text_mm90ny4r';
 const CONSELHOS_COL_POR_MES: Record<string, string> = {
   Janeiro: 'color_mkz343x2', Fevereiro: 'color_mkzt3sk3', Março: 'color_mkzt7139',
   Abril: 'color_mkztzmry', Maio: 'color_mkztc9tw', Junho: 'color_mkzt6p3k',

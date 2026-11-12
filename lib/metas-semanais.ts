@@ -6,7 +6,7 @@
 //   metasSemanaisDoCS       junta as duas.
 //
 // Vínculo com o CS, o mesmo de lib/reports.ts: cases, rounds e upsell por nome na coluna de pessoa (nomeBateColunaPessoa
-// com grafiasCS); matchmakings por creator_id (userId do CS); indicações pelo nome do report (reports_resumo_cs).
+// com grafiasCS); matchmakings por cs_monday_user_id (CS do dash, ou creator_id quando vazia; resolvido no banco); indicações pelo nome do report (reports_resumo_cs).
 // Data de cada item: dataDeAtribuicao (lib/atribuicao.ts). Item sem data utilizável não entra em semana nenhuma (P8).
 //
 // Realizado por parcela: soma os itens cuja data cai na parcela do mês. Parcela já fechada usa o realizado congelado
@@ -28,7 +28,7 @@ export type IndicadorSemanal = (typeof INDICADORES_SEMANAIS)[number];
 // Linhas já carregadas. Só os campos que o cálculo usa.
 export interface DadosMetas {
   cases: { id: number; cs_raw: string | null; mes_grupo_titulo: string; created_at_monday: string | null }[];
-  matchmakings: { id: number; creator_id: number | null; mes_grupo_titulo: string; data: string | null; created_at_monday: string | null; resultado: string | null; resultado_registrado_em: string | null }[];
+  matchmakings: { id: number; cs_monday_user_id: number | null; mes_grupo_titulo: string; data: string | null; created_at_monday: string | null; resultado: string | null; resultado_registrado_em: string | null }[];
   rounds: { id: number; cs_responsavel_raw: string | null; mes_grupo_titulo: string; status: string | null; inicio: string | null; created_at_monday: string | null }[];
   upsell: { id: number; cs_raw: string | null; status: string | null; tipo_troca: string | null; data: string | null }[];
   reports: Pick<ResumoReport, 'cs_nome' | 'data_efetiva' | 'indicacoes'>[];
@@ -105,14 +105,14 @@ export function itensDoIndicador(ind: IndicadorSemanal, cs: CSConfig, dados: Dad
       }));
     case 'matchmakings': {
       if (!minhaMM(cs.userId)) return null;
-      return dados.matchmakings.filter((r) => Number(r.creator_id) === cs.userId && grupoDoMes(r.mes_grupo_titulo, mes)).map((r) => ({
+      return dados.matchmakings.filter((r) => Number(r.cs_monday_user_id) === cs.userId && grupoDoMes(r.mes_grupo_titulo, mes)).map((r) => ({
         data: dataDeAtribuicao('matchmakings', r, grupo), valor: 1, grupoDoMes: true,
       }));
     }
     case 'matchmakings_resultado': {
       if (!minhaMM(cs.userId)) return null;
       return dados.matchmakings
-        .filter((r) => Number(r.creator_id) === cs.userId && (r.resultado || '').trim().length > 0)
+        .filter((r) => Number(r.cs_monday_user_id) === cs.userId && (r.resultado || '').trim().length > 0)
         .map((r) => ({ data: dataDeAtribuicao('matchmakings_resultado', r), valor: 1, grupoDoMes: grupoDoMes(r.mes_grupo_titulo, mes) }));
     }
     case 'rounds':
@@ -200,7 +200,7 @@ export function montarMetasSemanaisCS(cs: CSConfig, mes: string, dados: DadosMet
 export async function carregarDadosMetas(sb: SupabaseClient, mes: string): Promise<DadosMetas> {
   const [cases, matchmakings, rounds, upsell, feriados, metasMensais, overrides, fechamentos, reports] = await Promise.all([
     selectPaginado(() => sb.from('cases_items').select('id, cs_raw, mes_grupo_titulo, created_at_monday').order('id'), { nome: 'cases_items' }),
-    selectPaginado(() => sb.from('matchmakings_items').select('id, creator_id, mes_grupo_titulo, data, created_at_monday, resultado, resultado_registrado_em').order('id'), { nome: 'matchmakings_items' }),
+    selectPaginado(() => sb.from('matchmakings_items').select('id, cs_monday_user_id, mes_grupo_titulo, data, created_at_monday, resultado, resultado_registrado_em').order('id'), { nome: 'matchmakings_items' }),
     selectPaginado(() => sb.from('rounds_items').select('id, cs_responsavel_raw, mes_grupo_titulo, status, inicio, created_at_monday').order('id'), { nome: 'rounds_items' }),
     selectPaginado(() => sb.from('upsell_downsell_items').select('id, cs_raw, status, tipo_troca, data').order('id'), { nome: 'upsell_downsell_items' }),
     selectPaginado(() => sb.from('feriados').select('data').order('data'), { nome: 'feriados' }),
