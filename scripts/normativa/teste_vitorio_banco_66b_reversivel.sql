@@ -73,7 +73,7 @@ begin
   from c
   order by c.cs, c.metrica;
 end;
-$function$
+$function$;
 
 
 create or replace function public.legado_indicador_pontos(p_indicador text, p_cs text default null::text, p_motivo text default null::text, p_produtos text[] default null::text[], p_incluir_comunidade boolean default true, p_cs_categoria text default null::text)
@@ -146,7 +146,7 @@ begin
   end if;
   return;
 end;
-$function$
+$function$;
 
 
 create or replace function public.legado_historico_indicador(p_indicador text, p_escopo text, p_cs_nome text)
@@ -239,7 +239,7 @@ begin
   end if;
   return;
 end;
-$function$
+$function$;
 
 
 create or replace function canonico.legado_atualizar_pendencias()
@@ -300,7 +300,7 @@ language sql set search_path to '' as $function$
     returning 1
   )
   select ((select count(*) from ins) + (select count(*) from removidas))::integer;
-$function$
+$function$;
 
 
 do $teste$
