@@ -20,8 +20,10 @@ language sql stable set search_path = '' as $fn$
 $fn$;
 revoke all on function canonico.cs_monday_do_matchmaking(text, bigint) from public, anon, authenticated;
 
+-- SECURITY DEFINER: a sync grava como service_role, que não tem usage em canonico. O gatilho roda com o dono da
+-- função (que lê canonico.cs); quem grava não precisa de privilégio sobre canonico.
 create or replace function public.matchmakings_atribuir_cs() returns trigger
-language plpgsql set search_path = '' as $fn$
+language plpgsql security definer set search_path = '' as $fn$
 begin
   new.cs_monday_user_id := canonico.cs_monday_do_matchmaking(new.cs_dash_texto, new.creator_id);
   return new;
