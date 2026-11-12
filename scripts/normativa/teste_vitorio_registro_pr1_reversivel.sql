@@ -71,9 +71,10 @@ begin
 
   -- 5. Papel da sync (service_role): o gatilho roda com o privilégio de quem grava. Linha de teste nova, com
   -- creator_id que não é CS. Confere cs_monday_user_id no insert (coluna vazia) e no update (coluna = Luana).
-  -- Na cópia, o papel só existe se for criado aqui. No Supabase de produção o service_role tem bypassrls (lido por
-  -- pg_roles.rolbypassrls); a cópia precisa do mesmo atributo, senão o RLS reprova o insert da sync.
-  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
+  -- Em produção o service_role tem bypassrls (lido por pg_roles.rolbypassrls). A cópia pode já trazer o papel do
+  -- dump sem esse atributo: o alter garante o mesmo comportamento, senão o RLS reprova o insert da sync.
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+  alter role service_role bypassrls;
   grant usage on schema public to service_role;
   grant select, insert, update on public.matchmakings_items to service_role;
   execute 'set local role service_role';
