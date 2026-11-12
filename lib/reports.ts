@@ -28,6 +28,7 @@ import {
 } from './indicadores-base';
 import type { FaixaPresencaChave, SemaforoChave, AgendaTurnoChave } from './constants';
 import { chaveAgenda, acharChaveTolerante, normalizarApelidos, chavesDoContato, chavesDaAgenda, conjuntosDaAgenda } from './agenda-nomes';
+import { eventosDaAgenda, type AgendaEventoItem } from './eventos-agenda';
 import { faixaDoSemaforo, precisaCobranca, prazoCobranca, instanteBRT, turnoDoMinuto, nomeExibido, csDoRound, hhmmDeMinutos, type PrazoCobranca } from './agenda';
 import { calcularScoreCS, rankingCSAtivos, aproveitamentoIndicador, detalharScoreCS, type ScoreCS } from './pontuacao';
 import { mediana } from './evolucao';
@@ -1112,7 +1113,16 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
     })
     .sort((a: AgendaRoundItem, b: AgendaRoundItem) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime());
 
-  return { conselhos, rounds };
+  // Eventos da MOAI (11/11/2026): falha nesta leitura não derruba a agenda; o cliente mostra o aviso.
+  let eventos: AgendaEventoItem[] = [];
+  let eventosErro: string | null = null;
+  try {
+    eventos = await eventosDaAgenda(sb, dataInicioISO, dataFimISO, agora);
+  } catch (e: any) {
+    eventosErro = e?.message || String(e);
+  }
+
+  return { conselhos, rounds, eventos, eventosErro };
 }
 
 // ============ histórico de GTD ============

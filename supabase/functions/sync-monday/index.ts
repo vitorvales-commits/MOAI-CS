@@ -185,6 +185,7 @@ const SYNC_FUNCTION_SECRET = Deno.env.get('SYNC_FUNCTION_SECRET')!;
 import { decidirPrune } from './prune-trava.ts';
 import { parseGrupoAtivo } from './parse-grupo.ts';
 import { decidirEscrita, executarCiclo, montarColumnValues, proximaTentativa } from './fila-escrita.ts';
+import { parseTimeline, parseHorarioInicio, minutosDoTurno, isoBRT, idSymplaDoLink, nomeLimpo } from '../_shared/eventos.ts';
 import { decidirDestinoEspelho, precisaRenomear, vinculoFoiRecriado } from './espelho.ts';
 
 const BOARDS = {
@@ -202,6 +203,8 @@ const BOARDS = {
   CONSELHEIROS: '18393359980',
   NPS_CONSELHOS: '18393367198',
   VISITA_CHURNS: '18432210313',
+  // v_eventos (11/11/2026): Escala de Eventos, workspace Conselhos Estratégicos. Eventos da MOAI na agenda.
+  ESCALA_EVENTOS: '18396183284',
 };
 
 const CONSELHEIROS_FOTO_COL = 'file_mm519xd1';
@@ -257,6 +260,23 @@ const ROUNDS_COLS = {
   tema: 'text_mm4v5gka', especialista: 'text_mm51zb1y', publicoAlvo: 'text_mm51yq3q',
   numeroPessoas: 'numeric_mm3shhdy',
 };
+// Escala de Eventos (11/11/2026): ids confirmados ao vivo via get_board_info no board 18396183284.
+const EVENTOS_COLS = {
+  escalados: 'multiple_person_mm5g414h', escala: 'status', data: 'timerange_mm2wq3h6', horario: 'text_mm2x1ege',
+  local: 'text_mm2xnpdy', meta: 'text_mm4s2djp', label: 'color_mm2wjdg5', produto: 'color_mm2wkc0b',
+  turno: 'color_mkzrdaz6', linkConvites: 'text_mm4b43n3', status: 'color_mm2wv8dc',
+};
+const EVENTOS_SUB_COLS = { pessoa: 'person', escala: 'color_mkzrpq9v' };
+// Escalados: a coluna Escalados do item é a fonte; vazia, valem os subitens com Escala = Escalado
+// (pessoa do subitem, ou o nome do subitem quando a pessoa não foi marcada).
+function escaladosDoEvento(coluna: string | null, subitens: any[]): { escalados_raw: string | null; escalados_fonte: string | null } {
+  if (coluna && coluna.trim()) return { escalados_raw: coluna.trim(), escalados_fonte: 'coluna' };
+  const nomes = subitens
+    .filter((si) => /^escalad/i.test(colText(si.column_values || [], EVENTOS_SUB_COLS.escala) || ''))
+    .map((si) => (colText(si.column_values || [], EVENTOS_SUB_COLS.pessoa) || si.name || '').trim())
+    .filter(Boolean);
+  return nomes.length ? { escalados_raw: nomes.join(', '), escalados_fonte: 'subitens' } : { escalados_raw: null, escalados_fonte: null };
+}
 const UD_COLS = { cs: 'person', status: 'dup__of_status', tipoTroca: 'color_mkvfrrbq', data: 'data' };
 const REPORTS_COLS = { data: 'datezx87b73k', nota: 'number12l0b75h', mm: 'numbers378ng0h', indicacoes: 'numberm2mh66ag' };
 // v30 (07/10/2026): colunas extras do mesmo board para reports_individuais (report individual
@@ -1064,6 +1084,53 @@ function dataHoraBRParaISO(txt: string | null): string | null {
   return txt.includes(' ') ? txt.replace(' ', 'T') + ':00-03:00' : txt;
 }
 
+// v_eventos (11/11/2026): espelha a Escala de Eventos em eventos_items. O início combina o primeiro dia da
+// timeline com a primeira hora do texto livre de Horário; sem hora, usa a coluna Turno; sem as duas, fica
+// só o dia. O link dos convites não é gravado (link de evento privado leva token): só o id do Sympla.
+async function syncEscalaEventos() {
+  const groups = await fetchGroups(BOARDS.ESCALA_EVENTOS);
+  const colIds = Object.values(EVENTOS_COLS);
+  // Subitens: um por CS, com Disponibilidade e Escala. Servem de fonte quando a coluna Escalados do item está vazia.
+  const sub = `subitems{name column_values(ids:["${EVENTOS_SUB_COLS.pessoa}","${EVENTOS_SUB_COLS.escala}"]){id text}}`;
+  const query = `query($boardId:[ID!],$groupIds:[String!]){boards(ids:$boardId){groups(ids:$groupIds){id title items_page(limit:200){items{id name created_at column_values(ids:[${colIds.map((c) => `"${c}"`).join(',')}]){id text} ${sub}}}}}}`;
+  const data = await mondayFetch(query, { boardId: [BOARDS.ESCALA_EVENTOS], groupIds: groups.map((g) => g.id) });
+  const rows: any[] = [];
+  (data.boards[0].groups || []).forEach((g: any) => {
+    (g.items_page?.items || []).forEach((item: any) => {
+      const cv = item.column_values;
+      const datas = parseTimeline(colText(cv, EVENTOS_COLS.data));
+      const horarioRaw = colText(cv, EVENTOS_COLS.horario);
+      const turnoRaw = colText(cv, EVENTOS_COLS.turno);
+      const minutos = parseHorarioInicio(horarioRaw)?.minutos ?? minutosDoTurno(turnoRaw);
+      rows.push({
+        id: Number(item.id),
+        board_group_id: g.id,
+        mes_grupo_titulo: g.title,
+        nome: item.name,
+        nome_limpo: nomeLimpo(item.name),
+        data_inicio: datas?.inicio ?? null,
+        data_fim: datas?.fim ?? null,
+        horario_raw: horarioRaw,
+        turno_raw: turnoRaw,
+        inicio: datas && minutos != null ? isoBRT(datas.inicio, minutos) : null,
+        local: colText(cv, EVENTOS_COLS.local),
+        label: colText(cv, EVENTOS_COLS.label),
+        produto: colText(cv, EVENTOS_COLS.produto),
+        escala_status: colText(cv, EVENTOS_COLS.escala),
+        status_evento: colText(cv, EVENTOS_COLS.status),
+        meta_raw: colText(cv, EVENTOS_COLS.meta),
+        ...escaladosDoEvento(colText(cv, EVENTOS_COLS.escalados), item.subitems || []),
+        sympla_event_id: idSymplaDoLink(colText(cv, EVENTOS_COLS.linkConvites)),
+        created_at_monday: item.created_at || null,
+        synced_at: new Date().toISOString(),
+      });
+    });
+  });
+  await upsert('eventos_items', rows);
+  await pruneOrfaos('eventos_items', new Set(rows.map((r) => r.id)));
+  return rows.length;
+}
+
 async function syncRounds() {
   const groups = await fetchGroups(BOARDS.ROUNDS);
   const colIds = [
@@ -1865,6 +1932,7 @@ const SYNC_TASKS: Record<string, () => Promise<number>> = {
   reports_semanais: syncReportsSemanais,
   metas: syncMetas,
   rounds: syncRounds,
+  eventos: syncEscalaEventos,
   feedback: syncFeedback,
   cases: syncCases,
   matchmakings: syncMatchmakings,

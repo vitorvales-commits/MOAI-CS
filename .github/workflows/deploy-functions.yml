@@ -57,7 +57,7 @@ jobs:
             if [ "$EVENT_BEFORE" = "0000000000000000000000000000000000000000" ]; then
               FUNCOES="$(ls -1 supabase/functions | grep -v '^_' || true)"
             else
-              FUNCOES="$(git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- supabase/functions/ | awk -F/ 'NF>=3 {print $3}' | sort -u)"
+              FUNCOES="$(git diff --name-only "$EVENT_BEFORE" "$EVENT_SHA" -- supabase/functions/ | awk -F/ 'NF>=3 {print $3}' | grep -v '^_' | sort -u || true)"
             fi
           fi
           : > "$RUNNER_TEMP/funcoes.txt"
