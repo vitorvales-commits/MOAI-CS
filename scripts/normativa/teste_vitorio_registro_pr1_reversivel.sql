@@ -13,6 +13,7 @@ declare
   v_classe text;
   v_cs_ids bigint[];
   v_cs_ids_antes bigint[];
+  v_cs_monday bigint;
 begin
   -- 0. Equivalência com a coluna vazia em todos os itens: a view nova resolve igual à regra do creator_id.
   -- Mesma consulta de scripts/normativa/equivalencia_cs_dash_matchmakings.sql.
@@ -67,6 +68,25 @@ begin
   update public.matchmakings_items set cs_dash_texto = '   ' where id = v_id;
   select classe into v_classe from canonico.v_matchmakings where chave = v_id;
   if v_classe = 'pendente' then raise exception 'FALHA 4: texto só com espaços não pode contar como preenchido'; end if;
+
+  -- 5. Papel da sync (service_role): o gatilho roda com o privilégio de quem grava. Linha de teste nova, com
+  -- creator_id que não é CS. Confere cs_monday_user_id no insert (coluna vazia) e no update (coluna = Luana).
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+  grant usage on schema public to service_role;
+  grant select, insert, update on public.matchmakings_items to service_role;
+  execute 'set local role service_role';
+  insert into public.matchmakings_items (id, board_group_id, mes_grupo_titulo, nome, creator_id, cs_dash_texto)
+    values (9999000001, 'teste', 'Outubro 2026', 'teste registro PR1', 900000001, null);
+  select cs_monday_user_id into v_cs_monday from public.matchmakings_items where id = 9999000001;
+  if v_cs_monday is distinct from 900000001 then
+    raise exception 'FALHA 5a: insert como service_role com coluna vazia deveria gravar o creator_id (gravou %)', v_cs_monday;
+  end if;
+  update public.matchmakings_items set cs_dash_texto = 'Luana' where id = 9999000001;
+  select cs_monday_user_id into v_cs_monday from public.matchmakings_items where id = 9999000001;
+  if v_cs_monday is distinct from v_luana_monday then
+    raise exception 'FALHA 5b: update como service_role com coluna = Luana deveria gravar o monday da Luana (gravou %)', v_cs_monday;
+  end if;
+  execute 'reset role';
 
   raise exception 'TESTE_VITORIO_REGISTRO_OK';
 end
