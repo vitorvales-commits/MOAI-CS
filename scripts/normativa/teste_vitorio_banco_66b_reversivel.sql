@@ -453,7 +453,13 @@ begin
   if v_n = 0 then raise exception 'FALHA 7a: metas_cs_base como service_role sem linhas'; end if;
   select count(*) into v_n from public.indicador_pontos('matchmakings', 'Luana');
   select count(*) into v_n from public.historico_indicador('matchmakings', 'cs', 'Luana');
-  perform public.consultar_metas_cs('Luana', v_mes_atual);
+  -- consultar_metas_cs exige usuário logado (is_moai_user): como service_role, sem sessão, tem de negar o acesso.
+  begin
+    perform public.consultar_metas_cs('Luana', v_mes_atual);
+    raise exception 'FALHA 7b: consultar_metas_cs deveria negar acesso a service_role sem usuário logado';
+  exception when others then
+    if sqlerrm <> 'acesso negado' then raise; end if;
+  end;
   execute 'reset role';
 
   raise exception 'TESTE_VITORIO_BANCO_66B_OK';
