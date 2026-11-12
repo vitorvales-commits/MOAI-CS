@@ -244,9 +244,12 @@ $function$;
 
 -- atualizar_pendencias: a pendência de matchmaking vem de canonico.v_matchmakings (classe 'pendente'). Cobre o
 -- creator_id não reconhecido e também o texto da coluna "CS do dash" que não resolve para nenhum CS.
--- Mudança intencional (não é só a troca de creator_id): antes, a origem de matchmaking era só
--- matchmakings_items.creator_id. Agora a pendência sai de canonico.v_matchmakings, para que o texto da
--- "CS do dash" que não resolve apareça em vinculos_pendentes, e a regra de atribuição fique num lugar só.
+-- DECISÃO (12/11/2026, mantida): esta mudança é intencional, não é só a troca de creator_id. Antes, a origem de
+-- matchmaking era só matchmakings_items.creator_id. Agora a pendência sai de canonico.v_matchmakings: o texto da
+-- "CS do dash" que não resolve aparece em vinculos_pendentes, e a regra de atribuição fica num lugar só.
+-- Efeito no teste de equivalência (teste_vitorio_banco_66b_reversivel.sql): com a coluna "CS do dash" vazia, o
+-- resultado é igual ao da função antiga. Com texto que não resolve, aparece uma linha a mais, fonte
+-- matchmakings_items.cs_dash_texto; o passo 3b do teste confere que essa linha aparece.
 create or replace function canonico.atualizar_pendencias()
 returns integer
 language sql set search_path to '' as $function$
