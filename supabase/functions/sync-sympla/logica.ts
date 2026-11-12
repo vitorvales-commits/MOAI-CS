@@ -86,25 +86,15 @@ export function contarEvento(participantes: any[], pedidos: any[], agoraMs: numb
   return { vendidos, checkins, vendidos_7d: v7, ultima_venda: ultima ? new Date(ultima).toISOString() : null };
 }
 
-// Quais eventos recebem contagem neste ciclo, até o máximo: os ativos (não cancelados, terminam a partir
-// de 2 dias atrás), os mais próximos primeiro; depois os encerrados da janela que ainda não têm a contagem
-// final (nunca contados, ou contados antes de 6 horas após o fim). Assim o passado fica com o número
-// fechado de ingressos e check-ins uma vez, sem ser relido a cada ciclo.
-export const SYMPLA_HORAS_FECHAMENTO = 6;
-export function eventosParaContar(
-  eventos: EventoSymplaLinha[], agoraMs: number, max = SYMPLA_MAX_EVENTOS_CONTAGEM,
-  contagemEm: Map<number, string | null> = new Map(),
-): EventoSymplaLinha[] {
-  const corte = agoraMs - 2 * 86_400_000;
-  const fimMs = (e: EventoSymplaLinha) => new Date(e.fim || e.inicio || 0).getTime();
-  const porInicio = (a: EventoSymplaLinha, b: EventoSymplaLinha) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime();
-  const ativos = eventos.filter((e) => !e.cancelado && fimMs(e) >= corte).sort(porInicio);
-  const fechar = eventos.filter((e) => {
-    if (e.cancelado || fimMs(e) >= corte) return false;
-    const c = contagemEm.get(e.id);
-    return !c || new Date(c).getTime() < fimMs(e) + SYMPLA_HORAS_FECHAMENTO * 3600_000;
-  }).sort((a, b) => porInicio(b, a));
-  return ativos.concat(fechar).slice(0, max);
+// Quais eventos recebem contagem neste ciclo: não cancelados, que começaram dentro da janela de passado,
+// exceto os que já têm a leitura pós-evento (`jaFechados`: contados e terminados há mais de 2 dias).
+// Assim um evento passado ainda é contado uma vez, depois do fim, e não só nos 2 dias após o término.
+export function eventosParaContar(eventos: EventoSymplaLinha[], agoraMs: number, jaFechados: Set<number> = new Set(), max = SYMPLA_MAX_EVENTOS_CONTAGEM): EventoSymplaLinha[] {
+  const corteJanela = agoraMs - SYMPLA_JANELA_PASSADO_DIAS * 86_400_000;
+  return eventos
+    .filter((e) => !e.cancelado && !jaFechados.has(e.id) && new Date(e.inicio || e.fim || 0).getTime() >= corteJanela)
+    .sort((a, b) => new Date(a.inicio || 0).getTime() - new Date(b.inicio || 0).getTime())
+    .slice(0, max);
 }
 
 // Paginação da v3: { data: [...], pagination: { has_next } }.
