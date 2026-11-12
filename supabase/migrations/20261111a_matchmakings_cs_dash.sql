@@ -57,7 +57,7 @@ from public.matchmakings_items m;
 -- aqui: é o nome do elemento, enviado em criar_item. "CS do dash" entra quando o id da coluna for cadastrado
 -- (ver MATCHMAKINGS_CS_DASH_COL na sync).
 insert into sincronia.campos_editaveis (board_id, coluna_id, tipo_coluna, rotulo, papel, ativo) values
-  ('18409198202', 'name', 'text', 'Nome do item', 'cs', true),
+  ('18409198202', 'name', 'name', 'Nome do item', 'cs', true),
   ('18409198202', 'long_textuevre4t8', 'long_text', 'Motivo',    'cs', true),
   ('18409198202', 'single_selectyleiwd8', 'status', 'Categoria', 'cs', true),
   ('18409198202', 'single_selecto6mf971', 'status', 'Origem',    'cs', true),
