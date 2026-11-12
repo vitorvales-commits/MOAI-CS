@@ -72,7 +72,13 @@ begin
 
   -- 5. Papel da sync (service_role): o gatilho roda com o privilégio de quem grava. Linha de teste nova, com
   -- creator_id que não é CS. Confere cs_monday_user_id no insert (coluna vazia) e no update (coluna = Luana).
-  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+  -- Espelha o service_role do Supabase (bypassrls). Se o papel não existir na cópia, é criado; se existir sem o
+  -- atributo, recebe. Nada disso sai da transação: o teste termina com erro proposital e tudo é desfeito.
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role nologin bypassrls;
+  else
+    alter role service_role bypassrls;
+  end if;
   grant usage on schema public to service_role;
   grant select, insert, update on public.matchmakings_items to service_role;
   execute 'set local role service_role';
