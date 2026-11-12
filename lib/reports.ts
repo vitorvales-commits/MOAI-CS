@@ -1115,14 +1115,17 @@ export async function generateAgendaVisual(sb: SupabaseClient, dataInicioISO: st
 
   // Eventos da MOAI (11/11/2026): falha nesta leitura não derruba a agenda; o cliente mostra o aviso.
   let eventos: AgendaEventoItem[] = [];
+  let eventosSemPar = 0;
   let eventosErro: string | null = null;
   try {
-    eventos = await eventosDaAgenda(sb, dataInicioISO, dataFimISO, agora);
+    const resultadoEventos = await eventosDaAgenda(sb, dataInicioISO, dataFimISO, agora);
+    eventos = resultadoEventos.itens;
+    eventosSemPar = resultadoEventos.symplaSemPar;
   } catch (e: any) {
     eventosErro = e?.message || String(e);
   }
 
-  return { conselhos, rounds, eventos, eventosErro };
+  return { conselhos, rounds, eventos, eventosSemPar, eventosErro };
 }
 
 // ============ histórico de GTD ============

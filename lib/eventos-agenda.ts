@@ -1,14 +1,15 @@
 // Eventos da MOAI na agenda (11/11/2026): junta o espelho da Escala de Eventos (eventos_items, Monday) com
 // as contagens do Sympla (sympla_eventos) e devolve um item por evento, pronto para o componente da agenda.
 // Meta efetiva, ritmo de venda, casamento e turno saem daqui; o cliente só desenha.
+// Eventos só do Sympla (sem par na Escala) não viram card: são contados e aparecem como dado a conferir.
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgendaTurnoChave } from './constants';
 import { instanteBRT, turnoDoMinuto, hhmmDeMinutos, csDoRound, diaNumero } from './agenda';
-import { parseMeta, metaTotal, casarEventos, ritmoDoEvento, eventoCancelado, diasDeDivergencia, type RitmoEvento } from './eventos';
+import { parseMeta, metaTotal, casarEventos, ritmoDoEvento, eventoCancelado, linkSymplaDivergente, diasDeDivergencia, type RitmoEvento } from './eventos';
 
 export type AgendaEventoItem = {
   tipo: 'evento';
-  id: string; // m<id do Monday> ou s<id do Sympla>
+  id: string; // m<id do Monday>
   nome: string; label: string | null; produto: string | null; local: string | null;
   // diaIso é o dia em que o cartão aparece na semana; diaInicioIso e diaFimIso são as datas reais.
   diaIso: string; diaInicioIso: string; diaFimIso: string; hhmm: string; turno: AgendaTurnoChave; horarioTexto: string | null;
@@ -20,9 +21,15 @@ export type AgendaEventoItem = {
   divergenciaDias: number;
   ritmo: RitmoEvento; faltam: number | null; diasAteEvento: number;
   fonte: 'monday' | 'sympla' | 'ambos';
+  // Sem link do Sympla no item da Escala (aviso discreto, não é cor de exceção).
+  semLinkSympla: boolean;
+  // O link aponta para um evento com nome muito diferente: não mostra vendas nem meta batida até conferir.
+  linkConferir: boolean;
   // Id do Sympla tirado do link dos convites no Monday, mesmo quando o Sympla ainda não foi lido.
   symplaIdVinculado: number | null;
 };
+
+export type AgendaEventosResultado = { itens: AgendaEventoItem[]; symplaSemPar: number };
 
 const COLS_MONDAY = 'id,nome,nome_limpo,data_inicio,data_fim,horario_raw,inicio,local,label,produto,escala_status,status_evento,meta_raw,escalados_raw,sympla_event_id';
 const COLS_SYMPLA = 'id,nome,inicio,fim,url,cancelado,vendidos,checkins,vendidos_7d,contagem_em';
@@ -31,7 +38,7 @@ function somarDiasIso(diaIso: string, n: number): string {
   return new Date((diaNumero(diaIso) + n) * 86_400_000).toISOString().slice(0, 10);
 }
 
-export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string, dataFimISO: string, agora = new Date()): Promise<AgendaEventoItem[]> {
+export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string, dataFimISO: string, agora = new Date()): Promise<AgendaEventosResultado> {
   // Um evento de vários dias que começou antes da semana também aparece: a busca abre 7 dias para trás.
   const desde = somarDiasIso(dataInicioISO, -7);
   const [m, s] = await Promise.all([
@@ -67,6 +74,9 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
   monday.forEach((r) => {
     if (!r.data_inicio) return;
     const sy = casados.has(Number(r.id)) ? symplaPorId.get(casados.get(Number(r.id))!) : undefined;
+    const nomeEscala = r.nome_limpo || r.nome;
+    // Link de outro evento: o id casou, mas o nome do Sympla não tem nada a ver com o item da Escala.
+    const divergente = !!sy && linkSymplaDivergente(nomeEscala, sy.nome);
     const inicioIso: string | null = r.inicio || (sy ? sy.inicio : null);
     const temHora = !!inicioIso;
     const { minutos } = temHora ? instanteBRT(inicioIso!) : { minutos: 9 * 60 };
@@ -76,11 +86,12 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
     const csLista = csDoRound(r.escalados_raw);
     const metaP = parseMeta(r.meta_raw);
     const total = metaTotal(metaP, csLista.length);
-    const sym = resumoSympla(sy);
+    const resumo = resumoSympla(sy);
+    const sym = resumo && divergente ? { ...resumo, vendidos: null, checkins: null, vendidos7d: null } : resumo;
     const dias = diaNumero(diaIso) - diaNumero(hojeIso);
     itens.push({
       tipo: 'evento', id: 'm' + r.id,
-      nome: r.nome_limpo || r.nome, label: r.label || null, produto: r.produto || null, local: r.local || null,
+      nome: nomeEscala, label: r.label || null, produto: r.produto || null, local: r.local || null,
       diaIso, diaInicioIso: diaIso, diaFimIso, hhmm: temHora ? hhmmDeMinutos(minutos) : '', turno: turnoDoMinuto(minutos), horarioTexto: r.horario_raw || null,
       passado, cancelado: eventoCancelado(r.escala_status, r.status_evento), escalaStatus: r.escala_status || null,
       cs: csLista.length ? csLista.join(', ') : null, csLista,
@@ -90,30 +101,24 @@ export async function eventosDaAgenda(sb: SupabaseClient, dataInicioISO: string,
       faltam: total != null && sym && sym.vendidos != null ? Math.max(0, total - sym.vendidos) : null,
       diasAteEvento: dias,
       fonte: sym ? 'ambos' : 'monday',
+      semLinkSympla: r.sympla_event_id == null,
+      linkConferir: divergente,
       divergenciaDias: sy ? diasDeDivergencia(diaIso, sy.inicio) : 0,
       symplaIdVinculado: r.sympla_event_id == null ? null : Number(r.sympla_event_id),
     });
   });
 
-  // Eventos do Sympla sem par no Monday entram sozinhos (sem escala e sem meta), exceto os cancelados.
-  sympla.forEach((r) => {
-    if (usados.has(Number(r.id)) || r.cancelado || !r.inicio) return;
-    const { diaIso, minutos } = instanteBRT(r.inicio);
-    const diaFimIso = r.fim ? instanteBRT(r.fim).diaIso : diaIso;
-    const passado = diaFimIso < hojeIso;
-    const sym = resumoSympla(r);
-    itens.push({
-      tipo: 'evento', id: 's' + r.id, nome: r.nome, label: null, produto: null, local: null,
-      diaIso, diaInicioIso: diaIso, diaFimIso, hhmm: hhmmDeMinutos(minutos), turno: turnoDoMinuto(minutos), horarioTexto: null,
-      passado, cancelado: false, escalaStatus: null, cs: null, csLista: [], meta: null, sympla: sym,
-      ritmo: ritmoDoEvento({ vendidos: sym!.vendidos, meta: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), passado }),
-      faltam: null, diasAteEvento: diaNumero(diaIso) - diaNumero(hojeIso), fonte: 'sympla', symplaIdVinculado: Number(r.id), divergenciaDias: 0,
-    });
-  });
+  // Eventos do Sympla sem par na Escala: não viram card; a semana mostra só a contagem para conferir.
+  const symplaSemPar = sympla.filter((r) => {
+    if (usados.has(Number(r.id)) || r.cancelado || !r.inicio) return false;
+    const dia = instanteBRT(r.inicio).diaIso;
+    return dia >= dataInicioISO && dia < dataFimISO;
+  }).length;
 
   // Só o que toca a semana pedida: começa antes do fim e termina a partir do início.
-  return itens
+  const lista = itens
     .filter((e) => e.diaIso < dataFimISO && e.diaFimIso >= dataInicioISO)
     .map((e) => (e.diaIso < dataInicioISO ? { ...e, diaIso: dataInicioISO } : e))
     .sort((a, b) => (a.diaIso + a.hhmm < b.diaIso + b.hhmm ? -1 : 1));
+  return { itens: lista, symplaSemPar };
 }

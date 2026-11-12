@@ -95,8 +95,7 @@
     if (!ev.length) return '';
     var risco = ev.filter(function (e) { return e.ritmo === 'atencao' || e.ritmo === 'critico'; });
     var txt = ' ' + plural(ev.length, 'evento', 'eventos') + ' na semana';
-    if (risco.length) txt += ', ' + (risco.length === 1 ? '1 abaixo do ritmo de venda: ' : risco.length + ' abaixo do ritmo de venda, o primeiro é ')
-      + risco[0].nome + ' (faltam ' + risco[0].faltam + ')';
+    if (risco.length) txt += '. ' + plural(risco.length, 'evento abaixo do ritmo de venda', 'eventos abaixo do ritmo de venda');
     return txt + '.';
   }
 
@@ -196,10 +195,12 @@
 
   // Linha de venda do evento: vendidos contra a meta, com barra. Cor só quando o ritmo pede ação.
   function textoVenda(e) {
+    if (e.linkConferir) return 'Link do Sympla a conferir';
     var v = e.sympla ? e.sympla.vendidos : null;
     var meta = e.meta ? e.meta.total : null;
-    if (v == null && meta == null) return e.sympla ? 'Vendas ainda não lidas' : '';
-    if (v == null) return 'Meta ' + meta + ' · vendas sem leitura do Sympla';
+    var semLink = e.semLinkSympla ? 'Sem link do Sympla na Escala' : 'Vendas ainda não lidas';
+    if (v == null && meta == null) return e.sympla ? 'Vendas ainda não lidas' : (e.semLinkSympla ? semLink : '');
+    if (v == null) return 'Meta ' + meta + ' · ' + semLink;
     if (meta == null) return plural(v, 'ingresso', 'ingressos') + (e.passado ? '' : ' · sem meta');
     return v + ' de ' + meta + (e.passado ? '' : e.faltam > 0 ? ' · faltam ' + e.faltam : ' · meta batida');
   }
@@ -335,7 +336,8 @@
     var usaLista = st.visao === 'lista' || ehMobile();
     var html = usaLista ? renderLista(st, st.visiveis) : renderSemana(st, st.visiveis);
     var avisoEventos = st.dados && st.dados.eventosErro ? '<div class="ag-sub ag-erro" style="margin-bottom:8px;">Os eventos não carregaram nesta semana (' + esc(st.dados.eventosErro) + '). Conselhos e rounds estão completos.</div>' : '';
-    st.corpo.innerHTML = avisoEventos + (html || '<div class="ag-vazio">Nenhum conselho, round ou evento nesta semana.</div>');
+    var semPar = st.dados && st.dados.eventosSemPar ? '<div class="ag-sub" style="margin-bottom:8px;">' + esc(plural(st.dados.eventosSemPar, 'evento do Sympla sem par na Escala, a conferir', 'eventos do Sympla sem par na Escala, a conferir')) + '</div>' : '';
+    st.corpo.innerHTML = avisoEventos + semPar + (html || '<div class="ag-vazio">Nenhum conselho, round ou evento nesta semana.</div>');
     desenharControles(st);
   }
 
@@ -380,7 +382,9 @@
     } else if (e.fonte !== 'sympla') {
       h += '<dt>Meta</dt><dd>Não preenchida na Escala de Eventos</dd>';
     }
-    if (e.sympla) {
+    if (e.linkConferir) {
+      h += '<dt>Ingressos</dt><dd>Link do Sympla a conferir: o nome no Sympla não bate com o item da Escala.</dd>';
+    } else if (e.sympla) {
       var lido = e.sympla.contagemEm ? new Date(e.sympla.contagemEm) : null;
       h += '<dt>Ingressos</dt><dd>' + (e.sympla.vendidos == null ? 'ainda não lidos' : esc(plural(e.sympla.vendidos, 'vendido', 'vendidos')))
         + (e.sympla.vendidos7d != null && !e.passado ? ', ' + esc(String(e.sympla.vendidos7d)) + ' nos últimos 7 dias' : '') + '</dd>';
