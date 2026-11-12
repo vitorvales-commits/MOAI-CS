@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   parseMeta, metaTotal, parseHorarioInicio, minutosDoTurno, parseTimeline, idSymplaDoLink, nomeLimpo,
-  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes,
+  casarEventos, ritmoDoEvento, eventoCancelado, isoBRT, semelhancaNomes, nomesDePessoasMonday, diasDeDivergencia,
 } from '../lib/eventos.ts';
 
 // Meta
@@ -81,5 +81,34 @@ assert.equal(ritmoDoEvento({ vendidos: 5, meta: 30, diasAteEvento: -1, passado: 
 assert.equal(eventoCancelado('Evento Cancelado', null), true);
 assert.equal(eventoCancelado('Escala Fechada', 'Cancelado'), true);
 assert.equal(eventoCancelado('Escala Fechada', 'A iniciar'), false);
+
+// Casos reais de 12/11/2026: nome curto no Monday, título de divulgação no Sympla, mesmo horário
+const casados2 = casarEventos(
+  [
+    { id: 10, nome: 'Talks B2HR', data_inicio: '2026-11-25', data_fim: '2026-11-25', inicio: '2026-11-25T22:00:00+00:00', sympla_event_id: null },
+    { id: 11, nome: 'MOAI Comitê de Inteligência Artificial', data_inicio: '2026-11-18', data_fim: '2026-11-18', inicio: '2026-11-18T22:00:00+00:00', sympla_event_id: null },
+    { id: 12, nome: 'MOAI Imersão Alavanca', data_inicio: '2026-11-12', data_fim: '2026-11-13', inicio: '2026-11-12T12:00:00+00:00', sympla_event_id: null },
+    { id: 13, nome: 'Networking Gourmet', data_inicio: '2026-11-25', data_fim: '2026-11-25', inicio: '2026-11-25T15:00:00+00:00', sympla_event_id: null },
+  ],
+  [
+    { id: 3645642, nome: 'MOAI Talks | Plano estratégico: seu time aguenta?', inicio: '2026-11-25T22:00:00+00:00' },
+    { id: 3643954, nome: 'MOAI | Comitê Estratégico Inteligência Artificial', inicio: '2026-11-18T22:00:00+00:00' },
+    { id: 3644609, nome: 'Imersão alavanca MOAI', inicio: '2026-11-12T16:00:00+00:00' },
+  ],
+);
+assert.equal(casados2.get(10), 3645642);
+assert.equal(casados2.get(11), 3643954);
+assert.equal(casados2.get(12), 3644609);
+assert.equal(casados2.has(13), false); // mesmo dia, outro horário e outro nome: não casa
+assert.equal(diasDeDivergencia('2026-11-24', '2026-11-26T12:00:00+00:00'), 2);
+assert.equal(diasDeDivergencia('2026-11-26', '2026-11-26T12:00:00+00:00'), 0);
+assert.equal(diasDeDivergencia(null, '2026-11-26T12:00:00+00:00'), 0);
+
+// Email na coluna de pessoas vira nome e nunca é gravado
+assert.equal(nomesDePessoasMonday('vinicius.souza@mmoai.com.br, Luma Guadanhim'), 'Vinicius Souza, Luma Guadanhim');
+assert.equal(nomesDePessoasMonday('Mateus Ries, Mateus Ries'), 'Mateus Ries');
+assert.equal(nomesDePessoasMonday('  '), null);
+assert.equal(nomesDePessoasMonday(null), null);
+assert.ok(!/@/.test(nomesDePessoasMonday('a.b@x.com, c_d2@y.com.br')!));
 
 console.log('eventos: todos os testes passaram');

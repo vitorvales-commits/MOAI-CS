@@ -66,6 +66,8 @@ export const AGENDA_CSS = `
 .ag-card.ag-evento[data-ritmo="critico"] .ag-ev-barra > span { background:#C0433D; }
 .ag-card.ag-evento[data-ritmo="atencao"] .ag-cobranca { color:#8A5A00; }
 .ag-card.ag-evento[data-ritmo="critico"] .ag-cobranca { color:#8A2A24; }
+.ag-ev-diverge { color:#8A5A00; font-weight:600; }
+.ag-card.ag-evento .ag-cobranca.ag-ev-aviso { color:#8A5A00; }
 .ag-ev-acao { font-size:12px; line-height:1.5; background:#FFF6E5; border:0.75pt dashed #F4A21B; border-radius:10px; padding:8px 10px; margin-top:10px; color:#5C3D00; }
 .ag-lista { display:flex; flex-direction:column; gap:14px; }
 .ag-lista-dia-titulo { font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:11.5px; font-weight:600; color:#14213D; text-transform:uppercase; margin-bottom:6px; }
