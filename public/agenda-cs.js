@@ -115,13 +115,16 @@
       return 'Nenhum conselho da equipe nesta semana' + (rounds ? ', e ' + rounds + (rounds === 1 ? ' round' : ' rounds') : '') + '.';
     }
     var base = conselhos.length + (conselhos.length === 1 ? ' conselho ' : ' conselhos ') + quem + ' nesta semana' + sufixoRounds;
-    if (!cobra.length) return base + ', todos com confirmações em dia.';
+    // Congelado não entra na cobrança, mas o rodapé antigo da home contava os com 3 confirmados ou menos: esta frase cobre isso.
+    var congelados = conselhos.filter(function (c) { return c.congelado && !c.passado && (c.confirmados || []).length <= 3; }).length;
+    var fimCongelados = congelados ? ' ' + congelados + (congelados === 1 ? ' conselho congelado' : ' conselhos congelados') + ' com 3 confirmados ou menos, fora da cobrança.' : '';
+    if (!cobra.length) return base + (congelados ? '.' + fimCongelados : ', todos com confirmações em dia.');
     var n = cobra.length;
     var verbo = n === 1 ? ' precisa' : ' precisam';
-    if (st.escopo !== 'meus') return base + '. ' + n + verbo + ' de cobrança até a véspera.';
+    if (st.escopo !== 'meus') return base + '. ' + n + verbo + ' de cobrança até a véspera.' + fimCongelados;
     var mostrados = cobra.slice(0, 2).map(descricaoCobranca).join('; ');
     var resto = n > 2 ? ' e mais ' + (n - 2) : '';
-    return base + '. ' + n + verbo + ' de cobrança: ' + mostrados + resto + '.';
+    return base + '. ' + n + verbo + ' de cobrança: ' + mostrados + resto + '.' + fimCongelados;
   }
 
   // Token de faixa do cartão (data-faixa). Encerrado fica neutro. Sem dado de confirmação (nenhum titular
