@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { conjuntosDaAgenda, chavesDaAgenda } from '../lib/agenda-nomes.ts';
 import { resolverEncontrosAgenda, generateAgendaVisual } from '../lib/reports.ts';
+import { MESES_ORDEM } from '../lib/constants.ts';
 
 const grupos = [
   { group_id: 'g_mateus', titulo: 'Executivo | Rafael Gianesini (Mateus)', is_repo: false, congelado: false, repo_group_id: 'r_rafael' },
@@ -32,9 +33,16 @@ assert.deepEqual(conjuntos.get('Rafael e Rodrigo Gianesini'), ['Rafael GIanesini
 assert.deepEqual(chavesDaAgenda('Rafael e Rodrigo Gianesini', conjuntos), ['rafael gianesini', 'rodrigo gianesini']);
 assert.deepEqual(chavesDaAgenda('Rafael Gianesini', conjuntos), ['rafael gianesini']);
 
+// Datas relativas a hoje: o cartão visual precisa estar ainda não encerrado (o generateAgendaVisual usa o relógio do sistema).
+const ALVO = new Date(Date.now() + 3 * 86_400_000);
+const DATA_CONJUNTO = ALVO.toISOString().slice(0, 10) + 'T17:00:00+00:00';
+const MES_ALVO = MESES_ORDEM[ALVO.getUTCMonth()];
+const INICIO_VISUAL = new Date(ALVO.getTime() - 2 * 86_400_000).toISOString().slice(0, 10);
+const FIM_VISUAL = new Date(ALVO.getTime() + 5 * 86_400_000).toISOString().slice(0, 10);
+
 const agenda = [
-  // Encontro de 12/11/2026 às 14h de Brasília (17h UTC), status Confirmado.
-  { id: 12898643862, conselheiro_nome: 'Rafael e Rodrigo Gianesini', data_iso: '2026-11-12T17:00:00+00:00', status: 'Confirmado' },
+  // Encontro conjunto (data relativa a hoje, ver DATA_CONJUNTO) às 14h de Brasília (17h UTC), status Confirmado.
+  { id: 12898643862, conselheiro_nome: 'Rafael e Rodrigo Gianesini', data_iso: DATA_CONJUNTO, status: 'Confirmado' },
   // Caso Henrique Guimarães: anotação entre colchetes e erro de grafia, casado pela regra tolerante.
   { id: 13000000001, conselheiro_nome: 'Henrique Guimalhaes [André Froes]', data_iso: '2026-11-05T17:00:00+00:00', status: 'Confirmado' },
   // Nome individual de um conselheiro: continua casando só com o próprio grupo.
@@ -64,8 +72,8 @@ const membros = [
   { id: 4, nome: 'Membro G1', group_id: 'g_george' }, { id: 5, nome: 'Membro G2', group_id: 'g_george' }, { id: 6, nome: 'Membro G3', group_id: 'g_george' },
 ];
 const statusMensal = [
-  { membro_id: 1, mes: 'Novembro', status: 'Confirmado' }, { membro_id: 2, mes: 'Novembro', status: 'Confirmado' }, { membro_id: 3, mes: 'Novembro', status: 'Agd. Confirmação' },
-  { membro_id: 4, mes: 'Novembro', status: 'Confirmado' }, { membro_id: 5, mes: 'Novembro', status: 'Não vai' }, { membro_id: 6, mes: 'Novembro', status: 'Agd. Confirmação' },
+  { membro_id: 1, mes: MES_ALVO, status: 'Confirmado' }, { membro_id: 2, mes: MES_ALVO, status: 'Confirmado' }, { membro_id: 3, mes: MES_ALVO, status: 'Agd. Confirmação' },
+  { membro_id: 4, mes: MES_ALVO, status: 'Confirmado' }, { membro_id: 5, mes: MES_ALVO, status: 'Não vai' }, { membro_id: 6, mes: MES_ALVO, status: 'Agd. Confirmação' },
 ];
 const dadosVisual = {
   conselhosGrupos: grupos, conselhosMembros: membros, conselhosStatusMensal: statusMensal,
@@ -73,8 +81,8 @@ const dadosVisual = {
   vinculoAgenda: vinculos, conjuntosAgenda: conjuntos,
 };
 async function testeAgendaVisual() {
- const visual = await generateAgendaVisual(null as any, '2026-11-09', '2026-11-16', dadosVisual as any);
-const cartoes = visual.conselhos.filter((c) => c.dataIso === '2026-11-12T17:00:00+00:00');
+ const visual = await generateAgendaVisual(null as any, INICIO_VISUAL, FIM_VISUAL, dadosVisual as any);
+const cartoes = visual.conselhos.filter((c) => c.dataIso === DATA_CONJUNTO);
 assert.equal(cartoes.length, 1, 'o conselho conjunto aparece uma única vez na agenda');
 const cartao = cartoes[0];
 assert.equal(cartao.conselheiroNome, 'Rafael e Rodrigo Gianesini');
