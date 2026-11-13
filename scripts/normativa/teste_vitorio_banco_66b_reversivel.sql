@@ -7,7 +7,8 @@
 -- corpo das funções antes da 20261112b, com o mesmo texto de produção (o único trecho trocado é creator_id por
 -- cs_monday_user_id nas linhas de matchmakings_items; em atualizar_pendencias, o bloco de matchmakings de origem).
 -- Cada cópia foi conferida contra o hash de produção (md5 do corpo normalizado) antes de entrar aqui.
--- Os corpos abaixo também são a prova de que nada além disso mudou: o gerador compara o hash de cada um.
+-- Os corpos abaixo também são a prova de que nada além disso mudou: o passo 0 do teste compara o md5 de cada um com a
+-- função nova (a troca é a descrita no passo 0), e o gerador compara o hash de cada um.
 
 
 create or replace function public.legado_metas_cs_base(p_cs text default null::text, p_mes date default null::date)
@@ -303,6 +304,47 @@ language sql set search_path to '' as $function$
 $function$;
 
 
+-- Auxiliares do passo 0 (pg_temp: somem no fim da sessão). Normalizam o corpo das funções para comparar md5.
+create function pg_temp.corpo(def text) returns text language sql immutable as $pg$
+  select split_part(def, '$function$', 2)
+$pg$;
+
+create function pg_temp.normalizar(t text) returns text language sql immutable as $pg$
+  select regexp_replace(regexp_replace(regexp_replace(t, '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g'), '\s+', '', 'g')
+$pg$;
+
+-- Troca creator_id por cs_monday_user_id nas linhas do bloco de matchmakings_items. O bloco vai da linha que contém
+-- matchmakings_items até a primeira linha que termina com ';' ou ')'.
+create function pg_temp.troca_matchmakings(t text) returns text language plpgsql immutable as $pg$
+declare
+  v_linha text;
+  v_saida text[] := '{}';
+  v_dentro boolean := false;
+begin
+  foreach v_linha in array regexp_split_to_array(t, E'\n') loop
+    if v_linha ~ 'matchmakings_items' then v_dentro := true; end if;
+    if v_dentro then
+      v_linha := replace(v_linha, 'creator_id', 'cs_monday_user_id');
+      if v_linha ~ '[;)]\s*$' then v_dentro := false; end if;
+    end if;
+    v_saida := v_saida || v_linha;
+  end loop;
+  return array_to_string(v_saida, E'\n');
+end
+$pg$;
+
+-- Em atualizar_pendencias, o bloco de matchmakings da cópia legado é trocado pelo bloco novo (canonico.v_matchmakings).
+create function pg_temp.troca_bloco_pendencias(legado text, novo text) returns text language plpgsql immutable as $pg$
+declare
+  v_leg text := substring(legado from 'select ''monday_user_id'', ''matchmakings_items\.creator_id''.*?where m\.creator_id is not null');
+  v_novo text := substring(novo from 'select case when nullif\(btrim\(m\.cs_dash_texto\).*?where v\.classe = ''pendente''');
+begin
+  if v_leg is null or v_novo is null then raise exception 'FALHA 0 troca do bloco de matchmakings: bloco não encontrado'; end if;
+  return replace(legado, v_leg, v_novo);
+end
+$pg$;
+
+
 do $teste$
 declare
   v_vitor bigint;
@@ -323,6 +365,34 @@ begin
   select c.monday_user_id into v_vitor from public.cs_config c where c.nome = 'Vitor';
   select c.monday_user_id into v_luana from public.cs_config c where c.nome = 'Luana';
   if v_vitor is null or v_luana is null then raise exception 'FALHA preparo: Vitor ou Luana sem monday_user_id'; end if;
+
+
+  -- 0. Cada cópia legado_* é o corpo da função nova, a menos da troca (creator_id por cs_monday_user_id nas linhas de
+  -- matchmakings_items; em atualizar_pendencias, o bloco de matchmakings trocado pelo bloco novo). Compara md5 do corpo
+  -- normalizado (sem comentários e sem espaços). Se diferir, para aqui: a cópia não representa a função nova.
+  for r in
+    select 'metas_cs_base' as fn,
+      pg_get_functiondef('public.metas_cs_base(text, date)'::regprocedure) as novo,
+      pg_temp.troca_matchmakings(pg_get_functiondef('public.legado_metas_cs_base(text, date)'::regprocedure)) as legado
+    union all
+    select 'indicador_pontos',
+      pg_get_functiondef('public.indicador_pontos(text, text, text, text[], boolean, text)'::regprocedure),
+      pg_temp.troca_matchmakings(pg_get_functiondef('public.legado_indicador_pontos(text, text, text, text[], boolean, text)'::regprocedure))
+    union all
+    select 'historico_indicador',
+      pg_get_functiondef('public.historico_indicador(text, text, text)'::regprocedure),
+      pg_temp.troca_matchmakings(pg_get_functiondef('public.legado_historico_indicador(text, text, text)'::regprocedure))
+    union all
+    select 'atualizar_pendencias',
+      pg_get_functiondef('canonico.atualizar_pendencias()'::regprocedure),
+      pg_temp.troca_bloco_pendencias(pg_get_functiondef('canonico.legado_atualizar_pendencias()'::regprocedure),
+                                     pg_get_functiondef('canonico.atualizar_pendencias()'::regprocedure))
+  loop
+    if md5(pg_temp.normalizar(pg_temp.corpo(r.novo))) <> md5(pg_temp.normalizar(pg_temp.corpo(r.legado))) then
+      raise exception 'FALHA 0 %: corpo da função nova difere da cópia legado com a troca (md5 novo %, md5 legado %)',
+        r.fn, md5(pg_temp.normalizar(pg_temp.corpo(r.novo))), md5(pg_temp.normalizar(pg_temp.corpo(r.legado)));
+    end if;
+  end loop;
 
   -- 1. Coluna "CS do dash" vazia em todos os matchmakings (a equivalência vale com a coluna vazia).
   update public.matchmakings_items set cs_dash_texto = null where cs_dash_texto is not null;
